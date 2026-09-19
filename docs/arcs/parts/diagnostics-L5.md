@@ -6,7 +6,7 @@ kind: law
 origin: pair
 req: 5
 status: blocked
-updated: 2026-09-10
+updated: 2026-09-19
 ---
 
 # diagnostics/L5: `str-sub` does not clamp: an out-of-range end index segfaults while a prelude comment claims otherwise
@@ -219,7 +219,7 @@ name nothing names, two false comments, no gate.
 ## 4. The shapes
 
 The tree does **not** settle this. `docs/decisions/decision-lane-split.md:339`
-says so in as many words: *"nothing settles it."* Five forms, and the primitive
+says so in as many words: *"nothing settles it."* Six forms, and the primitive
 half and the consumer half are listed separately because they compose freely.
 
 ⚑ **Shape E was added 2026-09-10, and the four that preceded it were an
@@ -230,6 +230,15 @@ the caller's error; clamp-and-trap (a checked abort that names the bad call)
 closes the same crossing and keeps the signal. P1's 'gated shut', P3's membrane
 and P4's physics are each satisfied by both."* Shape E is that shape, given the
 same treatment as A, B, C and D, and §5 is re-tested against it below.
+
+⚑ **Shape F was added 2026-09-19, and the five that preceded it were an
+incomplete set on a second axis.** `records/findings.md` `FD-40` (`9a8c3bc`)
+surveyed twenty-five pinned sources and measured that the field does not split
+clamp against halt, it splits reporting against silent, and that a clamp with no
+signal is the one shape nothing in the survey defends. A, B, C, D and E held no
+arm for what the clamp camp actually ships. Shape F is that arm, given the same
+treatment, and §5 is re-tested against it below. **It is written and refused, on
+this tree's own terms, and the reason is in the arm.**
 
 ### The primitive half
 
@@ -394,6 +403,129 @@ same treatment as A, B, C and D, and §5 is re-tested against it below.
   is every profile in the tree, charged at emit rather than at check. The
   substrate route pays none of that price, and buys none of that containment.
 
+
+#### Shape F: clamp in `nb-bslice-t` and return the clamped extent with it
+
+⚑ **Added 2026-09-19 by a revisit against `records/findings.md` `FD-40`. The
+five that preceded it were an incomplete set on a second axis.** `FD-40`
+surveyed twenty-five pinned sources and reports that the field does not divide
+clamp from halt: *"The axis the sources actually divide on is whether the
+out-of-range condition survives the call in a form the caller can test."* Six
+clamps and six traps both ship. Every clamp the survey finds endorsed in print
+hands the truncation back: Go's `copy` *"returns the number of elements copied"*
+and that number *"is the minimum of `len(src)` and `len(dst)`"* (`GOSPEC:7478-7484`),
+`strlcpy` states the contract outright, `STRLCPY:229` *"the caller's
+responsibility to handle this."*, and GCC's default diagnostic fires on exactly
+the discard: it *"warns only about calls to bounded functions whose return value
+is unused"* (`GCCWARN:7483-7484`), while the silent-clamp case next to it,
+`strncpy` truncating without the terminator, is *"a common mistake, and so the
+call"* is diagnosed (`GCCWARN:8983`). The survey's
+two silent clamps, Python's slice and Lua's `string.sub`, are also its two for
+which no source states any reason. Shape A is the silent clamp. This is the arm
+the field's clamp camp actually occupies, and until now it was not on the ballot.
+
+- **Form:** Shape A's branch structure and arm bodies, with a widened return.
+  `(extern str-sub (-> Str I64 I64 SubR))` where `SubR` carries the clamped
+  slice and the extent actually delivered, so a caller can compare it against
+  the `(- j i)` it asked for. `bslice` likewise. Two constructible spellings,
+  and they are different shapes rather than two styles of one.
+  - **F1, a plain report.** `(data SubR () (sub-r (s Str) (got I64)))`.
+  - **F2, a report the caller cannot drop.** The same sum with the witness
+    linear, `(sub-r (s Str) (1 c Clamped))`, so the checker refuses a caller
+    that ignores it. This is GCC's default diagnostic made a refusal rather
+    than a warning, which is the substrate form of the same rule.
+- **Both are constructible today, and the difference between them is the whole
+  arm.** Four probes 2026-09-19 against the committed `bin/chirality-bin`
+  (1,257,848 B, `30b288b`; §2's measurements were taken against the 1,220,984 B
+  binary of 2026-09-08 and are not re-run here).
+  - `(extern str-sub2 (-> Str I64 I64 SubR))` over `(sub-r (s Str) (got I64))`,
+    with a caller that `case`s it and uses the count: **OK, exit 0.** A pure
+    arrow may return a reporting sum.
+  - The same, with a caller that `case`s it and **discards** the count: **OK,
+    exit 0.** Nothing in the tree objects. `lib/typing/diag.chiral:121-141`'s
+    ten-arm `Reason` has no unused-result arm, so F1's signal is advisory and
+    the tree cannot tell a caller that tested it from one that did not.
+  - The same sum with the witness linear, caller discards: **exit 1,
+    `load: field binder usage mismatch`.**
+  - The same, caller consumes the witness: **OK, exit 0.** So F2's report is
+    enforced, by the quantity discipline the ledger already carries at
+    **ENFORCED** rather than IMPLEMENTED: *"Quantities 0/1/ω resource
+    counting"* and *"Linear types → port aliasing control"* are rows 161 and 162
+    under `docs/definitions/status-ledger.md:156`'s **Built — ENFORCED**
+    heading, each naming the gate that defends it
+    (`tools/test/check-cli.sh`, `tools/test/linear-mint.sh`). So F2's refusal is
+    not a property this row would have to build.
+- **⚑ F2 is refused, and it is refused by a ruling this tree already took on
+  this exact question at this exact floor.** `docs/elements/specs/E113-pool-read-SPEC.md:29-35`
+  retired a two-arm out-of-range-as-value `pool-read` for three reasons, and two
+  of them bite here. *"(3) the boundary-sums directive governs which-of-N
+  classification, and errors-as-values (E29) governs genuinely-fallible ops — a
+  bounds violation is neither"*: F2's linear witness is a per-call classification
+  of the bounds condition, which is the shape that clause excludes, and the
+  `ConnR` idiom it points away from (`docs/elements/specs/E29-sockets-SPEC.md:104`,
+  `(conn-r (1 s Sock))` / `(conn-err (msg Str))`) is for an operation that can
+  fail on the world's terms rather than on the caller's. *"(1) `pool-write`
+  already halts on OOB, so a value-returning read would be an inconsistent
+  pair"*: the same inconsistency is sharper here, because the sibling is in the
+  same file. `nb-pool-read-t` (`lib/lowering/tal/sys.chiral:1104`) traps through
+  `nb-arena-fail` on `off < 0` and again on `size < off + len` — **this row's own
+  two live cases** — while returning a single-arm sum, and the file states the
+  doctrine at `:1006-1009`: *"the externs' return types carry no error arm …, so
+  a fatal exit is control flow, not a value sentinel."* A reporting `nb-bslice`
+  puts a value sentinel for a bounds condition into the one runtime whose
+  written rule is that it has none. That ruling is a spec-audit's and not the
+  author's, so it is reported as binding until the author says otherwise rather
+  than treated as settled doctrine. **Its third reason is not used here.** Clause
+  (2), *"an OOB pool read is a caller logic bug … not a recoverable boundary —
+  halt-as-assertion is correct"*, is an argument for Shape E, and adopting it
+  would be ruling the fork this design holds for the author. It is recorded and
+  left.
+- **F1 survives that ruling and is dominated on cost.** F1 classifies nothing,
+  so clause (3) does not reach it. What reaches it is the second probe: the
+  report is droppable and nothing counts the drops, so at the 87 class-C2 sites
+  resting on unchecked local guards (§2) F1 behaves exactly as A does unless
+  each of those 87 is edited by hand — which is the audit §2 says is not this
+  element's work. Meanwhile the return type moved, so every one of the 250 call
+  sites is rewritten, and `nb-bslice-t` must build a sum at the TAL floor. Those
+  are Shape C's two costs verbatim, and C buys the stronger property: C's `none`
+  cannot be used as a `Str` by a caller who ignored it, and F1's clamped slice
+  can. **F1 pays C's price for A's property.**
+- **Costs:** the TAL edit of A or E in the same trapped routine, plus a sum
+  built at that floor, plus 250 call-site rewrites, plus — under F2 — the
+  87-guard audit that §5 names as Shape E's true scope. F2 moves that audit
+  from runtime to `chirality check`: a guard that is wrong is a refusal the
+  author sees before shipping rather than a process exit in a shipped program.
+  That is the one thing F holds that neither A nor E does, and it is priced
+  above both.
+- **Forbids:** F1 forbids the silent over-read and forbids nothing else: the
+  truncation is reported and the report may be ignored, so an out-of-range call
+  is detectable and undetected, which is the state `GCCWARN:7483-7484` names.
+  F2 forbids the silent over-read, the silent truncation and the discarded
+  report: no caller of `str-sub` or `bslice` anywhere in the tree
+  may leave the clamp untested, so all 87 C2 sites and both C3 sites must state
+  what they do about it. What F2 forbids in exchange is `str-sub` in a value
+  position at all 250 sites, which is Shape C's own Forbids, and it forbids the
+  byte runtime's stated rule that a bounds condition is control flow and not a
+  value.
+- **Reaches:** both surface names, all 250 call sites, one routine, identical to
+  A and E — and unlike them it does not reach them silently, because the return
+  type change makes every site fail to check until it is edited.
+- **⚑ What F measures about Shape A, and it cuts both ways.** Under A the
+  clamped extent is already recoverable without any type change:
+  `(str-len (str-sub s i j))` is strictly less than `(- j i)` exactly when a
+  clamp fired, and `str-len` lowers to a single `ti-blen` instruction rather
+  than a call (`lib/lowering/tal/erase.chiral:170`), so the test costs one
+  instruction at the sites that choose to write it. So A's Forbids, *"an
+  out-of-range call can no longer be detected"*, is right about the substrate
+  and too strong about the caller: what A removes is detection by default, not
+  detection. The other half of the same measurement is that this is precisely
+  Python's shape — the extent is a projection of the returned value, obtainable
+  and not presented — and `FD-40` files Python's slice among its two clamps that
+  report nothing and state no reason. Neither half of that is a ruling. The
+`(- j i)` comparison holds for `j > i`; the inverted range is already the
+defined empty slice (§2) and reports nothing, which is correct because nothing
+was clamped away.
+
 ### The consumer half
 
 #### Shape α: delete the reason, keep the function
@@ -469,13 +601,57 @@ re-deriving it.
   one side and as the point from the other, which is what makes it the author's
   and not this design's.
 
+  **⚑ Re-tested again 2026-09-19 against Shape F, and the A-versus-E paragraph
+  above did not survive as the whole of it either.** The paragraph is kept
+  because its measurement stands: the 87 guards are still the one asymmetry that
+  separates A from E, and it still reads as a cost from one side and as the
+  point from the other. What `records/findings.md` `FD-40` (`9a8c3bc`) adds is
+  that A and E are not the two ends of the field's axis. Twenty-five pinned
+  sources divide on reporting against silent rather than on clamp against halt;
+  six languages clamp and six trap, both ship widely, and **the shape nothing in
+  the survey defends is a clamp that returns no signal** — which is Shape A as
+  written, and specifically Python's spelling of it, one of the survey's two
+  clamps that report nothing and state no reason. So the paragraph above was an
+  argument between two arms drawn from a set of five that omitted the thing the
+  clamp camp actually ships.
+
+  **Three things the widened set adds, and none of them rules.** First, the
+  survey does not hand the trap camp the argument either: no surveyed system
+  reaches totality by clamping, and SPARK, which is Ada, proves the trap
+  unreachable while Ada's dynamic semantics still raise `Constraint_Error`, so
+  the static route (§4 Shape B) is measured as a discharge of E rather than a
+  replacement for it. Second, the field's one recorded change of mind in the
+  last two years ran toward termination: C++26 hardening moved out-of-bounds
+  library access from undefined to *"evaluated with a terminating semantic"*
+  (`CPPLIBINTRO:395`), and `FD-40` reports no proposal moving anything toward a
+  clamp. Third, and the only one that touches Shape A's own text: the 87 guards
+  are also what a *report* would find, and §4 Shape F measures that A leaves the
+  clamp recoverable by a one-instruction length comparison but requires nothing
+  of any caller and counts no caller that skips it. **Shape A's Forbids is
+  therefore right about the substrate and too strong about the caller**, and
+  that correction is recorded in Shape F rather than by editing the sentence §5
+  quotes.
+
+  **And the third arm is written and refused, so the ballot did not become a
+  three-way choice.** Shape F's enforcing form is excluded by
+  `docs/elements/specs/E113-pool-read-SPEC.md:29-35`, a ruling this tree already
+  took on this question at this floor: a bounds violation is neither a which-of-N
+  classification nor a genuinely-fallible op, and the sibling routine in the same
+  file, `nb-pool-read-t` (`lib/lowering/tal/sys.chiral:1104`), already traps on
+  this row's own two cases while returning a sum with no error arm. Shape F's
+  advisory form survives that ruling and pays Shape C's full price for Shape A's
+  property. **The author's fork stays A against E.** What changed is that it is
+  now a fork whose third possibility was measured and closed rather than never
+  raised.
+
   **Not ruled here.** Whether a clamp discharges the bug class or hides it is
-  `records/author-calls.md:364`, `unreviewed`, and the clamp-versus-trap fork is
-  `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1. This design answers neither.
-  It closes the gap that item named: the fork now has both of its arms written
-  in the same form, so the question the author is asked is a real two-way
-  choice. `status: blocked` already, and this widens what is blocked from a
-  sequencing question to the primitive half itself.
+  `records/author-calls.md:86`, `unreviewed`, and the clamp-versus-trap fork is
+  `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1. This design answers neither,
+  and the 2026-09-19 revisit answered neither. It closes the gap that item
+  named: the fork now has both of its arms written in the same form, so the
+  question the author is asked is a real two-way choice. `status: blocked`
+  already, and this widens what is blocked from a sequencing question to the
+  primitive half itself.
 
 - **Chosen, consumer half: Shape β**, and it is not optional. **This survives
   the widened set and it survives it harder.**
@@ -517,7 +693,7 @@ re-deriving it.
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
 | 1 | Which of the five shapes repairs the primitive | **PARTLY RESOLVED, and ⚑ re-opened between two of them 2026-09-10** | **The site is settled.** One routine, two surface names: `lib/lowering/tal/erase.chiral:115`. Only a repair at `nb-bslice` reaches both, which refuses B, C and D and settles the ownership line left open at `docs/decisions/decision-lane-split.md:336-341`: the repair site is under `lib/lowering/`, so diagnostics does reach enforcement's tree for this element. **The shape at that site is not settled.** Shape A and Shape E occupy the same site with the same reach and the same build price, and no reason in this design separates them. See row 9 |
-| 9 | **Clamp (A) or trap (E) at `nb-bslice`** | **NEEDS-AUTHOR** | Opened by `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1 (`d9902a2`), which measured that this design's §4 held four shapes and omitted the fifth. Both are total repairs at one site; the principles satisfy both (P1, P3, P4, per that section); the one measured asymmetry is §2's 87 unaudited C2 guards, which A absorbs and E converts into process exits. The class question behind it is `records/author-calls.md:364` and stays `unreviewed`. **This design rules neither** |
+| 9 | **Clamp (A) or trap (E) at `nb-bslice`** | **NEEDS-AUTHOR** | Opened by `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1 (`d9902a2`), which measured that this design's §4 held four shapes and omitted the fifth. Both are total repairs at one site; the principles satisfy both (P1, P3, P4, per that section); the one measured asymmetry is §2's 87 unaudited C2 guards, which A absorbs and E converts into process exits. The class question behind it is `records/author-calls.md:86` and stays `unreviewed`. **This design rules neither.** ⚑ **Re-tested 2026-09-19 against `records/findings.md` `FD-40` and the fork stays two-armed.** The finding measures the field as splitting on reporting against silent rather than clamp against halt, so §4 gained Shape F, the reporting clamp. F is written and refused on this tree's terms: `docs/elements/specs/E113-pool-read-SPEC.md:29-35` excludes a bounds violation from the boundary-sums and errors-as-values idioms, and `nb-pool-read-t` already traps on this row's two cases in the same file. The citation on this line read `:364` until 2026-09-19; `:364` is the blank line under a heading at `:363` that closed on 2026-09-02, and the clamp row is at `:86` |
 | 2 | Does the clamp cover `start < 0` as well as `end > len` | **RESOLVED** | Measured in §2: `(str-sub "abcdef" (- 0 2) 3)` returns 5 and reads before the buffer. Same routine, same defect, and [[working-discipline]]'s build rule makes a second pass over this file expensive enough that splitting it is the wrong economy |
 | 3 | Does the repair cover `bslice` | **RESOLVED** | It cannot avoid it. `lib/lowering/tal/erase.chiral:115` maps both names to `nb-bslice`. The catalog and ledger rows must stop saying `str-sub` alone |
 | 4 | Is the refined signature the right end state | **DEFERRED** to roster row `text-tools/L6`, **which does not yet exist and is not opened by this run** | §2 measured the refined form constructible only over an erased index, and `Str` is `t-primty` with no index (`lib/surface/syntax.chiral:29`). A length-indexed `Str` is a language element belonging to [[arcs/text-tools-arc]] and its bank shard A, not to this arc. Per [[working-discipline]]'s deferral rule this names a row and no `E#`. **The row is owed and this design does not open it**, because a design run may write only its own artifact; opening it is reported as work owed |
@@ -540,7 +716,7 @@ From `docs/arcs/diagnostics-arc.md:88-96`:
 > work unless a re-promotion lands first, so the SPEC states which of the two it
 > reports.
 
-And from `records/author-calls.md:374-380`:
+And from `records/author-calls.md:397-403`:
 
 > ⚑ **A sequencing note the flag did not ask and the author raised.** `E176` is on
 > this arc, unbuilt, and is sharper than E182 on consequence: `str-sub` is
