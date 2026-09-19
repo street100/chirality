@@ -3,7 +3,7 @@ node: records-bounds-residue
 layer: record
 related: [records/README, records/enforcement-arc, records/diagnostics-arc-record, records/author-calls, decisions/decision-primitive-with-consumer, arcs/enforcement-arc, arcs/diagnostics-arc, arcs/text-tools-arc, working-discipline, index]
 status: current
-updated: 2026-09-10
+updated: 2026-09-18
 ---
 
 # Bounds residue
@@ -54,9 +54,9 @@ from a dispatched run and has not been independently re-measured, which
 
 - state:    OPEN
 - claim:    `records/author-calls.md:363` states that if the arc-ownership call goes against enforcement, `enforcement/N18` "moves whole and keeps its id", and frames the enforcement side as serving "requirements 1 and 6".
-- measured: reported by the call 2 research run 2026-09-10, not independently re-measured except where noted. `docs/decisions/decision-work-ids.md` protects an id across promotion to an `E#` and not across arc transfer, and the citable name is `<arc>/<id>`, so the arc is inside the id. Fourteen citations across four files, three of them in an append-only record. On the requirements: verified here, `docs/arcs/enforcement-arc.md:509` gives `N18` a `req` cell of `1, 3` and `:512` gives `N21` a `req` of `6`, so no single row serves 1 and 6 and the row's framing does not match the roster.
-- evidence: `records/author-calls.md:363`, `docs/arcs/enforcement-arc.md:509`, `:512`, `docs/decisions/decision-work-ids.md`
-- checked:  2026-09-10
+- measured: reported by the call 2 research run 2026-09-10, not independently re-measured except where noted. `docs/decisions/decision-work-ids.md` protects an id across promotion to an `E#` and not across arc transfer, and the citable name is `<arc>/<id>`, so the arc is inside the id. Fourteen citations across four files, three of them in an append-only record. On the requirements: verified here, `docs/arcs/enforcement-arc.md:509` gives `N18` a `req` cell of `1, 3` and `:512` gives `N21` a `req` of `6`, so no single row serves 1 and 6 and the row's framing does not match the roster. ⚑ **Narrowed 2026-09-18 by the ruling, and half of it stands, so the row keeps `OPEN`.** The call is ruled at `records/author-calls.md:85`: BOTH, enforcement and diagnostics each own the bounds class. **Claim one is moot.** It is a counterfactual, *"if the call goes against enforcement"*, and the call did not go against enforcement. `enforcement/N18` therefore does not move, the id-across-arc-transfer question this row raised is never exercised, and `records/author-calls.md:85` states that consequence in its own words. **Claim two survives whole.** Re-measured here 2026-09-18: `docs/arcs/enforcement-arc.md:510` gives `N18` a `req` of `1`, moved from `1, 3` by `BR-05`, and `:513` gives `N21` a `req` of `6`. No single row serves 1 and 6, while the ruled register row still frames the enforcement half as *"requirements 1 and 6's subjects"* and ties that reading to `enforcement/N18` alone. Seating the class makes the mismatch live: the judgment is `N18`'s and the gate is `N21`'s, two rows under one framing that speaks of one row. ⚑ The ROUTINE and JUDGMENT-AND-GATE division is the register row's own derivation from its two candidate readings, marked as such there. The author's words seat the class and divide nothing. **The citation defect is marked here and the field is left as written.** This row's `claim:` cites `records/author-calls.md:363`, which heads the closed section *"Whether E182 still earns its keep, shrunken: ANSWERED YES"*. The call is at `:85`. The miss is one of the cluster `records/homing-triage.md:473` measured, it predates the ruling by eight days, and the `claim:` line is what the 2026-09-10 pass wrote on its date.
+- evidence: `records/author-calls.md:85` (the ruled row, and the call this row is about), `records/author-calls.md:363` (what the `claim:` line cites, the closed E182 section), `docs/arcs/enforcement-arc.md:510` (`N18`, `req` `1`, cited as `:509` with `1, 3` on 2026-09-10), `:513` (`N21`, `req` `6`, cited as `:512`), `docs/decisions/decision-work-ids.md`, `records/homing-triage.md:473` (the citation cluster, measured 2026-09-18)
+- checked:  2026-09-18
 - element:  none
 
 ### BR-05 `enforcement/N18` may serve a requirement that is not about bounds
