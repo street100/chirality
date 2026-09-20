@@ -1,9 +1,9 @@
 ---
 node: arc-text-tools
 layer: navigation
-related: [arcs/README, goals/self-tooling, banks/text, arcs/zero-python-arc, arcs/binary-split-arc, records/baseline-alignment, index]
+related: [arcs/README, goals/self-tooling, banks/text, arcs/zero-python-arc, arcs/binary-split-arc, records/text-tools, records/baseline-alignment, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-20
 ---
 
 # Arc: the text primitives
@@ -13,6 +13,8 @@ updated: 2026-09-01
   scheme [[decisions/decision-work-ids]] settles and this arc invented first.
 - serves: [[arcs/zero-python-arc]] (the nine tools it replaces),
   [[arcs/binary-split-arc]] (what a tool binary carries)
+- checklist: [[records/text-tools]], prefix `TT`, opened 2026-09-20 by the
+  revisit of this arc against `GAP-13`, `PRB-59` and `PRB-60`.
 
 The concept, refracted across its homes, is [[banks/text]]. Read it before
 saying this arc is missing something.
@@ -25,6 +27,16 @@ is to find the smallest set that gives full coverage, not to port `grep`.
 
 The test of the bet is the coverage table below: if a classic tool is not a short
 composition of things in this repo, the primitive set is wrong.
+
+⚑ **The coverage table tests one half of this arc.** It decides whether a classic
+tool is a short composition of things here. It says nothing about whether the
+classic tool stopped being run. That second half is REQUIREMENT 4, and it is the
+deliverable: *"Each replacement is verified against the tool it replaces on the
+same inputs"*. No roster row serves it. `GAP-13` is the row that enumerates the
+hole, `open` at `records/lenses/gaps.md:173-185`. Every primitive here could be
+built, every cell of the table could read **built**, and not one Python or shell
+tool would have been replaced, with every gate in this arc still reading green.
+§Adoption holds what that has already cost, measured twice.
 
 ## Coverage — what the primitives have to yield
 
@@ -197,6 +209,82 @@ the arc states them once instead of four times.
 Requirement 3 is served by P1 to P4. Every row serves one, and every `origin` is
 `new`.
 
+⚑ **`GAP-13` is a different kind of hole from `GAP-11` and `GAP-12`, and the
+enumeration reads all three as one.** Totality and purity are properties of a
+primitive, decidable on the primitive alone against its own type, which is why
+stating them once for all four rows is enough. Differential verification is an
+act taken on a tool after the primitive exists: it needs the Python or shell
+original still on disk, one set of inputs, and a run of both. Nothing in P1 to
+P4 carries it and no row schedules it. Filing it with the other two understates
+what it costs.
+
+⚑ **Coverage is not what failed here. Adoption is.** REQUIREMENT 3 ends *"Every
+row is a short composition, or the primitive set is wrong and this arc changes
+rather than the table"*, which licenses re-cutting this roster when a classic
+tool turns out to want a primitive the set lacks. No cell of the coverage table
+has failed that test. What has never been taken is the differential run, and
+that belongs to REQUIREMENT 4. Precisely: the table holds and the replacements
+did not happen.
+
+⚑ **The roster is left uncut on purpose, 2026-09-20.** The proposal on the table
+was to re-cut P1 to P4 so that replacement became the spine in place of
+composition. The author refused it, in these words: *"implementation wise these
+are the same primitives so maybe just doc it all and stop trying to cut out
+content"*. The primitives are the same work under either cut, so a re-cut buys
+nothing and costs content. The missing half is written down instead, in
+§Adoption. This ruling was given in session and is **not** a row in
+[[records/author-calls]]; that register is unchanged by it.
+
+## Adoption — the half REQUIREMENT 4 asks for, and what it has cost twice
+
+REQUIREMENT 4 inherits from [[arcs/zero-python-arc]] requirement 3, which states
+the consequence plainly at `docs/arcs/zero-python-arc.md:33-35`: *"Each
+replacement is verified against the tool it replaces, on the same inputs, before
+the Python is removed. A port whose equivalence is unverified does not count as a
+port."*
+
+**This tree has already run that experiment twice, and both results are in.**
+Both are ported programs that nothing adopted, which is REQUIREMENT 4 failing in
+the only two places it has been tried. Figures below re-measured 2026-09-20 by
+the revisit that wrote this section; the rows themselves are `records/lenses/`
+history and are cited rather than edited.
+
+**`prog/resolve.prog` has no consumer, and the shell resolver it would replace
+spread.** `PRB-59`, `OPEN`, `records/lenses/problems.md:826-838`. `grep -rIn
+'resolve\.prog' --include='*.sh' --include='*.chiral' --include='*.prog' .`
+returns 2 hits outside the file itself, `lib/module/resolve.chiral:22` and
+`:406`, both prose comments, so nothing executes it. `grep -rl
+'chirality-resolve' tools/ bin/ | wc -l` returns **27**, against the 25 that row
+measured on 2026-09-06 and the fifteen in its own title. The chirality provider
+is live as a library and dead as a tool. ⚑ The E87 cell the row quotes has moved
+from `docs/elements/catalog.md:117` to `:120`, where it still calls the two
+providers *"pinned against each other and both live"*.
+
+**`prog/paren-audit.prog` has no consumer, and the Python it ports is still the
+one that runs.** `PRB-60`, `OPEN`, `records/lenses/problems.md:840-852`. `wc -l`
+reads the port at **244** lines and `tools/paren-audit/paren-audit.py` at
+**154**, the figures that row recorded. `grep -rn 'paren-audit\.prog' lib/ prog/
+tools/ bin/` returns three hits and none is a call: `prog/paren-audit.prog:7` and
+`:8` are its own usage header, and `tools/README.md:12` is the row that names it,
+which reads the Python as running *"unchanged"* with equivalence
+**"unverified"**, so the Python is neither retired nor deletable. The
+differential that would retire it has never been run.
+
+**P1 is the one row here where a differential was taken, and it covers output
+only.** G9 lives at `tools/test/matcher.sh:514-534`: it runs the eight native
+checks and the awk tool over one corpus through `prose-lint --summary` and fails
+unless the totals agree, which is REQUIREMENT 4 met on output for one primitive.
+Three things bound it. `tools/README.md:23` records `prose-lint.sh` surviving as
+the front end for ranking, baseline, `--regress`, per-line output and
+code-skipping, so the shell tool was reduced and not retired. The wall clock is
+still unmeasured, which §Why the constraint picks the algorithm already flags.
+⚑ The corpus is a glob, `CORPUS="docs/arcs docs/decisions docs/definitions"` at
+`tools/test/matcher.sh:515`, and it enumerates **137** `.md` files on
+2026-09-20, against the 80 recorded in P1's state note; the floor the gate
+refuses under is 40, at `:518`. Nothing about G9 generalises to P2, P3 or P4:
+each will owe its own differential against the tool it displaces, and no row
+holds that obligation today.
+
 ## REQUIREMENTS
 
 1. **Every primitive is total.** A primitive whose cost is not bounded in its
@@ -207,7 +295,9 @@ Requirement 3 is served by P1 to P4. Every row serves one, and every `origin` is
 3. **The coverage table holds.** Every row is a short composition, or the
    primitive set is wrong and this arc changes rather than the table.
 4. **Each replacement is verified against the tool it replaces on the same
-   inputs**, inherited from [[arcs/zero-python-arc]] requirement 3.
+   inputs**, inherited from [[arcs/zero-python-arc]] requirement 3. ⚑ This is
+   the arc's deliverable and no roster row serves it. `GAP-13` enumerates the
+   hole and §Adoption holds the two measured instances, `PRB-59` and `PRB-60`.
 
 ## Why the constraint picks the algorithm
 
