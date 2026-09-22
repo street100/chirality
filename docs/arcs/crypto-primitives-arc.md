@@ -3,7 +3,7 @@ node: arc-crypto-primitives
 layer: navigation
 related: [arcs/README, goals/own-web, arcs/native-protocol-arc, banks/INDEX, decisions/decision-work-ids, decisions/decision-lane-split, records/author-calls, records/crypto-primitives, status-ledger, index]
 status: current
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # Arc: the crypto primitives
@@ -127,7 +127,14 @@ Three, and an ordering with no back-edges reads as a schedule.
    position classes, a gate shows the per-hop and per-parcel entry points
    reaching no public-key call, and each primitive's wire output is a stated
    number checked against §12's budget table rather than read off the
-   implementation.
+   implementation. ⚑ **AMENDED 2026-09-22 against
+   `.planning/RUNG2-MICROVM-MAP.md` §5.6.** §11's five classes run per pairing,
+   per ceremony, per message creation, per hop and per parcel, which is a
+   message-path axis, and the boot chain is not on the message path. A primitive
+   whose consumers are install, boot and login therefore sits on none of the
+   five. Such a module declares **off-path** and states its frequency instead.
+   That `.planning/REACH-MODEL.md:507-513` holds no such class is reported here
+   and not settled: widening that table is outside this arc's write surface.
 
 ## Roster
 
@@ -137,7 +144,7 @@ Three, and an ordering with no back-edges reads as a schedule.
 | `crypto-primitives/K2` | the permutation module: named lanes, no array, the width as an erased index, the round count as a type index | permutation | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K3` | translate the sponge: absorb, squeeze, padding, domain separation, and the keyed against unkeyed capacity bound | translation | law | new | 1 | open | `unminted` |
 | `crypto-primitives/K4` | the sponge module: hash, XOF, MAC and KDF as configurations of `K2`, one machine, separated by domain | modes | primitive | new | 2 | open | `unminted` |
-| `crypto-primitives/K5` | the mark: the digest a content address is, at the length the author ruled, with the refusal for a target below its floor ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §3.** A mark is a typed record of four fields and the digest is one of them: `alg`, a closed sum naming which digest; `digest`; `size`, read by the receiver before it accepts anything; and `chunk`, `whole` or `chunked n`, read by the asker's own router before it asks. This row was written as a digest at a length and the naming model makes it a record. `mark-of` is new work and E112's `block-id` at `lib/module/apc.chiral:48`, FNV-1a-64, is the precedent for the shape and too narrow to be the thing. | modes | primitive | new | 2 | open | `unminted` |
+| `crypto-primitives/K5` | the mark: the digest a content address is, at the length the author ruled, with the refusal for a target below its floor ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §3.** A mark is a typed record of four fields and the digest is one of them: `alg`, a closed sum naming which digest; `digest`; `size`, read by the receiver before it accepts anything; and `chunk`, `whole` or `chunked n`, read by the asker's own router before it asks. This row was written as a digest at a length and the naming model makes it a record. `mark-of` is new work and E112's `block-id` at `lib/protocol/apc.chiral:48`, FNV-1a-64, is the precedent for the shape and too narrow to be the thing. | modes | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K6` | the tree mode for chunked marks: fanout, chunk size, domain separation, and the aggregate cost each choice carries ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §3 and §7.** The tree is not an option here. A `chunked n` mark commits to the root and verifying one parcel must prove that parcel belongs to this value alone, with no other parcel present, which is what makes a fetch resumable, splittable across peers and drawable from a bus, a cache and a tether at once. The fanout and the chunk size are priced against that property and not only against aggregate overhead. | tree | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K7` | translate a post-quantum KEM. The only place new mathematics enters: polynomial arithmetic, the NTT, sampling, compression ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §11 and §12.** The translation states whether the family admits re-randomisation, because §11 makes it the wall: Sphinx re-blinds one 32 B group element per hop, ML-KEM has no equivalent, and a ~1.1 KB ciphertext beside a ~1.2 KB public key takes the LAN header from ~304 B to ~1360 B and takes the radio profile out of one frame. Those sizes carry §11's own VERIFY caveat. | translation | law | new | 1 | open | `unminted` |
 | `crypto-primitives/K8` | translate a post-quantum signature, and settle stateful against stateless. Linearity reaches the in-program half of the stateful objection and not the durability half | translation | decision | new | 1 | open | `unminted` |
@@ -166,14 +173,17 @@ Three, and an ordering with no back-edges reads as a schedule.
 | `crypto-primitives/K31` | the grant: whether a bearer capability suffices or a membership proof is owed, and what a post-quantum anonymous credential would cost. `.planning/REACH-MODEL.md` §4 requires permission proved without identity, which is what keeps anonymity across the gate, and `.planning/CRYPTO-MODEL.md` §2's twelve layers hold no credential layer at all. `R1` and `R24` in §15 are the open forks and this row waits on them | asymmetric | decision | new | 1, 6 | open | `unminted` |
 | `crypto-primitives/K32` | the header's asymmetric element: whether the selected KEM re-randomises, what Outfox's dropped second exchange requires of it, and what the isogeny option costs. `.planning/REACH-MODEL.md` §11 prices this as the wall and §12 as the difference between a ~304 B and a ~1360 B header. `R11` in §15 is the open fork and this row waits on it | asymmetric | decision | new | 1, 7 | open | `unminted` |
 | `crypto-primitives/K33` | the position declaration and the forwarding-path refusal: each module states one of `.planning/REACH-MODEL.md` §11's five position classes, and something shows the per-hop and per-parcel entry points reaching no public-key call. The same shape as `K17`, for requirement 7 instead of 6 | representation | law | new | 7 | open | `unminted` |
+| `crypto-primitives/K34` | the memory-hard derivation: a key from a human-chosen secret at a deliberate memory and time cost, the cost parameters declared, and the refusal for a target that cannot pay them. `.planning/RUNG2-MICROVM-MAP.md:284-287` puts hash, signature and KDF on the critical path from install onward and names Argon2 and scrypt for the KDF, which is the password-hashing job and **not** the key-expansion job `K4` configures the sponge for: `.planning/REACH-MODEL.md:520` prices its KDF at *"per-layer and per-parcel keys from a link secret"*, 32 B out, riding whichever hash is chosen. One word, two primitives, and this arc held only the second. `.planning/RUNG2-SECURITY-MODEL.md:112` adds the property the construction has to carry: a static passphrase reaching the same bundle every time is what leaves T2 unenforceable, so the derivation is salted and session-scoped rather than a pure function of the secret. ⚑ **This row collides with requirement 5 and with `K20`.** A memory-hard function's whole mechanism is a large deliberate allocation, so "no allocation in an inner loop" cannot mean here what it means elsewhere and the declared budget is the only thing it can be measured against. Its position is the off-path case requirement 7 now names | modes | law | new | 1, 5, 7 | open | `unminted` |
+| `crypto-primitives/K35` | the derivation hierarchy: keys descend from one seed so that a child reveals nothing about a sibling or a parent, which is what makes `.planning/RUNG2-MICROVM-MAP.md:263`'s per-stage independent keys multiply across boot stages instead of adding. `.planning/CRYPTO-TRANSLATION.md:569` names it one of four things that must hold now for the deferred layer above to land without rework, and no row carried it. The boundary against two rows that neighbour it: `K18` says a deterministic derivation replaces an entropy draw, `K23` says how a domain is encoded, and neither states the independence property or the shape of the tree | representation | law | new | 4, 6 | open | `unminted` |
 
 ### Coverage
 
 Every requirement is named by at least one row: 1 by `K1`, `K3`, `K7`, `K8`,
-`K9`, `K10`, `K11`, `K12`, `K31` and `K32`; 2 by `K1`, `K2`, `K4`, `K5`, `K6`,
-`K19`, `K22`, `K23`, `K25`, `K26`, `K27`, `K28`, `K29` and `K30`; 3 by `K14`,
-`K15`, `K16`, `K24` and `K29`; 4 by `K18` and `K30`; 5 by `K13`, `K20` and
-`K21`; 6 by `K17` and `K31`; 7 by `K26`, `K27`, `K32` and `K33`.
+`K9`, `K10`, `K11`, `K12`, `K31`, `K32` and `K34`; 2 by `K1`, `K2`, `K4`, `K5`,
+`K6`, `K19`, `K22`, `K23`, `K25`, `K26`, `K27`, `K28`, `K29` and `K30`; 3 by
+`K14`, `K15`, `K16`, `K24` and `K29`; 4 by `K18`, `K30` and `K35`; 5 by `K13`,
+`K20`, `K21` and `K34`; 6 by `K17`, `K31` and `K35`; 7 by `K26`, `K27`, `K32`,
+`K33` and `K34`.
 
 Every row names at least one requirement. Every `origin` is `new`, and §3
 defends it: the permutation, the sponge, the tree, the PQ pair, the combiner and
@@ -203,6 +213,36 @@ the position axis `.planning/CRYPTO-MODEL.md` §15 had already named
 that already existed were amended in place against the same walk. **Three
 sources was the count, and the arc read two.**
 
+⚑ **A third walk, and the count broke.** `K34` and `K35` were added 2026-09-22
+by walking `.planning/RUNG2-MICROVM-MAP.md` §5.6 and
+`.planning/RUNG2-SECURITY-MODEL.md` §3 and §6 against this roster, the first two
+of the three walks [[records/crypto-primitives]] `CP-02` left owed. **Two rows,
+not eight**, and the drop is the finding: both documents write from the
+consumer's side, and a census that reads a document as owning rows is not a
+census that predicts how many. The one genuinely new primitive class is the
+memory-hard derivation, `K34`. Everything else those sections name was already
+here under a different name, was already homed in another arc, or is a consumer
+this arc does not own. **Five sources is the count now, and the arc has read
+five.** §5.6's Shamir-split anchor and its robust-shared manifest are
+`native-protocol/N6` to `N8`; its register-anchored MAC and its whole tier 2 are
+rung-2 hardware, which `docs/decisions/decision-deployment-custody.md:63-67`
+puts behind metal; its reproducible-build consensus is determinism and not a
+primitive; and §3's T1 and T2 tables are the capability layer, layer 3 in
+`.planning/CRYPTO-TRANSLATION.md:541-546`.
+
+⚑ **The tier-1 set splits along the post-quantum line and only one half was
+missing.** `.planning/RUNG2-MICROVM-MAP.md:284-287` names hash, signature and
+KDF. The **hash** is already here, as `K1` and `K2`'s permutation under `K3` and
+`K4`'s sponge, with `K5` the mark it addresses with, `K27` its width and `K28`
+its `alg` field; a digest is symmetric and
+`.planning/CRYPTO-MODEL.md:47-49` records the symmetric half standing under
+Grover. The **signature** named there is Ed25519, which
+`.planning/CRYPTO-MODEL.md:46` records as *"dead"* under Shor, so the named
+instance is unimportable and its class is already held by `K8`, `K9` and `K32`.
+The **KDF** is where the word hid a second primitive, and `K34` is the row. A
+reference class that is half symmetric survives a post-quantum re-scope by
+halves, and this arc had covered the half that survives.
+
 ⚑ **`.planning/REACH-MODEL.md` §4 asks for a primitive class no crypto document
 enumerates.** A `Grant` proves permission without proving identity, and
 `.planning/CRYPTO-MODEL.md` §2's twelve layers run word, permutation, modes,
@@ -212,8 +252,9 @@ question and settles nothing.
 
 ## Resume state
 
-Opened 2026-09-07 with 25 rows and 6 requirements, none designed. **33 rows and
-7 requirements from 2026-09-21**, still none designed beyond `K1`.
+Opened 2026-09-07 with 25 rows and 6 requirements, none designed. 33 rows and 7
+requirements from 2026-09-21. **35 rows and 7 requirements from 2026-09-22**,
+still none designed beyond `K1`.
 
 The translation tier landed the same day and is what this arc runs on:
 `docs/translations/` with its README, `tools/xlat/xlat.sh`, `pipeline-audit` at
@@ -223,8 +264,9 @@ TRANSLATE level, and `ledger-lint` check AL. Three raw pins are in
 audited, with 12 citations resolving and its `known-gaps` gather slot `UNRUN`.
 
 **The roster holds two kinds of row and they dispatch differently.** A
-translation row (`K1`, `K3`, `K7`, `K8`, `K11`, `K12`) runs the `translate`
-skill off `tools/xlat/xlat.sh bundle <object>`, and its artifact lands in
+translation row (`K1`, `K3`, `K7`, `K8`, `K11`, `K12`, `K34`) runs the
+`translate` skill off `tools/xlat/xlat.sh bundle <object>`, and its artifact
+lands in
 `docs/translations/`. Every other row runs `element-design` off
 `python3 tools/pack/pack.py crypto-primitives/K<n>`, which is verified working
 and returns a DESIGN bundle. Dispatching a translation row into `element-design`
@@ -250,6 +292,24 @@ on 2026-09-07, two days after that budget was written. Every wire figure in §12
 rests on the smaller number. Which side moves is the author's, it is carried to
 [[records/author-calls]] by [[records/crypto-primitives]] `CP-01`, and no row
 here assumes an answer.
+
+⚑ **WALKED 2026-09-22.** `.planning/RUNG2-MICROVM-MAP.md` §5.6 and
+`.planning/RUNG2-SECURITY-MODEL.md` §3 and §6 have now been read against this
+roster, the first two of the three walks [[records/crypto-primitives]] `CP-02`
+left owed. AMEND by addition: `K34`, `K35`, and one clause on requirement 7.
+No existing `what` cell moved and nothing was renumbered. §Coverage carries what
+the walk found. The third walk, `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md`
+§7, is still owed, and so are the six `REACHES` documents `CP-02` lists.
+
+⚑ **Two homes for the constant-time judgment, and this run does not settle it.**
+`.planning/RUNG2-SECURITY-MODEL.md:191` routes tier-1 constant time to **`E60`**,
+which `docs/elements/ledger.md:247` holds as a minted element at `design` state
+and `docs/elements/catalog.md:202` describes as preserve-check's first customer.
+This arc routes the same judgment to **`native-protocol/N5`**, an unminted
+roster row, and §"The edges that run against the order" above prices the cost of
+scoping it late. `.planning/REACH-MODEL.md:524` names `N5` and not `E60`. One
+judgment, two homes and two tiers, which is the same shape as the `N10` boundary
+already carried to [[records/author-calls]]. Reported, not settled.
 
 **Next, in order.** Audit that artifact at TRANSLATE level, which closes the loop
 on a gate that has never run against real work. Then `K1`, because everything
