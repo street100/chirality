@@ -135,6 +135,25 @@ Three, and an ordering with no back-edges reads as a schedule.
    five. Such a module declares **off-path** and states its frequency instead.
    That `.planning/REACH-MODEL.md:507-513` holds no such class is reported here
    and not settled: widening that table is outside this arc's write surface.
+8. **A keyed module's output is indexed by the key and the context that produced
+   it, so use under the wrong key or in the wrong context does not construct.**
+   Added 2026-09-22 by the `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md` §7
+   walk. `:371-375` applies its §3 witness move to ciphertext, *"indexed by
+   0-quantity key and context terms"*, and prices the refusal as covering *"key
+   confusion and cross-context decryption"*, which it calls most of the real
+   CVEs. No requirement here read the shape of a keyed module's output type: 2
+   indexes the permutation's width, 6 refuses a name, 7 declares a position, and
+   none of the three reaches what a ciphertext is. Observable: each keyed
+   module's ciphertext, tag or derived key is a datum carrying its key and its
+   domain as erased indices; a gate row shows a decryption offered a different
+   key binding or a different domain failing to typecheck; and each such module
+   states which guarantee its index carries, because the index equates terms and
+   not bytes. ⚑ **The carrier this asks for does not exist in `lib/`.** Every
+   erased binder there is `(0 _ (type 0))` or `(0 _ I64)`, the `(Pool n)` shape
+   at `lib/memory/mem-linear.chiral:15`, and nothing anywhere is indexed by a
+   data term. So this requirement is new carrier work rather than a second
+   customer for a built idiom, and the honest reading of what it buys is refusal
+   on the **binding** a ciphertext was produced under, not on the key's value.
 
 ## Roster
 
@@ -158,11 +177,11 @@ Three, and an ordering with no back-edges reads as a schedule.
 | `crypto-primitives/K16` | the law gate: the field axioms, bijectivity and the representation round trip, run exhaustively at the smallest member of each family | assurance | tool | new | 3 | open | `unminted` |
 | `crypto-primitives/K17` | the user-naming refusal: the crypto modules carry no identity, principal or permission type, and something checks it | representation | law | new | 6 | open | `unminted` |
 | `crypto-primitives/K18` | the randomness discipline: what consumes entropy, why a source is linear, and where deterministic derivation replaces a draw so `native-protocol/N2`'s crossing is spent once per identity ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §11.** The entropy row names three consumers and this row named none of them: keys, nonces, and cover selection. Cover selection draws every slot under §9's cadence, busy or idle, so the draw rate is a standing cost rather than a function of traffic. | representation | law | new | 4 | open | `unminted` |
-| `crypto-primitives/K19` | the AEAD over the machine: a Farfalle or duplex mode at the keyed round count, which is the bulk path and the largest throughput lever in the stack | modes | primitive | new | 2 | open | `unminted` |
+| `crypto-primitives/K19` | the AEAD over the machine: a Farfalle or duplex mode at the keyed round count, which is the bulk path and the largest throughput lever in the stack | modes | primitive | new | 2, 8 | open | `unminted` |
 | `crypto-primitives/K20` | zero allocation in the inner loop. `.planning/CRYPTO-TRANSLATION.md` §13 measures allocation as what sets the target floor, against `lib/memory/mem-linear.chiral`, `mem-region.chiral` and the `Alloc` interface | representation | law | new | 5 | open | `unminted` |
 | `crypto-primitives/K21` | materialization as the third memory dial beside `budget` and `access`: how much of a derivable structure is stored against recomputed, and whether the schedule is written or derived from the target | representation | decision | new | 5 | open | `unminted` |
 | `crypto-primitives/K22` | the regime split: a public mark is unkeyed and one length, a private or group mark is keyed and shorter, and whether they are one type or two ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §4.** §4 prices unreadable and unreachable separately and says most private things want the first: a sealed value rides the **open** infrastructure as opaque bytes at nearly free, on the same path as any public value. That requires the sealed value to be addressed by a mark a stranger can verify, which a keyed mark is not, so the regime split has to say which mark addresses a sealed value. `R24` in §15 is the open fork and this row waits on it. | modes | decision | new | 2 | open | `unminted` |
-| `crypto-primitives/K23` | the domain separator: its encoding, whether the configuration rides in it, and the extension point the layer above needs ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §6, §7 and §10.** The consumers that size the extension point are now named: §10's envelope slices, one key derivation each and their count open as `R12`; §6's per-pairing link secret against its per-ceremony route key; and the tree's leaf against internal separation that `K29` rests on. | modes | law | new | 2 | open | `unminted` |
+| `crypto-primitives/K23` | the domain separator: its encoding, whether the configuration rides in it, and the extension point the layer above needs ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §6, §7 and §10.** The consumers that size the extension point are now named: §10's envelope slices, one key derivation each and their count open as `R12`; §6's per-pairing link secret against its per-ceremony route key; and the tree's leaf against internal separation that `K29` rests on. | modes | law | new | 2, 8 | open | `unminted` |
 | `crypto-primitives/K24` | the vector tier: the published constants as declared data rather than 403 lines of shell, which is `.planning/CRYPTO-MODEL.md` `C7` | assurance | tool | new | 3 | open | `unminted` |
 | `crypto-primitives/K25` | the lattice arithmetic a KEM needs: `Z_q` at its moduli, modular reduction, the NTT and its inverse, and rejection sampling. `native-protocol/N6` predates the post-quantum target and says field arithmetic generically | asymmetric | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K26` | the wide-block payload cipher: a length-preserving strong pseudorandom permutation over the whole payload, so every payload bit changes and any modification invalidates all of it. `.planning/REACH-MODEL.md` §9 names it as one of the four mechanisms bitwise unlinkability needs, and it is not an AEAD: a 16 B tag beside a 12 B nonce expands what §9's fixed payload size forbids | modes | primitive | new | 2, 7 | open | `unminted` |
@@ -173,8 +192,9 @@ Three, and an ordering with no back-edges reads as a schedule.
 | `crypto-primitives/K31` | the grant: whether a bearer capability suffices or a membership proof is owed, and what a post-quantum anonymous credential would cost. `.planning/REACH-MODEL.md` §4 requires permission proved without identity, which is what keeps anonymity across the gate, and `.planning/CRYPTO-MODEL.md` §2's twelve layers hold no credential layer at all. `R1` and `R24` in §15 are the open forks and this row waits on them | asymmetric | decision | new | 1, 6 | open | `unminted` |
 | `crypto-primitives/K32` | the header's asymmetric element: whether the selected KEM re-randomises, what Outfox's dropped second exchange requires of it, and what the isogeny option costs. `.planning/REACH-MODEL.md` §11 prices this as the wall and §12 as the difference between a ~304 B and a ~1360 B header. `R11` in §15 is the open fork and this row waits on it | asymmetric | decision | new | 1, 7 | open | `unminted` |
 | `crypto-primitives/K33` | the position declaration and the forwarding-path refusal: each module states one of `.planning/REACH-MODEL.md` §11's five position classes, and something shows the per-hop and per-parcel entry points reaching no public-key call. The same shape as `K17`, for requirement 7 instead of 6 | representation | law | new | 7 | open | `unminted` |
-| `crypto-primitives/K34` | the memory-hard derivation: a key from a human-chosen secret at a deliberate memory and time cost, the cost parameters declared, and the refusal for a target that cannot pay them. `.planning/RUNG2-MICROVM-MAP.md:284-287` puts hash, signature and KDF on the critical path from install onward and names Argon2 and scrypt for the KDF, which is the password-hashing job and **not** the key-expansion job `K4` configures the sponge for: `.planning/REACH-MODEL.md:520` prices its KDF at *"per-layer and per-parcel keys from a link secret"*, 32 B out, riding whichever hash is chosen. One word, two primitives, and this arc held only the second. `.planning/RUNG2-SECURITY-MODEL.md:112` adds the property the construction has to carry: a static passphrase reaching the same bundle every time is what leaves T2 unenforceable, so the derivation is salted and session-scoped rather than a pure function of the secret. ⚑ **This row collides with requirement 5 and with `K20`.** A memory-hard function's whole mechanism is a large deliberate allocation, so "no allocation in an inner loop" cannot mean here what it means elsewhere and the declared budget is the only thing it can be measured against. Its position is the off-path case requirement 7 now names | modes | law | new | 1, 5, 7 | open | `unminted` |
-| `crypto-primitives/K35` | the derivation hierarchy: keys descend from one seed so that a child reveals nothing about a sibling or a parent, which is what makes `.planning/RUNG2-MICROVM-MAP.md:263`'s per-stage independent keys multiply across boot stages instead of adding. `.planning/CRYPTO-TRANSLATION.md:569` names it one of four things that must hold now for the deferred layer above to land without rework, and no row carried it. The boundary against two rows that neighbour it: `K18` says a deterministic derivation replaces an entropy draw, `K23` says how a domain is encoded, and neither states the independence property or the shape of the tree | representation | law | new | 4, 6 | open | `unminted` |
+| `crypto-primitives/K34` | the memory-hard derivation: a key from a human-chosen secret at a deliberate memory and time cost, the cost parameters declared, and the refusal for a target that cannot pay them. `.planning/RUNG2-MICROVM-MAP.md:284-287` puts hash, signature and KDF on the critical path from install onward and names Argon2 and scrypt for the KDF, which is the password-hashing job and **not** the key-expansion job `K4` configures the sponge for: `.planning/REACH-MODEL.md:520` prices its KDF at *"per-layer and per-parcel keys from a link secret"*, 32 B out, riding whichever hash is chosen. One word, two primitives, and this arc held only the second. `.planning/RUNG2-SECURITY-MODEL.md:112` adds the property the construction has to carry: a static passphrase reaching the same bundle every time is what leaves T2 unenforceable, so the derivation is salted and session-scoped rather than a pure function of the secret. ⚑ **This row collides with requirement 5 and with `K20`.** A memory-hard function's whole mechanism is a large deliberate allocation, so "no allocation in an inner loop" cannot mean here what it means elsewhere and the declared budget is the only thing it can be measured against. Its position is the off-path case requirement 7 now names | modes | law | new | 1, 5, 7, 8 | open | `unminted` |
+| `crypto-primitives/K35` | the derivation hierarchy: keys descend from one seed so that a child reveals nothing about a sibling or a parent, which is what makes `.planning/RUNG2-MICROVM-MAP.md:263`'s per-stage independent keys multiply across boot stages instead of adding. `.planning/CRYPTO-TRANSLATION.md:569` names it one of four things that must hold now for the deferred layer above to land without rework, and no row carried it. The boundary against two rows that neighbour it: `K18` says a deterministic derivation replaces an entropy draw, `K23` says how a domain is encoded, and neither states the independence property or the shape of the tree | representation | law | new | 4, 6, 8 | open | `unminted` |
+| `crypto-primitives/K36` | the key-and-context index: a keyed module's ciphertext, tag or derived key is a datum indexed by erased key and domain terms, so decryption under the wrong key or in the wrong context does not construct, and something shows every keyed module carries it. The same shape as `K17` for requirement 6 and `K33` for requirement 7, and the law and its check are one row here as they are there. `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md:371-375` applies its §3 witness move to ciphertext and calls key confusion and cross-context decryption *"most of the real CVEs"*. Two things this row settles before any design. **The index equates terms, not bytes**: two live keys bound through one variable are one key to the checker, so the refusal is over provenance and the row states that rather than inheriting the document's phrasing. **The carrier is new work**: `lib/` holds `(0 _ (type 0))` and `(0 _ I64)` and no erased binder over a data term anywhere, so `(Pool n)` at `lib/memory/mem-linear.chiral:15` is a precedent for the shape and not for the content. It carries the dependency `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md:375` names, §3.3's rule that an erased position must be effect-free or 0 is not erasure, which is `E12`'s effect membrane and not this arc's to enforce | representation | law | new | 8 | open | `unminted` |
 
 ### Coverage
 
@@ -183,7 +203,7 @@ Every requirement is named by at least one row: 1 by `K1`, `K3`, `K7`, `K8`,
 `K6`, `K19`, `K22`, `K23`, `K25`, `K26`, `K27`, `K28`, `K29` and `K30`; 3 by
 `K14`, `K15`, `K16`, `K24` and `K29`; 4 by `K18`, `K30` and `K35`; 5 by `K13`,
 `K20`, `K21` and `K34`; 6 by `K17`, `K31` and `K35`; 7 by `K26`, `K27`, `K32`,
-`K33` and `K34`.
+`K33` and `K34`; 8 by `K19`, `K23`, `K34`, `K35` and `K36`.
 
 Every row names at least one requirement. Every `origin` is `new`, and §3
 defends it: the permutation, the sponge, the tree, the PQ pair, the combiner and
@@ -230,6 +250,32 @@ puts behind metal; its reproducible-build consensus is determinism and not a
 primitive; and §3's T1 and T2 tables are the capability layer, layer 3 in
 `.planning/CRYPTO-TRANSLATION.md:541-546`.
 
+⚑ **A fourth walk, and it cost one row and a requirement.**
+`.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md` §7 was read against this roster on
+2026-09-22, the last of the three `OWNS-ROWS` walks
+[[records/crypto-primitives]] `CP-02` ordered. `K36` and requirement 8 are what
+it cost, and four `req` cells moved: `K19` from 2 to 2, 8; `K23` from 2 to 2, 8;
+`K34` from 1, 5, 7 to 1, 5, 7, 8; `K35` from 4, 6 to 4, 6, 8. No `what` cell
+moved, nothing was renumbered, no element minted. **Six sources is the count now
+and the arc has read six.** ⚑ **The requirement reaches wider than the four
+cells that cite it.** Twelve rows produce a keyed output and requirement 8
+constrains every one: `K4`'s MAC and KDF configurations, `K5` and `K22`'s keyed
+mark, `K10`'s KEM output, `K11`'s combined secret, `K12`'s PAKE output, `K19`'s
+AEAD, `K23`'s domain, `K26`'s wide-block cipher, `K27`'s truncated tag and
+expanded seed, `K30`'s nonce as the other half of the context, `K34`'s
+passphrase-derived key and `K35`'s child keys. The four that cite it are the
+four whose own decision the index changes; the requirement's own text is what
+binds the rest, which is how requirement 7 already stands with five citing rows
+against every primitive it names. ⚑ **The rest of §7 owes this arc nothing.**
+`:368`'s nonce-uniqueness-as-quantity-1 is `K30`, and `CP-02` had already found
+`.planning/FORMULA-RETHINK.md:20` answering it the same way, so two documents
+now converge on a design call `K30` still makes. §7.1's inbound-verifies /
+outbound-confines split is the membrane, `docs/definitions/open-edges.md` G4 and
+edge 14. `:376`'s length and shape refinements are `E9`, built. `:377-379`'s
+`E40` linear `Secret` and `E38` `clear-window <= N` are layer 1 custody, already
+seated in `.planning/RUNG-2-MAP.md` Cluster 2. §7.3's runtime-as-a-profile is
+`decision-profiles` and `spawn`. Not one of them is a primitive.
+
 ⚑ **The tier-1 set splits along the post-quantum line and only one half was
 missing.** `.planning/RUNG2-MICROVM-MAP.md:284-287` names hash, signature and
 KDF. The **hash** is already here, as `K1` and `K2`'s permutation under `K3` and
@@ -253,8 +299,8 @@ question and settles nothing.
 ## Resume state
 
 Opened 2026-09-07 with 25 rows and 6 requirements, none designed. 33 rows and 7
-requirements from 2026-09-21. **35 rows and 7 requirements from 2026-09-22**,
-still none designed beyond `K1`.
+requirements from 2026-09-21. 35 rows and 7 requirements from 2026-09-22.
+**36 rows and 8 requirements from 2026-09-22**, still none designed beyond `K1`.
 
 The translation tier landed the same day and is what this arc runs on:
 `docs/translations/` with its README, `tools/xlat/xlat.sh`, `pipeline-audit` at
@@ -298,8 +344,32 @@ here assumes an answer.
 roster, the first two of the three walks [[records/crypto-primitives]] `CP-02`
 left owed. AMEND by addition: `K34`, `K35`, and one clause on requirement 7.
 No existing `what` cell moved and nothing was renumbered. §Coverage carries what
-the walk found. The third walk, `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md`
-§7, is still owed, and so are the six `REACHES` documents `CP-02` lists.
+the walk found.
+
+⚑ **WALKED 2026-09-22, and the `OWNS-ROWS` list is now empty.**
+`.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md` §7 has been read against this
+roster, the third and last of the walks [[records/crypto-primitives]] `CP-02`
+ordered. AMEND by addition: `K36`, requirement 8, and four `req` cells. No
+`what` cell moved and nothing was renumbered. §Coverage carries what the walk
+found. **What is still owed is the six `REACHES` documents `CP-02` lists**, and
+the first of them, `.planning/LANGUAGE-INVENTORY.md`, names `K1` to `K5`, `K7` to
+`K12`, `K18` and `K25` and has never been read here, which makes it the largest
+unread claim on this roster.
+
+⚑ **Three of `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md` §10's open items
+sit next to this arc and none of them is a primitive.** Item 7, *"one master secret
+or N?"* at `:511-512`, asks whether every unlock position derives one master
+secret by different paths or holds distinct material. That is custody policy over
+the hierarchy `K35` already rosters, and §6.4 at `:306-309` already homes it on
+`.planning/RUNG-2-MAP.md` Cluster 1's boot-path row, which has no catalog
+element. Item 8, key-material reachability as a conformance row at `:513-514`,
+asks whether `chirality verify` checks the join across positions the way it
+checks `(total)`; that tool does not exist and
+`docs/arcs/presentability-arc.md:59` `presentability/D3` is the row for whether
+it is built or retired. Item 10 at `:517-518` is the boundary's data direction,
+and §7.3 says it itself: it *"changes the exposure surface, not the types"*, so
+it lands on the membrane at `docs/definitions/open-edges.md` G4 and edge 14.
+Reported, and no row was written into another arc's file.
 
 ⚑ **Two homes for the constant-time judgment, and this run does not settle it.**
 `.planning/RUNG2-SECURITY-MODEL.md:191` routes tier-1 constant time to **`E60`**,
