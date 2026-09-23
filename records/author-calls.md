@@ -455,3 +455,31 @@ lines against 20 scripts under `tools/test/`, 7 of them printed as `PEND`.
 The fork is unchanged and no new one is opened here. 8 through 12 stay owed to
 unported old-tree phases. 21 through 23 are contested by the four documents the
 standing row names.
+
+## Added by the display review, 2026-09-22
+
+The author read `.planning/DISPLAY-REVIEW.md` and wrote five comments on
+[[goals/display]]'s five conditions. All five are directives rather than forks,
+so none opens a row in the table above. They carry a state token because the
+2026-09-17 ruling on this file directed that the directive table gain one, and
+because a directive kept only in a session transcript is lost.
+
+**The measurement the directives answer.** Of the 62 roster rows across the five
+display arcs, **6 cite a research finding, 12 cite live code, and 44 cite
+neither**. The six are the raster group, and they are the only group downstream
+of a `research` run (`FD-34`, `FD-37`, `FD-39`). Median row length is 100 words
+with pinned citations in raster against 11 to 18 words and no citation in the
+cascade, element, gate, canvas and lens groups. The vagueness the author names
+is not distributed evenly and it tracks exactly one thing: whether research ran.
+
+| state | the directive | what it settles |
+|---|---|---|
+| `ruled` | **Condition 1 states an invariant the whole tree already has, and that is not a specification.** Author, 2026-09-22, verbatim: *"Vague as shit. Research primitive we want instead of just making a blanket statement about typing everything. it is a given we type everything. There are many clear cut items if the goal is the set of things we have outlined already. Stop leaving it vague."* | A row may not reach the mint on a restatement of the typing invariant. `display-calculus/C6` ("the value expression algebra with the unit in the type"), `C7` ("the environment as a declared ADT") and `E2` ("the semantic role as a required constructor field") are the named instances: each is true of every value in this repository and names no primitive. Every such row takes a `research` run first, and the run names the primitive |
+| `ruled` | **Condition 2 owes a declared canvas file format in the `.manifest` line, and other arcs may be bound to it.** Author, 2026-09-22, verbatim: *"Still incredibly vague. Ensure outlining of a format for canvas files that fits in with the .manifest line of thinking from other arcs. Those arcs can totally be bound to the completion of this. It would make a lot of sense to."* | The form exists: `prog/climb.manifest` and `lib/lowering/tal/target-linux.manifest` are the two instances, `.planning/MANIFEST-DESIGN-MAP.md:112-121` holds six requirements, and [[arcs/file-types-arc]] owns file kinds. A canvas file is a declared kind under that scheme, not a new invention. Binding other arcs' completion to it is permitted by this directive and is not yet scheduled |
+| `ruled` | **Conditions 3, 4 and 5 are dispatched to research and author review, and the dispatch must be un-missable.** Author, 2026-09-22, verbatim on condition 3: *"Dispatch of research and review with author is needed. Ensure this is not a task that can be missed."* Conditions 4 and 5: *"Same as previous"* | Geometry, the Pixel and the Frame are the three unopened conditions, each holding no arc file (`docs/goals/display.md:61-75`). Each takes a `research` run before any arc opens over it, and the result returns to the author before an arc is drawn. The queue that carries this is `.planning/DISPLAY-RESEARCH-QUEUE.md`; a queue in a session transcript is what this clause forbids |
+| `ruled` | **A research run on a display row also names the primitives its subject implies and nobody has written down.** Author, 2026-09-22, in session: the dispatched agents *"include noting unmentioned primitives that the things they are supposed to be researching imply requiring."* | This is [[working-discipline]]'s discovered-requirement rule made a standing instruction for this campaign rather than a thing a run may notice. Every `FD` row from the queue carries an implied-primitive section, and a row that names none says so explicitly. `FD-39`'s six-item build list is the precedent: five of its six items held no roster row on any arc when it was written |
+
+**The stop condition the author set**, in session 2026-09-22: serial dispatch
+continues until every display row has a researched pre-mint role. The campaign
+is not done when the queue's last run returns; it is done when no row in the
+five display arcs rests on a category statement.
