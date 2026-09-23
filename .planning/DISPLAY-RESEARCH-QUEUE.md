@@ -35,7 +35,7 @@ that has to move is the 44.
 |---|---|---|---|---|
 | 1 | `merged` | In systems that resolve style WITHOUT selectors or specificity, what is the minimal set of objects each makes first-class and separately nameable? Survey GTK4 CSS's deliberate subset, SwiftUI's Environment, Compose's CompositionLocal, Flutter's InheritedWidget, Elm and Halogen. The answer is a named list per system plus the intersection | `display-calculus/C3` `C6` `C7` `C10` `C11` `C12` | `FD-41` |
 | 2 | `merged` | What must an element model carry for an accessibility tree to be derived from it by a total function, and which shipped systems actually derive rather than maintain it? | `display-calculus/E1` `E2` `E3` `E4`, `native-document/V1` | `FD-42` |
-| 3 | `queued` | What does a declarative scene or document file actually declare, and what fields would a canvas file need to be a kind under this tree's `.manifest` scheme? Measure against `.planning/MANIFEST-DESIGN-MAP.md:112-121`'s six requirements | `canvas/G1` `G4` `G8`, `native-document/V4`, condition 2 | — |
+| 3 | `merged` | What does a declarative scene or document file actually declare, and what fields would a canvas file need to be a kind under this tree's `.manifest` scheme? Measure against `.planning/MANIFEST-DESIGN-MAP.md:112-121`'s six requirements | `canvas/G1` `G4` `G8`, `native-document/V4`, condition 2 | `FD-43` |
 | 4 | `queued` | What does hit testing require of a layout result, and what makes it the exact inverse of layout rather than an approximation? | condition 3, gap `B1` `B9` | — |
 | 5 | `queued` | Flex and grid as pure functions over a child list: what does a faithful implementation need as input, and what does it return? Taffy is the reference | gap `B2` `B3` `B4` `B5` `B6` `B7` | — |
 | 6 | `queued` | The display list as a closed sum: what constructor set does a shipped scene graph settle on, and what forces a constructor to exist? GSK render nodes are the reference | gap `Z1` `Z2` `Z3`, `canvas/G2` `G8` | — |
@@ -59,3 +59,14 @@ gate, port and text surfaces, which consume the earlier answers.
 |---|---|---|---|---|
 | 1 | 2026-09-22 | 2026-09-22 | `FD-41` | 24 pins. Two of six surveyed fail the premise. Intersection is TWO objects. **Eight implied primitives, none rostered.** Killed C10 outright: no surveyed system resolves at compile time |
 | 2 | 2026-09-22 | 2026-09-23 | `FD-42` | 21 pins. NO system derives totally; the six that do are total only via declared defaults. **Ten implied primitives, none rostered.** Refutes the gap doc: AccessKit is its `E3` model and is the clearest MAINTAINED case |
+| 3 | 2026-09-23 | 2026-09-23 | `FD-43` | 13 pins. 4 of 8 declare, and NO format refuses on a missing structural field. **Nine implied primitives.** Refutes my brief on manifest req 3, undercounts req 4 at 17 of 40 not 7, and finds the canvas format already rostered on vocabulary-arc: the missing artifact is a BINDING, not a design |
+
+## Follow-ups the campaign opened, none scheduled
+
+| what | where it came from | state |
+|---|---|---|
+| `.planning/protocol/dispatch.md`'s `A1` gloss is wrong on manifest requirement 3 and undercounts requirement 4. `sys-check.chiral:17` declares `(sys-row (name Str) (num I64))`, so the constructor HAS named fields and only the application is positional. And 17 of 40 rows share a syscall number across five groups, not 7 in one | `FD-43`, re-verified by the orchestrator | `owed`, a `doc-audit` on a protocol file |
+| The canvas file format needs a BINDING between [[arcs/canvas-arc]] and [[arcs/vocabulary-arc]], not a design. `vocabulary/M1` `M4` `M5` `F1` `F2` `F3` already roster five of its six objects, and `F1` says outright it "Absorbs `display-calculus/E1`" | `FD-43` | `owed`, author call: which arc owns it |
+| `vocabulary` requirement 3 takes a position no surveyed format holds: a version field INSTEAD of silent degradation. Five of eight carry a version field and all five also carry an ignore rule | `FD-43` | `owed`, a `revisit` of that arc against `FD-43` |
+| `.planning/DISPLAY-LAYER-GAP.md` Lane E cites AccessKit as its model for a DERIVED accessibility tree; it is the survey's clearest MAINTAINED case | `FD-42` | `owed` |
+| `display-calculus/C10` claims compile-time resolution; no surveyed system does it | `FD-41` | `owed`, a `revisit` of that row |
