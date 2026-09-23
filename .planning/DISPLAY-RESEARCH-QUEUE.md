@@ -34,7 +34,7 @@ that has to move is the 44.
 | # | state | question | rows it must reach | FD |
 |---|---|---|---|---|
 | 1 | `merged` | In systems that resolve style WITHOUT selectors or specificity, what is the minimal set of objects each makes first-class and separately nameable? Survey GTK4 CSS's deliberate subset, SwiftUI's Environment, Compose's CompositionLocal, Flutter's InheritedWidget, Elm and Halogen. The answer is a named list per system plus the intersection | `display-calculus/C3` `C6` `C7` `C10` `C11` `C12` | `FD-41` |
-| 2 | `queued` | What must an element model carry for an accessibility tree to be derived from it by a total function, and which shipped systems actually derive rather than maintain it? | `display-calculus/E1` `E2` `E3` `E4`, `native-document/V1` | — |
+| 2 | `merged` | What must an element model carry for an accessibility tree to be derived from it by a total function, and which shipped systems actually derive rather than maintain it? | `display-calculus/E1` `E2` `E3` `E4`, `native-document/V1` | `FD-42` |
 | 3 | `queued` | What does a declarative scene or document file actually declare, and what fields would a canvas file need to be a kind under this tree's `.manifest` scheme? Measure against `.planning/MANIFEST-DESIGN-MAP.md:112-121`'s six requirements | `canvas/G1` `G4` `G8`, `native-document/V4`, condition 2 | — |
 | 4 | `queued` | What does hit testing require of a layout result, and what makes it the exact inverse of layout rather than an approximation? | condition 3, gap `B1` `B9` | — |
 | 5 | `queued` | Flex and grid as pure functions over a child list: what does a faithful implementation need as input, and what does it return? Taffy is the reference | gap `B2` `B3` `B4` `B5` `B6` `B7` | — |
@@ -58,3 +58,4 @@ gate, port and text surfaces, which consume the earlier answers.
 | run | dispatched | returned | FD | what it moved |
 |---|---|---|---|---|
 | 1 | 2026-09-22 | 2026-09-22 | `FD-41` | 24 pins. Two of six surveyed fail the premise. Intersection is TWO objects. **Eight implied primitives, none rostered.** Killed C10 outright: no surveyed system resolves at compile time |
+| 2 | 2026-09-22 | 2026-09-23 | `FD-42` | 21 pins. NO system derives totally; the six that do are total only via declared defaults. **Ten implied primitives, none rostered.** Refutes the gap doc: AccessKit is its `E3` model and is the clearest MAINTAINED case |
