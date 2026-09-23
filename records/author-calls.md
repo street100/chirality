@@ -479,6 +479,25 @@ is not distributed evenly and it tracks exactly one thing: whether research ran.
 | `ruled` | **Conditions 3, 4 and 5 are dispatched to research and author review, and the dispatch must be un-missable.** Author, 2026-09-22, verbatim on condition 3: *"Dispatch of research and review with author is needed. Ensure this is not a task that can be missed."* Conditions 4 and 5: *"Same as previous"* | Geometry, the Pixel and the Frame are the three unopened conditions, each holding no arc file (`docs/goals/display.md:61-75`). Each takes a `research` run before any arc opens over it, and the result returns to the author before an arc is drawn. The queue that carries this is `.planning/DISPLAY-RESEARCH-QUEUE.md`; a queue in a session transcript is what this clause forbids |
 | `ruled` | **A research run on a display row also names the primitives its subject implies and nobody has written down.** Author, 2026-09-22, in session: the dispatched agents *"include noting unmentioned primitives that the things they are supposed to be researching imply requiring."* | This is [[working-discipline]]'s discovered-requirement rule made a standing instruction for this campaign rather than a thing a run may notice. Every `FD` row from the queue carries an implied-primitive section, and a row that names none says so explicitly. `FD-39`'s six-item build list is the precedent: five of its six items held no roster row on any arc when it was written |
 
+### The fork run 4 returned, and it is the author's
+
+`FD-44` (`records/findings.md:763`) measured condition 3's second clause against
+eight systems and **the clause is false of every one of them.** CSS declines to
+specify hit testing at all, and says so inside `css-ui-4`, the very module where
+`pointer-events` lives (`CSSUI4:3137`, *"is currently not specified"*). Six of
+six implementations return a path or a list rather than a node. Five of six read
+at least one region layout never wrote. Two answer from a frame or a position
+the point is no longer in. Flutter is the single exact case and it freezes its
+answer for the whole interaction on pointer-down.
+
+An arc drawn on the clause as written would roster against a category statement,
+which is the defect one level up that this whole campaign exists to close. So
+the condition is not ready to open and the fork below is why.
+
+| state | the call | why it is blocking |
+|---|---|---|
+| `unreviewed` | **Whether a display region partitions or merely orders** · The two arms `FD-44` priced. **Partition**: a containment invariant carried in the type, so children of a node tile the parent exactly. It buys the exact inverse condition 3 asks for, and it forbids overlap, which forbids a floating layer, a popover and a shadow that escapes its box. **Sibling order**: regions may overlap and a stated order breaks ties. It permits everything above and gives up the inverse, which means condition 3's second clause has to be rewritten. ⚑ **No surveyed system takes the partition side**, so the sources can price only the ordering arm; the partition arm is priced by this tree alone. ⚑ **This tree already has a partition instance**: `prog/scriba/window.chiral:34` asserts *"children of a w-split partition the parent rect"* over the `Rect` declared at `:29`, across 24 defs, **with no containment predicate and no point query**. It is the precondition with the operation missing | Condition 3 (`docs/goals/display.md:61-64`) is unopened and holds no arc file. Which arm it takes decides whether the condition's own text survives, and the author directed 2026-09-22 that conditions 3, 4 and 5 return to the author before an arc is drawn. `FD-44` names three further questions the arc would have to answer either way: whether the query returns one node or the ancestor path (6 of 6 surveyed return a path), what a region type over `Fix` needs beyond `R10`'s ten scalar ops, and whether the floor states anything about capture, tolerance and clip even if the statement is that it has none |
+
 **The stop condition the author set**, in session 2026-09-22: serial dispatch
 continues until every display row has a researched pre-mint role. The campaign
 is not done when the queue's last run returns; it is done when no row in the
