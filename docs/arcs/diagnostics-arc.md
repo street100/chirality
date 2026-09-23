@@ -3,7 +3,7 @@ node: arc-diagnostics
 layer: navigation
 related: [arcs/README, goals/readable-surface, status-ledger, arcs/enforcement-arc, records/diagnostics-arc-record, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-23
 ---
 
 # Arc: diagnostics and formatting
@@ -80,13 +80,13 @@ measuring the fixpoint at generation two, and commit 3b promoted the fixpoint.
 That closed `records/findings.md` FD-08, which had recorded the one-generation
 lag as ACCEPTED while it belonged to 13 commits nobody had promoted.
 
-Next action is **E176**, `str-sub` unclamped. E182 is built: five commits on
+Next action is **E176**, `str-sub` unclamped, and ⚑ **it cannot start.** `docs/arcs/parts/diagnostics-L5.md` reads `status: blocked` and its mint packet is a NO-OP: the primitive half is a two-way author fork, clamp (Shape A) against trap (Shape E) at `nb-bslice-t`. Registered 2026-09-23 at [[records/author-calls]], having stood since 2026-09-10 only in `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1 and in that design's §5 question 9, where `ledger-lint` check AK could not read it. E182 is built: five commits on
 2026-09-02 over `lib/typing/{diag,kernel}.chiral`, with `tools/test/arity.sh`
 at **Phase 24**, because `transport.sh` took 20 between this element's SPEC
 audit and its implement run (`records/findings.md` FD-11).
 
 ⚑ **Sequencing, raised by the author and undecided.** `E176` is sharper than
-E182 on consequence: `str-sub` is unclamped, segfaults, has 131 call sites, and
+E182 on consequence: `str-sub` is unclamped, segfaults, has 131 call sites *(⚑ measured 135 `str-sub` plus 115 `bslice` at the L5 design; the repair reaches both names through `lib/lowering/tal/erase.chiral:115`)*, and
 its safety was asserted in a comment that `str-starts-with` was built on. Both
 are in Lane A's definition of done. On sharpness alone E176 goes first. The
 row is in `records/author-calls.md`. `lib/typing/kernel.chiral` and
@@ -99,7 +99,7 @@ reports.
 |---|---|---|
 | 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
 | 2 | E182 the arity judgments carry their arity | **BUILT 2026-09-02**, five commits `65bec90` to `bd042ae`. `Judg` 38 to 36, `Reason` 9 to 10, both live comparisons carry their counts. Phase 24 = 13/0, 8 mutants all RUN, suite 328/0, binary promoted to 1,188,216 B at the fixpoint. Pipeline ran clean: example `a5aae47`, SPEC audit `b1eb648`, scope call answered the same day. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
-| 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
+| 3 | E176 `str-sub` unclamped, segfaults, 135 `str-sub` plus 115 `bslice` call sites | not built, and **blocked**. The safety was asserted in a comment. The design ran and stopped on the clamp-against-trap author fork, [[records/author-calls]] |
 | 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
 | 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |
 | 6 | adoption: a `prog/` consumer renders through `Doc` | not done |
