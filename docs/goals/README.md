@@ -60,7 +60,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/emitted-speed]] | stated 2026-09-08, unbuilt: one arc opened, four conditions unopened | [[arcs/emitted-speed-arc]] |
 | [[goals/coding-agent]] | stated 2026-09-08, half built: two arcs opened, three conditions unopened | [[arcs/coding-turn-arc]], [[arcs/tool-authority-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
-| [[goals/password-manager]] | stated 2026-09-23, unbuilt: five conditions, all unopened | none open, and see that goal's Arcs section |
+| [[goals/password-manager]] | stated 2026-09-23, unbuilt: one arc opened, four conditions unopened | [[arcs/custody-executes-arc]] |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
 `README.md` lists it under Honest limits, and
@@ -148,9 +148,10 @@ condition 4 supplies the crypto this goal consumes without claiming the consumer
 [[goals/native-stack]] comes closest, and its condition 4 store splits a value
 t of n by Shamir so nothing authoritative sits whole in one place, which is the
 opposite shape to one holder with a derived key. Its arcs column reads
-`none open` and that is the scheduling hole rather than the standing-gate shape:
-no rule maintains any of its five conditions, and the goal's own Arcs section
-says so.
+[[arcs/custody-executes-arc]], opened 2026-09-23 against condition 5 and the
+first of that goal's five conditions to take one. The other four are the
+scheduling hole rather than the standing-gate shape: no rule maintains any of
+them, and the goal's own Arcs section says so.
 
 [[goals/ownership-and-trust]] carries an arc as of 2026-09-02 and every row in
 it is deferred. The arc holds three minted elements, `E53`, `E71` and `E72`,

@@ -1,7 +1,7 @@
 ---
 node: goal-password-manager
 layer: navigation
-related: [goals/README, goals/own-web, goals/ownership-and-trust, goals/native-stack, arcs/crypto-primitives-arc, examples/E40-secret-custody, decisions/decision-deployment-custody, decisions/decision-scope, decisions/decision-work-ids, trust-boundary, modules-custody, status-ledger, records/author-calls, records/crypto-primitives, index]
+related: [goals/README, goals/own-web, goals/ownership-and-trust, goals/native-stack, arcs/custody-executes-arc, arcs/crypto-primitives-arc, examples/E40-secret-custody, decisions/decision-deployment-custody, decisions/decision-scope, decisions/decision-work-ids, trust-boundary, modules-custody, status-ledger, records/author-calls, records/crypto-primitives, index]
 status: current
 updated: 2026-09-23
 ---
@@ -59,7 +59,7 @@ The author's words carry a constraint on the tool as well as a request for it:
 
 ## What done means
 
-Five conditions. **None of them holds an arc file**, and the reason is in
+Five conditions. **One holds an arc file and four do not**, and the reason is in
 `## Arcs` below.
 
 1. **The leak does not compile, and a gate says so on every run.** Observed by
@@ -89,18 +89,44 @@ Five conditions. **None of them holds an arc file**, and the reason is in
    `send-revealed` at `lib/capability/secret.chiral:53`. **Unopened, and it
    holds no arc file.**
 5. **The custody type executes rather than only type-checking.** Observed by
+   `bin/chirality compile` accepting a root whose `compile-main` reaches
    `secret-seal`, `secret-reveal` and `secret-wipe`, declared at
-   `lib/capability/secret.chiral:36`, `:41` and `:45`, each holding an entry in
-   `lib/lowering/tal/crossing-wraps.chiral`. That table carries 45 lowered
-   crossings, measured 2026-09-23, and none of the three is among them.
-   **Unopened, and it holds no arc file.**
+   `lib/capability/secret.chiral:36`, `:41` and `:45`, and by that binary
+   running to an exit a caller judges. Today the compile refuses with
+   `extern does not lower: secret-seal`, measured 2026-09-23 by
+   `docs/arcs/custody-executes-arc.md`, and two independent gates produce that
+   refusal: the front peel at `lib/lowering/compile-front.chiral:37-45`
+   classifies no carrier for `Secret`, and neither the 44-row crossing table at
+   `lib/lowering/tal/crossing-wraps.chiral:14-57` nor the 24-row peel table at
+   `lib/lowering/tal/erase.chiral:112-143` names one of the three. Which of the
+   two routes custody takes is `custody-executes/CU1`, so this condition names
+   neither. [[arcs/custody-executes-arc]] holds it.
+
+⚑ **Condition 5 gave the crossing table 45 rows and it holds 44, and it made a
+crossing row the observable when a crossing row is one of two routes.** Measured
+2026-09-23: `grep -c '(cons (pair' lib/lowering/tal/crossing-wraps.chiral`
+answers 44 over `:14-57` and `docs/arcs/sys-face-arc.md:178` reads the same 44.
+The 45 is the count of closing parentheses on `:58`, one of which closes the
+`def`. `records/author-calls.md:52` carries the same 45 uncorrected. The route
+half is `adopt-fd`, declared `(=> I64 Fd)` at `lib/ports/fd.port:32`, which
+executes and appears in no row of the crossing table because it lowers through
+the identity peel at `lib/lowering/tal/erase.chiral:120`. If
+`custody-executes/CU1` rules for that route, the old observable goes red on a
+build that satisfies the condition.
 
 ## Arcs
 
-`none open`, and this is **not** the standing-gate shape [[goals/self-hosting]]
-conditions 1 to 3 carry. No rule that already runs maintains any of the five
-conditions on every change. The absence is scheduling owed, and the first honest
-limit below prices it.
+One open. [[arcs/custody-executes-arc]] opened 2026-09-23 on condition 5, the
+first of the five to take an arc, with seven rows `CU1` to `CU7` all `open` and
+none designed. Its `## Which rows the scope call governs` at
+`docs/arcs/custody-executes-arc.md:191` sorts those rows against the author call
+at `records/author-calls.md:52`, and `CU1` is the only one schedulable whichever
+way that call goes.
+
+Conditions 1 to 4 hold no arc, and this is **not** the standing-gate shape
+[[goals/self-hosting]] conditions 1 to 3 carry. No rule that already runs
+maintains any of the four on every change. The absence is scheduling owed, and
+the first honest limit below prices it.
 
 The nearest scheduled work sits under another goal.
 [[arcs/crypto-primitives-arc]] holds every primitive conditions 2 and 3 name,
@@ -163,11 +189,17 @@ belongs to the author and [[records/author-calls]] carries the row.
 - **A collision-resistant digest is absent from the whole tree.** `lib/crypto/`
   holds a stream cipher and a one-time MAC. Nothing in it hashes, so the vault
   format of condition 2 has no integrity primitive to name yet.
-- **The custody type type-checks and does not execute.**
-  `lib/lowering/tal/crossing-wraps.chiral` carries 45 lowered crossings and none
-  of `secret-seal`, `secret-reveal` or `secret-wipe` appears among them, so the
-  discipline is checkable and nothing runs it. That is condition 5 and it is
-  `OT` work sitting behind the author call in `## State`.
+- **The custody type type-checks and does not execute, and two gates stop it
+  independently.** The carrier gate refuses first: `porttype-word?` at
+  `lib/lowering/compile-front.chiral:37-45` names six types and `porttype-str?`
+  at `:52-55` names one, `Secret` is in neither, so `term->ntalty` at `:60-72`
+  answers `(none)` and `prim->n` at `:326-333` drops all three externs before
+  any routing table is read. The routing gate refuses second: the 44-row
+  crossing table at `lib/lowering/tal/crossing-wraps.chiral:14-57` and the
+  24-row peel table at `lib/lowering/tal/erase.chiral:112-143` name none of the
+  three. `docs/arcs/custody-executes-arc.md` measured both 2026-09-23 by probe.
+  That is condition 5, [[arcs/custody-executes-arc]] holds it, and the author
+  call in `## State` sorts its rows as `## Arcs` records.
 - **Nothing gates the rejection the goal is named for.**
   `tools/test/samples/e170_reject_secret_leak.prog` is a fixture with no runner,
   which makes condition 1 a claim held by a file rather than by a gate.
@@ -177,11 +209,13 @@ belongs to the author and [[records/author-calls]] carries the row.
   RAM on a context switch, and secret custody stays OS-trusted until rung 2. So "cannot leak its vault" is a
   statement about what the program can express, and it says nothing about a
   reader of the process's memory.
-- **This goal holds no arc, so `ledger-lint` check AF stops reading it.** The
-  check adds a goal whose `docs/goals/README.md` arcs cell opens `none open` to
-  its `gated` set and skips its done-conditions. Every condition above carries
-  its **unopened** mark explicitly, so the check would pass without the skip,
-  and the mark is the honest record rather than the check.
+- **`ledger-lint` check AF reads this goal now and it passes.** The check adds
+  a goal whose `docs/goals/README.md` arcs cell opens `none open` to its
+  `gated` set and skips its done-conditions,
+  `tools/ledger-lint/ledger-lint.py:1993-1998`. That cell names
+  [[arcs/custody-executes-arc]] as of 2026-09-23, so the skip is gone.
+  Condition 5 names its arc, which `:2019` reads, and conditions 1 to 4 carry
+  the **unopened** mark, which `:2017` reads.
 - **The author's phrase reaches wider than the five conditions.** *"storing
   things"* is wider than passwords, and the conditions are written for entries
   of bytes. Whether a vault entry is a typed value with a declared form, the
