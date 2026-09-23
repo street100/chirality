@@ -128,13 +128,29 @@ instance. The orchestrating session opened every citation in that artifact,
 including the sharp one: `bin/chirality:171-172` does append a `compile-main`
 stub and refuses nothing. The design passed. The file does not conform.
 `.planning/MANIFEST-DESIGN-MAP.md:112-121` holds the six requirements and the
-file fails two of them. Requirement 3 wants named fields on a constructor and
-every `sys-row` entry in the file is positional. Requirement 4 wants anything
-that distinguishes two rows to be a field, and its justification is measured in
-that same file: seven rows carry the syscall number `16`
-(`lib/lowering/tal/target-linux.manifest:30-35` and `:60`), told apart only by
-comments that `sexp.chiral` drops at the lexer. Every citation resolved and the
-claim was false. Reverted at `9325095`, and recorded as `A1` in
+file fails requirement 4. Requirement 4 wants anything that distinguishes two
+rows to be a field, and its justification is measured in that same file, wider
+than this case first stated it: seventeen of the forty `sys-row` entries in
+`lib/lowering/tal/target-linux.manifest:22-61` share a number with another
+entry, across five groups. `0` runs three times, `1` twice, `16` seven times,
+`231` twice and `257` three times. Seven of those seventeen carry no comment
+either, and three of the seven carry `16`: `nb-sys-winsz`, `nb-sys-tcgets` and
+`nb-sys-tcsets` at `:30-32` are distinguished by nothing in the file. The rest
+are told apart only by comments that `sexp.chiral` drops at the lexer. Every
+citation resolved and the claim was false.
+
+**Corrected 2026-09-23 against `records/findings.md` FD-43.** This case used to
+say the file failed requirement 3 as well, because every `sys-row` entry in it
+is positional. Requirement 3's "what forces it" cell names `ctor-fields`, which
+reads the constructor declaration, and `lib/lowering/tal/sys-check.chiral:17`
+declares `(data SysRow () (sys-row (name Str) (num I64)))` with two named
+fields. Positional application is the design map's own target shape, written
+that way in its three-shape example. The file satisfies 1, 2, 3 and 6, never
+faces 5, and fails 4 alone. The case keeps its force on one requirement rather
+than two: a design named a non-conforming file as conforming, and every citation
+in it resolved.
+
+Reverted at `9325095`, and recorded as `A1` in
 `.planning/FAILURE-MODES-2026-09.md`, which notes it was done twice on the same
 artifact before the author caught it.
 

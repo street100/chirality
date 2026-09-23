@@ -156,9 +156,21 @@ homes, per the refraction rule in `docs/banks/INDEX.md`.
 | id | goal | what the reference does | the chirality representation | kind | class |
 |---|---|---|---|---|---|
 | E1 | **Closed element sums per context** | HTML content models are validated after parsing, and the parser's error recovery is normative | constructor sets split by context (block, inline, row, cell). Invalid nesting is unconstructible, which retires the validator | `primitive` | `OURS` (`matcher.chiral`'s `Cls` idiom) |
-| E2 | **Semantic role as a required field** | ARIA roles are optional attributes. Dear ImGui has no accessibility support at all; egui added AccessKit optionally | the role is a required constructor field. An unlabelled interactive element has no representation | `primitive` | `EXTERNAL` |
-| E3 | **The accessibility tree derived** | AccessKit uses a push model borrowed from Chromium's multi-process architecture: the toolkit pushes a full tree, then incremental updates. Each node carries an id, a role and optional attributes | the tree is a total function of the document, because the role is already a field. No second tree to keep in sync | `law` | `EXTERNAL` |
+| E2 | **Semantic role as a required field** | ARIA roles are optional attributes. Dear ImGui has no accessibility support at all; egui added AccessKit optionally. AccessKit is the one shipped instance of this row's literal claim, ACCESSKIT:1828 "pub fn new(role: Role)" taking the role as a constructor argument | the role is a required constructor field. An unlabelled interactive element has no representation | `primitive` | `EXTERNAL` |
+| E3 | **The accessibility tree derived** | AccessKit uses a push model borrowed from Chromium's multi-process architecture: the toolkit pushes a full tree, then incremental updates. Each node carries an id, a role and optional attributes, and ACCESSKIT:3193 "The sender and receiver must be in sync" makes it the survey's clearest **maintained** tree. `FD-42` surveyed seven systems and six of their mappings are total, every one because a missing role, name or state resolves to a declared default | the tree is a total function of the document, because the role is already a field. No second tree to keep in sync | `law` | `EXTERNAL` |
 | E4 | **Every document has a text form** | HTML is its own serialization, which is why the parser must be lenient | `print` is mandatory per type and nothing renders from it. Save, diff and grep work; there is one truth | `law` | `OURS` (U19) |
+
+**Corrected 2026-09-23 against `records/findings.md` FD-42.** `E3`'s reference
+cell used to read AccessKit as the model for a derived accessibility tree.
+AccessKit maintains one. ACCESSKIT:3193 "The sender and receiver must be in
+sync" is its own documentation of the update protocol, and FD-42 finds no
+surveyed system that derives totally in the sense this row means. Of the seven
+it surveyed, the web and Flutter derive, Compose derives and then synthesizes
+nodes no element backs, GTK4 derives with a declared per-node escape to
+maintaining, and Android, Apple and AccessKit maintain. Six of the seven
+mappings are total by defaulting, so `E3` as phrased is already satisfied by
+`role = none`, and the claim that distinguishes it is a derivation with no
+default arm.
 
 ### Lane B · layout
 
@@ -166,15 +178,36 @@ homes, per the refraction rule in `docs/banks/INDEX.md`.
 |---|---|---|---|---|---|
 | B1 | **The box model** | content, padding, border, margin, plus `box-sizing` to switch which one `width` names | one record. The measured edge is a field, so there is no mode switch | `primitive` | `EXTERNAL` |
 | B2 | **Normal flow: block and inline** | line boxes, baseline alignment, margin collapsing, the hardest legacy in CSS | block and inline as separate contexts from E1, so a line box is a type. Margin collapsing becomes a stated decision | `law` | `EXTERNAL` |
-| B3 | **Flex** | Taffy implements Flexbox faithfully from the spec, runs on microcontrollers with kilobytes of RAM, and is used by Servo, Bevy and Zed | a pure function over the child list. Main and cross axis parameterised so one implementation serves both directions | `law` | `EXTERNAL` |
+| B3 | **Flex** | Taffy implements Flexbox faithfully from the spec, TAFFYREADME:15 "It currently implements the CSS " Block, Flexbox and Grid, and TAFFYREADME:20-27 lists Servo, Bevy and Zed among the projects that use it. It is `no_std`-capable and still needs a heap, TAFFYCARGO:85 "Taffy always depends on the " `alloc` library | a pure function over the child list. Main and cross axis parameterised so one implementation serves both directions | `law` | `EXTERNAL` |
 | B4 | **Grid** | tracks, areas, auto-placement, `fr` units. Taffy carries it beside flex | same shape as B3 with a two-dimensional placement pass | `law` | `EXTERNAL` |
 | B5 | **Intrinsic sizing** | `min-content`, `max-content`, `fit-content`. Every layout algorithm needs them and they are a second traversal | two pure measures over the tree, which is what `rnd-cols` already is for the cell lane | `law` | `OURS` (`rnd-cols`, E174) |
 | B6 | **Positioned and anchored elements** | CSS anchor positioning shipped in Chromium first and support is still uneven in 2026 | a positioned child is a constructor carrying its anchor reference. An anchor that does not exist fails the checker | `primitive` | `EXTERNAL` |
 | B7 | **Scroll containers, overflow, clip** | overflow creates a scroll container, a clip, and a stacking context at once | three separate constructors. Coupling three effects to one property is the defect | `primitive` | `EXTERNAL` |
 | B8 | **Fixed-point layout units** | Blink and WebKit use 1/64 px `LayoutUnit`; FreeType uses 26.6 for the same reason | a `Length` whose scale is in the type, so a mixed-scale arithmetic is a type error | `primitive` | `EXTERNAL` |
-| B9 | **Hit testing** | egui rewrote hit testing to be more accurate and to allow clicking slightly outside a target. Dear ImGui users report non-rectangular hit testing as unsupported | the inverse of layout, over the same frame tree, pure. One traversal answers which node owns a point | `law` | `EXTERNAL` |
+| B9 | **Hit testing** | egui accepts a click at a distance from the target, EGUISTYLE:1483 "interact_radius: 5.0", and Dear ImGui grows the reactive box by a declared padding, IMGUICPP:1534 "Expand reactive bounding box for touch-based system" where the touch position is not accurate enough. Both claims hold at the source, where the row previously rested on a user report | the exact inverse is a property no surveyed system has, and it is reachable here on one arm only. Under a partition, where no two sibling regions overlap, one traversal answers which node owns a point and no sibling order is needed; under an order, overlap is permitted and the inverse is given up. That fork is the author's. Purity and the single-node answer are both choices this tree would be making alone | `law` | `EXTERNAL` |
 | B10 | **CSS `float`** | text wrapping around a floated box, the legacy layout mode flex and grid replaced | a decision, and the recommendation is to omit it. It exists because 1996 had no other tool | `decision` | `EXTERNAL` |
 | B11 | **Constraint layout** | Cassowary is an incremental simplex solver, published 1997, behind Auto Layout since OS X Lion. SwiftUI replaced it with a dataflow technique | a fork. Dataflow over a pure tree is what B3 and B4 already are, and it is the direction SwiftUI went | `decision` | `EXTERNAL` |
+
+**Corrected 2026-09-23 against `records/findings.md` FD-44 and FD-45.** Two
+rows carried claims the campaign measured false.
+
+`B3` used to say Taffy "runs on microcontrollers with kilobytes of RAM". No
+pinned byte supports it: `grep -i microcontroller` over `TAFFYREADME` returns
+nothing, and TAFFYCARGO:85 "Taffy always depends on the " `alloc` library says
+Taffy requires a heap allocator. Its other two reference claims survive and now
+carry their source.
+
+`B9`'s chirality cell used to read "the inverse of layout, over the same frame
+tree, pure. One traversal answers which node owns a point", and FD-44 and FD-45
+refute all three clauses. No surveyed layout engine is pure: every one returns
+the parent's own size and writes each child's rectangle into the tree by effect,
+through a `&mut self` tree in Taffy, a process-global counter in Yoga, a
+`cache.set_rect` in Morphorm. Six of six hit tests return a path or a list
+where an inverse would return one node, because the event has to be offered to
+ancestors. Five of six read a region layout never wrote, Flutter alone reading
+only the layout output. The inverse survives only on the partition arm, which
+is the fork FD-44 §12(ii) hands to the author. ⚑ The row's `kind` still reads `law` while its
+content now carries that fork, and this run does not reclassify it.
 
 ### Lane T · text
 
