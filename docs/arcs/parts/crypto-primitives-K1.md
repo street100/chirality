@@ -65,7 +65,8 @@ conformance map.
 |---|---|---|---|
 | the tier and its nine-section contract | `docs/translations/README.md:27-38` | IMPLEMENTED | check AL |
 | one artifact, 141 lines, `status: draft` | `docs/translations/aead-chacha20-poly1305.md:5` | IMPLEMENTED and unaudited | check AL |
-| its citations: 12, all resolving, 0 moved, 0 unresolved | `tools/xlat/xlat.sh check`, run 2026-09-07 | measured | check AL |
+| its citations: **13**, all resolving, 0 moved, 0 unresolved | `tools/xlat/xlat.sh check`, run 2026-09-07 and re-run 2026-09-23 | measured | check AL |
+| ⚑ **the 12 was a blind spot, not a count.** `xlat check` read one citation per line until 2026-09-23, and this file's thirteenth was a span hard-wrapped across two lines, which the old tool matched nothing on and skipped in silence. The re-wrap and the rebuilt checker are the same day's work | `tools/xlat/xlat.sh:224-354` | measured | check AL |
 | the resolver: quote uniqueness, line agreement, nine stage headings | `tools/xlat/xlat.sh:229-274` | ENFORCED | `ledger-lint` check AL |
 | the gate that makes running it mandatory | `tools/ledger-lint/ledger-lint.py:2303` | ENFORCED | the suite |
 | the gate for a quotation outside the tier | `tools/ledger-lint/ledger-lint.py:2348` | ENFORCED | `xlat unpinned` |

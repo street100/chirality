@@ -134,8 +134,9 @@ question. It is a property of the object rather than of the rendering.
 
 ## 9. Limits
 
-One binding obligation reaches no carrier. RFC8439:1478 "implementation MUST
-use a constant-time comparison function rather" than an optimized library
+One binding obligation reaches no carrier.
+RFC8439:1478 "implementation MUST use a constant-time comparison function rather"
+than an optimized library
 function, and chirality has no timing model. The form argument holds, folding
 over all sixteen bytes before one comparison. The typed claim does not.
 `native-protocol/N5` owns this row.

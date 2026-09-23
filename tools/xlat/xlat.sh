@@ -225,35 +225,118 @@ cmd_bundle() {
 # Every `ID:LINE "span"` citation in an artifact must resolve into pin ID. This
 # is what ledger-lint check U does for tracked files and cannot do for external
 # material.
+#
+# EVERY citation on a line is inspected. The `grep -oE … | head -1` this command
+# carried until 2026-09-23 read one citation per line: `records/findings.md`
+# holds 2,442 citation-shaped spans and the tool reported 159, so 6.5% of the
+# corpus carried the whole "citations verified" claim.
+#
+# The span grammar admits a backslash-escaped double quote. `\"` inside a span
+# is read as one quote character and the span resolves against the pin's literal
+# bytes, which is what a writer quoting a JSON or a C string line means. 41 of
+# the citations in `records/findings.md` carry one and every one of them was
+# invisible to the old grammar, which stopped the span at the backslash. An
+# unterminated or empty span is MALFORMED. Every one is counted and named.
+#
+# Resolution is one awk pass. Each cited pin is read once with every span for
+# that pin live in memory, so the work is pin-bytes plus spans rather than a
+# grep pair per citation.
 cmd_check() {
   local art="${1:-}"; [ -n "$art" ] || die "usage: xlat check ARTIFACT"
   [ -f "$art" ] || die "no such file: $art"
-  local total=0 ok=0 bad=0 drift=0
-  while IFS= read -r line; do
-    local cite id ln span at
-    cite="$(printf '%s' "$line" | grep -oE '[A-Z][A-Z0-9-]+:[0-9]+ "[^"]+"' | head -1)"
-    [ -n "$cite" ] || continue
+  local sep=$'\001'
+  local tmp; tmp="$(mktemp -d "${TMPDIR:-/tmp}/xlat-check.XXXXXX")" || die "cannot make a temp dir"
+  trap 'rm -rf "$tmp"' RETURN
+
+  # ── extract: one record per citation, in file order ────────────────────────
+  # record is  idx SEP kind SEP id SEP line SEP span
+  # kind is `plain`, `esc` (the span held a \" ), or `MALFORMED`.
+  awk -v SEP="$sep" '
+    {
+      s = $0; pos = 1
+      while (pos <= length(s)) {
+        rest = substr(s, pos)
+        if (match(rest, /[A-Z][A-Z0-9-]+:[0-9]+ "/) == 0) break
+        start = pos + RSTART - 1
+        hdr   = substr(s, start, RLENGTH)
+        c     = index(hdr, ":")
+        id    = substr(hdr, 1, c - 1)
+        ln    = substr(hdr, c + 1, length(hdr) - c - 2)
+        i = start + RLENGTH
+        span = ""; closed = 0; esc = 0
+        while (i <= length(s)) {
+          ch = substr(s, i, 1)
+          if (ch == "\\" && substr(s, i + 1, 1) == "\"") { span = span "\""; esc = 1; i += 2; continue }
+          if (ch == "\"") { closed = 1; i++; break }
+          span = span ch; i++
+        }
+        n++
+        if (closed == 0)   print n SEP "MALFORMED" SEP id SEP ln SEP "span has no closing quote on this line"
+        else if (span == "") print n SEP "MALFORMED" SEP id SEP ln SEP "span is empty"
+        else               print n SEP (esc ? "esc" : "plain") SEP id SEP ln SEP span
+        pos = i
+      }
+    }' "$art" > "$tmp/cites"
+
+  # ── which cited sources have a pin ─────────────────────────────────────────
+  local id pins=()
+  : > "$tmp/pinned"
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    if [ -f "$(_text "$id")" ]; then
+      printf '%s\n' "$id" >> "$tmp/pinned"
+      pins+=("$(_text "$id")")
+    fi
+  done < <(cut -d"$sep" -f3 "$tmp/cites" | sort -u)
+
+  # ── resolve: every pin read once, every span for it checked on every line ──
+  awk -v SEP="$sep" -v PINLIST="$tmp/pinned" -v CITES="$tmp/cites" '
+    BEGIN { FS = SEP }
+    FILENAME == PINLIST { ispinned[$0] = 1; next }
+    FILENAME == CITES {
+      n++; idx[n] = $1; kind[n] = $2; cid[n] = $3; cln[n] = $4; span[n] = $5
+      if ($2 != "MALFORMED") byid[$3] = byid[$3] " " n
+      next
+    }
+    FNR == 1 { pid = FILENAME; sub(/.*\//, "", pid); sub(/\.txt$/, "", pid); ncur = split(byid[pid], cur, " ") }
+    ncur > 0 {
+      for (k = 1; k <= ncur; k++) {
+        j = cur[k]
+        if (index($0, span[j])) { cnt[j]++; if (first[j] == 0) first[j] = FNR }
+      }
+    }
+    END {
+      for (j = 1; j <= n; j++) {
+        if (kind[j] == "MALFORMED")
+          printf "%s%s%s%s%s%s  MALFORMED %s:%s %s\n", idx[j], SEP, "malformed", SEP, kind[j], SEP, cid[j], cln[j], span[j]
+        else if (!(cid[j] in ispinned))
+          printf "%s%s%s%s%s%s  UNPINNED  %s is cited and not pinned\n", idx[j], SEP, "unpinned", SEP, kind[j], SEP, cid[j]
+        else if (cnt[j] == 0)
+          printf "%s%s%s%s%s%s  NOT FOUND %s:%s \"%s\"\n", idx[j], SEP, "notfound", SEP, kind[j], SEP, cid[j], cln[j], span[j]
+        else if (cnt[j] > 1)
+          # A span occurring more than once resolves to whichever came first, which
+          # is a citation that points somewhere by accident. Quote a unique span.
+          printf "%s%s%s%s%s%s  AMBIGUOUS %s:%s appears %d times -- \"%s\"\n", idx[j], SEP, "ambiguous", SEP, kind[j], SEP, cid[j], cln[j], cnt[j], span[j]
+        else if (first[j] != cln[j] + 0)
+          printf "%s%s%s%s%s%s  MOVED     %s:%s is at :%d now -- \"%s\"\n", idx[j], SEP, "moved", SEP, kind[j], SEP, cid[j], cln[j], first[j], span[j]
+        else
+          printf "%s%s%s%s%s%s\n", idx[j], SEP, "ok", SEP, kind[j], SEP
+      }
+    }' "$tmp/pinned" "$tmp/cites" ${pins[@]+"${pins[@]}"} > "$tmp/res"
+
+  local total=0 ok=0 bad=0 drift=0 mal=0 esc=0 i v k disp
+  while IFS="$sep" read -r i v k disp; do
     total=$((total+1))
-    id="$(printf '%s' "$cite" | cut -d: -f1)"
-    ln="$(printf '%s' "$cite" | cut -d: -f2 | cut -d' ' -f1)"
-    span="$(printf '%s' "$cite" | sed 's/^[^"]*"//; s/"$//')"
-    if [ ! -f "$(_text "$id")" ]; then
-      echo "  UNPINNED  $id is cited and not pinned"; bad=$((bad+1)); continue
-    fi
-    n_at="$(grep -cF -- "$span" "$(_text "$id")" 2>/dev/null)"
-    at="$(grep -nF -- "$span" "$(_text "$id")" 2>/dev/null | head -1 | cut -d: -f1)"
-    if [ -z "$at" ]; then
-      echo "  NOT FOUND $id:$ln \"$span\""; bad=$((bad+1))
-    elif [ "${n_at:-0}" -gt 1 ]; then
-      # A span occurring more than once resolves to whichever came first, which
-      # is a citation that points somewhere by accident. Quote a unique span.
-      echo "  AMBIGUOUS $id:$ln appears $n_at times -- \"$span\""; bad=$((bad+1))
-    elif [ "$at" != "$ln" ]; then
-      echo "  MOVED     $id:$ln is at :$at now -- \"$span\""; drift=$((drift+1))
-    else
-      ok=$((ok+1))
-    fi
-  done < "$art"
+    [ "$k" = esc ] && esc=$((esc+1))
+    case "$v" in
+      ok)        ok=$((ok+1)) ;;
+      moved)     drift=$((drift+1)) ;;
+      malformed) mal=$((mal+1)); bad=$((bad+1)) ;;
+      *)         bad=$((bad+1)) ;;
+    esac
+    [ -n "$disp" ] && printf '%s\n' "$disp"
+  done < <(sort -t"$sep" -k1,1n "$tmp/res")
+
   echo
   echo "=== stages ==="
   local s miss=0
@@ -263,6 +346,8 @@ cmd_check() {
   done
   echo
   echo "xlat: $total citation(s): $ok resolved, $drift moved, $bad unresolved. $miss stage(s) absent"
+  [ "$mal" = 0 ] || echo "  $mal of the unresolved are MALFORMED: the grammar is ID:LINE \"span\" and the span above did not parse. Each is named, and none is skipped."
+  [ "$esc" = 0 ] || echo "  $esc span(s) carry a backslash-escaped double quote, read as one quote character and resolved against the pin's literal bytes."
   [ "$total" = 0 ] && echo "  NO CITATIONS. A translation with no pinned quote rests on a reading nobody can check."
   { [ "$bad" = 0 ] && [ "$miss" = 0 ] && [ "$total" != 0 ]; } && return 0
   return 1

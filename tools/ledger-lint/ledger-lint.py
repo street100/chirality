@@ -2422,7 +2422,8 @@ def check_al() -> list[str]:
         if r.returncode == 0:
             continue
         for ln in (x.strip() for x in r.stdout.splitlines()):
-            if ln.startswith(("NOT FOUND", "UNPINNED", "MOVED", "ABSENT")):
+            if ln.startswith(("NOT FOUND", "UNPINNED", "MOVED", "ABSENT",
+                              "AMBIGUOUS", "MALFORMED")):
                 out.append(f"[AL] {rel}: {ln}")
             elif ln.startswith("NO CITATIONS"):
                 out.append(f"[AL] {rel} carries no pinned citation, so it rests "
