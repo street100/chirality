@@ -116,7 +116,7 @@ above is that file's `ship-list` with the cons chain removed.
 | 1 | Every entry carries its type | Seeds check mode. Without it elaboration is inference |
 | 2 | A sum row leads with its constructor tag | `ShipItem` has 4 constructors, 3 are `(path Str)` alone |
 | 3 | Constructors have named fields | `ctor-fields` is the only mechanical key source |
-| 4 | Anything distinguishing two rows is a field | 7 rows carry `16`; only comments tell them apart, and `sexp.chiral` drops comments at the lexer |
+| 4 | Anything distinguishing two rows is a field | **Seventeen of the forty `sys-row` entries** in `lib/lowering/tal/target-linux.manifest:22-61` share a number with another entry, across five groups: `0` three times, `1` twice, `16` seven times, `231` twice, `257` three times. Only comments tell them apart, and `sexp.chiral` drops comments at the lexer. **Seven of the seventeen carry no comment either** (`:22 :23 :30 :31 :32 :43 :46`), so those are distinguished by nothing in the file at all; three of the seven are `16`s, `nb-sys-winsz`, `nb-sys-tcgets` and `nb-sys-tcsets` at `:30-32`. ⚑ **Corrected 2026-09-23.** This cell read *"7 rows carry `16`"*, which counted one group and read as the whole. `FD-43` found the undercount and `.planning/protocol/dispatch.md` carries the same correction |
 | 5 | Type parameters closed by the ascription | Nothing else supplies them |
 | 6 | The module coordinate | Says which layer the file is truth for |
 
