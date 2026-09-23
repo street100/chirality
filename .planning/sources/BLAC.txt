@@ -1,0 +1,1258 @@
+Blacklistable Anonymous Credentials:
+Blocking Misbehaving Users without TTPs
+Patrick P. Tsang† , Man Ho Au§ , Apu Kapadia†‡ , Sean W. Smith†
+†
+
+Department of Computer Science
+Dartmouth College
+Hanover, NH, USA
+§
+
+‡
+
+Institute for Security Technology Studies
+Dartmouth College
+Hanover, NH, USA
+
+Centre for Computer and Information Security Research
+School of Computer Science and Software Engineering
+University of Wollongong, Australia
+
+{patrick, akapadia, sws}@cs.dartmouth.edu, mhaa456@uow.edu.au
+ABSTRACT
+
+1. INTRODUCTION
+
+Several credential systems have been proposed in which
+users can authenticate to services anonymously. Since
+anonymity can give users the license to misbehave, some
+variants allow the selective deanonymization (or linking)
+of misbehaving users upon a complaint to a trusted third
+party (TTP). The ability of the TTP to revoke a user’s privacy at any time, however, is too strong a punishment for
+misbehavior. To limit the scope of deanonymization, systems such as “e-cash” have been proposed in which users are
+deanonymized under only certain types of well-defined misbehavior such as “double spending.” While useful in some
+applications, it is not possible to generalize such techniques
+to more subjective definitions of misbehavior.
+We present the first anonymous credential system in which
+services can “blacklist” misbehaving users without contacting a TTP. Since blacklisted users remain anonymous, misbehaviors can be judged subjectively without users fearing
+arbitrary deanonymization by a TTP.
+
+Several cryptographic schemes allow users to authenticate to service providers (SPs) anonymously. While anonymous authentication offers users a high degree of privacy,
+it can give users the license to misbehave without the fear
+of punishment. For example, Wikipedia1 has allowed editors to modify content anonymously, and as a result several users have misbehaved by posting inappropriate content. SPs, therefore, desire some level of accountability
+against misbehaving users. Several anonymous credential
+systems have been proposed in which users can be selectively
+deanonymized or have their accesses linked (pseudonymized)
+under special circumstances. As we will discuss, for certain
+applications the existing schemes are either too punitive—
+deanonymization (or linking) is unreasonably harsh, and often relies on trusted third parties (TTPs) capable of revoking
+a user’s privacy at any time—or too restrictive—allowing
+deanonymization under only certain narrowly defined types
+of misbehavior.
+Deanonymizing a user is not always necessary to discourage misbehavior; in some cases it is sufficient to simply block
+misbehaving users from making future accesses, while maintaining their anonymity. We call this property anonymous
+blacklisting. For example, anonymous access at SPs such
+as Wikipedia and YouTube2 empowers users to disseminate
+content without the fear of persecution—a user may add political content on Wikipedia that is forbidden by his or her
+government, or post a video of police brutality to YouTube.
+In such cases, while Wikipedia and YouTube may want to
+penalize users who deface webpages or post copyrighted material, it is of paramount importance for SPs to preserve the
+anonymity of their well-behaving users. By guaranteeing
+anonymity to all users, anonymous blacklisting allows SPs
+to penalize misbehavior without the risk of exposing legitimate users such as political dissenters. We now discuss why
+existing solutions are not desirable for such applications.
+Anonymous credential systems that support accountability (such as Camenisch and Lysyanskaya’s [12, 15] and
+schemes based on group signatures [18, 1, 6, 26]) feature a
+
+Categories and Subject Descriptors
+K.6.5 [Operating Systems]: Security and Protection—
+Authentication; E.3 [Data Encryption]: Public key cryptosystems
+
+General Terms
+Algorithms, Security
+
+Keywords
+privacy, anonymous authentication,
+anonymous blacklisting, revocation
+
+user misbehavior,
+
+Permission to make digital or hard copies of all or part of this work for
+personal or classroom use is granted without fee provided that copies are
+not made or distributed for profit or commercial advantage and that copies
+bear this notice and the full citation on the first page. To copy otherwise, to
+republish, to post on servers or to redistribute to lists, requires prior specific
+permission and/or a fee.
+CCS’07, October 29–November 2, 2007, Alexandria, Virginia, USA.
+Copyright 2007 ACM 978-1-59593-703-2/07/0011 ...$5.00.
+
+1
+2
+
+http://www.wikipedia.org
+http://www.youtube.com
+
+TTP called the Open Authority (OA). The OA is capable of
+identifying (or linking) the user behind any anonymous authentication. Anonymous credential systems with dynamic
+membership revocation [13, 2, 7, 28], mostly constructed
+from dynamic accumulators [13], also feature a TTP that is
+capable of deanonymizing (or linking) users. The existence
+of such a TTP, however, is undesirable—users can never be
+assured that their privacy will be maintained by the TTP.
+Defining the circumstances under which a TTP can expose
+a user, and ensuring its trustworthiness to judge fairly, is an
+undue burden on SPs. For such applications, therefore, a
+system without TTPs is desirable.
+To eliminate the reliance on TTPs, certain “thresholdbased” approaches such as e-cash [3, 10, 11] and k-Times
+Anonymous Authentication (k-TAA) [32, 29, 33, 4] have
+been proposed. In these schemes, users are guaranteed
+anonymity unless they authenticate more than a certain
+number of threshold times. For example, spending an ecoin twice (an undesirable action) or authenticating k + 1
+times in a k-TAA scheme, provides the SP with enough
+information to compute the user’s identity. Linkable ring
+signatures [27, 36, 37] and periodic n-times anonymous authentication [9] also fall into this category. Unfortunately,
+misbehavior cannot always be defined in terms of threshold
+values. For example, “inappropriate” edits to a Wikipedia
+page, or “offensive” video uploads to YouTube are usually
+identified based on human subjectivity. For such applications, therefore, subjective judging is desirable.
+
+1.1 Related Solutions
+To reiterate, it is important to have an anonymous credential system in which users can be blacklisted in a way
+that (1) preserves their anonymity, (2) is based on subjective
+definitions of misbehavior, and (3) does not rely on a TTP.
+Though not intended for anonymous blacklisting, Syverson
+et al. present a scheme [31] that ensures that users can
+perform anonymous and serial transactions at an SP. The
+SP issues blind tokens to users, which are renewed at the
+end of a user’s transaction. The SP can block future connections from a user by simply not issuing a new token at
+the end of a transaction (e.g., if the user fails to pay for
+continued service). The major drawback to this approach
+is that misbehavior must be judged while the user is online. Indeed, their scheme was not designed for blacklisting
+users since misbehavior is usually identified long after a user
+has disconnected. Recently, some of the authors of this paper proposed the Nymble system [25] to allow SPs to block
+misbehaving users hiding behind an anonymizing network
+such as Tor [21]. Nymble makes several practical considerations for anonymous IP-address blocking based on subjective
+judging, but it does rely on multiple entities that can collude
+to deanonymize (or link) a misbehaving user.
+Even though it may seem that the ability to block future
+accesses from subjectively-judged misbehaving users inherently requires a TTP capable of deanonymizing (or linking)
+users, we show that this is not the case.
+
+1.2 Our Contributions
+We propose the BLacklistable Anonymous Credential
+(BLAC) system, the first cryptographic construction of
+an anonymous credential system that supports anonymous
+blacklisting and subjective judging without relying on TTPs
+that are capable of revoking the privacy of users at will. We
+
+formalize the security model for such a system, under which
+we prove that our construction is secure. Furthermore, we
+provide an implementation of our BLAC system and evaluate
+its performance both analytically and experimentally.
+
+Paper Outline.
+We provide an overview of our BLAC system in Section 2
+and formalize the model and security properties in Section 3.
+In Section 4 we present preliminary information on the various cryptographic tools and assumptions used in our construction, which we present in Section 5. We present an
+experimental evaluation of our construction in Section 6, a
+discussion of several issues in Section 7, and finally conclude
+in Section 8. The interested reader is directed to the Appendix for a detailed security model and the full version of
+this paper [35] for security proofs.
+
+2. OUR APPROACH
+We provide a high-level overview of our BLacklistable
+Anonymous Credential (BLAC) system in this section, and
+defer cryptographic details to the subsequent sections.
+In our system, users authenticate to Service Providers
+(SPs) anonymously using credentials issued by a Group
+Manager (GM). The GM is responsible for enrolling legitimate users into the system by issuing credentials to them.3
+These credentials are private to the user, and not known
+by the GM. We emphasize that the GM is not a TTP that
+can compromise the privacy of users, and is trusted only to
+enroll legitimate users into the system, and issue at most
+one credential per user. SPs are willing to serve anonymous
+users as long as they are legitimate users in the system (by
+enrolling themselves with the GM), and have never misbehaved thus far, where misbehavior may be arbitrarily defined
+and subjectively judged by each individual SP. We describe
+this process next.
+The novelty of our approach is that SPs maintain their
+own blacklists of misbehaving users without knowing the
+identity of the misbehaving users. Users anonymously authenticating to the SP must first prove that they are not on
+the SP’s blacklist (otherwise authentication will fail). Following a user’s authentication, SPs store a ticket extracted
+from the protocol transcript of the authentication. Later, if
+the SP deems the user to have misbehaved during the authenticated session, possibly long after the user has disconnected, the SP can add the ticket as an entry in its blacklist.4
+If a user Alice detects that she is on the blacklist, she terminates the authentication and disconnects immediately. The
+SP, therefore, learns only that some anonymous blacklisted
+user was refused a connection, i.e., the SP does not learn
+the identity of the blacklisted user, and the user is anonymous within the set of blacklisted users. Users not on the
+blacklist will be able to authenticate successfully, and the
+SPs learn only that the user is not on the blacklist. Furthermore, our system allows SPs to remove entries from the
+blacklist, thereby forgiving past misbehaviors.5 Depending
+3
+Who is a legitimate user and how to verify such legitimacy
+are application-dependent.
+4
+In practice, the SP may privately log arbitrary information
+about an authenticated session that is necessary for it to
+judge at a later time whether the anonymous user misbehaved during that session.
+5
+Adding and removing blacklist entries are atomic actions
+as will be discussed in Section 7.
+
+on the severity of misbehavior, a user may be blacklisted
+for varying periods of time—using inappropriate language
+could correspond to being blacklisted for one week, whereas
+posting copyrighted material could correspond to blacklisting for one month. Users are always assured that if they
+successfully authenticate to an SP their access will always
+remain anonymous—all that an SP can do is block future
+accesses by a misbehaving user.
+
+A glimpse into tickets.
+Tickets are a vital object in our BLAC system. A ticket
+is the only piece in the authentication protocol transcript
+that contains information about the identity of the authenticating user. Here we describe some of the properties these
+tickets must possess for the system to be secure. First, tickets have to be the output of some non-invertible mapping
+of the user’s credential. If this were not the case, the system would have no anonymity. Also, tickets from the same
+user should be unlinkable, for otherwise SPs would be able
+to tell if two authentications are from the same user. This
+property implies that the mapping just mentioned must also
+take as input some randomness, as a deterministic mapping
+implies linkability. Furthermore, tickets must be such that
+it is possible to prove and verify that a ticket is correctly
+formed, and that a ticket does not belong to a given user
+(if it is indeed the case). Without such a property, a user
+blacklisted by an SP would still be able to authenticate to
+the SP. As we will see, this property is also a necessary condition to prevent misbehaving users from being “framed” (by
+other users for example).
+Remark. Our BLAC system may be configured to allow
+or disallow the sharing of blacklist entries (tickets) between
+SPs. Sharing a blacklist entry would allow multiple SPs to
+block a user who misbehaved at one of the SPs. We will first
+present the system where such sharing is disallowed and then
+point out how to allow sharing in Section 7.
+
+3.1.3 Authentication
+This protocol is executed between a user with credential
+cred and an SP. When an execution of the protocol terminates, the SP outputs a binary value of success or failure.
+If the SP outputs success in an execution of the protocol,
+we call the execution a successful authentication and say
+that the authenticating user has succeeded in authenticating
+herself; otherwise the authentication is unsuccessful and the
+user has failed. Only upon a successful authentication does
+the SP establish an authenticated session with the authenticating user during which the user can access the service
+provided by the SP. Note that the protocol transcript of a
+successful authentication as seen by the SP is useful for the
+SP to blacklist the authenticating user, as described next.
+
+3.1.4 Blacklist Management
+This is a suite of three algorithms: Extract, Add and
+Remove, which are executed by SPs for managing their
+blacklists. On input of an authentication protocol transcript, Extract extracts and returns a ticket from the transcript. A blacklist is a collection of tickets. On input of
+a blacklist and a ticket, Add returns a new blacklist that
+contains all the tickets in the input blacklist as well as the
+input ticket. On the other hand, on input of a blacklist and a
+ticket, Remove returns a new blacklist that contains all the
+tickets in the input blacklist, except the one(s) equivalent to
+the input ticket.6
+When we say that a user Alice is blacklisted by an SP Bob,
+we mean that there exists an authentication between Alice
+and Bob such that Bob has added the ticket extracted from
+the authentication transcript to his blacklist and has not
+removed it (yet). Otherwise Alice is not blacklisted by Bob.
+Also, we say that Alice is misbehaving with respect to Bob
+if she is blacklisted by Bob. Otherwise, she is well-behaving.
+
+Correctness.
+Any construction of the BLAC system must be correct:
+
+3.
+
+MODEL
+
+We present the syntax of the Blacklistable Anonymous
+Credential (BLAC) system, followed by security properties
+that any construction of the BLAC system must satisfy.
+
+3.1 Syntax
+The entities in the BLAC system are the Group Manager
+(GM), a set of Service Providers (SPs) and a set of users.
+The BLAC system consists of the following protocols:
+
+3.1.1 Setup
+This algorithm is executed by the GM to set up the system. On input of one or more security parameters, the algorithm outputs a pair consisting of a group public key gpk
+and a group private key gsk. The GM publishes gpk and
+keeps gsk private.
+
+3.1.2 Registration
+This protocol is executed between the GM and a legitimate user to register the user into the system. Upon successful completion of the protocol, the user obtains a credential cred, which she keeps private to herself, and is thereby
+enrolled as a member in the group of registered users.
+
+Definition 1 (Correctness). A construction of the
+BLAC system is correct if all entities in the system are honest
+(i.e., they follow the system’s specification) implies that for
+any registered legitimate user Alice and for any SP Bob,
+Alice is able to successfully authenticate herself to Bob with
+overwhelming probability if Alice is not blacklisted by Bob
+during the authentication.
+
+3.2 Security Notions
+We now give informal definitions of the various security
+properties that a construction of the BLAC system must possess. The reader may refer to Appendix A for the formal
+version of these definitions.
+
+3.2.1 Mis-authentication Resistance
+Mis-authentication occurs when an unregistered user successfully authenticates herself to an SP. In a BLAC system
+with mis-authentication resistance, SPs are assured to accept authentication only from registered users.
+
+6
+We don’t define the equivalence of tickets here because it
+is construction-dependent.
+
+3.2.2 Blacklistability
+Any SP Bob may blacklist a user, who has authenticated
+successfully, at any later time. As a consequence, the blacklisted user will no longer be able to successfully authenticate
+herself to Bob until the user is unblacklisted by Bob. In a
+BLAC system with blacklistability, SPs are assured to accept
+authentication only from well-behaving users, i.e., users who
+are not blacklisted.
+
+3.2.3 Anonymity
+In a system with anonymity, all that SPs can infer about
+the identity of an authenticating user is whether the user is
+or was blacklisted at the time of protocol execution, regardless of whatever the SPs do afterwards, such as arbitrarily
+manipulating their blacklists.
+
+3.2.4 Non-frameability
+A user Alice is framed if she is not currently blacklisted
+by an honest SP Bob, but is unable to successfully authenticate herself to Bob. In a BLAC system with nonframeability, well-behaving users can always successfully authenticate themselves to honest SPs.
+
+Security.
+Any construction of the BLAC system must be secure:
+Definition 2 (Security). A construction of the
+BLAC system is secure if it has mis-authentication resistance, blacklistability, anonymity and non-frameability.
+
+4.
+
+PRELIMINARIES
+
+In this section we outline the assumptions and cryptographic tools that we use as building blocks in our construction of the BLAC system.
+
+Assumption 2 (q-SDH). The q-Strong Diffie-Hellman
+(q-SDH) problem in (G1 , G2 ) is defined as follows: On input
+2
+q
+of a (q + 2)-tuple (g0 , h0 , hx0 , hx0 , · · · , hx0 ) ∈ G1 × Gq+1
+,
+2
+output a pair (A, c) ∈ G1 × Zp such that A(x+c) = g0 where
+|G1 | = p. We say that the q-SDH assumption holds in
+(G1 , G2 ) if no PPT algorithm has non-negligible advantage
+in solving the q-SDH problem in (G1 , G2 ).
+
+4.3 Proofs of Knowledge
+In a Zero-Knowledge Proof of Knowledge (ZKPoK) protocol [23], a prover convinces a verifier that some statement is
+true without the verifier learning anything except the validity of the statement. Σ-protocols are a special type of threemove ZKPoK protocols, which can be converted into noninteractive Signature Proof of Knowledge (SPK) schemes,
+or simply signature schemes [24], that are secure under the
+Random Oracle (RO) Model [5].
+In the following, we review several Σ-protocols that will
+be needed as building blocks in our construction. We follow the notation introduced by Camenisch and Stadler [17].
+For instance, P K{(x) : y = g x } denotes a Σ-protocol that
+proves the knowledge of x ∈ Zp such that y = g x for some
+y ∈ G. The corresponding signature scheme resulting from
+the application of the Fiat-Shamir heuristic to the above
+Σ-protocol is denoted by SP K{(x) : y = g x }(M ).
+
+4.3.1 Knowledge and Inequalities of Discrete Logarithms
+Let g, b ∈ G and bi ∈ G for all i be generators of some
+group G of prime order p such that their relative discrete
+logarithms are unknown. One can prove in zero-knowledge
+the knowledge of the discrete logarithm x ∈ Zp of y ∈ G in
+base g by using the Σ-protocol:
+P K {(x) : y = g x } ,
+
+4.1 Pairings
+A pairing is a bilinear mapping from a pair of group elements to a group element. Specifically, let G1 , G2 and
+GT be multiplicative cyclic groups of order p. Suppose P
+and Q are generators of G1 and G2 respectively. A function
+ê : G1 × G2 → GT is said to be a pairing if it satisfies the
+following properties:
+• (Bilinearity.) ê(Ax , B y ) = ê(A, B)xy for all A ∈ G1 ,
+B ∈ G2 and x, y ∈ Zp .
+• (Non-degeneracy.) ê(P, Q) 6= 1, where 1 is the identity
+element in GT .
+• (Efficient Computability.) ê(A, B) can be computed
+efficiently (i.e. in polynomial time) for all A ∈ G1 and
+B ∈ G2 .
+
+4.2 Mathematical Assumptions
+The security of our construction of the BLAC system requires the following two assumptions:
+
+the construction of which first appeared in Schnorr identification [30]. As we shall see, our BLAC construction requires
+the SPK of this protocol to prove the correctness of tickets.
+One can further prove in zero-knowledge that x does not
+equal logb t, the discrete log of t ∈ G in base b, using the
+Σ-protocol:
+P K {(x) : y = g x ∧ t 6= bx } ,
+the most efficient construction of which is due to Camenisch
+and Shoup [16, §5].
+In our BLAC system construction we will need a generalized version of the above Σ-protocol to prove that a user
+is not currently on the blacklist. In particular, we need a
+protocol that allows one to prove in zero-knowledge that, for
+some n > 1 and for all i = 1 to n, x 6= log bi ti , where ti ∈ G.
+That is,
+(
+!)
+n
+^
+P K (x) : y = g x ∧
+ti 6= bxi
+.
+i=1
+
+Assumption 1 (DDH). The
+Decisional
+DiffieHellman (DDH) problem in group G is defined as
+follows: On input of a quadruple (g, g a , g b , g c ) ∈ G4 ,
+output 1 if c = ab and 0 otherwise. We say that the DDH
+assumption holds in group G if no probabilistic polynomial
+time (PPT) algorithm has non-negligible advantage over
+random guessing in solving the DDH problem in G.
+
+Such a Σ-protocol can be constructed by applying a technique due to Cramer et al. [19] to Camenisch and Shoup’s
+construction mentioned above.7
+7
+
+The technique describes a general method of constructing
+proofs of disjunction or conjunction of any of the two statements about knowledge of discrete logarithms.
+
+4.3.2 BBS+ Signatures
+Let g0 , g1 , g2 ∈ G1 and h0 ∈ G2 be generators of G1 and
+G2 respectively such that g0 = ψ(h0 ) and their relative discrete logarithms are unknown, where ψ is a computable isomorphism and (G1 , G2 ) is a pair of groups of prime order p
+in which the q-SDH assumption holds. Let e be a pairing
+defined over the pair of groups. One can prove possession of
+a tuple (A, e, x, y) ∈ G1 × Z3p such that Ae+γ = g0 g1x g2y , or
+equivalently, ê(A, whe0 ) = ê(g0 g1x g2y , h0 ), where w = hγ0 , by
+the Σ-protocol:
+P K{(A, e, x, y) : Ae+γ = g0 g1x g2y }.
+The construction of this protocol can be found in [6, §4],
+which is secure under the Decision-linear Diffie-Hellman assumption. Au et al. [4] provide a modified construction that
+does not need to rely on such an assumption. As first pointed
+out in [15], the protocol’s corresponding SPK is actually the
+SDH-variant of CL signatures [14], which is referred to as
+BBS+ Signatures in [4]. Our BLAC construction will need
+this protocol as a building block for users to prove that they
+are legitimate in the system. We will employ the construction given in [4] to avoid the need of less standard assumptions.
+
+5.
+
+SYSTEM CONSTRUCTION
+
+In this section, we detail our cryptographic construction
+and assess its security and efficiency.
+
+5.1 Description
+5.1.1 Parameters
+Let λ, ℓ be sufficiently large security parameters. Let
+(G1 , G2 ) be a bilinear group pair with computable isomorphism ψ as discussed such that |G1 | = |G2 | = p for some
+prime p of λ bits. Also let G be a group of order p where
+DDH is intractable. Let g0 , g1 , g2 ∈ G1 and h0 ∈ G2 be
+generators of G1 and G2 respectively such that g0 = ψ(h0 )
+and the relative discrete logarithm of the generators are unknown.8 Let H0 : {0, 1}∗ → G and H : {0, 1}∗ → Zp be
+secure cryptographic hash functions.
+
+5.1.2 Setup
+The GM randomly chooses γ ∈R Zp and computes w =
+hγ0 . The group secret key is gsk = (γ) and the group public
+key is gpk = (w).
+
+5.1.3 Registration
+At the successful termination of this protocol between a
+user Alice and the GM, Alice obtains a credential in the
+form of (A, e, x, y) such that Ae+γ = g0 g1x g2y , and (A, e, x, y)
+is known only to the user. The private input to the GM is
+the group secret key gsk.
+1. The GM sends m to Alice, where m ∈R {0, 1}ℓ is a
+random challenge.
+2. Alice sends a pair (C, Π1 ) to the GM, where C =
+′
+g1x g2y ∈ G1 is a commitment of (x, y ′ ) ∈R Z2p and Π1
+is a signature proof of knowledge of
+n
+o
+′
+SP K1 (x, y ′ ) : C = g1x g2y (m)
+(1)
+8
+
+This can be done by setting the generators to be the output
+of a cryptographic hash function of some publicly known
+seeds.
+
+on challenge m, which proves that C is correctly
+formed.
+3. The GM returns as failure if the verification of Π1
+returns invalid. Otherwise the GM sends to Alice a tuple (A, e, y ′′ ), where e, y ′′ ∈R Zp and A =
+′′
+1
+(g0 Cg2y ) e+γ ∈ G1 .
+4. Alice computes y = y ′ + y ′′ . She returns as failure
+if ê(A, whe0 ) 6= ê(g0 g1x g2y , h0 ). Otherwise she outputs
+cred = (A, e, x, y) as her credential.
+To prevent the possibility of a concurrent attack [20], we
+require that users must be registered one after the other, as
+opposed to concurrently.
+
+5.1.4 Authentication
+During an execution of this protocol between a user Alice
+and an SP Bob, Alice’s private input is her credential cred =
+(A, e, x, y). Let Bob ∈ {0, 1}∗ be the string that uniquely
+identifies Bob. When the protocol terminates, Bob outputs
+success or failure, indicating whether Bob should consider
+the authentication attempt successful.
+1. (Challenge.) Bob sends to Alice a pair (BL, m),
+where m ∈R {0, 1}ℓ is a random challenge and BL =
+hτ1 , . . . , τn i is Bob’s current blacklist and τi = (si , ti ) ∈
+{0, 1}ℓ ×G, for i = 1 to n, is the i-th ticket in the blacklist.
+2. (Blacklist Inspection.) Alice computes, for i = 1 to n,
+the bases bi = H0 (si ||Bob). She returns as failure if
+tag ti = bxi for some i (indicating that she is blacklisted). She proceeds otherwise.
+3. (Proof Generation.) Alice returns to Bob a pair
+(τ, Π2 ), where τ = (s, t) ∈ {0, 1}ℓ × G is a ticket
+generated by randomly choosing a serial s ∈R {0, 1}ℓ
+and computing the base b as H0 (s||Bob) and then the
+tag t as bx , and Π2 is a signature proof of knowledge of:
+
+SP K2 (A, e, x, y) :
+A
+
+e+γ
+
+= g0 g1x g2y
+
+∧
+
+n
+^
+
+ti 6= bxi
+
+i=1
+
+!
+
+ﬀ
+∧ t = bx (m)
+
+(2)
+
+on the challenge m, which proves:
+e+γ
+(a) A
+= g0 g1x g2y , i.e., Alice is a group member,
+V
+x
+(b) n
+t
+i=1 i 6= H0 (si ||Bob) , i.e., Alice is not currently
+on Bob’s blacklist, and
+(c) t = H0 (s||Bob)x , i.e., the ticket τ is correctly
+formed.
+4. (Proof Verification.) Bob returns as failure if the
+verification of Π2 returns invalid.9 Otherwise Bob
+returns success.
+The protocol transcript of a successful authentication at
+Bob is thus trans = hBob, BL, m, τ, Π2 i. As discussed, Bob
+stores ticket τ extracted from the transcript, along with information logging Alice’s activity within the authenticated
+session.
+
+5.1.5 Blacklist Management
+The three algorithms are all very simple and efficient.
+Extract(trans) returns ticket τ in the input transcript
+9
+Bob also terminates with failure if the blacklist is being
+updated concurrently. This behavior ensures that if a user
+is blacklisted at time t, she cannot authenticate to the SP
+after t or until she is unblacklisted.
+
+trans = hBL, m, τ, Π2 i. Add(BL, τ ) returns blacklist BL′ ,
+which is the same as the input blacklist BL, except with
+the input ticket τ appended to it. Remove(BL, τ ) returns
+blacklist BL′ , which is the same as the input blacklist BL,
+except with all entries equal to the input ticket τ dropped.
+
+5.2 SPK Instantiation
+Both SP K1 and SP K2 presented above require instantiation. We omit spelling out the relatively trivial instantiation
+of SP K1 . Now we instantiate SP K2 as follows.
+
+5.2.1 Signing
+To produce a proof Π2 for SP K2 on message m, do the
+following.
+1. Produce auxiliary commitments (A1 , A2 , A3 ,
+Ã1 , . . . , Ãn ) by randomly picking ρ1 , ρ2 , ρ3 , ρ4 ∈R Zp
+and computing A1 = g1ρ1 g2ρ2 , A2 = Ag2ρ1 , A3 = g1ρ3 g2ρ4
+and, for all i = 1 to n, Ãi = (bxi /ti )ρ3 .
+2. Return Π2 as (A1 , A2 , A3 , Ã1 , . . . , Ãn , Π3 ), where Π3
+is a signature proof of knowledge of:
+
+SP K3 (e, x, y, ρ1 , ρ2 , ρ3 , ρ4 , α1 , α2 , β3 , β4 ) :
+α1 α2
+A1 = g1ρ1 g2ρ2 ∧ 1 = A−e
+1 g1 g2 ∧
+ρ3 ρ4
+−x β3 β4
+A3 = g1 g2 ∧ 1 = A3 g1 g2 ∧
+ê(A2 ,w)
+1
+= ê(A2 , h0 )−e êx1 êy+α
+ê(g2 , w)ρ1 ∧
+2
+ê0
+!
+ﬀ
+n
+^
+β3 −ρ3
+β3 −ρ3
+Ãi = bi ti
+∧ 1=b t
+(m)
+
+(3)
+
+i=1
+
+on message m, which can be computed using the
+knowledge of e, x, y, ρ1 , ρ2 , ρ3 , ρ4 , α1 , α2 , β3 and
+β4 , where α1 = ρ1 e, α2 = ρ2 e, β3 = ρ3 x and β4 = ρ4 x.
+In the above, we denoted ê(gi , h0 ) as êi for i = 0 to 2.
+
+5.2.2 Verification
+To verify a proof Π2 = (A1 , A2 , A3 , Ã1 , . . . , Ãn , Π3 ) for
+SP K2 on message m, return valid if the verification of Π3
+on m returns valid and Ãi 6= 1 for all i = 1 to n. Return
+invalid otherwise.
+Remark. The instantiation of SP K3 itself is straightforward, and is enumerated in the full version of this paper [35].
+
+5.3 Analysis
+5.3.1 Security
+The correctness of the construction mostly stems from the
+correctness of SP K’s. Its proof is thus relatively straightforward. We claim that our construction has correctness
+without proof for the sake of conciseness.
+We now state the following theorem about the security of
+our construction. Its proof can be found in the full version
+of this paper [35].
+Theorem 1 (Security). Our construction of the
+BLAC system is secure if the q-SDH problem is hard in
+(G1 , G2 ) and the DDH problem is hard in G under the
+Random Oracle Model.
+
+Table 1: Number of operations during an authentication with a blacklist of size n.
+User
+Operation
+SP
+w/o Preproc. w/ Preproc.
+G1 multi-EXP
+7
+0
+4
+GT multi-EXP
+2
+0
+2
+G multi-EXP
+2n + 1
+2n
+n+1
+Pairing
+1
+0
+2
+
+emphasize that both complexities are independent of the
+number of users and SPs in the system. Thus our system
+scales well with respect to these two quantities. Both complexities, however, are dependent on the size of the blacklist.
+In particular, the time it takes for both a user and a SP to
+execute the authentication protocol, as well as communication overhead for the same protocol, grow linearly with
+the current size of the SP’s blacklist.
+More specifically, a blacklist of size n contains n tickets,
+each consisting of an ℓ-bit string and an element of G. A
+proof Π2 of SP K2 consists of 3 G1 elements, n G elements
+and 12 Zp elements. The total communication complexity
+for an authentication is thus (n + 2) ℓ-bit strings, 3 G1 elements, (2n + 1) G elements and 12 Zp elements. SPs need
+to store a ticket for every successful authentication.
+A breakdown of time complexity of the authentication
+protocol into the number of multi-exponentiations (multiEXPs)10 in various groups and pairings is shown in Table 1.
+Other operations such as G addition and hashing are neglected as they take negligible time. Some preprocessing is
+possible at the user before the knowledge of the challenge
+message and the blacklist. In fact, all but 2n multi-EXPs in
+G can be precomputed by the user.
+
+6. PERFORMANCE EVALUATION
+We implemented our construction of the BLAC system in
+C and packaged the code into a software library to allow for
+easy adoption by different potential applications. We used
+the Pairing-Based Cryptography (PBC) Library.11 (version
+0.4.7) for the underlying elliptic-curve and pairing operations, which is built on the GNU MP Bignum (GMP) Library.12 We also made use of several routines in OpenSSL,13
+such as its SHA-1 hash function for instantiating the cryptographic hash functions needed by our construction.
+The choice of curve parameters can have a significant effect on the performance of an implementation. We used
+pairings over Type-A curves as defined in the PBC library.
+A curve of such type has the form of E : y 2 = x3 + x over
+the field Fq for some prime q. Both G1 and G2 are the group
+of points E(Fq ) of order p for some prime p such that p is a
+factor of q + 1. The pairing is symmetric and has an embedding degree k of 2. Thus GT is a subgroup of Fq2 . In our
+implementation, q and p are respectively 512-bit and 160bit. We also used GT for G, the group wherein the tickets
+reside.
+10
+
+A multi-EXP computes the product of exponentiations
+faster than performing the exponentiations separately. We
+assume that one multi-EXP operation multiplies up to 3
+exponentiations.
+
+5.3.2 Complexity
+
+11
+
+We analyze the efficiency of our construction in terms of
+both time and space/communication complexities. First we
+
+12
+
+http://crypto.stanford.edu/pbc/
+http://gmplib.org/
+13
+http://www.openssl.org/
+
+The interface to the library we implemented is defined
+by a list of C functions. Some of the more important ones
+are as follows. setup() is a function that implements the
+Setup algorithm. The functions register_gm() and register_user(), executed by the GM and the user respectively,
+together implement the Registration protocol. Similarly
+authen_sp() and authen_user() together implement the
+Authentication protocol.
+
+Table 2: Performance of our authentication protocol
+with respect to different blacklist sizes.
+Blacklist Size (#Entries)
+Time (in s) for User to
+inspect the blacklist and
+generate a proof (steps 2 & 3)
+
+6.1 Prototyping
+Using our library, we prototyped a proof-of-concept application that allows users to post text messages at a web
+forum. This can be thought of as users editing Wikipedia
+pages. We did not prototype the user registration part of
+the system because our major interest was to study the performance of the Authentication protocol.
+In our prototype, the authentication is carried out as follows. The SP first creates a listening socket. Upon the
+arrival of a connection request from a user, the SP sets up
+an SSL socket with the user using OpenSSL.14 This means
+that a confidential and server-authenticated channel is set
+up between the user and the SP. From within this channel,
+the user and the server respectively execute authen_user()
+and authen_sp(). If authen_sp returns failure, then the
+SP closes the SSL connection, thereby refusing to serve the
+user. Otherwise, SP serves the user using the same channel
+by recording the text message sent by the user, along with
+the ticket extracted from the authentication transcript. The
+SP may then manually inspect the text message and add the
+associated ticket to its blacklist.
+Alternatively, by integrating it with SSL serverauthentication, BLAC authentication can be turned into a
+mutual authentication, in which the user authenticates the
+server’s identity but the server is ensured that and only that
+the user is some well-behaving user.
+
+6.2 Experimental Results and Analysis
+For our experiments, we used a Dell GX745 desktop machine with an Intel dual-core 2.16 GHz CPU and 2GB of
+RAM, running Linux/Ubuntu 6.10. All the timings reported
+below are averaged over 10 randomized runs.
+We measured two time quantities related to the execution
+of the Authentication protocol: (1) the time it took for an
+SP to verify the authentication (i.e., step 4 of the protocol),
+and (2) the time it took for a user to inspect the blacklist
+and produce a proof (i.e., steps 2 and 3 of the protocol),
+with preprocessing enabled. The sum of these two quantities
+roughly represents the total latency incurred by the protocol
+as perceived by the user if we ignore the network I/O delay,
+which is network-dependent.
+When the blacklist was empty, it took the SP 0.06s to verify the authentication. When the blacklist had 400 entries
+instead, it took the server 0.46s to do the same. On the
+other hand, when the blacklist size was 0 and 400, the user
+spent 0.09ms and 0.73s respectively to inspect the blacklist and produce a proof. The estimated protocol latencies
+are thus 0.06s and 1.19s respectively. The total communication overhead due to the authentication protocol is roughly
+0.27KB per blacklist entry. Table 2 shows experimental figures collected with different blacklist sizes. Please see our
+For simplicity’s sake, the SP uses a self-signed key-pair to
+authenticate himself.
+
+100
+
+200
+
+400
+
+800
+
+1600
+
+0.18
+
+0.36
+
+0.73
+
+1.45
+
+2.85
+
+Time (in s) for SP to
+verify the proof (step 4)
+
+0.06
+
+0.16
+
+0.26
+
+0.46
+
+0.87
+
+1.68
+
+Estimated Protocol Latency
+(in s) perceived by User
+
+0.06
+
+0.34
+
+0.62
+
+1.19
+
+2.32
+
+4.53
+
+Communication
+Overhead (in KB)
+
+0.8
+
+27.7
+
+54.7
+
+108.6
+
+216.4
+
+431.8
+
+discussion in Section 7 that elaborates on the feasibility of
+our construction in real applications.
+Note that our authentication protocol scales well with the
+number of cores in CPUs because virtually all computation
+that grows linearly with the blacklist size is parallelizable.15
+As evidence, on our dual-core machine, all the timings we
+collected using our original single-threaded implementation
+almost doubled the figures we just reported above. In our
+current multi-threaded implementation, the library interface
+includes a bootstrapping function that takes the number of
+threads as an input.
+
+7. DISCUSSION
+Efficiency.
+In our cryptographic construction, blacklist verification
+requires O(n) computations, where n is the number of entries in the blacklist. As indicated by Section 6, our scheme
+would support 1,600 blacklist entries with 2 authentications
+per second on an 8-core machine.16 Since anonymous authentications will be used at SPs such as Wikipedia only for
+certain operations such as editing webpages, we believe this
+performance is reasonable. Consider two extreme examples.
+In March 2007, Wikipedia averaged about two edits per second to its set of English webpages.17 Likewise, YouTube
+reported less than one video upload per second on average
+in July 2006.18 The communication complexity required to
+sustain one or two authentications per second with 1,600
+blacklist entries would be about 3.5 to 7 Mbps for the SP.
+Such a data rate would be high for an individual server,
+but would be reasonable for large SPs such as YouTube and
+Wikipedia, which may have distributed servers across the
+nation for handling large bandwidth. Based on these calculations, SPs with much lower authentication rates than
+Wikipedia or YouTube (e.g., one authentication every few
+seconds) can easily be served on commodity hardware and
+T-1 lines. We reiterate that our construction is the first to
+allow anonymous blacklisting without TTPs, and more efficient blacklist checking, perhaps in O(log n) or O(1) time, is
+an open problem that deserves further research. Faster verification will allow much higher rates of authentication while
+15
+
+The only exception is the two calls to SHA-1, but they take
+comparably negligible time.
+16
+An 8-core Mac Pro with two 3.0GHz Quad-Core Intel Xeon
+processors was available for under $4,000 at the time of writing.
+17
+
+14
+
+0
+0.00
+
+http://stats.wikimedia.org/EN/PlotsPngDatabaseEdits.htm
+http://technology.guardian.co.uk/weekly/story/0,,
+1823959,00.html
+
+18
+
+supporting extremely large blacklists, and this problem is,
+therefore, worthy of further study.
+
+Interleaving authentications.
+One concern is that an individual user may attempt to
+interleave multiple authentications and take up several hundreds of entries in the blacklist by misbehaving several times
+in a short span of time. Such an attack is possible because
+users can parallelize several anonymous sessions with an SP.
+A promising approach would be to use a scheme such as
+Camenisch et al.’s periodic n-times anonymous authentication [9] to rate-limit the number of anonymous accesses from
+users. In such a scheme, an anonymous user would be able
+to access the SP anonymously at most n times within a time
+period. For example, for n = 10 and a time period of 1 day,
+a single user would be able to contribute at most 10 entries
+to the blacklist in a given day.
+Remark. Since concurrent sessions are preempted while
+an entry is added (atomically) to a blacklist, our system
+guarantees that once an entry is added to the blacklist at
+time t, the blacklisted user will not be able to access the
+service after time t (or until unblacklisted at a later time).
+
+Enrollment issues.
+We assume that the Group Manager issues only one credential per legitimate user and assume it is difficult to perform “Sybil” attacks [22], where users are able to obtain multiple credentials by posing as different identities. The Sybil
+attack, however, is a challenging problem that any credential system is vulnerable to, and we do not attempt to solve
+this problem here.
+In a real deployment of a BLAC system, users may eventually misplace their credentials, or have them compromised.
+Since that credential may be blacklisted by an SP, issuing
+a new credential to a user can help that user circumvent
+anonymous blacklisting. As a trade-off, we suggest that if
+a user misplaces his or her credential, that user is issued a
+pseudonymous credential for a certain amount of time called
+the “linkability window.” If a user repeatedly attempts to
+acquire new credentials, the linkability window of that user
+can be increased to curb misbehavior.
+
+Allowing the sharing of (entries in) blacklists.
+We have presented our construction of the BLAC system
+in which an SP Bob cannot use an entry from another SP’s
+blacklist (corresponding to Alice) to prevent Alice from successfully authenticating to Bob. Nevertheless, in some applications, a group of SPs may desire to block users misbehaving at any one of the SPs.
+Our system can be modified to allow such sharing—
+instead of computing the tag as t = H(s||Bob)x , one computes the tag as t = H(s)x regardless of the SP for which
+the ticket is meant. Tickets with tags computed this way
+are sharable between SPs because adding a user’s ticket borrowed from another SP is no different from the SP obtaining
+the ticket directly from the user. Such a change in construction, however, makes it necessary to redefine security
+notions. For example, Wikipedia may decide to add only
+YouTube’s tickets to its blacklist. If a user’s authentication
+fails, Wikipedia knows that the user has previously visited
+YouTube. Even though the user is anonymous, an SP can
+learn information about the user’s behavior at another SP.
+
+Revoking compromised TPMs.
+Concurrently and independently, Brickell and Li [8] have
+proposed a method to unlinkably revoke compromised
+Trusted Platform Modules (TPMs) [34]. While they focus
+on revoking compromised hardware, as opposed to blacklisting misbehaving users, their construction is similar to
+ours. Both solutions use a protocol for proving the inequality of multiple discrete logarithms to prove that a user is
+not revoked/blacklisted. Nevertheless, signatures in their
+solution are not bound to the verifier’s identity and authenticating even once could result in the global revocation of
+the prover. Our solution provides more privacy by allowing
+sharing and non-sharing of blacklist entries among verifiers.
+Finally, their solution is RSA-based while ours is pairingbased.
+
+8. CONCLUSION
+We motivated the need for anonymous credential systems
+that support anonymous blacklisting and subjective judging
+without relying on trusted third parties that are capable of
+deanonymizing (or linking) users. All previous solutions rely
+on either trusted third parties or restricted formulations of
+misbehavior. We provide the first cryptographic construction that simultaneously provides anonymous blacklisting,
+subjective judging, and eliminates the reliance on trusted
+third parties capable of revoking the privacy of users.
+
+9. ACKNOWLEDGMENTS
+This work was supported in part by the Institute for Security Technology Studies, under Grant number 2005-DDBX-1091 awarded by the Bureau of Justice Assistance, and
+the National Science Foundation, under grant CNS-0524695.
+The views and conclusions do not necessarily represent those
+of the sponsors.
+
+10. REFERENCES
+[1] G. Ateniese, J. Camenisch, M. Joye, and G. Tsudik. A
+practical and provably secure coalition-resistant group
+signature scheme. In CRYPTO, volume 1880 of LNCS,
+pages 255–270. Springer, 2000.
+[2] G. Ateniese, D. X. Song, and G. Tsudik.
+Quasi-efficient revocation in group signatures. In
+Financial Cryptography, volume 2357 of LNCS, pages
+183–197. Springer, 2002.
+[3] M. H. Au, S. S. M. Chow, and W. Susilo. Short
+e-cash. In INDOCRYPT, volume 3797 of LNCS, pages
+332–346. Springer, 2005.
+[4] M. H. Au, W. Susilo, and Y. Mu. Constant-size
+dynamic k-TAA. In SCN, volume 4116 of LNCS, pages
+111–125. Springer, 2006.
+[5] M. Bellare and P. Rogaway. Random oracles are
+practical: a paradigm for designing efficient protocols.
+In Proceedings of the 1st ACM conference on
+Computer and communications security, pages 62–73.
+ACM Press, 1993.
+[6] D. Boneh, X. Boyen, and H. Shacham. Short group
+signatures. In CRYPTO, volume 3152 of LNCS, pages
+41–55. Springer, 2004.
+[7] D. Boneh and H. Shacham. Group signatures with
+verifier-local revocation. In ACM Conference on
+Computer and Communications Security, pages
+168–177. ACM, 2004.
+
+[8] E. Brickell and J. Li. Enhanced privacy ID: A direct
+anonymous attestation scheme with enhanced
+revocation capabilities. Cryptology ePrint Archive,
+Report 2007/194, 2007. http://eprint.iacr.org/.
+[9] J. Camenisch, S. Hohenberger, M. Kohlweiss,
+A. Lysyanskaya, and M. Meyerovich. How to win the
+clonewars: efficient periodic n-times anonymous
+authentication. In ACM Conference on Computer and
+Communications Security, pages 201–210. ACM, 2006.
+[10] J. Camenisch, S. Hohenberger, and A. Lysyanskaya.
+Compact e-cash. In EUROCRYPT, volume 3494 of
+LNCS, pages 302–321. Springer, 2005.
+[11] J. Camenisch, S. Hohenberger, and A. Lysyanskaya.
+Balancing accountability and privacy using e-cash
+(extended abstract). In SCN, volume 4116 of LNCS,
+pages 141–155. Springer, 2006.
+[12] J. Camenisch and A. Lysyanskaya. An efficient system
+for non-transferable anonymous credentials with
+optional anonymity revocation. In EUROCRYPT,
+volume 2045 of LNCS, pages 93–118. Springer, 2001.
+[13] J. Camenisch and A. Lysyanskaya. Dynamic
+accumulators and application to efficient revocation of
+anonymous credentials. In CRYPTO, volume 2442 of
+LNCS, pages 61–76. Springer, 2002.
+[14] J. Camenisch and A. Lysyanskaya. A signature scheme
+with efficient protocols. In SCN, volume 2576 of
+LNCS, pages 268–289. Springer, 2002.
+[15] J. Camenisch and A. Lysyanskaya. Signature schemes
+and anonymous credentials from bilinear maps. In
+CRYPTO, volume 3152 of LNCS, pages 56–72.
+Springer, 2004.
+[16] J. Camenisch and V. Shoup. Practical verifiable
+encryption and decryption of discrete logarithms. In
+CRYPTO, volume 2729 of LNCS, pages 126–144.
+Springer, 2003.
+[17] J. Camenisch and M. Stadler. Efficient group
+signature schemes for large groups (extended
+abstract). In CRYPTO, volume 1294 of LNCS, pages
+410–424. Springer, 1997.
+[18] D. Chaum and E. van Heyst. Group signatures. In
+EUROCRYPT, pages 257–265, 1991.
+[19] R. Cramer, I. Damgård, and B. Schoenmakers. Proofs
+of partial knowledge and simplified design of witness
+hiding protocols. In CRYPTO, volume 839 of LNCS,
+pages 174–187. Springer, 1994.
+[20] I. Damgård. Efficient concurrent zero-knowledge in the
+auxiliary string model. In EUROCRYPT, pages
+418–430, 2000.
+[21] R. Dingledine, N. Mathewson, and P. F. Syverson.
+Tor: The second-generation onion router. In USENIX
+Security Symposium, pages 303–320. USENIX, 2004.
+[22] J. R. Douceur. The sybil attack. In IPTPS, volume
+2429 of LNCS, pages 251–260. Springer, 2002.
+[23] S. Goldwasser, S. Micali, and C. Rackoff. The
+knowledge complexity of interactive proof systems.
+SIAM J. Comput., 18(1):186–208, 1989.
+[24] S. Goldwasser, S. Micali, and R. L. Rivest. A digital
+signature scheme secure against adaptive
+chosen-message attacks. SIAM J. Comput.,
+17(2):281–308, 1988.
+[25] P. C. Johnson, A. Kapadia, P. P. Tsang, and S. W.
+
+Smith. Nymble: Anonymous IP-address blocking. In
+Privacy Enhancing Technologies Symposium (PET
+’07), Ottawa, Canada, June 2007. To appear.
+[26] A. Kiayias and M. Yung. Group signatures with
+efficient concurrent join. In EUROCRYPT, volume
+3494 of LNCS, pages 198–214. Springer, 2005.
+[27] J. K. Liu, V. K. Wei, and D. S. Wong. Linkable
+spontaneous anonymous group signature for ad hoc
+groups (extended abstract). In ACISP, volume 3108 of
+LNCS, pages 325–335. Springer, 2004.
+[28] L. Nguyen. Accumulators from bilinear pairings and
+applications. In CT-RSA, volume 3376 of LNCS,
+pages 275–292. Springer, 2005.
+[29] L. Nguyen and R. Safavi-Naini. Dynamic k-times
+anonymous authentication. In ACNS, volume 3531 of
+LNCS, pages 318–333. Springer, 2005.
+[30] C.-P. Schnorr. Efficient signature generation by smart
+cards. J. Cryptology, 4(3):161–174, 1991.
+[31] P. F. Syverson, S. G. Stubblebine, and D. M.
+Goldschlag. Unlinkable serial transactions. In
+Financial Cryptography, volume 1318 of LNCS, pages
+39–56. Springer, 1997.
+[32] I. Teranishi, J. Furukawa, and K. Sako. k-times
+anonymous authentication (extended abstract). In
+ASIACRYPT, volume 3329 of LNCS, pages 308–322.
+Springer, 2004.
+[33] I. Teranishi and K. Sako. k-times anonymous
+authentication with a constant proving cost. In Public
+Key Cryptography, volume 3958 of LNCS, pages
+525–542. Springer, 2006.
+[34] TPM Work Group. TCG TPM specification version
+1.2 revision 94. Technical report, Trusted Computing
+Group, 2006.
+[35] P. P. Tsang, M. H. Au, A. Kapadia, and S. W. Smith.
+Blacklistable anonymous credentials: Blocking
+misbehaving users without TTPs (full version).
+Technical Report TR2007-601, Dartmouth College,
+Sep 2007.
+[36] P. P. Tsang and V. K. Wei. Short linkable ring
+signatures for e-voting, e-cash and attestation. In
+ISPEC, volume 3439 of LNCS, pages 48–60. Springer,
+2005.
+[37] P. P. Tsang, V. K. Wei, T. K. Chan, M. H. Au, J. K.
+Liu, and D. S. Wong. Separable linkable threshold ring
+signatures. In INDOCRYPT, volume 3348 of LNCS,
+pages 384–398. Springer, 2004.
+
+APPENDIX
+A.
+
+SECURITY GAMES
+
+We use a game-based approach to define the security formally. The adversary’s capabilities are modeled by oracles,
+which are stateful and together share a private state denoted
+by state. state contains three counters m, n and a, which
+are initially set to 0, and six sets UP , UA , UB , SP , SA , AA ,
+which are initially set to ∅. In the following, we describe the
+oracles.
+P-Join This oracle simulates the registration protocol between an honest user and an honest GM. Upon invocation, the oracle increments n by 1, sets state :=
+state||hn, transn , credn i, where transn is the transcript
+of the registration protocol and certn is the resulting
+
+user credential. (transn , n) is returned to the adversary
+and n is added to UP .
+A-Join This oracle simulates the registration protocol between a corrupt user and an honest GM. n is incremented by 1 after the oracle is invoked. The oracle
+also sets state := state||hn, transn , ⊥i, where transn is
+again the protocol transcript. The oracle adds n to UA
+and returns n to the adversary.
+B-Join This oracle simulates the registration protocol between an honest user and a corrupt GM. Upon invocation, the oracle increments n by 1, sets state :=
+state||hn, ⊥, credn i, where credn is the credential issued
+to the user by the adversary. n is added to UB and is
+returned to the adversary.
+Corrupt(i) This oracle allows the adversary to corrupt an
+honest user. Upon invocation, i is removed from UB
+or UP and is added to UA . credi , together with all
+randomness used during any communication attempt
+involving user i are returned to the adversary.
+Add-SP This oracle allows the adversary to introduce an
+SP into the system. When invoked, m is incremented
+by 1, then added to SP , and returned to the adversary.
+P-Auth(i,j) On input i such that i ∈ UP ∪ UB and j ∈
+SP , the oracle uses credi to produce an authentication
+transcript πa with SPj . (πa , a) is recorded in state and
+returned to the adversary. a is then incremented by 1.
+A-Auth(j) On input j ∈ SP , the oracle acts on behalf of
+the honest SPj and interacts with a corrupt user in the
+authentication protocol. The authentication transcript
+πa is recorded in state after the protocol execution and
+a is returned to the adversary. a is added to the set AA
+and finally incremented by 1.
+B-Auth(i,j) On input i such that i ∈ UB ∪ UP , the oracle
+acts on behalf of an honest user and interacts with a
+corrupt SPj in the authentication protocol. If j 6∈ SA , j
+is removed from SP and added to SA . The authentication transcript πa is recorded in state after the protocol
+execution and a is returned to the adversary. Finally,
+a is incremented by 1.
+AddToBL(i,j) On input i such that i < a, the ticket τi =
+Extract(πi ) is added to SPj ’s blacklist.
+RemoveFromBL(j,τ ) On input j and τ such that τ is in
+SPj ’s blacklist, τ is removed from that blacklist.
+
+A.1
+
+Mis-authentication
+Blacklistability
+
+Resistance
+
+and
+
+Mis-authentication resistance is in fact implied by Blacklistability: if someone can authenticate to an SP without
+having registered, she can authenticate after being blacklisted by mounting an attack against mis-authentication resistance. The following game between challenger C and adversary A formally defines Blacklistability.
+Setup Phase. C takes a sufficiently large security parameter and generates gpk and gsk. gpk is given to A.
+Probing Phase. A is allowed to issue queries to all the
+oracles except B-Join.
+End Game Phase. A outputs j such that j ∈ SP . A wins
+the game if both of the following are true:
+• In the End Game Phase, there exists a series
+of A-Auth(j) and AddToBL oracle queries
+(A-Auth(j),
+AddToBL(a1 , j),
+A-Auth(j),
+AddToBL(a2 , j), · · · , A-Auth(j), AddToBL(ak , j),
+A-Auth(j)) such that ax > ay for all x > y, a1 is
+
+the return value of the first A-Auth(j) query in the
+End Game Phase, ax ∈ AA for all x ∈ {1, · · · , k},
+and all these k + 1 A-Auth queries are successful.
+We remark that the adversary is allowed to make
+any queries (except B-Join) within the series.
+• k >= |UA |+QR where QR is the number of times A
+invokes the oracle RemoveFromBL(j,Extract(πai ))
+for i = 1, · · · , k.
+
+A.2 Anonymity
+The following game between challenger C and adversary
+A formally defines anonymity.
+Setup Phase. C takes a sufficiently large security parameter and generates gpk and gsk, which are given to A.
+Probing Phase. A is allowed to issue queries to all the
+oracles except P-Join.
+Challenge Phase. Sometime during the game, A outputs
+i0 , i1 , j such that i0 , i1 ∈ UB . C then flips a fair coin
+b ∈ {0, 1}. Depending on j ∈ SP or not, A invokes the
+P-Auth or B-Auth oracle on j, without specifying i. C
+answer using ib .
+Probing Phase 2. A is allowed to issue queries as in Probing Phase.
+End Game Phase. A outputs a guess bit b′ . A wins the
+game if b = b′ and at least one of the following is true:
+• (Case I.) In the probing phase, A never invokes
+AddToBL(i, j) such that πi is an authentication
+transcript from user i0 or i1 . (Technically speaking, A is allowed to make such a query provided
+that just before the challenge phase, it has invoked RemoveFromBL(j, τ ) to remove the ticket
+τ of i0 or i1 from SPj ’s blacklist.) In probing
+phase 2, A never invokes AddToBL(i, j) such that
+i = P-Auth(ib , j) or i = B-Auth(ib , j).
+• (Case II.) In the probing phase, A invokes
+AddToBL(i1 , j) and AddToBL(i2 , j) such that
+πi1 and πi2 are authentication transcripts
+from user i0 and i1 respectively. A does not
+and
+invoke
+RemoveFromBL(j, Extract(πi1 ))
+RemoveFromBL(j, Extract(πi2 )). In probing phase
+2, A never invokes RemoveFromBL(j, Extract(πi ))
+such that i = P-Auth(ib , j) or i = B-Auth(ib , j).
+
+A.3 Non-frameability
+The follow game between challenger C and adversary A
+formally defines Non-frameability.
+Setup Phase. C takes a sufficiently large security parameter and generates gpk and gsk, which are given to A.
+Probing Phase. A is allowed to issue queries to all the
+oracles except P-Join.
+End Game Phase. A outputs i such that i ∈ UB , A wins
+the game if at least one of the following is true:
+• (Case I.) A outputs j. A invokes P-Auth(i,j) or
+B-Auth(i,j) such that P-Auth or B-Auth return
+an authentication transcript indicating the authentication attempt is unsuccessful. In the probing
+phase, A never invokes AddToBL(k,j) such that
+πk is an authentication transcript from user i.
+• (Case II.) Let Si = {Extract(π)} where π is any
+authentication transcript in the P-Auth, B-Auth
+query involving user i. A outputs πA such that πA
+is the transcript of any A-Auth of B-Auth query
+and Extract(πA ) ∈ Si .
+
+

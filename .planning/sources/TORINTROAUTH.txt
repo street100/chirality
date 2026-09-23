@@ -1,0 +1,840 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>The introduction protocol [INTRO-PROTOCOL] - Tor Specifications</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Tor Specifications</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://gitlab.torproject.org/tpo/core/torspec/" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-code-fork"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <p><a id="rend-spec-v3.txt-3"></a></p>
+<h1 id="INTRO-PROTOCOL"><a class="header" href="#INTRO-PROTOCOL">The introduction protocol</a></h1>
+<p>The introduction protocol proceeds in three steps.</p>
+<p>First, a hidden service host builds an anonymous circuit to a Tor
+node and registers that circuit as an introduction point.</p>
+<p>Single Onion Services attempt to build a non-anonymous single-hop circuit,
+but use an anonymous 3-hop circuit if:</p>
+<pre><code class="language-text">     * the intro point is on an address that is configured as unreachable via
+       a direct connection, or
+     * the initial attempt to connect to the intro point over a single-hop
+       circuit fails, and they are retrying the intro point connection.
+
+        [After 'First' and before 'Second', the hidden service publishes its
+        introduction points and associated keys, and the client fetches
+        them as described in section [HSDIR] above.]
+</code></pre>
+<p>Second, a client builds an anonymous circuit to the introduction
+point, and sends an introduction request.</p>
+<p>Third, the introduction point relays the introduction request along
+the introduction circuit to the hidden service host, and acknowledges
+the introduction request to the client.</p>
+<p><a id="rend-spec-v3.txt-3.1"></a></p>
+<h2 id="REG_INTRO_POINT"><a class="header" href="#REG_INTRO_POINT">Registering an introduction point</a></h2>
+<p><a id="rend-spec-v3.txt-3.1.1"></a></p>
+<h3 id="EST_INTRO"><a class="header" href="#EST_INTRO">Extensible ESTABLISH_INTRO protocol</a></h3>
+<p>When a hidden service is establishing a new introduction point, it
+sends an ESTABLISH_INTRO message with the following contents:</p>
+<pre><code class="language-text">     AUTH_KEY_TYPE    [1 byte]
+     AUTH_KEY_LEN     [2 bytes]
+     AUTH_KEY         [AUTH_KEY_LEN bytes]
+     N_EXTENSIONS     [1 byte]
+     N_EXTENSIONS times:
+        EXT_FIELD_TYPE [1 byte]
+        EXT_FIELD_LEN  [1 byte]
+        EXT_FIELD      [EXT_FIELD_LEN bytes]
+     HANDSHAKE_AUTH   [MAC_LEN bytes]
+     SIG_LEN          [2 bytes]
+     SIG              [SIG_LEN bytes]
+</code></pre>
+<p>The AUTH_KEY_TYPE field indicates the type of the introduction point
+authentication key and the type of the MAC to use in
+HANDSHAKE_AUTH. Recognized types are:</p>
+<pre><code class="language-text">       [00, 01] -- Reserved for legacy introduction messages; see
+                   [LEGACY_EST_INTRO below]
+       [02] -- Ed25519; SHA3-256.
+</code></pre>
+<p>The AUTH_KEY_LEN field determines the length of the AUTH_KEY
+field. The AUTH_KEY field contains the public introduction point
+authentication key, KP_hs_ipt_sid.</p>
+<p>The EXT_FIELD_TYPE, EXT_FIELD_LEN, EXT_FIELD entries are reserved for
+extensions to the introduction protocol. Extensions with
+unrecognized EXT_FIELD_TYPE values must be ignored.
+(<code>EXT_FIELD_LEN</code> may be zero, in which case EXT_FIELD is absent.)</p>
+<pre><code class="language-text">   Unless otherwise specified in the documentation for an extension type:
+      * Each extension type SHOULD be sent only once in a message.
+      * Parties MUST ignore any occurrences all occurrences of an extension
+        with a given type after the first such occurrence.
+      * Extensions SHOULD be sent in numerically ascending order by type.
+   (The above extension sorting and multiplicity rules are only defaults;
+   they may be overridden in the descriptions of individual extensions.)
+</code></pre>
+<p>The following extensions are currently defined:</p>
+<div class="table-wrapper"><table><thead><tr><th><code>EXT_FIELD_TYPE</code></th><th>Name</th></tr></thead><tbody>
+<tr><td><code>[01]</code></td><td><a href="#DOS_PARAMS"><code>DOS_PARAMS</code></a></td></tr>
+</tbody></table>
+</div>
+<p>The HANDSHAKE_AUTH field contains the MAC of all earlier fields in
+the message using as its key the shared per-circuit material (“KH”)
+generated during the
+<a href="../tor-spec/setting-circuit-keys.html">circuit extension protocol</a>.
+It prevents replays of
+ESTABLISH_INTRO messages.</p>
+<blockquote>
+<p>Note that this usage of “KH” is ad-hoc,
+and should not be emulated elsewhere:
+it lacks any protocol-specific personalization strings.
+For a better design, see
+<a href="../proposals/357-circ-key-exporters.html">proposal 357</a></p>
+<p>Note that in our obsolete <a href="../tor-spec/obsolete-circuit-extension.html#TAP">TAP</a>
+circuit-extension handshake,
+“KH” was sent in the clear.
+TAP is obsolete, and unsupported on the network,
+and so it cannot be used with v3 onion services.</p>
+</blockquote>
+<p>SIG_LEN is the length of the signature.</p>
+<p>SIG is a signature, using AUTH_KEY, of all contents of the message, up
+to but not including SIG_LEN and SIG. These contents are prefixed
+with the string “Tor establish-intro cell v1”.</p>
+<blockquote>
+<p>(Note that this string is <em>sic</em>;
+it predates our efforts to distinguish cells from relay messages.)</p>
+</blockquote>
+<p>Upon receiving an ESTABLISH_INTRO message, a Tor node first decodes the
+key and the signature, and checks the signature. The node must reject
+the ESTABLISH_INTRO message and destroy the circuit in these cases:</p>
+<pre><code class="language-text">        * If the key type is unrecognized
+        * If the key is ill-formatted
+        * If the signature is incorrect
+        * If the HANDSHAKE_AUTH value is incorrect
+
+        * If the circuit is already a rendezvous circuit.
+        * If the circuit is already an introduction circuit.
+          [TODO: some scalability designs fail there.]
+        * If the key is already in use by another circuit.
+</code></pre>
+<p>Otherwise, the node must associate the key with the circuit, for use
+later in INTRODUCE1 messages.</p>
+<p><a id="rend-spec-v3.txt-3.1.1.1"></a></p>
+<h4 id="EST_INTRO_DOS_EXT"><a class="header" href="#EST_INTRO_DOS_EXT">Denial-of-Service defense extension (DOS_PARAMS)</a></h4>
+<p><a id="DOS_PARAMS"></a>
+The <code>DOS_PARAMS</code> extension
+in ESTABLISH_INTRO
+is used to send Denial-of-Service (DoS) parameters to
+the introduction point in order for it to apply them for the introduction
+circuit.</p>
+<p>This is for the <a href="../dos-spec/overview.html#hs-intro-rate">rate limiting DoS mitigation</a> specifically.</p>
+<p>The <code>EXT_FIELD_TYPE</code> value for the <code>DOS_PARAMS</code> extension is <code>[01]</code>.</p>
+<p>The content is defined as follows:</p>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Size</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>N_PARAMS</code></td><td>1</td><td>Number of parameters</td></tr>
+<tr><td><code>N_PARAMS</code> times:</td><td></td><td></td></tr>
+<tr><td>- PARAM_TYPE</td><td>1</td><td>Identifier for a parameter</td></tr>
+<tr><td>- PARAM_VALUE</td><td>8</td><td>Integer value</td></tr>
+</tbody></table>
+</div>
+<p>Recognized values for <code>PARAM_TYPE</code> in this extension are:</p>
+<div class="table-wrapper"><table><thead><tr><th><code>PARAM_TYPE</code></th><th>Name</th><th>Min</th><th>Max</th></tr></thead><tbody>
+<tr><td><code>[01]</code></td><td><a href="#DOS_INTRODUCE2_RATE_PER_SEC"><code>DOS_INTRODUCE2_RATE_PER_SEC</code></a></td><td>0</td><td>0x7fffffff</td></tr>
+<tr><td><code>[02]</code></td><td><a href="#DOS_INTRODUCE2_BURST_PER_SEC"><code>DOS_INTRODUCE2_BURST_PER_SEC</code></a></td><td>0</td><td>0x7fffffff</td></tr>
+</tbody></table>
+</div>
+<p>Together, these parameters configure a token bucket
+that determines how many INTRODUCE2 messages
+the introduction point may send to the service.</p>
+<span id="DOS_INTRODUCE2_RATE_PER_SEC">
+The `DOS_INTRODUCE2_RATE_PER_SEC` parameter defines the maximum
+average rate of messages;
+</span>
+<span id="DOS_INTRODUCE2_BURST_PER_SEC">
+The `DOS_INTRODUCE2_BURST_PER_SEC` parameter defines the largest
+allowable burst of messages
+(that is, the size of the token bucket).
+</span>
+<blockquote>
+<p>Technically speaking, the <code>BURST</code> parameter is misnamed
+in that it is not actually “per second”:
+only a <em>rate</em> has an associated time.</p>
+</blockquote>
+<p>If either of these parameters is set to 0,
+the defense is disabled,
+and the introduction point should ignore the other parameter.</p>
+<p>If the burst is lower than the rate,
+the introduction point SHOULD ignore the extension.</p>
+<blockquote>
+<p>Using this extension extends the body of the ESTABLISH_INTRO message by 19
+bytes bringing it from 134 bytes to 155 bytes.</p>
+</blockquote>
+<p>When this extension is not <em>sent</em>,
+introduction points use default settings
+taken from taken from the consensus parameters
+<a href="../param-spec.html#HiddenServiceEnableIntroDoSDefense">HiddenServiceEnableIntroDoSDefense</a>,
+<a href="../param-spec.html#HiddenServiceEnableIntroDoSRatePerSec">HiddenServiceEnableIntroDoSRatePerSec</a>,
+and
+<a href="../param-spec.html#HiddenServiceEnableIntroDoSBurstPerSec">HiddenServiceEnableIntroDoSBurstPerSec</a>.</p>
+<p>This extension can only be used with relays supporting the subprotocol
+<a href="../tor-spec/subprotocol-versioning.html#HSIntro">“HSIntro=5”</a>.</p>
+<p>Introduced in tor-0.4.2.1-alpha.</p>
+<p><a id="rend-spec-v3.txt-3.1.2"></a></p>
+<h2 id="LEGACY_EST_INTRO"><a class="header" href="#LEGACY_EST_INTRO">Registering an introduction point on a legacy Tor node</a></h2>
+<blockquote>
+<p>This section is obsolete and refers to a workaround for now-obsolete Tor
+relay versions. It is included for historical reasons.</p>
+</blockquote>
+<p>Tor nodes should also support an older version of the ESTABLISH_INTRO
+message, first documented in rend-spec.txt. New hidden service hosts
+must use this format when establishing introduction points at older
+Tor nodes that do not support the format above in [EST_INTRO].</p>
+<p>In this older protocol, an ESTABLISH_INTRO message contains:</p>
+<pre><code class="language-text">        KEY_LEN        [2 bytes]
+        KEY            [KEY_LEN bytes]
+        HANDSHAKE_AUTH [20 bytes]
+        SIG            [variable, up to end of relay message body]
+
+   The KEY_LEN variable determines the length of the KEY field.
+</code></pre>
+<p>The KEY field is the ASN1-encoded legacy RSA public key that was also
+included in the hidden service descriptor.</p>
+<p>The HANDSHAKE_AUTH field contains the SHA1 digest of (KH | “INTRODUCE”).</p>
+<p>The SIG field contains an RSA signature, using PKCS1 padding, of all
+earlier fields.</p>
+<p>Older versions of Tor always use a 1024-bit RSA key for these introduction
+authentication keys.</p>
+<p><a id="rend-spec-v3.txt-3.1.3"></a></p>
+<h3 id="INTRO_ESTABLISHED"><a class="header" href="#INTRO_ESTABLISHED">Acknowledging establishment of introduction point</a></h3>
+<p>After setting up an introduction circuit, the introduction point reports its
+status back to the hidden service host with an INTRO_ESTABLISHED message.</p>
+<p>The INTRO_ESTABLISHED message has the following contents:</p>
+<pre><code class="language-text">     N_EXTENSIONS [1 byte]
+     N_EXTENSIONS times:
+       EXT_FIELD_TYPE [1 byte]
+       EXT_FIELD_LEN  [1 byte]
+       EXT_FIELD      [EXT_FIELD_LEN bytes]
+</code></pre>
+<p>Older versions of Tor send back an empty INTRO_ESTABLISHED message instead.
+Services must accept an empty INTRO_ESTABLISHED message from a legacy relay.
+[The above paragraph is obsolete and refers to a workaround for
+now-obsolete Tor relay versions. It is included for historical reasons.]</p>
+<p>The same rules for multiplicity, ordering, and handling unknown types
+apply to the extension fields here as described [EST_INTRO] above.</p>
+<p><a id="rend-spec-v3.txt-3.2"></a></p>
+<h2 id="SEND_INTRO1"><a class="header" href="#SEND_INTRO1">Sending an INTRODUCE1 message to the introduction point</a></h2>
+<p>In order to participate in the introduction protocol, a client must
+know the following:</p>
+<pre><code class="language-text">     * An introduction point for a service.
+     * The introduction authentication key for that introduction point.
+     * The introduction encryption key for that introduction point.
+</code></pre>
+<p>The client sends an INTRODUCE1 message to the introduction point,
+containing an identifier for the service, an identifier for the
+encryption key that the client intends to use, and an opaque blob to
+be relayed to the hidden service host.</p>
+<p>In reply, the introduction point sends an INTRODUCE_ACK message back to
+the client, either informing it that its request has been delivered,
+or that its request will not succeed.</p>
+<p>If the INTRODUCE_ACK message indicates success,
+the client SHOULD close the circuit to the introduction point,
+and not use it for anything else.
+If the INTRODUCE_ACK message indicates failure,
+the client MAY try a different introduction point.
+It MAY reach the different introduction point
+either by extending its introduction circuit an additional hop,
+or by building a new introduction circuit.</p>
+<pre><code class="language-text">   [TODO: specify what tor should do when receiving a malformed message. Drop it?
+          Kill circuit? This goes for all possible messages.]
+</code></pre>
+<p><a id="rend-spec-v3.txt-3.2.1"></a></p>
+<h3 id="FMT_INTRO1"><a class="header" href="#FMT_INTRO1">Extensible INTRODUCE1 message format</a></h3>
+<p>When a client is connecting to an introduction point, INTRODUCE1 messages
+should be of the form:</p>
+<pre><code class="language-text">     LEGACY_KEY_ID   [20 bytes]
+     AUTH_KEY_TYPE   [1 byte]
+     AUTH_KEY_LEN    [2 bytes]
+     AUTH_KEY        [AUTH_KEY_LEN bytes]
+     N_EXTENSIONS    [1 byte]
+     N_EXTENSIONS times:
+       EXT_FIELD_TYPE [1 byte]
+       EXT_FIELD_LEN  [1 byte]
+       EXT_FIELD      [EXT_FIELD_LEN bytes]
+     ENCRYPTED        [Up to end of relay message body]
+</code></pre>
+<p>The <code>ENCRYPTED</code> field is described in the [PROCESS_INTRO2] section.</p>
+<p>AUTH_KEY_TYPE is defined as in [EST_INTRO]. Currently, the only value of
+AUTH_KEY_TYPE for this message is an Ed25519 public key [02].</p>
+<p>The LEGACY_KEY_ID field is used to distinguish between legacy and new style
+INTRODUCE1 messages. In new style INTRODUCE1 messages, LEGACY_KEY_ID is 20 zero
+bytes. Upon receiving an INTRODUCE1 message, the introduction point checks the
+LEGACY_KEY_ID field. If LEGACY_KEY_ID is non-zero, the INTRODUCE1 message
+should be handled as a legacy INTRODUCE1 message by the intro point.</p>
+<p>Upon receiving a INTRODUCE1 message, the introduction point checks
+whether AUTH_KEY matches the introduction point authentication key for an
+active introduction circuit. It also checks whether the contents are at
+most 490 bytes (the size that will fit in a CGO-negotiated circuit).
+If so, the introduction point sends an
+INTRODUCE2 message with exactly the same contents to the service, and sends an
+INTRODUCE_ACK response to the client.</p>
+<p>(Note that the introduction point does not “clean up” the
+INTRODUCE1 message that it retransmits. Specifically, it does not
+change the order or multiplicity of the extensions sent by the
+client.)</p>
+<p>The same rules for multiplicity, ordering, and handling unknown types
+apply to the extension fields here as described [EST_INTRO] above.</p>
+<p><a id="rend-spec-v3.txt-3.2.2"></a></p>
+<h3 id="INTRO_ACK"><a class="header" href="#INTRO_ACK">INTRODUCE_ACK message format.</a></h3>
+<p>An INTRODUCE_ACK message has the following fields:</p>
+<pre><code class="language-text">     STATUS       [2 bytes]
+     N_EXTENSIONS [1 bytes]
+     N_EXTENSIONS times:
+       EXT_FIELD_TYPE [1 byte]
+       EXT_FIELD_LEN  [1 byte]
+       EXT_FIELD      [EXT_FIELD_LEN bytes]
+</code></pre>
+<p>Currently defined status values are:</p>
+<div class="table-wrapper"><table><thead><tr><th>STATUS</th><th>Name</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><strong><code>00 00</code></strong></td><td>SUCCESS</td><td>Success: message relayed to hidden service host.</td></tr>
+<tr><td><strong><code>00 01</code></strong></td><td>NOT_RECOGNIZED</td><td>Failure: service ID not recognized</td></tr>
+<tr><td><strong><code>00 02</code></strong></td><td>BAD_MESSAGE_FORMAT</td><td>Bad message format</td></tr>
+<tr><td><strong><code>00 03</code></strong></td><td>CANT_RELAY</td><td>Can’t relay message to service</td></tr>
+</tbody></table>
+</div>
+<p>The same rules for multiplicity, ordering, and handling unknown types
+apply to the extension fields here as described [EST_INTRO] above.</p>
+<p><a id="rend-spec-v3.txt-3.3"></a></p>
+<h2 id="PROCESS_INTRO2"><a class="header" href="#PROCESS_INTRO2">Processing an INTRODUCE2 message at the hidden service.</a></h2>
+<p>Upon receiving an INTRODUCE2 message, the hidden service host checks whether
+the AUTH_KEY or LEGACY_KEY_ID field matches the keys for this
+introduction circuit.</p>
+<p>The service host then checks whether it has received a message with these
+contents or rendezvous cookie before. If it has, it silently drops it as a
+replay. (It must maintain a replay cache for as long as it accepts messages
+with the same encryption key. Note that the encryption format below should
+be non-malleable.
+See also <a href="#replay-resist">More notes on replay resistance</a> below.)</p>
+<p>If the message is not a replay, it decrypts the ENCRYPTED field,
+establishes a shared key with the client, and authenticates the whole
+contents of the message as having been unmodified since they left the
+client. There may be multiple ways of decrypting the ENCRYPTED field,
+depending on the chosen type of the encryption key. Requirements for
+an introduction handshake protocol are described in
+[INTRO-HANDSHAKE-REQS]. We specify one below in section
+[NTOR-WITH-EXTRA-DATA].</p>
+<p>The decrypted plaintext must have the form:</p>
+<pre><code class="language-text">      RENDEZVOUS_COOKIE                          [20 bytes]
+      N_EXTENSIONS                               [1 byte]
+      N_EXTENSIONS times:
+          EXT_FIELD_TYPE                         [1 byte]
+          EXT_FIELD_LEN                          [1 byte]
+          EXT_FIELD                              [EXT_FIELD_LEN bytes]
+      ONION_KEY_TYPE                             [1 bytes]
+      ONION_KEY_LEN                              [2 bytes]
+      ONION_KEY                                  [ONION_KEY_LEN bytes]
+      NSPEC      (Number of link specifiers)     [1 byte]
+      NSPEC times:
+          LSTYPE (Link specifier type)           [1 byte]
+          LSLEN  (Link specifier length)         [1 byte]
+          LSPEC  (Link specifier)                [LSLEN bytes]
+      PAD        (optional padding)              [up to end of plaintext]
+</code></pre>
+<p>Upon processing this plaintext, the hidden service makes sure that
+any required authentication is present in the extension fields, and
+then extends a rendezvous circuit to the node described in the LSPEC
+fields, using the ONION_KEY to complete the extension. As mentioned
+in [BUILDING-BLOCKS], the “TLS-over-TCP, IPv4” and “Legacy node
+identity” specifiers must be present.</p>
+<p>As of 0.4.1.1-alpha, clients include both IPv4 and IPv6 link specifiers
+in INTRODUCE1 messages. All available addresses SHOULD be included in the
+message, regardless of the address that the client actually used to extend
+to the rendezvous point.</p>
+<p>The hidden service should handle invalid or unrecognised link specifiers
+the same way as clients do in section 2.5.2.2. In particular, services
+SHOULD perform basic validity checks on link specifiers, and SHOULD NOT
+reject unrecognised link specifiers, to avoid information leaks.
+The list of link specifiers received here SHOULD either be rejected, or
+sent verbatim when extending to the rendezvous point, in the same order
+received.</p>
+<p>The service MAY reject the list of link specifiers if it is
+inconsistent with relay information from the directory, but SHOULD
+NOT modify it.</p>
+<p>The ONION_KEY_TYPE field is:</p>
+<p>[01] NTOR:          ONION_KEY is 32 bytes long.</p>
+<p>The ONION_KEY field describes the onion key that must be used when
+extending to the rendezvous point. It must be of a type listed as
+supported in the hidden service descriptor.</p>
+<p>The PAD field should be filled with zeros; its size should be chosen
+so that the INTRODUCE2 message occupies a fixed maximum size, in
+order to hide the length of the encrypted data.  (This maximum size is
+490, since we assume that a future Tor implementations will implement
+proposal 340 and thus lower the number of bytes that can be contained
+in a single relay message.)  Note also that current versions of Tor
+only pad the INTRODUCE2 message up to 246 bytes.</p>
+<p>(See also the discussion in [FMT_INTRO1] about maximum message size:
+the INTRODUCE1 body SHOULD be padded up to 490 bytes, but MUST NOT be
+more than 490 bytes.)</p>
+<p>Upon receiving a well-formed INTRODUCE2 message, the hidden service host
+will have:</p>
+<pre><code class="language-text">     * The information needed to connect to the client's chosen
+       rendezvous point.
+     * The second half of a handshake to authenticate and establish a
+       shared key with the hidden service client.
+     * A set of shared keys to use for end-to-end encryption.
+</code></pre>
+<p>The same rules for multiplicity, ordering, and handling unknown types
+apply to the extension fields here as described [EST_INTRO] above.</p>
+<h3 id="replay-resist"><a class="header" href="#replay-resist">More notes on replay resistance</a></h3>
+<p>Implementations SHOULD prevent INTRODUCE replays
+as well as reasonably practical.
+It is not, however, necessary
+to ensure that replays are completely impossible,
+so long as the opportunity for replay attacks remains limited.
+For example, it is not necessary to fsync() data to disk
+after each request.</p>
+<blockquote>
+<p>Rationale:</p>
+<p>The main reason we prevent INTRODUCE replays
+is to detect attempts by introduction points to mount replay attacks.
+Such attacks would cause the onion service to make a second circuit
+to the client’s chosen rendezvous point.
+If the attacker controls both the introduction point
+and the rendezvous point,
+they can use this to learn which original user circuit
+corresponded to the replayed request.
+This likely helps with traffic analysis somewhat,
+probably not <em>too</em> much if it can only be done occasionally.</p>
+<p>A second reason for preventing replays is to avoid DoS attacks:
+a single accepted INTRODUCE message causes an onion service
+to perform significant work,
+but doesn’t cost the sender too much in CPU or bandwidth.</p>
+<p>These attacks are <em>relatively</em> minor
+when only a limited number of messages can be successfully replayed,
+especially if the attacker can’t predict which replays will be detected.
+They become more problematic only when several messages
+can be replayed many times.</p>
+</blockquote>
+<h3 id="introduce1introduce2-extensions"><a class="header" href="#introduce1introduce2-extensions">INTRODUCE1/INTRODUCE2 Extensions</a></h3>
+<p>The following sections details the currently supported or reserved extensions
+of an <code>INTRODUCE1</code>/<code>INTRODUCE2</code> message.</p>
+<p>Note that there are two sets of extensions in <code>INTRODUCE1</code>/<code>INTRODUCE2</code>:
+one in the top-level, unencrypted portion,
+and one within the plaintext of ENCRYPTED
+(ie, after RENDEZVOUS_COOKIE and before ONION_KEY_TYPE.</p>
+<p>The sets of extensions allowed in each part of the message are disjoint:
+each extension is valid in only <em>one</em> of the two places.</p>
+<p>Nevertheless, for historical reasons,
+both kinds of extension are listed in this section,
+and they use nonoverlapping values of <code>EXT_FIELD_TYPE</code>.</p>
+<p>Encrypted extensions are semantically equivalent to,
+and share a namespace with,
+the <a href="../tor-spec/create-created-cells.html#additional-data">extensions used with circuit creation handshakes</a>.</p>
+<h4 id="congestion-control"><a class="header" href="#congestion-control">Congestion Control</a></h4>
+<p>This is used to request that the rendezvous circuit with the service be
+configured with congestion control.</p>
+<p>EXT_FIELD_TYPE:</p>
+<pre><code> \[01\] -- CC_FIELD_REQUEST.
+</code></pre>
+<p>This extension has zero body length. Its presence signifies that the client
+wants to use congestion control. The client MUST NOT set this field
+if the service did not list “2” in the <code>FlowCtrl</code> line in the
+descriptor. The client SHOULD NOT provide this field if the consensus parameter
+‘cc_alg’ is 0.</p>
+<p>This extension is equivalent to the <a href="../tor-spec/create-created-cells.html#CC_FIELD_REQUEST"><code>CC_FIELD_REQUEST</code></a> extension used
+in circuit creation, except that no response is sent by the onion service.</p>
+<p>This appears in the ENCRYPTED section of the INTRODUCE1/INTRODUCE2 message.</p>
+<h4 id="INTRO1_POW_EXT"><a class="header" href="#INTRO1_POW_EXT">Proof-of-Work (PoW)</a></h4>
+<p>This extension can be used to optionally attach a proof of work to the introduction request.
+The proof must be calculated using unique parameters appropriate for this specific service.
+An acceptable proof will raise the priority of this introduction request according to the proof’s verified computational effort.</p>
+<p>This is for the <a href="../dos-spec/overview.html#hs-intro-pow">proof-of-work DoS mitigation</a>, described in depth by the <a href="../hspow-spec/index.html">Proof of Work for onion service introduction</a> specification.</p>
+<p>This appears in the ENCRYPTED section of the INTRODUCE1/INTRODUCE2 message.</p>
+<p>The content is defined as follows:</p>
+<p>EXT_FIELD_TYPE:</p>
+<p>[02] – <code>PROOF_OF_WORK</code></p>
+<pre><code class="language-text">The EXT_FIELD content format is:
+
+    POW_SCHEME     [1 byte]
+    POW_NONCE      [16 bytes]
+    POW_EFFORT     [4 bytes]
+    POW_SEED       [4 bytes]
+    POW_SOLUTION   [16 bytes]
+
+where:
+
+POW_SCHEME is 1 for the `v1` protocol specified here
+POW_NONCE is the nonce value chosen by the client's solver
+POW_EFFORT is the effort value chosen by the client,
+           as a 32-bit integer in network byte order
+POW_SEED identifies which seed was in use, by its first 4 bytes
+POW_SOLUTION is a matching proof computed by the client's solver
+</code></pre>
+<p>Only SCHEME 1, <code>v1</code>, is currently defined.
+Other schemes may have a different format,
+after the POW_SCHEME byte.
+A correctly functioning client only submits solutions with a scheme and seed which were advertised by the server
+(using a “pow-params” Item in the
+<a href="hsdesc-encrypt.html#second-layer-plaintext">HS descriptor</a>)
+and have not yet expired.
+An extension with an unknown scheme or expired seed is suspicious and SHOULD result in introduction failure.</p>
+<p>Introduced in tor-0.4.8.1-alpha.</p>
+<h4 id="subprotocol-request"><a class="header" href="#subprotocol-request">Subprotocol Request</a></h4>
+<p>[RESERVED]</p>
+<p>EXT_FIELD_TYPE:</p>
+<pre><code> \[03\] -- Subprotocol Request
+</code></pre>
+<p><a id="rend-spec-v3.txt-3.3.1"></a></p>
+<h3 id="INTRO-HANDSHAKE-REQS"><a class="header" href="#INTRO-HANDSHAKE-REQS">Introduction handshake encryption requirements</a></h3>
+<p>When decoding the encrypted information in an INTRODUCE2 message, a
+hidden service host must be able to:</p>
+<pre><code class="language-text">     * Decrypt additional information included in the INTRODUCE2 message,
+       to include the rendezvous token and the information needed to
+       extend to the rendezvous point.
+
+     * Establish a set of shared keys for use with the client.
+
+     * Authenticate that the message has not been modified since the client
+       generated it.
+</code></pre>
+<p>Note that the old TAP-derived protocol of the previous hidden service
+design achieved the first two requirements, but not the third.</p>
+<h3 id="NTOR-WITH-EXTRA-DATA"><a class="header" href="#NTOR-WITH-EXTRA-DATA">Encryption handshake: hs-ntor</a></h3>
+<pre><code>TODO: relocate this
+</code></pre>
+<p>This is a variant of the <a href="../tor-spec/create-created-cells.html#ntor">ntor handshake</a>
+(also see “Anonymity and one-way
+authentication in key-exchange protocols” by Goldberg, Stebila, and
+Ustaoglu).</p>
+<p>It behaves the same as the ntor handshake, except that, in addition
+to negotiating forward secure keys, it also provides a means for
+encrypting non-forward-secure
+<a href="../tor-spec/create-created-cells.html#additional-data">“additional data”</a>
+to the server (in this case, to
+the hidden service host) as part of the handshake.
+This “additional data” is used to encode encrypted introduce1 extensions.</p>
+<p>Notation here is as for the in section 5.1.4 of tor-spec.txt, which defines
+the ntor handshake.</p>
+<p>The PROTOID for this variant is “tor-hs-ntor-curve25519-sha3-256-1”.
+We also use the following tweak values:</p>
+<pre><code class="language-text">      t_hsenc    = PROTOID | ":hs_key_extract"
+      t_hsverify = PROTOID | ":hs_verify"
+      t_hsmac    = PROTOID | ":hs_mac"
+      m_hsexpand = PROTOID | ":hs_key_expand"
+</code></pre>
+<p>To make an INTRODUCE1 message, the client must know a public encryption
+key B for the hidden service on this introduction circuit. The client
+generates a single-use keypair:</p>
+<p>x,X = KEYGEN()</p>
+<p>and computes:</p>
+<pre><code class="language-text">             intro_secret_hs_input = EXP(B,x) | AUTH_KEY | X | B | PROTOID
+             info = m_hsexpand | N_hs_subcred
+             hs_keys = SHAKE256_KDF(intro_secret_hs_input | t_hsenc | info, S_KEY_LEN+MAC_LEN)
+             ENC_KEY = hs_keys[0:S_KEY_LEN]
+             MAC_KEY = hs_keys[S_KEY_LEN:S_KEY_LEN+MAC_KEY_LEN]
+
+   and sends, as the ENCRYPTED part of the INTRODUCE1 message:
+
+          CLIENT_PK                [PK_PUBKEY_LEN bytes]
+          ENCRYPTED_DATA           [Padded to length of plaintext]
+          MAC                      [MAC_LEN bytes]
+</code></pre>
+<p>Substituting those fields into the INTRODUCE1 message body format
+described in [FMT_INTRO1] above, we have</p>
+<pre><code class="language-text">            LEGACY_KEY_ID               [20 bytes]
+            AUTH_KEY_TYPE               [1 byte]
+            AUTH_KEY_LEN                [2 bytes]
+            AUTH_KEY                    [AUTH_KEY_LEN bytes]
+            N_EXTENSIONS                [1 bytes]
+            N_EXTENSIONS times:
+               EXT_FIELD_TYPE           [1 byte]
+               EXT_FIELD_LEN            [1 byte]
+               EXT_FIELD                [EXT_FIELD_LEN bytes]
+            ENCRYPTED:
+               CLIENT_PK                [PK_PUBKEY_LEN bytes]
+               ENCRYPTED_DATA           [Padded to length of plaintext]
+               MAC                      [MAC_LEN bytes]
+</code></pre>
+<p>(This format is as documented in [FMT_INTRO1] above, except that here
+we describe how to build the ENCRYPTED portion.)</p>
+<p>Here, the encryption key plays the role of B in the regular ntor
+handshake, and the AUTH_KEY field plays the role of the node ID.
+The CLIENT_PK field is the public key X. The ENCRYPTED_DATA field is
+the message plaintext, encrypted with the symmetric key ENC_KEY. The
+MAC field is a MAC of all of the message from the AUTH_KEY through the
+end of ENCRYPTED_DATA, using the MAC_KEY value as its key.</p>
+<p>To process this format, the hidden service checks PK_VALID(CLIENT_PK)
+as necessary, and then computes ENC_KEY and MAC_KEY as the client did
+above, except using EXP(CLIENT_PK,b) in the calculation of
+intro_secret_hs_input. The service host then checks whether the MAC is
+correct. If it is invalid, it drops the message. Otherwise, it computes
+the plaintext by decrypting ENCRYPTED_DATA.</p>
+<p>The hidden service host now completes the service side of the
+extended ntor handshake, as described in tor-spec.txt section 5.1.4,
+with the modified PROTOID as given above. To be explicit, the hidden
+service host generates a keypair of y,Y = KEYGEN(), and uses its
+introduction point encryption key ‘b’ to compute:</p>
+<pre><code class="language-text">      intro_secret_hs_input = EXP(X,b) | AUTH_KEY | X | B | PROTOID
+      info = m_hsexpand | N_hs_subcred
+      hs_keys = SHAKE256_KDF(intro_secret_hs_input | t_hsenc | info, S_KEY_LEN+MAC_LEN)
+      HS_DEC_KEY = hs_keys[0:S_KEY_LEN]
+      HS_MAC_KEY = hs_keys[S_KEY_LEN:S_KEY_LEN+MAC_KEY_LEN]
+
+      (The above are used to check the MAC and then decrypt the
+      encrypted data.)
+
+      rend_secret_hs_input = EXP(X,y) | EXP(X,b) | AUTH_KEY | B | X | Y | PROTOID
+      NTOR_KEY_SEED = MAC(rend_secret_hs_input, t_hsenc)
+      verify = MAC(rend_secret_hs_input, t_hsverify)
+      auth_input = verify | AUTH_KEY | B | Y | X | PROTOID | "Server"
+      AUTH_INPUT_MAC = MAC(auth_input, t_hsmac)
+
+      (The above are used to finish the ntor handshake.)
+
+   The server's handshake reply is:
+
+       SERVER_PK   Y                         [PK_PUBKEY_LEN bytes]
+       AUTH        AUTH_INPUT_MAC            [MAC_LEN bytes]
+</code></pre>
+<p>These fields will be sent to the client in a RENDEZVOUS1 message using the
+HANDSHAKE_INFO element (see [JOIN_REND]).</p>
+<p>The hidden service host now also knows the keys generated by the
+handshake, which it will use to encrypt and authenticate data
+end-to-end between the client and the server. These keys are as
+computed with the
+<a href="../tor-spec/create-created-cells.html#ntor">ntor handshake</a>,
+except that instead of using
+AES-128 and SHA1 for this hop, we use AES-256 and SHA3-256.</p>
+<p><a id="rend-spec-v3.txt-3.4"></a></p>
+<h2 id="INTRO-AUTH"><a class="header" href="#INTRO-AUTH">Authentication during the introduction phase.</a></h2>
+<p>Hidden services may restrict access only to authorized users.
+One mechanism to do so is the credential mechanism, where only users who
+know the credential for a hidden service may connect at all.</p>
+<p>There is one defined authentication type: <code>ed25519</code>.</p>
+<p><a id="rend-spec-v3.txt-3.4.1"></a></p>
+<h3 id="ed25519-auth"><a class="header" href="#ed25519-auth">Ed25519-based authentication <code>ed25519</code></a></h3>
+<p>(NOTE: This section is not implemented by Tor.  It is likely
+that we would want to change its design substantially before
+deploying any implementation.  At the very least, we would
+want to bind these extensions to a single onion service, to
+prevent replays. We might also want to look for ways to limit
+the number of keys a user needs to have.)</p>
+<p>To authenticate with an Ed25519 private key, the user must include an
+extension field in the encrypted part of the INTRODUCE1 message with an
+EXT_FIELD_TYPE type of [TBD] and the contents:</p>
+<pre><code class="language-text">        Nonce     [16 bytes]
+        Pubkey    [32 bytes]
+        Signature [64 bytes]
+</code></pre>
+<p>Nonce is a random value. Pubkey is the public key that will be used
+to authenticate. [TODO: should this be an identifier for the public
+key instead?]  Signature is the signature, using Ed25519, of:</p>
+<pre><code class="language-text">        "hidserv-userauth-ed25519"
+        Nonce       (same as above)
+        Pubkey      (same as above)
+        AUTH_KEY    (As in the INTRODUCE1 message)
+</code></pre>
+<p>The hidden service host checks this by seeing whether it recognizes
+and would accept a signature from the provided public key. If it
+would, then it checks whether the signature is correct. If it is,
+then the correct user has authenticated.</p>
+<p>Replay prevention on the whole message is sufficient to prevent replays
+on the authentication.</p>
+<p>Users SHOULD NOT use the same public key with multiple hidden
+services.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../rend-spec/hsdesc-encrypt.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../rend-spec/rendezvous-protocol.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../rend-spec/hsdesc-encrypt.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../rend-spec/rendezvous-protocol.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
