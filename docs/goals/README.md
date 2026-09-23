@@ -60,6 +60,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/emitted-speed]] | stated 2026-09-08, unbuilt: one arc opened, four conditions unopened | [[arcs/emitted-speed-arc]] |
 | [[goals/coding-agent]] | stated 2026-09-08, half built: two arcs opened, three conditions unopened | [[arcs/coding-turn-arc]], [[arcs/tool-authority-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
+| [[goals/password-manager]] | stated 2026-09-23, unbuilt: five conditions, all unopened | none open, and see that goal's Arcs section |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
 `README.md` lists it under Honest limits, and
@@ -130,6 +131,26 @@ Conditions 2, 3 and 4 hold no arc, which is **not** the standing-gate shape
 [[goals/self-hosting]] conditions 1 to 3 carry: no rule maintains them on every
 change, and the goal's own first honest limit says the absence is scheduling
 owed.
+
+[[goals/password-manager]] was stated 2026-09-23 and is a derivation rather
+than a new ambition: `docs/examples/E40-secret-custody.md:48` already gives
+`E40` its reason for existing as *"a password manager that cannot leak its
+vault"*, `prog/demo/passman-min.chiral` ships 32 lines of it, and
+`docs/decisions/decision-deployment-custody.md:29` rules the architecture as
+per-instance custody with `derive-not-store`. Four standing goals were tested
+against it and none reaches it. [[goals/ownership-and-trust]] holds the
+re-bootstrap climb, DDC, the secure datum model, the register root and the
+cascade, and its four conditions name quorum legs, the golden object, the
+reference semantics and a shipped artifact's re-derivation. [[goals/self-tooling]]
+claims the replacement of `tools/`, and a vault replaces no Python tool.
+[[goals/own-web]] claims one design language and one native surface, and its
+condition 4 supplies the crypto this goal consumes without claiming the consumer.
+[[goals/native-stack]] comes closest, and its condition 4 store splits a value
+t of n by Shamir so nothing authoritative sits whole in one place, which is the
+opposite shape to one holder with a derived key. Its arcs column reads
+`none open` and that is the scheduling hole rather than the standing-gate shape:
+no rule maintains any of its five conditions, and the goal's own Arcs section
+says so.
 
 [[goals/ownership-and-trust]] carries an arc as of 2026-09-02 and every row in
 it is deferred. The arc holds three minted elements, `E53`, `E71` and `E72`,
