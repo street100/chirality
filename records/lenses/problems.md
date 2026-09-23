@@ -1332,3 +1332,16 @@
 - checked:  2026-09-15
 - owner:    sys-face/SF20
 - from:     none
+
+### PRB-95 a module asserts a partition invariant its own two split paths violate, and nothing imports it
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    prog/scriba/window.chiral
+- claim:    `prog/scriba/window.chiral:34` declared, before the correction landed beside it on 2026-09-23, *"Tree invariant: children of a w-split partition the parent rect."* A partition is what makes a point query answerable by one traversal, which is the property `goals/display` condition 3 asks for and which `FD-44` measured no shipped system to have. This session cited the line to the author as the tree's one working partition precedent, in the author call at `records/author-calls.md`, and that citation was wrong.
+- measured: **The non-degenerate binary split does partition and two other paths do not.** `rect-split-horizontal:81-84` computes `half` and `(- height half)` from the same `height` and starts the second rect at `(+ row half)`, so the pair tiles the parent with no gap and no overlap; `rect-split-vertical:94-97` is the mirror. **The degenerate arm returns two identical rects**: both functions case on `(<=i height 1)` / `(<=i width 1)` and return `(pair r r)`, a full overlap, with the refusal delegated to a caller by the comment at `:73-74`, *"Caller must detect this and refuse the split"*, which nothing enforces in a type. **And `rect-split-n:101` leaves gaps by construction**, its own comment at `:100` reading *"Integer division — remainder cells are unused"*, so `n` parts tile the extent only when `n` divides it. **The module has zero importers**: `grep -rn 'scriba/window' --include='*.chiral' --include='*.prog' .` returns only the file itself, over 25 defs, so every caller of the three splits is inside the module and no root reaches any of them.
+- evidence: re-runnable: `sed -n '80p;93p' prog/scriba/window.chiral` returns the two `(true (pair r r))` arms; `sed -n '100p' prog/scriba/window.chiral` returns the remainder comment; `grep -c '^(def ' prog/scriba/window.chiral` returns 25; `grep -rn 'scriba/window' --include='*.chiral' --include='*.prog' . | grep -v '^./prog/scriba/window.chiral'` returns nothing. `FD-45` (`records/findings.md:807`) found the violation while pricing the partition arm; `FD-44` (`:763`) is the row that needed the precedent.
+- checked:  2026-09-23
+- owner:    unrostered. ⚑ **The fix is not a cleanup and is deliberately not taken here.** Whether a degenerate split refuses rather than overlapping, and whether `rect-split-n` refuses a non-dividing `n` rather than leaving cells unused, is the partition-against-order fork `records/author-calls.md` carries for the display layer under *Whether a display region partitions or merely orders*. `FD-44` measured that no surveyed system takes the partition side and `FD-45` measured that the arm is constructible by making the gap a member of the child list. Rewriting an unreached guard before that fork is ruled would take the author's decision in code.

@@ -31,7 +31,20 @@
 
 ; The window tree. w-leaf holds a puffer at a rect; w-split is an
 ; internal node that divides its space among children.
-; Tree invariant: children of a w-split partition the parent rect.
+; Tree invariant, and it does NOT hold as stated. Measured 2026-09-23.
+; The non-degenerate binary split DOES partition: `half` plus `(- height half)`
+; is `height`, and the second rect starts at `(+ row half)`, so no gap and no
+; overlap. Two paths break it. `rect-split-horizontal:80` and
+; `rect-split-vertical:93` return `(pair r r)` when the extent is 1 or less,
+; which is two fully overlapping rects, and the refusal is delegated to a caller
+; in a comment that nothing enforces. `rect-split-n:101` divides by integer
+; division and its own comment says the remainder cells are unused, so n parts
+; leave a gap whenever `n` does not divide the extent.
+; Whether the degenerate case should refuse instead of overlapping is a design
+; call, not a cleanup: it is the same partition-against-order fork that
+; `records/author-calls.md` carries for the display layer, and `FD-44` and
+; `FD-45` measured that no shipped system takes the partition side. Recorded as
+; a lens row rather than rewritten here.
 ; The type hardcodes (Puffer Str) for the first milestone — see Knobs §5.6.
 (data Window ()
   (w-leaf  (puf (Puffer Str)) (rect Rect))
