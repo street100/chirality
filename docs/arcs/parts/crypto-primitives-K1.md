@@ -5,8 +5,8 @@ title: translate Keccak-f[b]: the family at `b = 25w`, `R = 12 + 2l`, its five s
 kind: law
 origin: new
 req: 1, 2
-status: blocked
-updated: 2026-09-07
+status: draft
+updated: 2026-09-23
 ---
 
 # crypto-primitives/K1: translate Keccak-f[b]: the family at `b = 25w`, `R = 12 + 2l`, its five steps, and what each carrier reaches. Everything below rests on it
@@ -87,15 +87,19 @@ design rests on. What it established, against the three pins:
 | the claim | the pin | verdict |
 |---|---|---|
 | a round has five step mappings | FIPS202:15 "consists of a sequence of five transformations, which are called the step mappings" | holds |
-| ρ is intra-lane rotation by a per-position offset | FIPS202:22 "is to rotate the bits of each lane by a length, called the offset, which depends on the fixed x and y coordinates of the lane" | holds, and has no slot in `.planning/CRYPTO-MODEL.md` §4 |
+| ρ is intra-lane rotation by a per-position offset | FIPS202:22 "is to rotate the bits of each lane by a length, called the offset, which depends on the fixed x and y coordinates of the lane" | holds. ⚑ ρ had no slot in `.planning/CRYPTO-MODEL.md` §4 when this was written and it has one at `:138` |
 | π is `A[(x+3y) mod 5, x, z]` | FIPS202:23 | holds, and carries no row-count term |
 | `R = 12 + 2l` where `2^l = w` | KECCAKSUM:171 "is given by $n = 12+2l$, where $2^l = w$. This gives 24 rounds for" | holds. Keccak-f[800] is 22 rounds |
 | the S-box slot and the round-constant slot | KECCAKSUM:188, KECCAKSUM:191 | hold on both sides |
 
-FD-13 also measured the model against itself. `.planning/CRYPTO-MODEL.md:118-121`
-lists four slots and `:156` opens "Of the five steps in a Keccak-shaped round",
-with `:162` giving the rotation layer its own row. §5 agrees with the pins and §4
-does not.
+FD-13 also measured the model against itself, and the six defects it found are
+repaired. ⚑ **This design read `.planning/CRYPTO-MODEL.md` §4 as a machine with
+four slots whose §5 agreed with the pins and whose §4 did not.** The `T1` ruling
+of 2026-09-07 rewrote that section, and `.planning/CRYPTO-MODEL.md:109-115` now
+opens it with the ruling and records "An earlier draft presented one machine with
+four slots, and `records/findings.md` `FD-13` measured six defects in it against
+three pins". ρ holds its own row at `:138`, and `R = 12 + 2l` is the boundary
+between the two levels at `:122-127` rather than a cell in an instance table.
 
 ### The word layer the permutation would sit on
 
@@ -145,15 +149,15 @@ carry "no parameter the published family lacks". A free round count is a
 parameter Keccak-f lacks and Keccak-p carries, so the requirement's verdict flips
 on a choice nobody has made. §4 weighs it.
 
-**4. The delta FD-13 opened against the model, which this row records and does
-not repair.** `.planning/CRYPTO-MODEL.md` §4 is wrong in three measured places
-and its §5 is right. The correction belongs to the row that builds the machine,
-`crypto-primitives/K2`, whose roster line already names "the round count as a
-type index" and would inherit the defect verbatim. The translation is what stops
-that: an artifact stating five steps in order, with ρ named, leaves K2 no room to
-carry four.
+**4. ⚑ The delta FD-13 opened against the model is closed, and this row no
+longer carries it.** The design said `.planning/CRYPTO-MODEL.md` §4 was wrong in
+three measured places, that its §5 was right, and that the correction belonged to
+the row that builds the machine, `crypto-primitives/K2`. The `T1` ruling rewrote
+§4 the same day at `.planning/CRYPTO-MODEL.md:107-215`, so K2 inherits no defect.
+The obligation on the artifact survives the repair: five steps in order with ρ
+named leaves K2 no room to carry four.
 
-Two further holes are named here so the artifact records them as open. `.planning/CRYPTO-MODEL.md:440-443` records that a shift of 64 has
+Two further holes are named here so the artifact records them as open. `.planning/CRYPTO-MODEL.md:522-525` records that a shift of 64 has
 never been exercised in this tree, and KECCAKSUM:369 "The rotation offsets
 <code>r[x,y]</code> are given in the table below." heads a table whose `x = 0,
 y = 0` entry is 0, so ρ at `w = 64` computes a shift by the full width on its
@@ -229,22 +233,25 @@ is undecidable until the family is named: under Shape B the round count is
 licensed at the `p` level and constrained at the `f` level by a derivation the
 artifact states, which is a checkable claim, while under Shape A the same index
 is a defect. FD-13's Keccak-f[800] finding survives Shape B unchanged: 22 rounds
-is what `12 + 2l` gives, and the machine's table at `.planning/CRYPTO-MODEL.md:127`
-carrying 24 for all instances is still wrong.
+is what `12 + 2l` gives. ⚑ The machine's instance table carried 24 at every
+width when this was written, and `.planning/CRYPTO-MODEL.md:167` now carries 22
+at Keccak-p[800, nr].
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
 | 1 | Which family is the translated object | RESOLVED | Shape B, on the three reasons above and FIPS202:14 |
 | 2 | Does a translation row mint an element | RESOLVED | No. `docs/elements/catalog.md:16` scopes the catalog to "Every element chirality needs its own implementation of", and `docs/translations/README.md:18` puts a translation upstream of the row that builds. §6 mints nothing and the artifact is the row's product |
 | 3 | Does the concept owe a bank | RESOLVED | No. [[banks/INDEX]] refracts chirality concepts and this object is external. §2 names the four banks that own the carriers |
-| 4 | Whether Ascon-p is a second instance, and so owes a second translation row | DEFERRED | `crypto-primitives/K2`. The question is `C2` at `.planning/CRYPTO-MODEL.md:426` and it does not change what Keccak is. K2 is the row that must show the module carries no parameter its families lack, and it is the row that discovers how many families there are |
-| 5 | Repairing `.planning/CRYPTO-MODEL.md` §4's four slots, its `rows`-derived π, its θ-and-Σ pairing and its 24-round table | DEFERRED | `crypto-primitives/K2`. §3 item 4 states why the translation is the instrument that forces it |
-| 6 | The fidelity target: faithful to the specification's algorithm, or to the mathematics the algorithm computes | **NEEDS-AUTHOR** | `T1` at `.planning/CRYPTO-TRANSLATION.md:582`. The arc says at `docs/arcs/crypto-primitives-arc.md:210-212` that it "gates how every row here is written" and stands open. It decides whether §2 of the artifact reproduces the five steps in their published order or states the round function as a composition, and the two produce different §4 carrier tables. A session cannot pick it |
+| 4 | Whether Ascon-p is a second instance, and so owes a second translation row | DEFERRED | `crypto-primitives/K2`. The question is `C2` at `.planning/CRYPTO-MODEL.md:508` and it does not change what Keccak is. K2 is the row that must show the module carries no parameter its families lack, and it is the row that discovers how many families there are |
+| 5 | Repairing `.planning/CRYPTO-MODEL.md` §4's four slots, its `rows`-derived π, its θ-and-Σ pairing and its 24-round table | ⚑ **RESOLVED**, having been DEFERRED to `crypto-primitives/K2` | The `T1` ruling rewrote §4 on 2026-09-07 and `.planning/CRYPTO-MODEL.md:109-115` records the six FD-13 defects as the earlier draft's. ρ has a row at `:138`, π is `A[(x + 3y) mod 5, x, z]` at `:139` with no row-count term, Ascon's linear step sits at ρ's position at `:145-151`, and the instance table carries 22 at Keccak-p[800, nr] at `:167`. §3 item 4 carries the same correction |
+| 6 | The fidelity target: faithful to the specification's algorithm, or to the mathematics the algorithm computes | ⚑ **RESOLVED**, having been NEEDS-AUTHOR and the blocker on this row | `T1` was ruled on 2026-09-07, twenty minutes after this design was written. `.planning/CRYPTO-TRANSLATION.md:582` reads "**RULED 2026-09-07: the mathematics, realized as separated primitives.** The five step mappings are each their own primitive with its own signature. The family is the layer above them, and any fusion is a composition there that owes a proof of equality". So §2 of the artifact carries the five steps in their published order, each as its own mapping with its own signature, and any fused step is a composition at the family layer owing a proof of equality. The ruling reads the fork as a factoring: "separated steps reproduce the published order for free, and they are what gives requirement 3's differential gate two representations to compare", which is why the two §4 carrier tables the question weighed collapse to one |
 | 7 | Whether Keccak-f[25] is a real module or a test-only instance | DEFERRED | `crypto-primitives/K16`, the law gate row, which owns "run exhaustively at the smallest member of each family". The open decision is `T7` at `.planning/CRYPTO-TRANSLATION.md:588` |
-| 8 | Whether a shift by the full width is defined, which ρ's zero offset reaches at `w = 64` | DEFERRED | `crypto-primitives/K2`. `.planning/CRYPTO-MODEL.md:440-443` already carries it as owed. The artifact's limits section names it as a hole rather than answering it |
+| 8 | Whether a shift by the full width is defined, which ρ's zero offset reaches at `w = 64` | DEFERRED | `crypto-primitives/K2`. `.planning/CRYPTO-MODEL.md:522-525` already carries it as owed. The artifact's limits section names it as a hole rather than answering it |
 
-Question 6 sets `status: blocked`. It owes a row in [[records/author-calls]] and
-this run does not write one.
+⚑ **Question 6 set `status: blocked` and its ruling discharged it.** No question
+here is NEEDS-AUTHOR, the frontmatter reads `draft`, and no row is owed in
+[[records/author-calls]]. Questions 4, 7 and 8 stay deferred to the rows named
+beside them.
 
 ## 6. The mint packet
 

@@ -388,10 +388,18 @@ mathematics is genuinely parametric. The 2026-09-21 walk moved neither: `K1`
 gained no new obligation and its gather is still its first act.
 
 `.planning/CRYPTO-MODEL.md` §13 carries twelve decisions and
-`.planning/CRYPTO-TRANSLATION.md` §16 carries seventeen. Two are ruled: the
-maximize principle, and `T9` at the 64-byte mark. `T1` gates how every row here
-is written and stands open: faithful to the specification's algorithm, or
-faithful to the mathematics the algorithm computes.
+`.planning/CRYPTO-TRANSLATION.md` §16 carries seventeen. Three are ruled: the
+maximize principle, `T9` at the 64-byte mark, and `T1`. ⚑ **`T1` was read here as
+open until 2026-09-23 and it was ruled on 2026-09-07.**
+`.planning/CRYPTO-TRANSLATION.md:582` carries the ruling: "**RULED 2026-09-07:
+the mathematics, realized as separated primitives.** The five step mappings are
+each their own primitive with its own signature. The family is the layer above
+them, and any fusion is a composition there that owes a proof of equality". It
+gates how every row here is written, and what it fixes is the factoring: a step
+mapping is a primitive, the family sits above them, and a fused step is a
+composition at that layer carrying a proof of equality. `.planning/CRYPTO-MODEL.md:107-215`
+§4 is written to it, and [[records/crypto-primitives]] `CP-06` carries the
+revisit that found this paragraph stale.
 
 `.planning/REACH-MODEL.md` §15 carries twenty-four more, `R1` to `R24`, and one
 closed. Four of them reach rows here and each is cited by the row that waits on
