@@ -52,9 +52,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    arc
 - about:    file-types/req3
 - claim:    docs/arcs/file-types-arc.md REQUIREMENTS 3: "Codecs are derived from the declared form rather than hand-written."
-- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 3 served by none of K1, K2, K3 or E1. It is a property each declared kind must carry rather than a deliverable of its own.
-- evidence: docs/arcs/file-types-arc.md
-- checked:  2026-09-05
+- measured: ⚑ **Superseded 2026-09-23. The 2026-09-05 diagnosis reads:** *"converting the arc to the 8-column roster on 2026-09-05 showed requirement 3 served by none of K1, K2, K3 or E1. It is a property each declared kind must carry rather than a deliverable of its own."* That is why no row was drawn, and it names the wrong reason. **Measured 2026-09-23: the requirement is unserved because the substrate a codec would be derived through does not exist.** Requirement 3 at `docs/arcs/file-types-arc.md:97-99` asks that codecs be *"derived from the declared form"*, and `.planning/MANIFEST-DESIGN-MAP.md:238` carries the mechanism that would do the deriving, *"Schema-consulting printer over `Sig`"*, in its `new` column beside `:237`'s *"Type-directed elaboration"*. The schema it would consult is built: `sig-data` at `lib/typing/kernel.chiral:401`, `ctor-fields` declared at `:460` and defined at `:1013`. All seven of their call sites judge rather than derive, five in the kernel's own checking and two in `lib/module/loader.chiral` at `:550` and `:571`. `records/file-types.md` `FT-06` is the measurement in full. **A property three rows each carry and a mechanism no row builds are different gaps**, and the second is the one that keeps requirement 3 unreachable however many kinds are scheduled.
+- evidence: docs/arcs/file-types-arc.md:97-99, :169-172; .planning/MANIFEST-DESIGN-MAP.md:237, :238; lib/typing/kernel.chiral:401, :460, :1013; lib/module/loader.chiral:550, :571; records/file-types.md FT-06
+- checked:  2026-09-23
 - owner:    none
 - from:     none
 
@@ -66,9 +66,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    arc
 - about:    file-types/req4
 - claim:    docs/arcs/file-types-arc.md REQUIREMENTS 4: "Each kind has a round-trip gate with a named mutant that is actually run."
-- measured: same conversion, same measurement: a property every kind carries rather than a row, so whether it takes one is an author call.
-- evidence: docs/arcs/file-types-arc.md
-- checked:  2026-09-05
+- measured: ⚑ **Superseded 2026-09-23. The 2026-09-05 diagnosis reads:** *"same conversion, same measurement: a property every kind carries rather than a row, so whether it takes one is an author call."* **Measured 2026-09-23: a round trip is stated over a codec, and `GAP-04` records that the codec has nothing to be derived through.** So this requirement is unserved one layer down from where the 2026-09-05 reading put it: the gate cannot be written for a kind whose reader and printer do not exist yet, and every kind in the roster is in that state. The arc already carries one stated exemption of its own, at `docs/arcs/file-types-arc.md:104-111`, where [[records/author-calls]] the grammar-split ruling makes requirement 4 unsatisfiable for `K3`'s above-floor position because the grammar is the referent. That exemption is about a referent and this gap is about a mechanism, and the two do not overlap. `records/file-types.md` `FT-06` carries the substrate measurement and `FT-07` prices what requirement 5 costs without it.
+- evidence: docs/arcs/file-types-arc.md:100-118, :104-111, :169-172; records/file-types.md FT-06, FT-07; records/lenses/gaps.md GAP-04
+- checked:  2026-09-23
 - owner:    none
 - from:     none
 

@@ -1,9 +1,9 @@
 ---
 node: arc-checker-core
 layer: navigation
-related: [arcs/README, goals/self-hosting, arcs/enforcement-arc, arcs/diagnostics-arc, arcs/surface-syntax-arc, arcs/sys-face-arc, banks/capability, banks/erasure, banks/verification, status-ledger, bug-classes, totality, decisions/decision-scope, decisions/decision-work-ids, elements/catalog, records/homing-triage, records/lenses/problems, records/lenses/gaps, records/author-calls, index]
+related: [arcs/README, goals/self-hosting, records/checker-core, arcs/enforcement-arc, arcs/diagnostics-arc, arcs/surface-syntax-arc, arcs/sys-face-arc, banks/capability, banks/erasure, banks/verification, status-ledger, bug-classes, totality, decisions/decision-scope, decisions/decision-work-ids, elements/catalog, records/homing-triage, records/lenses/problems, records/lenses/gaps, records/author-calls, index]
 status: current
-updated: 2026-09-18
+updated: 2026-09-23
 ---
 
 # Arc: checker-core
@@ -433,6 +433,53 @@ ruling is named here because `tools/lens/lens.py:466-468` still hard-codes that
 call as one of two standing inside chain rung 2, so `lens.py chain` printed it
 under this run's own before-and-after census, and that string's repair is recorded
 as owed in the ruling's own row.
+
+⚑ **2026-09-23: three measurements against this arc's G1 and G2 scope, and none
+of them opens a row.** [[records/checker-core]] carries them as `CK-02`, `CK-03`
+and `CK-04`. What each bears on:
+
+- `CK-02` censuses the ten `case` expressions over `Term`'s sixteen formers.
+  **Four carry every arm**, `eval-term` (`lib/typing/kernel.chiral:672-690`),
+  `infer` (`:819-837`), `term->core`
+  (`lib/lowering/upper/closconv-driver.chiral:42-59`) and `pp-term`
+  (`lib/surface/pretty.chiral:272-332`), so a seventeenth former is refused by
+  `jg-nonexhaustive` at `lib/typing/kernel.chiral:1319`. **Six end in a `_` that
+  answers for it unseen.** Two of the six are already ruled, E184's decision 3
+  taking the `(_ (none))` arms at `lib/lowering/compile-front.chiral:72` and
+  `:134` out. The four with no owner are `tot-tr`
+  (`lib/typing/totality-check.chiral:84`, defaulting at `:103`), `mentions?`
+  (`lib/surface/data.chiral:203`, defaulting at `:217`), `walk` (`:258`,
+  defaulting at `:282`) and `sp-rw`
+  (`lib/lowering/upper/specialize-singleton.chiral:124`, defaulting at `:158`).
+  Two of those four are
+  the strict-positivity judgment `checker-core/CK14` and `checker-core/CK16`
+  already convict on a different probe, and neither row is scoped to this shape.
+  **The bearing on requirement 1** is that a per-file `_` count ranks these files
+  backwards, so the unit the census has to quantify over is the walk. `CK19` is
+  drawn over `Judg`'s 36 constructors and does not reach `Term`'s sixteen.
+- `CK-03` measures the schema a derived printer would consult as built and read
+  only by judgments: `sig-data` (`lib/typing/kernel.chiral:401`) and
+  `ctor-fields` (declared `:460`, defined `:1013`) across seven call sites, five
+  in the kernel's own checking and two in `lib/module/loader.chiral` at `:550`
+  and `:571`. `pp-of` (`lib/surface/pretty.chiral:395`) is the one value-to-
+  surface exit for a term, and `quote-val` (`lib/typing/kernel.chiral:762`,
+  declared at `:430`) is over `Value` rather than over a declared type, so it is
+  no inverse.
+  **The bearing is on `checker-core/CK6`**, whose open question is whether `E14`
+  retires into `E181` or is kept as its display facet: a printer derived from a
+  declaration and a printer written for `Term` are different elements, and the
+  row's question reads differently under each. `records/file-types.md` `FT-06` is
+  the same absence measured from [[arcs/file-types-arc]]'s side.
+- `CK-04` measures the asymmetry `checker-core/CK2` already names. The reader
+  computes a position, `(r-err (msg Str) (pos I64))` at
+  `lib/surface/sexp.chiral:21`; the elaborator's sum has no field for one,
+  `(p-err (msg Str))` at `lib/surface/surface.chiral:25`. Over
+  `lib/surface/parse.chiral`: 254 occurrences of `p-err`, 49 constructing from a
+  string literal, and **52 of the shape `((p-err m) (p-err m))`**, an error
+  destructured and rebuilt unchanged. **The bearing is on `CK2`'s Wanted half**,
+  which reads *"a position on `p-err`, and one of them asserted"* with no
+  blocking condition measured, and the 52-site shape belongs to
+  [[arcs/errors-as-values-arc]] rather than to this arc.
 
 ## Resume state
 

@@ -3,7 +3,7 @@ node: arc-enforcement
 layer: navigation
 related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, decisions/decision-erased-word-level, decisions/decision-def-partition, index]
 status: current
-updated: 2026-09-18
+updated: 2026-09-23
 ---
 
 # Arc: enforcement
@@ -543,6 +543,38 @@ wrong program (N13). `GAP-22` names N13 as its owner, and PRB-74, PRB-75 and
 PRB-76 name N15, N17 and N16.
 
 ## Resume state
+
+⚑ **2026-09-23: a seventeenth `Term` former is absorbed silently by four walks,
+and no gate in this tier sees the class. No row opened.**
+[[records/enforcement-arc]] `EN-35` carries the measurement and
+`records/checker-core.md` `CK-02` carries the census behind it. `Term` has
+sixteen formers (`lib/surface/syntax.chiral:18-34`) and ten `case` expressions
+walk them; four carry every arm, so `jg-nonexhaustive`
+(`lib/typing/kernel.chiral:1319`) refuses a new one at compile time, and six end
+in a `_` that answers for it unseen. **Two of the six are already this arc's and
+already ruled**: E184's decision 3 takes the `(_ (none))` arms at
+`lib/lowering/compile-front.chiral:72` and `:134` out, recorded below. The four
+the ruling does not reach are `tot-tr` (`lib/typing/totality-check.chiral:84`,
+defaulting at `:103` to `(tot-glob "")`), `mentions?`
+(`lib/surface/data.chiral:203`, defaulting at `:217` to `false`), `walk`
+(`:258`, defaulting at `:282` to `(pos-ok)`) and `sp-rw`
+(`lib/lowering/upper/specialize-singleton.chiral:124`, defaulting at `:158` to
+its own argument). The
+middle two are the strict-positivity judgment `docs/definitions/status-ledger.md:163`
+records as verified for the direct case. **Why it is requirement 6's.** The
+nearest instrument is E158's `G6` at `tools/test/doc.sh:509-545`, which censuses
+a second **defining** occurrence of a `lib/prelude/doc.chiral` name and whose
+`M6` proves it sees one; a new `Term` former defines nothing `G6` reads. The two
+gate roots that do name a former, `tools/test/samples/e181_pretty.prog:88` and
+`tools/test/samples/e170_infer_arms.prog:148`, exercise two of the four walks
+that already refuse, and the second sits behind Phase 12 at NOT PORTED. This is
+`enforcement/N21`'s shape, a class with zero gate rows that a row-quality check
+cannot see, and `N21` does not reach it: that row quantifies over
+`docs/definitions/bug-classes.md`'s 28 classes and that document carries no class
+for a constructor absorbed by a catch-all, its nearest rows at `:73` and `:116`
+being case coverage, which the compiler already refuses. **Whether this widens
+`N21`, widens `checker-core/CK19`, or earns a row is a design question no run
+has asked, and this note asks none of them.**
 
 ⚑ **2026-09-10: the refinement-atom widening has an owner, `enforcement/N22`.** `PRB-82` measured
 the routing at `lib/typing/refine.chiral:7` as wrong and `enforcement/N18` §5 question 5 left the
