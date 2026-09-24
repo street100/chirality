@@ -163,6 +163,16 @@ name-to-owner map is ambiguous exactly in the duplicate case and the rewrite
 turns today's fail-closed refusal into a **silent miscompile**. Sizing is
 `ti-call`'s **175** sites, not `NFn`'s 3.
 
+### Handed off
+
+**The def-name naming system** is captured at `.planning/NAMING-SYSTEM-HANDOFF.md`
+as preflight for whoever runs [[arcs/file-types-arc]] next. That arc is doing
+naming-system work one tier up and the author ruled its half on 2026-09-23
+(`records/author-calls.md:56`, a file kind is a compound suffix). Deciding the
+two apart is how two conventions in one tree drift. The handoff also records
+that `E154`'s revert question was argued on a rebuild cost the author corrected
+to ~2 seconds per part, so the answer is revert all thirteen inside `E154`.
+
 ### Then
 
 1. **DISPATCHED 2026-09-23.** `design-to-spec` on **`E154`**
