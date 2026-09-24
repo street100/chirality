@@ -20,7 +20,7 @@ updated: <YYYY-MM-DD>
 
 ## What the tree already holds
 
-Measured, bank first. [[banks/INDEX]] holds twelve.
+Measured, bank first. [[banks/INDEX]] holds thirteen.
 
 | group | what exists today | where | rung |
 |---|---|---|---|

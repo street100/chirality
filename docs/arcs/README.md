@@ -47,7 +47,7 @@ Six sections, in order. `arc-open` scaffolds them and
 2. **Why this arc exists.** The goal condition, quoted, and what it takes to
    hold.
 3. **What the tree already holds.** Measured, bank first, cited at `file:line`
-   with the ledger rung. `docs/banks/INDEX.md` holds twelve banks and a feature
+   with the ledger rung. `docs/banks/INDEX.md` holds thirteen banks and a feature
    that is one thing elsewhere is here a sum of shards, usually mostly built.
 4. **What is missing, and its structure.** The groups in dependency order, and
    **the edges that run against that order**. An ordering with no stated

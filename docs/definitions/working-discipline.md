@@ -3,7 +3,7 @@ node: working-discipline
 layer: foundation
 related: [index, status-ledger, elements/README, arcs/README, banks/INDEX, decisions/decision-dispatch-cadence, decisions/decision-scope, decisions/decision-ai-tier]
 status: current
-updated: 2026-09-05
+updated: 2026-09-23
 ---
 
 # Working discipline
@@ -102,7 +102,7 @@ left alone and recorded.
 
 ## Before naming a gap
 
-**Read the concept's bank first.** [[banks/INDEX]] holds twelve, and states the
+**Read the concept's bank first.** [[banks/INDEX]] holds thirteen, and states the
 rule: a feature that is one thing elsewhere is here a sum of shards, each in its
 own home, usually mostly built. Naming a phantom feature is the cardinal working
 error in this repository.
