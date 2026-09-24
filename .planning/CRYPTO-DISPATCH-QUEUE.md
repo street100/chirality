@@ -17,13 +17,14 @@ none.
 | # | run | landed |
 |---|---|---|
 | 1 | route the eight unowned defects found 2026-09-21 to 2026-09-23 | `285c219` |
+| 3 | the post-quantum sizes, pinned to FIPS 203, 204, 205 and the FALCON spec. **FD-50.** The radio profile fits classically with 110 B of slack, and is unreachable under PQ at every parameter set: ML-KEM-512's 768 B ciphertext alone is 268 B past the whole 500 B MTU. **A 64-byte mark moves no profile total** | pins committed; `FD-50` left in the author's working tree |
 
 ## Queued, in order
 
 | # | run | skill | writes |
 |---|---|---|---|
 | 2 | the six design conclusions from the 2026-09-23 discussion | capture | `.planning/MARK-AND-HANDLE-DISCUSSION.md` |
-| 3 | **replace the remembered post-quantum sizes with pinned ones.** `.planning/REACH-MODEL.md:528-533` carries ML-KEM-768, ML-DSA-65, FALCON-512, SLH-DSA and X25519 from memory, and the wire budget and the 1.1 KB wall rest on them. Reordered ahead of the budget work 2026-09-24, because that work would otherwise compute against remembered numbers | `research` | an `FD` row |
+| ~~3~~ | done, see above. **replace the remembered post-quantum sizes with pinned ones.** `.planning/REACH-MODEL.md:528-533` carries ML-KEM-768, ML-DSA-65, FALCON-512, SLH-DSA and X25519 from memory, and the wire budget and the 1.1 KB wall rest on them. Reordered ahead of the budget work 2026-09-24, because that work would otherwise compute against remembered numbers | `research` | an `FD` row |
 | 4 | where a mark actually appears on the wire, and what a 64-byte mark does to §12's budget, against run 3's pinned figures | `research` | an `FD` row |
 | 4b | gate `K2` before it mints | `pipeline-audit` DESIGN | `docs/arcs/parts/crypto-primitives-K2.md` |
 | 5 | the gather for `K1` | `research` | `.planning/sources/keccak-p.gather` |

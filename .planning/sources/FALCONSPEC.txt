@@ -1,0 +1,6607 @@
+Falcon: Fast-Fourier Lattice-based
+Compact Signatures over NTRU
+Specification v1.2 — 01/10/2020
+Pierre-Alain Fouque Jeffrey Hoffstein Paul Kirchner
+Vadim Lyubashevsky Thomas Pornin Thomas Prest Thomas Ricosset
+Gregor Seiler William Whyte Zhenfei Zhang
+falcon@ens.fr
+
+
+Contents
+1 Introduction
+5
+1.1 Genealogy of Falcon . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6
+1.2 Subsequent Related Work . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+1.3 NIST Requirements . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7
+1.4 Changelog . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+8
+2 The Design Rationale of Falcon
+9
+2.1 A Quest for Compactness . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+9
+2.2 The Gentry-Peikert-Vaikuntanathan Framework . . . . . . . . . . . . . . . . . . . .
+10
+2.2.1 Features and instantiation of the GPV framework . . . . . . . . . . . . . . .
+11
+2.2.2 Statefulness, de-randomization or hash randomization . . . . . . . . . . . . .
+11
+2.3 NTRU Lattices . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+12
+2.3.1 Introduction to NTRU lattices . . . . . . . . . . . . . . . . . . . . . . . . .
+12
+2.3.2 Instantiation with the GPV framework . . . . . . . . . . . . . . . . . . . . .
+12
+2.3.3 Choosing optimal parameters . . . . . . . . . . . . . . . . . . . . . . . . . .
+13
+2.4 Fast Fourier Sampling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+13
+2.5 Security . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+14
+2.5.1 Known Attacks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+14
+2.5.2 Precision of the Floating-Point Arithmetic . . . . . . . . . . . . . . . . . . .
+17
+2.6 Summary of Parameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+17
+2.7 Advantages and Limitations of Falcon . . . . . . . . . . . . . . . . . . . . . . . .
+19
+2.7.1 Advantages . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+19
+2.7.2 Limitations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+20
+3 Specification of Falcon
+21
+3.1 Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+21
+3.2 Technical Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+22
+3.3 Notations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+23
+3.4 Keys . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+25
+3.4.1 Public Parameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+25
+3
+
+3.4.2 Private Key . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+25
+3.4.3 Public key . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+27
+3.5 FFT and NTT . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+27
+3.6 Splitting and Merging . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+28
+3.6.1 Algebraic interpretation . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+29
+3.7 Hashing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+31
+3.8 Key Pair Generation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+32
+3.8.1 Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+32
+3.8.2 Generating the polynomials . . . . . . . . . . . . . . . . . . . . . .
+33
+3.8.3 Computing a Falcon Tree . . . . . . . . . . . . . . . . . . . . . . . . . . .
+36
+3.9 Signature Generation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+38
+3.9.1 Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+38
+3.9.2 Fast Fourier Sampling . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+39
+3.9.3 Sampler over the Integers . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+40
+3.10 Signature Verification . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+45
+3.10.1 Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+45
+3.10.2 Specification . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+45
+3.11 Encoding Formats . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+46
+3.11.1 Bits and Bytes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+46
+3.11.2 Compressing Gaussians . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+46
+3.11.3 Signatures . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+47
+3.11.4 Public Keys . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+49
+3.11.5 Private Keys . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+49
+3.11.6 NIST API . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+50
+3.12 A Note on the Key-Recovery Mode . . . . . . . . . . . . . . . . . . . . . . . . . . .
+50
+3.13 Recommended Parameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+51
+4 Implementation and Performances
+53
+4.1 Floating-Point . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+53
+4.2 FFT and NTT . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+54
+4.2.1 FFT . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+54
+4.2.2 NTT . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+55
+4.3 LDL Tree . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+56
+4.4 Key Pair Generation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+57
+4.4.1 Gaussian Sampling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+57
+4.4.2 Filtering . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+57
+4.4.3 Solving The NTRU Equation . . . . . . . . . . . . . . . . . . . . . . . . .
+58
+4.5 Performances . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+61
+4
+
+Chapter 1
+Introduction
+Falcon is a lattice-based signature scheme. It stands for the following acronym:
+Fa
+st Fourier l
+attice-based co
+mpact signatures over N
+TRU
+The high-level design of Falcon is simple: we instantiate the theoretical framework described by Gentry,
+Peikert and Vaikuntanathan [
+GPV08
+] for constructing hash-and-sign lattice-based signature schemes.
+This framework requires two ingredients:
+•
+A class of cryptographic lattices. We chose the class of NTRU lattices.
+•
+A trapdoor sampler. We rely on a new technique which we call fast Fourier sampling.
+In a nutshell, the Falcon signature scheme may therefore be described as follows:
+Falcon = GPV framework + NTRU lattices + Fast Fourier sampling
+This document is the supporting documentation of Falcon . It is organized as follows. Chapter
+2
+ex-
+plains the overall design of Falcon and its rationale. Chapter
+3
+is a complete specification of Falcon .
+Chapter
+4
+discusses implementation issues and possible optimizations, and described measured perfor-
+mance.
+5
+
+1.1 Genealogy of Falcon
+NTRUSign
+[
+HHP
+
+03
+]
+GPV
+Framework
+[
+GPV08
+]
+Provable
+NTRUSign
+[
+SS11
+]
+Instantiation
+of GPV IBE
+[
+DLP14
+]
+Falcon
+Fast Fourier
+Sampling
+[
+DP16
+]
+Figure 1.1:
+The genealogic tree of Falcon
+Falcon is the product of many years of work, not only by the authors but also by others. This section
+explains how these works gradually led to Falcon as we know it.
+The first work is the signature scheme NTRUSign [
+HHP
+
+03
+] by Hoffstein et al. , which was the first,
+alongwithGGH[
+GGH97
+], toproposelattice-basedsignatures. TheuseofNTRUlatticesby NTRUSign
+allows it to be very compact. However, both had a flaw in the deterministic signing procedure which led
+to devastating key-recovery attacks [
+NR06
+,
+DN12
+].
+At STOC 2008, Gentry, Peikert and Vaikuntanathan [
+GPV08
+] proposed a method which not only cor-
+rected the flawed signing procedure but, even better, did it in a provably secure way. The result was a
+genericframework(theGPVframework)forbuildingsecurehash-and-signlattice-basedsignatureschemes.
+The next step towards Falcon was the work of Stehlé and Steinfeld [
+SS11
+], who combined the GPV
+framework with NTRU lattices. The result could be called a provably secure NTRUSign .
+In a more practical work, Ducas et al. [
+DLP14
+] proposed a practical instantiation and implementation of
+the IBE part of the GPV framework over NTRU lattices. This IBE can be converted in a straightforward
+manner into a signature scheme. However, doing this would have resulted in a signing time in
+
+ .
+To address the issue of a slow signing time, Ducas and Prest [
+DP16
+] proposed a new algorithm running
+in time . However, how to practically instantiate this algorithm remained a open question.
+Falcon builds on these works to propose a practical lattice-based hash-and-sign scheme. The fig.
+1.1
+shows the genealogic tree of Falcon , the first of the many trees that this document contains.
+6
+
+1.2 Subsequent Related Work
+This section presents a non-exhaustive list of work related to Falcon , and subsequent to the Round 1
+version (1.0) of the specification.
+Isochronous Gaussian sampling. Realising efficient isochronous Gaussian sampling over the in-
+tegers has long been identified as an important problem. Recent works by Zhao et al. [
+ZSS20
+], Karmakar
+et al. [
+KRVV19
+] and Howe et al. [
+HPRR20
+], have proposed new techniques. The sampler in the Round
+3 version of Falcon relies on [
+ZSS20
+,
+HPRR20
+]. Recent work by Fouque et al. [
+FKT
+
+20
+] shows that
+isochrony is indeed an important requirement for the embedded security of Falcon .
+Raptor: Ring signatures using Falcon . Lu, Au and Zhang [
+LAZ18
+] have proposed Raptor, a
+ring signature scheme which uses Falcon as a building block. The authors provided a security proof in
+the random oracle model, as well as an efficient implementation.
+Implementation on ARM Cortex. Works by Oder et al. [
+OSHG19
+] and Pornin [
+Por19
+] have im-
+plemented Falcon on ARM Cortex-M microprocessors. See also pqm4 [
+KRSS19
+].
+Key generation. Pornin and Prest [
+PP19
+] have formally studied the part of the key generation where
+polynomials are computed from . This paper can be used as a complement for readers willing
+to understand more thoroughly this part of the key generation.
+Deployment in TLS 1.3. Sikeridis et al. [
+SKD20
+] studied the performance of various NIST candi-
+date signature schemes in TLS 1.3. Falcon and Dilithium were the most favorably rated schemes.
+1.3 NIST Requirements
+In this section, we provide a mapping of the requirements by NIST to the appropriate sections of this
+document. This document adresses the requirements in [
+NIS16
+, Section 2.B].
+•
+The complete specification as per [
+NIS16
+, Section 2.B.1] can be found in Chapter
+3
+. A design
+rationale can be found in Chapter
+2
+.
+•
+A performance analysis, as per [
+NIS16
+, Section 2.B.2], is provided in Chapter
+4
+.
+•
+The security analysis of the scheme as per [
+NIS16
+, Section 2.B.4], and the analysis of known cryp-
+tographic attacks against the scheme as per [
+NIS16
+, Section 2.B.5], are contained in Section
+2.5
+.
+•
+Advantages and limitations as per [
+NIS16
+, Section 2.B.6] are listed in Section
+2.7
+.
+•
+Two sets of parameters as per NIST [
+NIS16
+, Section 4.A.5] can be found in Section
+3.13
+.
+7
+
+Other requirements in [
+NIS16
+] are not addressed in this document, but in other parts of the submission
+package.
+•
+A reference implementation as per [
+NIS16
+, Section 2.C.1] and Known Answer Test values as per
+[
+NIS16
+, Section 2.B.2] are present in this submission package.
+1.4 Changelog
+This is the version 1.2 of Falcon ’s specification. The differences with the version 1.0 [
+PFH
+
+17
+] are:
+•
+We removed the level II-III set of parameters, which entailed and ϕ
+
+
+
+ ;
+interested readers and implementers can read the version 1.0 of the specification, in which this set
+of parameters remains for historical purposes.
+•
+We added a section about the related work (Section
+1.2
+);
+•
+We now describe a key-recovery mode which makes Falcon even more compact (Section
+3.12
+);
+•
+Wedidafewotherminoradditionswhichessentiallyconsistofclarifyinganddetailingafewpoints.
+The differences with the version 1.1 [
+PFH
+
+19
+] are:
+•
+We propose a formal specification of the Gaussian sampler over the integers, see Section
+3.9.3
+.
+This specification consists of four algorithms (algorithms
+12
+to
+15
+). In addition, Table
+3.2
+and
+Supporting_Documentation/additional/test-vector-sampler-falcon{512,1024}.txt
+provide test vectors to validate the implementation of
+SamplerZ
+.
+•
+We tweak
+Compress
+(algorithm
+17
+) and
+Decompress
+(algorithm
+18
+) in order to enforce a unique
+encoding of signatures. We are thankful to Quan Nguyen for pointing out to us the (benign)
+malleability of the original encodings.
+•
+Weprovideupdatedparameters, seeTable
+3.3
+. Theparametersetsaremoredetailedand, inthecase
+of Falcon -512, now provide a few more bits of security. In addition, we now detail our parameter
+selectionprocessinSection
+2.6
+and Supporting_Documentation/additional/parameters.py .
+We discuss the concrete security of our parameter sets in Section
+2.5.1
+.
+•
+We make incremental changes to some algorithms. Most reflect optimizations that the reference
+code was already doing (e.g. loop unrolling). Others are introduced by
+SamplerZ
+and our modi-
+fied
+Compress
+/
+Decompress
+. Finally, we correct some typos (marked with below).
+–
+NTRUGen
+: lines
+3
+,
+7
+,
+9
+,
+13
+and
+14
+;
+–
+NTRUSolve
+: lines
+4
+,
+11
+and
+12
+
+;
+–
+
+⋆
+;
+–
+ﬀ
+⋆
+: line
+10
+;
+–
+Sign
+: lines
+3
+,
+4
+,
+8
+and
+11
+;
+–
+ffSampling
+: lines
+3
+and
+4
+;
+–
+Compress
+: lines
+4
+
+,
+5
+,
+6
+,
+7
+,
+8
+,
+9
+and
+10
+;
+–
+Decompress
+: lines
+1
+,
+2
+,
+4
+
+,
+6
+
+,
+9
+,
+10
+,
+12
+and
+13
+;
+–
+Verify
+: lines
+3
+,
+4
+and
+6
+.
+8
+
+Chapter 2
+The Design Rationale of Falcon
+2.1 A Quest for Compactness
+The design rationale of Falcon stems from a simple observation: when switching from RSA- or discrete
+logarithm-based signatures to post-quantum signatures, communication complexity will likely be a larger
+problem than speed. Indeed, many post-quantum schemes have a simple algebraic description which
+makes them fast, but all require either larger keys than pre-quantum schemes, larger signatures, or both.
+We expect such performance issues will hinder transition from pre-quantum to post-quantum schemes.
+Hence our leading design principle was to minimize the following quantity:
+ pk sig (bitsize of the public key) (bitsize of a signature)
+This led us to consider lattice-based signatures, which manage to keep both pk and sig rather small,
+especially for structured lattices. When it comes to lattice-based signatures, there are essentially two
+paradigms: Fiat-Shamir or hash-and-sign.
+Both paradigms achieve comparable levels of compactness, but hash-and-sign have interesting proper-
+ties: the GPV framework [
+GPV08
+], which describes how to obtain hash-and-sign lattice-based signature
+schemes, is secure in the classical and quantum oracle models [
+GPV08
+,
+BDF
+
+11
+]. In addition, it enjoys
+message-recovery capabilities [
+dLP16
+]. So we chose this framework. Details are given in Section
+2.2
+.
+Next, we chose a class of cryptographic lattices to instantiate this framework. A close to optimal choice
+with respect to our main design principle – compactness – is NTRU lattices: they allow to obtain a
+compact instantiation [
+DLP14
+] of the GPV framework. In addition, their structure speeds up many
+operations by two orders of magnitude. Details are given in Section
+2.3
+.
+The last step was the trapdoor sampler. We devised a new trapdoor sampler which is asymptotically as fast
+as the fastest generic trapdoor sampler [
+Pei10
+] and provides the same level of security as the most secure
+sampler [
+Kle00
+]. Details are given in Section
+2.4
+.
+9
+
+2.2 The Gentry-Peikert-Vaikuntanathan Framework
+In 2008, Gentry, Peikert and Vaikuntanathan [
+GPV08
+] established a framework for obtaining secure
+lattice-based signatures. At a very high level, this framework may be described as follows:
+•
+The public key contains a full-rank matrix Z
+
+
+(with ) generating a -ary lattice .
+•
+The private key contains a matrix Z
+
+
+generating
+
+
+, where
+
+
+denotes the lattice or-
+thogonal to modulo : for any and
+
+
+, we have ⟨ ⟩ . Equivalently,
+the rows of and are pairwise orthogonal:
+t
+ .
+•
+Given a message m , a signature of m is a short value Z
+
+
+such that
+t
+ m , where
+
+
+ Z
+
+
+is a hash function. Given , verifying that is a valid signature is straightforward:
+it only requires to check that is indeed short and verifies
+t
+ m .
+•
+Computing a valid signature is more delicate. First, a preimage
+
+ Z
+
+
+is computed, which
+verifies
+
+
+t
+ m . As
+
+is not required to be short and , this is simply done via
+standard linear algebra. is then used in order to compute a vector
+
+
+close to
+
+. The
+difference
+
+ is a valid signature: indeed,
+t
+
+
+
+t
+
+t
+ m , and if
+
+
+and are close enough, then is short.
+This high-level description of a signature scheme is not exclusive to the GPV framework: it was first
+instantiated in the GGH [
+GGH97
+] and NTRUSign [
+HHP
+
+03
+] signature schemes. However, these
+schemes suffered total break attacks, whereas the GPV framework is proven secure in the (quantum) ran-
+dom oracle model assuming the hardness of SIS for some parameters. This is because GGH/ NTRUSign
+and the GPV framework have radically different ways of computing in the signing procedure.
+Computing in GGH and NTRUSign . In GGH and NTRUSign , is computed using an algo-
+rithm called the round-off algorithm and first formalized by Babai [
+Bab85
+,
+Bab86
+]. In this deterministic
+algorithm,
+
+is first expressed as a real linear combination of the rows of , the vector of these real co-
+ordinates is then rounded coefficient-wise and multiplied again by : in a nutshell, ⌊
+
+
+
+⌉ ,
+where ⌊⌉ denotes coefficient-wise rounding. At the end of the procedure,
+
+is guaranteed to
+lie in the parallelepiped
+
+ , which allows to tightly bound the norm ∥ ∥ . The problem with
+this approach is that each signature lies in
+
+ , and therefore leaks information about the
+basis . This fact was exploited by several key-recovery attacks [
+NR06
+,
+DN12
+].
+Computing in the GPV framework. A major contribution of [
+GPV08
+], which is also the key
+difference between the GPV framework and GGH/ NTRUSign , is the way is computed. Instead of
+the round-off algorithm, the GPV framework relies on a randomized variant by [
+Kle00
+] of the nearest
+plane algorithm, also formalized by Babai. Just as for the round-off algorithm, using the nearest plane
+algorithm would have leaked the secret basis and resulted in a total break of the scheme. However,
+Klein’s algorithm prevents this: it is randomized in a way such that for a given m , is sampled according
+to a spherical Gaussian distribution over the shifted lattice
+
+
+
+
+. This method is proven to leak no
+10
+
+information about the basis . Klein’s algorithm was in fact the first of a family of algorithms called
+trapdoor samplers . More details about trapdoor samplers are given in Section
+2.4
+.
+2.2.1 Features and instantiation of the GPV framework
+Security in the classical and quantum oracle models. In the original paper [
+GPV08
+], the
+GPV framework has been proven to be secure in the random oracle model under the SIS assumption. In
+our case, we use NTRU lattices so we need to adapt the proof for a “NTRU- SIS ” assumption, but this
+adaptation is straightforward. In addition, the GPV framework has also been proven to be secure in the
+quantum oracle model [
+BDF
+
+11
+].
+Identity-based encryption. Falcon can be turned into an identity-based encryption scheme, as
+describedin[
+DLP14
+]. However, thisrequiresde-randomizingthesignatureprocedure(seeSection
+2.2.2
+).
+2.2.2 Statefulness, de-randomization or hash randomization
+In the GPV framework, two different signatures
+′
+of a same hash m can never be made public
+simultaneously, because doing so breaks the security proof [
+GPV08
+, Section 6.1].
+Statefulness. A first solution proposed in [
+GPV08
+, Section 6.1] is to make the scheme stateful by
+maintaining a list of the signed messages and of their signatures. However, maintaining such a state poses
+a number of operational issues, so we do not consider it as a credible solution.
+De-randomization. A second possibility proposed by [
+GPV08
+] is to de-randomize the signing pro-
+cedure. However, pseudorandomness would need to be generated in a consistent way over all the imple-
+mentations (it is not uncommon to have a same signing key used in different devices). While this solution
+can be applied in a few specific usecases, we do not consider it for Falcon .
+Hash randomization. A third solution is to prepend a salt r
+
+to the message m before
+hashing it. Provided that is large enough, this prevents collisions from occurring. From an operational
+perspective, this solution is the easiest to apply, and it is still covered by the security proof of the GPV
+framework (see [
+GPV08
+, Section 6.2]). For a given security level and up to
+
+signature queries, taking
+
+
+
+
+ is enough to guarantee that the probability of collision is less than
+
+
+
+.
+Out of the three solutions, Falcon opts for hash randomization: a salt r
+
+is randomly gener-
+ated and prepended to the message before hashing it. The bitsize is equal to
+
+
+
+ for
+the highest security level required by NIST, and
+
+
+
+the maximal number of signature which may
+be queried from a single signer. This size is actually overkill for security levels , but fixing a single
+size across all the security levels makes things easier from an API perspective: for example, one can hash a
+message without knowing the security level of the private signing key.
+11
+
+2.3 NTRU Lattices
+The first choice when instantiating the GPV framework is the class of lattices to use. The design rationale
+obviously plays a large part in this. Indeed, if emphasis is placed on security without compromise, then
+the logical choice is to use standard lattices without any additional structure, as was done e.g. in the key-
+exchange scheme Frodo [
+BCD
+
+16
+].
+Our main design principle is compactness. For this reason, Falcon relies on the class of NTRU lattices,
+introduced by Hoffstein, Pipher and Silverman [
+HPS98
+]; they come with an additional ring structure
+which not only does allow to reduce the public keys’ size by a factor , but also speeds up many
+computations by a factor at least . Even in the broader class of lattices over rings, NTRU
+lattices are among the most compact: the public key can be reduced to a single polynomial Z
+
+ of
+degree at most . In doing this we follow the idea of Stehlé and Steinfeld [
+SS11
+], who showed that
+the GPV framework can be used with NTRU lattices in a provably secure way.
+Compactness, however, would be useless without security. From this perspective, NTRU lattices also
+have reasons to inspire confidence as they have resisted extensive cryptanalysis for about two decades, and
+we parameterize them in a way which we believe makes them even more resistant.
+2.3.1 Introduction to NTRU lattices
+Let ϕ
+
+ for
+
+a power of two, and N
+⋆
+. A set of NTRU secrets consists of four
+polynomials Z ϕ which verify the NTRU equation:
+ ϕ (2.1)
+Provided that is invertible modulo , we can define the polynomial
+
+ .
+Typically, will be a public key, whereas will be secret keys. Indeed, one can check that the
+matrices
+[
+
+
+
+
+]
+and
+[
+
+
+
+
+]
+generate the same lattice, but the first matrix contains two large poly-
+nomials ( and q), whereas the second matrix contains only small polynomials, which allows to solve
+problems as illustrated in Section
+2.2
+. If are generated with enough entropy, then will look pseudo-
+random [
+SS11
+]. However in practice, even when are quite small, it remains hard to find small poly-
+nomials
+′
+
+′
+such that
+′
+
+′
+
+
+ . The hardness of this problem constitutes the NTRU
+assumption.
+2.3.2 Instantiation with the GPV framework
+We now instantiate the GPV framework described in Section
+2.2
+over NTRU lattices:
+•
+The public basis is
+[
+
+
+⋆
+]
+, but this is equivalent to knowing .
+•
+The secret basis is
+
+[
+
+
+
+
+]
+(2.2)
+12
+
+One can check that the matrices and are indeed orthogonal:
+⋆
+ .
+•
+The signature of a message m consists of a salt r plus a pair of polynomials
+
+
+
+ such that
+
+
+
+
+ r ∥ m . We note that since
+
+is completely determined by m r and
+
+, there is no need
+to send it: the signature can simply be r
+
+ .
+2.3.3 Choosing optimal parameters
+Our trapdoor sampler samples signatures of norm essentially proportional to ∥ ∥
+GS
+, where ∥ ∥
+GS
+de-
+notes the Gram-Schmidt norm of .
+Previous works ([
+DLP14
+] and [
+Pre15
+, Sections 6.4.1 and 6.5.1]) have provided heuristic and experimental
+evidence that in practice, ∥ ∥
+GS
+is minimized for ∥ ∥
+
+ . Therefore, we generate as
+discrete Gaussians in Z ϕ centered in , so that the expected value of ∥ ∥ is about
+
+ .
+Oncethis isdone, veryefficient waysto compute ∥ ∥
+GS
+areknown, and ifthis valueismore than
+
+ ,
+new polynomials ’s are regenerated and the procedure starts over.
+Quasi-optimality. The bound ∥ ∥
+GS
+
+
+ that we reach in practice is within a factor
+of the theoretic lower bound for ∥ ∥
+GS
+. Indeed, for any of the form given in (
+2.2
+) with
+verifying (
+2.1
+), we have . So
+
+ is a theoretic lower bound of ∥ ∥
+GS
+.
+2.4 Fast Fourier Sampling
+The second choice when instantiating the GPV framework is the trapdoor sampler. A trapdoor sampler
+takes as input a matrix , a trapdoor T , a target and outputs a short vector such that
+t
+ .
+With the notations of Section
+2.2
+, this is equivalent to finding
+
+
+close to
+
+, so we may indifferently
+refer by the term “trapdoor samplers” to algorithms which perform one task or the other.
+We now list the existing trapdoor samplers, their advantages and limitations. Obviously, being efficient is
+important for a trapdoor sampler. However, an equally important metric is the “quality” of the sampler:
+the shorter the vector is (or equivalently, the closer is to
+
+), the more secure this sampler will be.
+1.
+Klein’s algorithm [
+Kle00
+] takes as a trapdoor the matrix . It outputs vectors of norm propor-
+tional to ∥ ∥
+GS
+, which is short and therefore good for security. On the downside, its time and
+space complexity are in
+
+ .
+2.
+Just like Klein’s algorithm is a randomized version of the nearest plane algorithm, Peikert proposed
+a randomized version of the round-off algorithm [
+Pei10
+]. A nice thing about it is that when has
+a structure over rings – as in our case – then it can be made to run in time and space .
+However, it outputs vectors of norm proportional to the spectral norm ∥ ∥
+
+of . This is larger
+than what we get with Klein’s algorithm, and therefore it is worse security-wise.
+3.
+Micciancio and Peikert [
+MP12
+] proposed a novel approach in which and its trapdoor are con-
+structed in a way which allows simple and efficient trapdoor sampling. Unfortunately, it is not
+13
+
+straightforwardly compatible with NTRU lattices and yet has to reach the same level of compact-
+ness as with NTRU lattices [
+CGM19
+].
+4.
+Ducas and Prest [
+DP16
+] proposed “ fast Fourier nearest plane ”, a variant of Babai’s nearest plane
+algorithm for lattices over rings. It proceeds in a recursive way which is very similar to the fast
+Fourier transform, hence the name. This algorithm can be randomized: it results in a trapdoor
+sampler which combines the quality of Klein’s algorithm, the efficiency of Peikert’s and can be
+used over NTRU lattices.
+Of the four approaches we just described, it seems clear to us that a randomized variant of the fast Fourier
+nearest plane [
+DP16
+] is the most adequate choice given our design rationale and our previous design
+choices (NTRU lattices). For this reason, it is the trapdoor sampler used in Falcon .
+Sampler
+Fast
+Short output
+NTRU-friendly
+Klein [
+Kle00
+]
+No
+Yes
+Yes
+Peikert [
+Pei10
+]
+Yes
+No
+Yes
+Micciancio-Peikert [
+MP12
+]
+Yes
+Yes
+No
+Ducas-Prest [
+DP16
+]
+Yes
+Yes
+Yes
+Table 2.1:
+Comparison of the different trapdoor samplers
+Choosing the standard deviation. When using a trapdoor sampler, an important parameter to
+set is the standard deviation . If it is too low, then it is no longer guaranteed that the sampler not leak
+the secret basis (and indeed, for all known samplers, a value opens the door to learning attacks à la
+[
+NR06
+,
+DN12
+]). But if it is too high, the sampler does not return optimally short vectors and the scheme
+is not as secure as it could be. So there is a compromise to be found. Our fast Fourier sampler shares many
+similarities with Klein’s sampler, including the optimal value for . Following [
+Pre17
+, Section 4.4], we
+take
+ϵ
+ Z
+
+ ∥ ∥
+GS
+.
+2.5 Security
+2.5.1 Known Attacks
+Key Recovery. The most efficient attacks come from lattice reduction. We start by considering the
+lattice generated by the columns of
+[
+
+
+
+
+]
+. After using lattice reduction on this basis, we enumerate
+all lattice points in a ball of radius
+
+
+
+, centered on the origin. With significant probability, we
+are therefore able to find
+[
+
+
+]
+.
+Let be the th Gram-Schmidt norm, which is approximately the norm of the shortest vector
+of the lattice generated by the last vectors projected orthogonally to the first vectors. A
+sieve algorithm performed on this projected lattice will recover all vectors of norm smaller than
+√
+
+14
+
+(see [
+Duc18
+] for instance). If the projection of the key is among them, that is when
+
+
+
+
+√
+
+we can recover a secret key vector from its projection by using Babai’s Nearest Plane algorithm on all
+sieved vectors with high probability. This is because all remaining Gram-Schmidt norms are larger than
+ , which is much larger than
+
+.
+For the best known lattice reduction algorithm, DBKZ [
+MW16
+, Corollary 2], we get
+
+(
+
+
+)
+
+
+
+and
+
+
+
+
+√
+
+
+(2.3)
+Note that we conservatively assumed that we could perform a sieve algorithm in dimension for the
+same cost as the SVP oracle inside the DBKZ algorithm, which is a slight overestimate [
+Duc18
+]. It is then
+easy to deduce . Note that the given value for the Gram-Schmidt norm is correct only when the basis
+is first randomized, and it is necessary to do so (asymptotically).
+Forging a Signature. Forging a signature can be performed by finding a lattice point at distance
+bounded by from a random point, in the same lattice as above. This task can also be solved by lattice
+reduction. One possibility is to use Kannan’s embedding, that is add to the lattice basis,
+extended by a row of zeroes, which gives the following matrix:
+
+
+
+
+
+ ∥
+
+
+
+
+
+
+
+
+
+
+As sieve algorithms generate many short vectors, we can certainly find among them a vector of the form
+ and then is a lattice point.
+Taking
+
+ , the DBKZ algorithm [
+MW16
+, Corollary 2] gives as a success condition for the forgery:
+(
+
+
+)
+
+
+ (2.4)
+Interestingly, since the factor
+
+ is also present in , the modulus has virtually no effect on the best
+forgery attack. This is the best attack against our instantiations. We convert the blocksize into concrete
+bit-security following the methodology of New Hope [
+ADPS16
+], sometimes called “core-SVP method-
+ology”. This gives the bit-security as per [
+BDGL16
+,
+Laa16
+]:
+Classical: ⌊ ⌋
+(2.5)
+Quantum: ⌊ ⌋
+(2.6)
+This gives the following table.
+15
+
+Key recovery
+Forgery
+
+
+′
+Classical Quantum
+
+′
+Classical Quantum
+512
+458 418
+133 121
+411 374
+120 108
+1024
+936 869
+273 248
+952 884
+277 252
+Concrete cost of the best attacks. For Falcon -512, we estimate the complexity of the best attack
+as equivalent to a BKZ with block size . The latest method [
+ADH
+
+19
+] suggests that the cost in
+dimension is close to solving
+
+
+
+
+shortest vector problem instances in dimension . The optimization
+of Ducas [
+Duc18
+] decreases the dimension of the lattice sieved by
+⌊
+
+
+⌉
+ to
+′
+ .
+Taking only the first asymptotical term in the complexity of a sieve [
+BDGL16
+] leads to a number of
+
+
+
+
+
+
+
+
+′
+
+
+classical operations (where
+
+
+
+). This is believed to be a conserva-
+tive estimate, as we neglect the lower order subexponential terms in the Nearest Neighbor Search. Each
+operation includes a random access of at least one bit to a memory which has to contain
+
+vectors.
+A recent record [
+ADH
+
+19
+] used
+
+
+
+
+
+cycles for a sieve in dimension 112, and an average cycle
+certainly used more than 16 gates. We therefore regard an estimate of the minimum number of gates of
+
+
+
+
+as conservative.
+For Falcon -1024, key recovery is slightly more efficient. The first part of the attack uses lattice reduction,
+and cost more than
+
+calls to a SVP instance in dimension , which corresponds to a sieve in
+dimension
+′
+ . This indicates a total of at least classical
+
+operations; and a number of gates
+larger than
+
+.
+For the quantum cost, we take [
+JNRV20
+, Table 10] as a baseline. For key search on AES-{128,256}, it
+indicates a cost of
+
+
+
+ gates. This is far below the estimated quantum cost for breaking Falcon .
+Hybrid attack. The hybrid attack [
+How07
+] combines a meet-in-the-middle algorithm and the key
+recovery algorithm. It was used with great effect against NTRU, due to its choice of sparse polynomials.
+This is however not the case here, so that its impact is much more modest, and counterbalanced by the
+lack of sieve-enumeration.
+Dense, high rank sublattice. Recent works [
+ABD16
+,
+CJL16
+,
+KF17
+] have shown that when are
+extremely small compared to , it is easy to attack cryptographic schemes based on NTRU lattices. To the
+contrary, in Falcon we take to be not too small while is hardly large: a side-effect is that this makes
+our scheme impervious to the so-called “overstretched NTRU” attacks. In particular, even if were
+taken to be binary, we would have to select
+
+for this property to be useful for cryptanalysis. Our
+large margin should allow even significant improvements of this algorithm to be irrelevant to our case.
+Algebraic attacks. While there is a rich algebraic structure in Falcon , there is no known way to
+improve all the algorithms previously mentioned with respect to their general lattice equivalent by more
+than a factor
+
+. However, there exist efficient algorithms for finding not-so-small elements in ideals of
+Z ϕ [
+CDW17
+].
+16
+
+2.5.2 Precision of the Floating-Point Arithmetic
+Trapdoor samplers usually require the use of floating-point arithmetic, and our fast Fourier sampler is
+no exception. This naturally raises the question of the precision required to claim meaningful security
+bounds. A naive analysis would require a precision of bits (notwithstanding logarithmic factors),
+but this would result in a substantially slower signature generation procedure.
+Inordertoanalyzetherequiredprecision, weuseaRényidivergenceargument. Asin[
+MW17
+], wedenote
+by ≲ the fact that , which allows discarding negligible factors in a rigorous way. Our
+fast Fourier sampler is a recursive algorithm which relies on discrete samplers
+Z
+
+
+
+. We suppose
+that the values
+
+(resp.
+
+) are known with an absolute error (resp. relative error) at most
+
+(resp.
+
+)
+and denote by (resp.
+
+ ) the output distribution of our sampler with infinite (resp. finite) precision.
+We can then re-use the precision analysis of Klein’s sampler in [
+Pre17
+, Section 4.5]. For any output of our
+sampler with non-negligible probability, in the worst case:
+
+
+
+
+
+
+(
+
+
+
+)
+
+
+
+
+
+≲
+[
+
+
+
+
+
+
+
+]
+
+
+
+
+ (2.7)
+In the average case, the value in (
+2.7
+) can be replaced with
+
+ . Following the security arguments of
+[
+Pre17
+, Section 3.3], this allows to claim that in average, no security loss is expected if
+
+
+
+
+
+.
+To check if this is the case for Falcon , we have run Falcon in two different precisions, a high precision
+of bits and a standard precision of bits, and compared the values of the
+
+
+
+’s. The result of these
+experiments is that we always have
+
+
+
+
+
+: while this is higher than
+
+, the difference is of
+only bits. Therefore, we consider that bits of precision are sufficient for NIST’s parameters (security
+level , number of queries
+
+
+
+), and that the possibility of our signature procedure leaking
+information about the secret basis is a purely theoretic threat.
+2.6 Summary of Parameters
+In this section, we summarize the interplay between parameters. The resulting parameter selection pro-
+cessisautomatizedin Supporting_Documentation/additional/parameters.py , whichalsogivesthe
+core-SVP hardness of key recovery and forgery.
+Number of queries
+
+, targeted security level and ring degree . We start with three
+initial parameters: the maximal number of signing queries
+
+, the targeted security level and the degree
+ of the ring Z
+
+ . As per [
+NIS16
+],
+
+
+
+. Also as per [
+NIS16
+], it suffices to take
+for NIST Level I and for NIST Level V. Finally, we take:
+ for NIST Level I,
+(2.8)
+ for NIST Level V.
+(2.9)
+17
+
+Modulus:
+Number of queries:
+
+Gram-Schmidt norm: ∥ ∥
+GS
+Targeted security level:
+Signatures’ standard deviation:
+Ring degree:
+Signatures maximal norm:
+BKZ blocksize for forgery:
+Security levels for forgery
+(
+2.10
+)
+(
+2.11
+)
+(
+2.13
+)
+(
+2.14
+)
+(
+2.13
+)
+(
+2.13
+)
+(
+2.13
+)
+(
+2.14
+)
+(
+2.4
+)
+(
+2.4
+)
+(
+2.5
+), (
+2.6
+)
+Figure 2.1:
+Parameters of Falcon and security estimates. Initial parameters are on the left side of the
+figure. Parameters on the right side of the figure (which include concrete security estimates) are derived
+systematically from initial parameters.
+Integer modulus . The modulus needs to be a prime of the form in order to maximize
+the efficiency of the NTT. The smallest prime of this form is
+ (2.10)
+For this value, has essentially no influence on security: it is large enough to resist hybrid attacks and
+trivial attacks on SIS, and small enough to resist overstetched NTRU attacks.
+Gram-Schmidt norm ∥ ∥
+GS
+. We wish to minimize ∥ ∥
+GS
+. It has been shown in [
+DLP14
+, Section
+3] that in practice we can ensure (upon resampling a finite number of times) that:
+∥ ∥
+GS
+
+
+ (2.11)
+In order to do that, each coefficient of and is sampled from the discrete Gaussian
+Z
+
+with:
+
+
+
+√
+ (2.12)
+18
+
+Standard deviation of the signatures. Signatures are sampled from a discrete Gaussian distri-
+bution using the fast Fourier sampling algorithm (with as a basis and a standard deviation ). It suffices
+to take ϵ
+
+
+
+ and:
+
+
+
+
+√
+ ϵ
+
+
+
+
+(2.13)
+
+ϵ
+ Z
+
+ ∥ ∥
+GS
+Following [
+Pre17
+, Lemma 6], this ensures that
+
+ ∥
+
+
+
+
+ ≲
+
+, where is the
+output of the sampler,
+
+
+
+
+is an ideal Gaussian and
+
+is the Rényi divergence between them. Fol-
+lowing [
+Pre17
+, Section 3.3], bits of security are lost by using our sampler instead of
+
+
+
+
+.
+Maximal norm of the signatures. During the signing and verification procedures, signatures
+
+
+
+
+ must verify ∥
+
+
+
+ ∥
+
+ ⌊
+
+⌋ in order to be accepted, with:
+
+sig
+
+
+
+sig
+ (2.14)
+We call
+sig
+the tailcut rate of signatures, because the expected value of ∥
+
+
+
+ ∥ is
+
+ ; any signature
+larger than this expected value by a factor more than
+sig
+is rejected. By applying [
+Lyu12
+, Lemma 4.4,
+Item 3], the probability that a sampled signature is larger than (hence that the signing procedure has to
+restart) is upper bounded as follows:
+P ∥
+
+
+
+ ∥
+
+ ⌊
+
+⌋
+
+sig
+
+
+
+
+
+sig
+
+ (2.15)
+2.7 Advantages and Limitations of Falcon
+2.7.1 Advantages
+Compactness. The main advantage of Falcon is its compactness. This doesn’t really come as a
+surprise as Falcon was designed with compactness as the main criterion. Stateless hash-based signatures
+often have small public keys, but large signatures. Conversely, some multivariate schemes achieve very
+small signatures but require large public keys. Lattice-based schemes [
+LDK
+
+19
+] can offer the best of
+both worlds, but no NIST candidate gets pk sig to be as small as Falcon does.
+Fast signature generation and verification. The signature generation and verification proce-
+dures are very fast. This is especially true for the verification algorithm, but even the signature algorithm
+can perform more than signatures per second on a moderately-powered computer.
+Security in the ROM and QROM. The GPV framework comes with a security proof in the ran-
+dom oracle (ROM), and a security proof in the quantum random oracle model (QROM) was later pro-
+vided in [
+BDF
+
+11
+]. See also [
+CD20
+]. In contrast, the Fiat-Shamir heuristic has only recently been proven
+secure in the QROM, and under certain conditions [
+LZ19
+,
+DFMS19
+].
+19
+
+Modular design. The design of Falcon is modular. Indeed, we instantiate the GPV framework
+with NTRU lattices, but it would be easy to replace NTRU lattices with another class of lattices if nec-
+essary. Similarly, we use fast Fourier sampling as our trapdoor sampler, but it is not necessary either.
+Actually, an extreme simplicity/speed trade-off would be to replace our fast Fourier sampler with Klein’s
+sampler: signature generation would be two orders of magnitudes slower, but it would be simpler to
+implement and its black-box security would be the same.
+Signatures with message recovery. In [
+dLP16
+], it has been shown that a preliminary version
+of Falcon can be instantiated in message-recovery mode: the message m can be recovered from the
+signature sig . It makes the signature twice longer, but allows to entirely recover a message which size
+is slightly less than half the size of the original signature. In situations where we can apply it, it makes
+Falcon even more competitive from a compactness viewpoint.
+Key recovery mode. Falcon can also be instantiated in key-recovery mode. In this mode, The
+signature becomes twice longer but the key is reduced to a single hash value. In addition to incurring a
+very short key, this reduces the total size pk sig by about 15%. More details are given in Section
+3.12
+.
+Identity-based encryption. As shown in [
+DLP14
+], Falcon can be converted into an identity-
+based encryption scheme in a straightforward manner.
+Easy signature verification. The signature procedure is very simple: essentially, one just needs to
+compute r ∥ m
+
+ , which boils down to a few NTT operations and a hash computation.
+2.7.2 Limitations
+Delicate implementation. We believe that both the key generation procedure and the fast Fourier
+sampling are non-trivial to understand and delicate to implement, and constitute the main shortcoming
+of Falcon . On the bright side, the fast Fourier sampling uses subroutines of the fast Fourier transform
+as well as trees, two objects most implementers are familiar with.
+Floating-point arithmetic. Our signing procedure uses floating-point arithmetic with 53 bits of
+precision. While this poses no problem for a software implementation, it may prove to be a major limita-
+tion when implementation on constrained devices – in particular those without a floating-point unit –
+will be considered.
+We previously listed “unclear side-channel resistance” as a limitation of Falcon , due to discrete Gaussian
+sampling over the integers. This is much less the case now: constant-time implementations for this step
+and for the whole scheme are provided in [
+HPRR20
+] and [
+Por19
+], respectively. A challenging next step
+is to implement Falcon in a masked fashion.
+20
+
+Chapter 3
+Specification of Falcon
+3.1 Overview
+Main elements in Falcon are polynomials of degree with integer coefficients. The degree is normally
+a power of two (typically 512 or 1024). Computations are done modulo a monic polynomial of degree
+denoted ϕ (which is always of the form ϕ
+
+ ).
+Mathematically, within the algorithm, some polynomials are interpreted as vectors, and some others as
+matrices: a polynomial modulo ϕ then stands for a square matrix, whose rows are
+
+ ϕ for
+all from to . It can be shown that addition and multiplication of such matrices map to addition
+and multiplication of polynomials modulo ϕ . We can therefore express most of Falcon in terms of
+operations on polynomials, even when we really are handling matrices that define a lattice .
+The public key is a basis for a lattice of dimension :
+[
+
+
+
+
+
+
+
+]
+(3.1)
+where
+
+is the identity matrix of dimension ,
+
+contains only zeros, and is a polynomial modulo ϕ
+that stands for an sub-matrix, as explained above. Coefficients of are integers that range from
+to , where is a specific small prime (in the recommended parameters, ).
+The corresponding private key is another basis for the very same lattice, expressed as:
+[
+
+
+
+
+]
+(3.2)
+where , , and are short integral polynomials modulo ϕ , that fulfil the two following relations:
+ ϕ
+ ϕ
+(3.3)
+Such a lattice is known as a complete NTRU lattice , and the second relation, in particular, is called the
+NTRU equation . Take care that while the relation is expressed modulo , the lattice itself, and
+the polynomials, use nominally unbounded integers.
+21
+
+Key pair generation involves choosing random and polynomials using an appropriate distribution
+that yields short, but not too short, vectors; then, the NTRU equation is solved to find matching and
+ . Keys are described in Section
+3.4
+, and their generation is covered in Section
+3.8
+.
+Signature generation consists in first hashing the message to sign, along with a random nonce, into a
+polynomial modulo ϕ , whose coefficients are uniformly mapped to integers in the to range;
+this process is described in Section
+3.7
+. Then, the signer uses his knowledge of the secret lattice basis
+ to produce a pair of short polynomials
+
+
+
+ such that
+
+
+
+ ϕ . The
+signature properly said is
+
+.
+Finding small vectors
+
+and
+
+is, in all generality, an expensive process. Falcon leverages the special
+structure of ϕ to implement it as a divide-and-conquer algorithm similar to the Fast Fourier Transform,
+which greatly speeds up operations. Moreover, some “noise” is added to the sampled vectors, with care-
+fully tuned Gaussian distributions, to prevent signatures from leaking too much information about the
+private key. The signature generation process is described in Section
+3.9
+.
+Signature veriﬁcation consists in recomputing
+
+from the hashed message and the signature
+
+, and
+then verifying that
+
+
+
+ is an appropriately short vector. Signature verification can be done entirely
+with integer computations modulo ; it is described in Section
+3.10
+.
+Encoding formats for keys and signatures are described in Section
+3.11
+. In particular, since the signature
+is a short polynomial
+
+, its elements are on average close to , which allows for a custom compressed
+format that reduces signature size.
+Recommended parameters for several security levels are defined in Section
+3.13
+.
+3.2 Technical Overview
+In this section, we provide an overview of the used techniques. As Falcon is arguably math-heavy, a
+clear comprehension of the mathematical principles in action goes a long way towards understanding
+and implementing it.
+Falcon works with elements in number fields of the form Q ϕ , with ϕ
+
+ for
+
+a power-of-two. We note that ϕ is a cyclotomic polynomial, therefore it can be written as ϕ
+∏
+ Z
+
+
+
+
+ , with and an arbitrary primitive -th root of (e.g.
+
+
+ ).
+The interesting part about these number fields Q ϕ is that they come with a tower-of-fields struc-
+ture. Indeed, we have the following tower of fields:
+Q Q
+
+ Q
+
+ Q
+
+ (3.4)
+We will rely on this tower-of-fields structure. Even more importantly for our purposes, by splitting poly-
+nomials between their odd and even coefficients we have the following chain of space isomorphisms:
+Q
+
+
+
+ Q
+
+
+
+
+
+
+
+
+ Q
+
+
+
+
+
+Q
+
+ (3.5)
+22
+
+(
+3.4
+) and (
+3.5
+) remain valid when replacing Q by Z , in which case they describe a tower of rings and a
+chain of module isomorphisms.
+We will see in Section
+3.6
+that for appropriately defined multiplications, these are actually chains of ring
+isomorphisms. (
+3.5
+) will be used to make our signature generation fast and “good”: in lattice-based cryp-
+tography, the smaller the norm of signatures are, the better. So by “good” we mean that our signature
+generation will output signatures with a small norm.
+On one hand, classical algebraic operations in the field Q
+
+ are fast, and using them will make
+our signature generation fast. On the other hand, we will use the isomorphisms exposed in (
+3.5
+) as a
+leverage to output signatures with small norm. Using these endomorphisms to their full potential entails
+manipulating individual coefficients of polynomials (or of their Fourier transform) and working with
+binary trees.
+3.3 Notations
+Cryptographic parameters. For a cryptographic signature scheme, denotes its security level and
+
+
+the maximal number of signing queries. Following [
+NIS16
+], we assume
+
+
+
+.
+Matrices, vectors and scalars. Matrices will usually be in bold uppercase (e.g. ), vectors in bold
+lowercase (e.g. ) and scalars – which include polynomials – in italic (e.g. ). We use the row convention
+for vectors. The transpose of a matrix may be noted
+t
+. It is to be noted that for a polynomial , we
+do not use
+′
+to denote its derivative in this document.
+Quotient rings. For N
+⋆
+, we denote by Z
+
+the quotient ring Z Z . In Falcon , our integer
+modulus is prime so Z
+
+is also a finite field. We denote by Z
+
+
+the group of invertible elements
+of Z
+
+, and by φ Euler’s totient function: φ Z
+
+
+
+
+since is prime.
+Number fields. Falcon uses a polynomial modulus ϕ
+
+ (for
+
+). It is a monic
+polynomial of Z , irreducible in Q and with distinct roots over C .
+Let
+∑
+
+
+
+
+
+
+and
+∑
+
+
+
+
+
+
+be arbitrary elements of the number field Q ϕ .
+We note
+⋆
+and call (Hermitian) adjoint of the unique element of such that for any root of ϕ ,
+
+⋆
+
+ , where
+ is the usual complex conjugation over C . For ϕ
+
+ , the Hermitian adjoint
+
+⋆
+can be expressed simply:
+
+⋆
+
+
+
+
+∑
+
+
+
+
+
+(3.6)
+We extend this definition to vectors and matrices: the adjoint
+⋆
+of a matrix
+
+(resp. a vector
+ ) is the component-wise adjoint of the transpose of (resp. ):
+
+[
+
+
+
+
+]
+
+⋆
+
+[
+
+⋆
+
+⋆
+
+⋆
+
+⋆
+]
+(3.7)
+23
+
+Inner product. The inner product ⟨ ⟩ over and its associated norm ∥ ∥ are
+⟨ ⟩
+
+ ϕ
+∑
+ϕ
+
+ (3.8)
+∥ ∥
+√
+⟨ ⟩ (3.9)
+We extend these definitions to vectors: for
+
+
+
+and
+
+
+
+in
+
+, ⟨ ⟩
+∑
+
+⟨
+
+
+
+⟩ . For
+our choice of ϕ , the inner product coincides with the usual coefficient-wise inner product:
+⟨ ⟩
+∑
+
+
+
+
+
+ (3.10)
+From an algorithmic point of view, computing the inner product or the norm is most easily done by using
+(
+3.8
+) if polynomials are in FFT representation, and by using (
+3.10
+) if they are in coefficient representation.
+Ring Lattices. For the rings Q ϕ and Z ϕ , positive integers and a full-
+rank matrix
+
+, we denote by and call lattice generated by the set
+
+
+
+
+ . By extension, a set is a lattice if there exists a matrix such that . We may say that
+
+
+is a -ary lattice if
+
+ .
+Discrete Gaussians. For R with , we define the Gaussian function
+
+as
+
+
+
+
+
+
+ , and the discrete Gaussian distribution
+Z
+over the integers as
+
+Z
+
+
+
+
+∑
+ Z
+
+
+
+ (3.11)
+The parameter may be omitted when it is equal to zero.
+The Gram-Schmidt orthogonalization. Any matrix
+
+can be decomposed as follows:
+
+
+ (3.12)
+where is lower triangular with ’s on the diagonal, and the rows
+
+
+
+’s of
+
+ verify ⟨
+
+
+
+⟩ for ̸ .
+When is full-rank , this decomposition is unique, and it is called the Gram-Schmidt orthogonalization
+(or GSO). We will also call Gram-Schmidt norm of the following value:
+∥ ∥
+GS
+
+
+
+
+
+
+
+∥
+
+
+
+∥ (3.13)
+The LDL
+⋆
+decomposition. The LDL
+⋆
+decomposition writes any full-rank Gram matrix as a prod-
+uct
+⋆
+, where
+
+is lower triangular with ’s on the diagonal, and
+
+is diagonal.
+The LDL
+⋆
+decomposition and the GSO are closely related as for a basis , there exists a unique GSO
+
+
+ and for a full-rank Gram matrix , there exists a unique LDL
+⋆
+decomposition
+⋆
+.
+24
+
+If
+⋆
+, then
+
+
+
+
+⋆
+
+⋆
+is a valid LDL
+⋆
+decomposition of . As both decompositions
+are unique, the matrices in both cases are actually the same. In a nutshell:
+[
+
+
+ is the GSO of
+]
+
+[
+
+
+
+
+
+⋆
+
+⋆
+is the LDL
+⋆
+decomposition of
+⋆
+
+]
+ (3.14)
+ThereasonwhywepresentbothequivalentdecompositionsisbecausetheGSOisamorefamiliarconcept
+in lattice-based cryptography, whereas the use of LDL
+⋆
+decomposition is faster and therefore makes more
+sense from an algorithmic point of view.
+3.4 Keys
+3.4.1 Public Parameters
+Public keys use some public parameters that are shared by many key pairs:
+1.
+The cyclotomic polynomial ϕ
+
+ , where
+
+is a power of . We note that ϕ is monic
+and irreducible.
+2.
+A modulus N
+⋆
+. In Falcon , . We note that ϕ splits over Z
+
+ .
+3.
+A real bound ⌊
+
+⌋ .
+4.
+Standard deviations and
+
+
+
+.
+5.
+A signature bytelength sbytelen .
+For clarity, public parameters may be omitted (e.g. in algorithms’ headers) when clear from context.
+3.4.2 Private Key
+The core of a Falcon private key sk consists of four polynomials Z ϕ with short
+integer coefficients, verifying the NTRU equation:
+ ϕ (3.15)
+The polynomial shall furthermore be invertible in Z
+
+ ϕ .
+Given and such that there exists a solution to the NTRU equation, and may be recom-
+puted dynamically, but that process is computationally expensive; therefore, it is normally expected that
+at least will be stored along and (given , and , can be efficiently recomputed).
+Two additional elements are computed from the private key, and may be recomputed dynamically, or
+stored along , and :
+•
+The FFT representations of , , and , ordered in the form of a matrix:
+
+
+[
+FFT
+ FFT
+FFT
+ FFT
+]
+ (3.16)
+25
+
+Figure 3.1:
+A Falcon tree of height
+FFT being the fast Fourier transform of in the underlying ring (here, R ϕ ).
+•
+A Falcon tree T , described at the end of this section.
+FFT representations are described in Section
+3.5
+. The FFT representation of a polynomial formally con-
+sists of complex numbers (a complex number is normally encoded as two 64-bit floating-point values);
+however, the FFT representation of a real polynomial is redundant, because for each complex root of
+ϕ , its conjugate
+ is also a root of ϕ , and
+
+ . Therefore, the FFT representation of a polynomial
+may be stored as complex numbers, and
+
+ , when stored, requires complex numbers.
+Falcon trees. Falcon trees are binary trees defined inductively as follows:
+•
+A Falcon tree T of height consists of a single node whose value is a real .
+•
+A Falcon tree T of height verifies these properties:
+–
+The value of its root, noted T . value , is a polynomial ℓ Q
+
+ with
+
+.
+–
+Its left and right children, noted T . leftchild and T . rightchild , are Falcon trees of height
+ .
+The values of internal nodes – which are real polynomials – are stored in FFT representation (i.e. as com-
+plex numbers, see Section
+3.5
+for a formal definition). Hence all the nodes of a Falcon tree contain
+polynomials in FFT representation, except the leaves which contain real values .
+A Falcon tree of height is represented in fig.
+3.1
+. As illustrated by the figure, a Falcon tree can be
+easily represented by an array of
+
+ complex numbers (or exactly half as many, if the redundancy
+of FFT representation is leveraged, as explained above), and access to the left and right children can be
+performed efficiently using simple pointer arithmetic.
+The contents of a Falcon tree T are computed from the private key elements , , and using the
+algorithm described in Section
+3.8.3
+(see also algorithm
+4
+).
+26
+
+3.4.3 Public key
+The Falcon public key pk corresponding to the private key sk is a polynomial
+Z
+
+ ϕ such that:
+
+
+ ϕ (3.17)
+3.5 FFT and NTT
+The FFT. Let Q ϕ . We note Ω
+ϕ
+the set of complex roots of ϕ . We suppose that ϕ is monic
+withdistrinctrootsover C , sothat ϕ
+∏
+ Ω
+ϕ
+ . Wedenoteby FFT
+ϕ
+ thefastFouriertransform
+of with respect to ϕ :
+FFT
+ϕ
+
+ Ω
+ϕ
+(3.18)
+When ϕ is clear from context, we simply note FFT . We may also use the notation
+
+ to indicate that
+
+ is
+the FFT of . FFT
+ϕ
+is a ring isomorphism, and we note invFFT
+ϕ
+its inverse. The multiplication in the FFT
+domain is denoted by ⊙ . We extend the FFT and its inverse to matrices and vectors by component-wise
+application.
+Additions, subtractions, multiplications and divisions of polynomials modulo ϕ canbe computed in FFT
+representations by simply performing them on each coordinate. In particular, this makes multiplications
+and divisions very efficient.
+For ϕ
+
+ , the set of complex roots of ϕ is:
+Ω
+ϕ
+
+{
+
+(
+
+
+)
+
+
+
+
+
+
+}
+(3.19)
+A note on implementing the FFT. There exist several ways of implementing the FFT , which may
+yield slightly different results. For example, some implementations of the FFT scale our definition by
+a constant factor (e.g. ϕ ). Another differentiation point is the order of (the roots of) the FFT .
+Common orders are the increasing order (i.e. the roots are sorted by their order on the unit circle, starting
+at and moving clockwise) or (variants of) the bit-reversal order. In the case of Falcon :
+•
+The FFT is not scaled by a constant factor.
+•
+There is no constraint on the order of the FFT , the choice is left to the implementer. However, the
+chosen order shall be consistent for all the algorithms using the FFT .
+Representation of polynomials in algorithms. The algorithms which specify Falcon heavily
+rely on the fast Fourier transform, and some of them explicitly require that the inputs and/or outputs are
+given in FFT representation. When the directive “Format:” is present at the beginning of an algorithm,
+it specifies in which format (coefficient or FFT representation) the input/output polynomials shall be
+represented. When the directive “Format:” is absent, no assumption on the format of the input/output
+polynomials is made.
+27
+
+The NTT. The NTT (Number Theoretic Transform) is the analog of the FFT in the field Z
+
+, where
+ is a prime such that . Under these conditions, ϕ has exactly roots
+
+ over Z
+
+, and
+any polynomial Z
+
+ ϕ can be represented by the values
+
+ . Conversion to and from NTT
+representation can be done efficiently in operations in Z
+
+. When in NTT representation,
+additions, subtractions, multiplications and divisions of polynomials (modulo ϕ and ) can be performed
+coordinate-wise in Z
+
+.
+In Falcon , the NTT allows for faster implementations of public key operations (using Z
+
+) and key pair
+generation (with various medium-sized primes ). Private key operations, though, rely on the fast Fourier
+sampling, which uses the FFT, not the NTT.
+3.6 Splitting and Merging
+In this section, we make explicit the chains of isomorphisms described in Section
+3.2
+, by presenting split-
+ting (resp. merging) operators which allow to travel these chains from right to left (resp. left to right).
+Let ϕ ϕ
+′
+be cyclotomic polynomials such that ϕ ϕ
+′
+
+
+ (for example, ϕ
+
+ and ϕ
+′
+
+
+
+ ). We define operators which are at the heart of our signing algorithm. Our algorithms require the
+ability to split an element of Q ϕ into two smaller elements of Q ϕ
+′
+ . Conversely, we require
+the ability to merge two elements of Q ϕ
+′
+ into an element of Q ϕ .
+The
+splitfft
+operator. Let be the degree of ϕ , and
+∑
+
+
+
+
+
+
+be an arbitrary element of
+Q ϕ , can be decomposed uniquely as
+
+
+
+
+
+
+
+ , with
+
+
+
+ Q ϕ
+′
+ . In
+coefficient representation, such a decomposition is straightforward to write:
+
+
+
+∑
+
+
+
+
+
+and
+
+
+∑
+
+
+
+
+
+(3.20)
+In (
+3.20
+), we simply split with respect to its even or odd coefficients. With this notation, we note:
+split
+
+
+
+ (3.21)
+In Falcon , polynomials are repeatedly split, multiplied together, split again and so forth. To avoid
+switching back and forth between the coefficient and FFT representation, we always perform the split
+operation in the FFT representation. It is defined in
+splitfft
+(algorithm
+1
+).
+splitfft
+is split realized in the FFT representation: for any FFT split
+splitfft
+ FFT . Readers
+familiar with the Fourier transform will recognize that
+splitfft
+is a subroutine of the inverse fast Fourier
+transform, more precisely the part which from FFT computes two FFT ’s twice smaller.
+The
+mergefft
+operator. With the previous notations, we define the operator merge as follows:
+merge
+
+
+
+
+
+
+
+
+
+
+
+ Q ϕ (3.22)
+28
+
+Algorithm 1
+splitfft
+ FFT
+Require:
+FFT
+
+for some Q ϕ
+Ensure:
+FFT
+
+
+
+
+′
+
+
+′
+and FFT
+
+
+
+
+′
+
+
+′
+for some
+
+
+
+ Q ϕ
+′
+
+Format:
+All polynomials are in FFT representation.
+1:
+for such that ϕ and Im do ▷ See eq. (
+3.19
+) with
+2:
+
+′
+
+
+3:
+
+
+
+′
+
+
+
+
+4:
+
+
+
+′
+
+
+
+
+5:
+return FFT
+
+ FFT
+
+
+Algorithm 2
+mergefft
+
+
+
+
+
+Require:
+FFT
+
+
+
+
+′
+
+
+′
+and FFT
+
+
+
+
+′
+
+
+′
+for some
+
+
+
+ Q ϕ
+′
+
+Ensure:
+FFT
+
+for some Q ϕ
+Format:
+All polynomials are in FFT representation.
+1:
+for such that ϕ do ▷ See eq. (
+3.19
+)
+2:
+
+′
+
+
+3:
+
+
+
+′
+
+
+
+′
+
+4:
+return FFT
+Similarly to split , it is often relevant from an efficiently standpoint to perform merge in the FFT repre-
+sentation. This is done in
+mergefft
+(algorithm
+2
+).
+It is immediate that split and merge are inverses of each other, and equivalently
+splitfft
+and
+mergefft
+are inverses of each other. Just as for
+splitfft
+, readers familiar with the Fourier transform can observe that
+mergefft
+is a step of the fast Fourier transform: it is the reconstruction step which from two small FFT ’s
+computes a larger FFT .
+Relationship with the FFT. There is no requirement on the order in which the values (resp.
+
+
+
+′
+ , resp.
+
+
+′
+ ) are to be stored, and the choice of this order is left to the implementer. It is however
+recommended to use a unique order convention for the FFT , invFFT ,
+splitfft
+and
+mergefft
+operators.
+Since the FFT and invFFT need to implemented anyway, this unique convention can be achieved e.g. by
+implementing
+splitfft
+as part of invFFT , and
+mergefft
+as part of the FFT .
+The intricate relationships between the split and merge operators, their counterparts in the FFT repre-
+sentation and the (inverse) fast Fourier transform are illustrated in the commutative diagram of fig.
+3.2
+.
+3.6.1 Algebraic interpretation
+The purpose of the splitting and merging operators that we defined is not only to represent an element
+of Q ϕ using two elements of Q ϕ
+′
+ , but to do so in a manner compatible with ring operations.
+29
+
+ Q ϕ
+
+
+
+
+ Q ϕ
+′
+
+
+ FFT Q ϕ
+
+
+
+
+
+
+
+ FFT Q ϕ
+′
+
+FFT
+FFT
+invFFT
+invFFT
+split (
+3.21
+)
+splitfft
+merge (
+3.22
+)
+mergefft
+Figure 3.2:
+Relationship between FFT , invFFT , split , merge ,
+splitfft
+and
+mergefft
+As an illustration, we consider the operation:
+ (3.23)
+where Q ϕ . For Q ϕ , we consider the associated endomorphism
+
+
+Q ϕ . (
+3.23
+) can be rewritten as
+
+ . By the split isomorphism, and (resp.
+
+) can
+also be considered as elements (resp. an endomorphism) of Q ϕ
+′
+
+
+. We can rewrite (
+3.23
+) as:
+[
+
+
+
+
+]
+
+[
+
+
+
+
+]
+[
+
+
+
+
+
+
+
+
+]
+(3.24)
+More formally, we have used the fact that splitting operators are isomorphisms between Q ϕ and
+ Q ϕ
+′
+
+
+, which express elements of Q ϕ in the Q ϕ
+′
+ -basis (hence “breaking”
+ in vectors over a smaller field). Similarly, writing the transformation matrix of the endomorphism
+
+in the basis yields the matrix of (
+3.24
+).
+Relationship with the field norm. The field norm (or relative norm)
+L K
+maps elements of a
+larger field L onto a subfield K . It is an important notion in field theory, but in this document, we only
+need to define it for a simple, particular case. Let
+
+a power of two, L Q
+
+ and
+K Q
+
+ . We define the field norm
+L K
+as follows:
+
+L K
+ L K
+
+
+
+
+
+
+(3.25)
+where
+
+
+
+ split K
+
+, see (
+3.20
+) and (
+3.21
+) for explicit formulae. When L and K are clear
+from context, we simply note
+L K
+ . An equivalent formulation for
+L K
+is:
+
+L K
+ (3.26)
+Both (
+3.25
+) and (
+3.26
+) are valid formulae for
+L K
+ , but (
+3.25
+) is more suited to the coefficient repre-
+sentation, and (
+3.26
+) is more suited to the NTT representation.
+30
+
+3.7 Hashing
+As for any hash-and-sign signature scheme, the first step to sign a message or verify a signature consists
+of hashing the message. In our case, the message needs to be hashed into a polynomial in Z
+
+ ϕ . An
+approved extendable-output hash function (XOF), as specified in FIPS 202 [
+NIS15
+], shall be used during
+this procedure.
+This XOF shall have a security level at least equal to the security level targeted by our signature scheme.
+In addition, we should be able to start hashing a message without knowing the security level at which it
+will be signed. For these reasons, we use a unique XOF for all security levels: SHAKE-256 .
+•
+SHAKE-256 -Init () denotes the initialization of a SHAKE-256 hashing context;
+•
+SHAKE-256 -Inject ( ctx , str ) denotes the injection of the data str in the hashing context ctx ;
+•
+SHAKE-256 -Extract ( ctx , ) denotes extraction from a hashing context ctx of bits of pseudo-
+randomness.
+HashToPoint
+(algorithm
+3
+) defines the hashing process used in Falcon . It is defined for any
+
+.
+In Falcon , big-endian convention is used to interpret a chunk of bits, extracted from a SHAKE-256
+instance, into an integer in the to
+
+ range (the first of the bits has numerical weight
+
+, the last
+has weight ).
+Algorithm 3
+HashToPoint
+ str
+Require:
+A string str , a modulus
+
+, a degree N
+⋆
+Ensure:
+An polynomial
+∑
+
+
+
+
+
+
+in Z
+
+
+1:
+ ⌊
+
+ ⌋
+2:
+ctx SHAKE-256-Init
+3:
+SHAKE-256-Inject ctx str
+4:
+
+5:
+while do
+6:
+ SHAKE-256-Extract ctx
+7:
+if then
+8:
+
+
+
+9:
+
+10:
+return
+Possible variants.
+•
+If
+
+, then larger chunks can be extracted from SHAKE-256 at each step.
+•
+HashToPoint
+may be difficult to efficiently implement in a constant-time way; constant-timeness
+may be a desirable feature if the signed data is also secret.
+A variant which is easier to implement with constant-time code extracts bits instead of at
+step
+6
+, and omits the conditional check of step
+7
+. While the omission of the check means that
+31
+
+some outputs are slightly more probable than others, a Rényi argument [
+BLL
+
+15
+,
+Pre17
+] allows
+to claim that this variant is secure for the parameters set by NIST [
+NIS16
+].
+Of course, any variant deviating from the procedure expressed in algorithm
+3
+implies that the same mes-
+sage will hash to a different value, which breaks interoperability.
+3.8 Key Pair Generation
+3.8.1 Overview
+The key pair generation can be decomposed in two clearly separate parts.
+•
+Solving the NTRU equation. The first step of the key pair generation consists of computing poly-
+nomials Z ϕ which verify (
+3.15
+) – the NTRU equation. Generating and is
+easy; the hard part is to efficiently compute polynomials such that (
+3.15
+) is verified.
+To do this, we propose a novel method that exploits the tower-of-rings structure highlighted in
+(
+3.4
+). We use the field norm to map the NTRU equation onto a smaller ring Z ϕ
+′
+ of the
+tower of rings, all the way down to Z . We then solve the equation in Z – using an extended gcd –
+and use properties of the norm to lift the solutions back to the original ring Z ϕ .
+Implementers should be mindful that this step does not perform modular reduction modulo ,
+which leads us to handle polynomials with large coefficients (a few thousands of bits per coefficient
+in the lowest levels of the recursion). See Section
+3.8.2
+for a formal specification of this step, and
+[
+PP19
+] for an in-depth analysis.
+•
+Computing a Falcon tree. Once suitable polynomials are generated, the second part of
+the key generation consists of preprocessing them into an adequate format: by adequate we mean
+that this format should be reasonably compact and allow fast signature generation on-the-go.
+Falcon trees are precisely this adequate format. To compute a Falcon tree, we compute the
+LDL
+⋆
+decomposition
+⋆
+of the matrix
+⋆
+, where
+
+[
+
+
+
+
+]
+ (3.27)
+which is equivalent to computing the Gram-Schmidt orthogonalization
+
+ . If we were
+using Klein’s well-known sampler (or a variant thereof) as a trapdoor sampler, knowing would be
+sufficient but a bit unsatisfactory as we would not exploit the tower-of-rings structure of Q ϕ .
+So instead of stopping there, we store (or rather
+
+, its bottom-left and only non-trivial term) in
+the root of a tree, use the splitting operators defined in Section
+3.6
+to “break” the diagonal elements
+
+
+of into matrices
+
+over smaller rings Q ϕ
+′
+ , at which point we create subtrees for each
+matrix
+
+and recursively start over the process of LDL
+⋆
+decomposition and splitting.
+The recursion continues until the matrix has its coefficients in Q , which correspond to the bot-
+tom of the recursion tree. How this is done is specified in Section
+3.8.3
+.
+32
+
+Keygen
+NTRUGen
+ﬀ
+⋆
+NTRUSolve
+
+⋆
+Figure 3.3:
+Flowchart of the key generation
+The main technicality of this part is that it exploits the tower-of-rings structure of Q ϕ by
+breakingitselementsontosmallerrings. Inaddition, intermediateresultsarestoredinatree, which
+requiresprecisebookkeepingaselementsofdifferenttreelevelsdonotliveinthesamefield. Finally,
+for performance reasons, the step is realized completely in the FFT domain.
+Once these two steps are done, the rest of the key pair generation is straightforward. A final step normal-
+izes the leaves of the LDL tree to turn it into a Falcon tree. The result is wrapped in a private key sk and
+the corresponding public key pk is
+
+ .
+A formal description is given in algorithms
+4
+to
+9
+, the main algorithm being the procedure
+Keygen
+(al-
+gorithm
+4
+). The general architecture of the key pair generation is also illustrated in fig.
+3.3
+.
+Algorithm 4
+Keygen
+ ϕ
+Require:
+A monic polynomial ϕ Z , a modulus
+Ensure:
+A secret key sk , a public key pk
+1:
+
+NTRUGen
+ ϕ ▷ Solving the NTRU equation
+2:
+
+[
+
+
+
+
+]
+3:
+
+ FFT ▷ Compute the FFT for each of the 4 components
+4:
+
+
+
+
+
+⋆
+5:
+T
+ﬀ
+⋆
+ ▷ Computing the LDL
+⋆
+tree
+6:
+for each leaf leaf of T do ▷ Normalization step
+7:
+leaf value
+
+leaf value
+8:
+sk
+
+ T
+9:
+
+
+
+10:
+pk
+11:
+return sk pk
+3.8.2 Generating the polynomials .
+The first step of the key pair generation generates suitable polynomials verifying (
+3.15
+). This
+is specified in
+NTRUGen
+(algorithm
+5
+). We provide a general explanation of
+NTRUGen
+:
+33
+
+1.
+First, the polynomials are generated randomly. A few conditions over are checked to
+ensure they are suitable for our purposes (line
+7
+to line
+11
+). It particular:
+(a)
+Line
+7
+ensures a public key can be computed from . This is true if and only if is
+invertible , which is true if and only if NTT contains no coefficient set to .
+(b)
+The polynomials must allow to generate short signatures. This is true if:
+
+{
+∥ ∥
+
+
+
+
+
+(
+
+⋆
+
+⋆
+
+⋆
+
+
+⋆
+
+⋆
+
+⋆
+)
+
+
+
+
+
+}
+
+
+ (3.28)
+We recall that the norm ∥ ∥ is easily computed by using (
+3.9
+) with either (
+3.8
+) or (
+3.10
+),
+depending on the representation (FFT or coefficient).
+2.
+Second, short polynomials are computed such that verify (
+3.15
+). This is done by
+the procedure
+NTRUSolve
+(algorithm
+6
+).
+Algorithm 5
+NTRUGen
+ ϕ
+Require:
+A monic polynomial ϕ Z of degree , a modulus
+Ensure:
+Polynomials
+1:
+
+
+
+√
+ ▷
+
+is chosen so that E ∥ ∥
+
+
+2:
+for from to do
+3:
+
+
+
+Z
+
+
+▷ See also (
+3.29
+)
+4:
+
+
+
+Z
+
+
+5:
+
+∑
+
+
+
+
+
+▷ Z ϕ
+6:
+
+∑
+
+
+
+
+
+▷ Z ϕ
+7:
+if NTT contains as a coefficient then ▷ Check that is invertible
+8:
+restart
+9:
+
+{
+∥ ∥
+
+
+
+(
+
+⋆
+
+⋆
+
+⋆
+
+
+⋆
+
+⋆
+
+⋆
+)
+
+
+
+}
+▷ Using (
+3.9
+) with (
+3.8
+) or (
+3.10
+)
+10:
+if
+
+ then ▷ Check that ∥ ∥
+GS
+is short
+11:
+restart
+12:
+
+NTRUSolve
+
+ ▷ Computing such that ϕ
+13:
+if then
+14:
+restart
+15:
+return
+One way to sample
+
+
+(lines
+5
+and
+6
+) is to perform:
+
+
+∑
+
+
+
+ where
+
+
+
+
+
+
+SamplerZ
+
+
+
+
+
+
+√
+
+
+
+(3.29)
+This exploits the fact the sum of Gaussians of standard deviation
+
+is a Gaussian of standard deviation
+
+
+
+ . Here
+
+is chosen so that
+
+
+
+, see Section
+3.9.3
+. Note that the reference code currently
+implements a similar idea, but with a
+
+
+
+for which we sample using a precomputed table.
+34
+
+Solving the NTRU equation (
+3.15
+)
+We now explain how to solve (
+3.15
+). As mentioned in Section
+3.8.1
+, we repeatedly use the field norm
+to map to a smaller ring Z
+
+ , until we reach the ring Z . Solving (
+3.15
+) then amounts to
+computing an extended GCD over Z , which is simple. We then use the multiplicative properties of the
+field norm to repeatedly lift the solutions up to Z
+
+ , at which point we have solved (
+3.15
+).
+Algorithm 6
+NTRUSolve
+
+
+Require:
+ Z
+
+ with a power of two
+Ensure:
+Polynomials such that (
+3.15
+) is verified
+1:
+if then
+2:
+Compute Z such that ▷ Using the extended GCD
+3:
+if ̸ then
+4:
+abort and return
+5:
+
+6:
+return
+7:
+else
+8:
+
+′
+ ▷
+′
+
+′
+
+′
+
+′
+ Z
+
+
+9:
+
+′
+ ▷ as defined in either (
+3.25
+) or (
+3.26
+)
+10:
+
+′
+
+′
+
+NTRUSolve
+
+
+′
+
+′
+ ▷ Recursive call
+11:
+
+′
+
+
+ ▷ Z
+
+
+12:
+
+′
+
+
+
+13:
+Reduce
+ ▷ is reduced with respect to
+14:
+return
+NTRUSolve
+uses
+Reduce
+(algorithm
+7
+) as a subroutine to reduce the size of the solutions . The
+principle of
+Reduce
+is a simple generalization of textbook vectors’ reduction. Given vectors Z
+
+,
+reducing with respect to is done by simply performing
+⌊
+⟨ ⟩
+⟨ ⟩
+⌉
+ .
+Reduce
+does the same by
+replacing Z
+
+by Z ϕ
+
+, by and by . A detailed explanation of the mathematical
+and algorithmic principles underlying
+NTRUSolve
+can be found in [
+PP19
+].
+Algorithm 7
+Reduce
+
+Require:
+Polynomials Z ϕ
+Ensure:
+ is reduced with respect to
+1:
+do
+2:
+
+⌊
+
+⋆
+
+⋆
+
+⋆
+
+⋆
+⌉
+▷
+
+⋆
+
+⋆
+
+⋆
+
+⋆
+ Q ϕ and Z ϕ
+3:
+
+4:
+
+5:
+while ̸ ▷ Multiple iterations may be needed, e.g. if is computed in small precision.
+35
+
+3.8.3 Computing a Falcon Tree
+The second step of the key generation consists of preprocessing the polynomials into an ade-
+quate secret key format. The secret key is of the form sk
+
+ T , where:
+•
+
+
+[
+FFT
+ FFT
+FFT
+ FFT
+]
+•
+T is a Falcon tree computed in two steps:
+1.
+First, a tree T is computed from
+
+
+
+
+⋆
+, called an LDL tree . This is specified in
+ﬀ
+⋆
+(algorithm
+9
+). At this point, T is a Falcon tree but it is not normalized.
+2.
+Second, T is normalized with respect to a standard deviation . It is described in steps
+6
+-
+7
+of
+Keygen
+(algorithm
+4
+).
+For efficiency reasons, polynomials manipulated in
+
+⋆
+(algorithm
+8
+) and
+ﬀ
+⋆
+(algorithm
+9
+)
+always remain in FFT representation.
+At a high level, the method for computing the LDL tree at step 1 (before normalization) is simple:
+1.
+We compute the LDL decomposition of : we write
+⋆
+, with a lower triangular
+matrix with ’s on the diagonal and a diagonal matrix. See
+
+⋆
+(algorithm
+8
+).
+Westore in T . value , whichisthevalueoftherootof T .Since isoftheform
+[
+
+
+
+
+
+]
+,
+we only need to store
+
+ Q ϕ .
+2.
+We then use the splitting operator to “break” each diagonal element of into a matrix of smaller
+elements. More precisely, for a diagonal element Q
+
+ , we consider the associated
+endomorphism
+
+ Q
+
+ and write its transformation matrix over the
+smaller ring Q
+
+ . Following the argument of Section
+3.6.1
+, the transformation matrix
+of
+
+can be written as
+[
+
+
+
+
+
+
+
+
+] (
+
+[
+
+
+
+
+
+⋆
+
+
+
+])
+1
+ (3.30)
+For each diagonal element broken into a self-adjoint matrix
+
+over a smaller ring, we recursively
+compute its LDL tree as in step 1 and store the result in the left or right child of T (which we denote
+T . leftchild and T . rightchild respectively).
+We continue the recursion until we end up with coefficients in the ring Q .
+An implementation of this “LDL tree” strategy is given in
+ﬀ
+⋆
+(algorithm
+9
+). Note that in Falcon ,
+the input of
+ﬀ
+⋆
+is always a matrix of dimension , which greatly simplifies the implementation
+of its subroutine
+
+⋆
+(algorithm
+8
+).
+1
+The equality in parentheses is true if and only if d is self-adjoint, i.e.
+⋆
+ . This is the case in
+ﬀ
+⋆
+(algorithm
+9
+).
+36
+
+Algorithm 8
+
+⋆
+
+Require:
+A full-rank self-adjoint matrix
+
+ FFT Q ϕ
+
+Ensure:
+The LDL
+⋆
+decomposition
+⋆
+over FFT Q ϕ
+Format:
+All polynomials are in FFT representation.
+1:
+
+
+
+
+2:
+
+
+
+
+
+
+3:
+
+
+
+
+
+
+⊙
+⋆
+
+⊙
+
+4:
+
+[
+
+
+
+
+
+]
+
+[
+
+
+
+
+
+
+]
+5:
+return
+Algorithm 9
+ﬀ
+⋆
+
+Require:
+A full-rank Gram matrix FFT Q
+
+
+
+Ensure:
+A binary tree T
+Format:
+All polynomials are in FFT representation.
+1:
+
+
+⋆
+ ▷
+[
+
+
+
+
+
+]
+
+[
+
+
+
+
+
+
+]
+2:
+T value
+
+3:
+if then
+4:
+T leftchild
+
+5:
+T rightchild
+
+6:
+return T
+7:
+else
+8:
+
+
+
+
+
+splitfft
+
+
+ ▷
+
+ FFT
+(
+Q
+
+
+)
+9:
+
+
+
+
+
+splitfft
+
+
+
+10:
+
+
+
+[
+
+
+
+
+
+⋆
+
+
+
+]
+,
+
+
+[
+
+
+
+
+
+⋆
+
+
+
+]
+▷ Since
+
+
+
+are self-adjoint, (
+3.30
+) applies
+11:
+T leftchild
+ﬀ
+⋆
+
+
+ ▷ Recursive calls
+12:
+T rightchild
+ﬀ
+⋆
+
+
+
+13:
+return T
+37
+
+3.9 Signature Generation
+3.9.1 Overview
+Sign
+HashToPoint
+ffSampling
+Compress
+SHAKE-256
+SamplerZ
+BaseSampler
+BerExp
+ApproxExp
+Figure 3.4:
+Flowchart of the signature
+At a high level, the principle of the signature generation algorithm is simple: it first computes a hash value
+ Z
+
+ ϕ from the message m and a salt r , and it then uses its knowledge of the secret key
+to compute two short values
+
+
+
+such that
+
+
+
+ .
+A naive way to find such short values
+
+
+
+ would be to compute
+
+, round it coefficient-
+wise to a vector ⌊ ⌉ and output
+
+
+
+ ; it fulfils all the requirements to be a legitimate
+signature, but this method is known to be insecure and to leak the private key.
+The proper way to generate
+
+
+
+ without leaking the private key is to use a trapdoor sampler (see
+Section
+2.4
+for a brief reminder on trapdoor samplers). In Falcon , we use a trapdoor sampler called
+fast Fourier sampling. The computation of the falcon tree T by
+ﬀ
+⋆
+(algorithm
+9
+) during the key pair
+generation is the initialization step of this trapdoor sampler.
+The heart of our signature generation,
+ffSampling
+(algorithm
+11
+) applies a randomized rounding (ac-
+cording to a discrete Gaussian distribution) on the coefficients of . But it does so in an adaptive manner,
+using the information stored in the Falcon tree T .
+At a high level, our fast Fourier sampling algorithm can be seen as a recursive variant of Klein’s well known
+trapdoor sampler (also known as the GPV sampler). Klein’s sampler uses a matrix (and the norm of
+Gram-Schmidt vectors) as a trapdoor, whereas ours uses a tree of such matrices (or rather, a tree of their
+non-trivial elements). Given
+
+
+
+ Q ϕ
+
+, our algorithm first splits
+
+using the splitting
+operator, recursively applies itself to it (using the right child T . rightchild of T ), and uses the merging
+operator to lift the solution to the ring Z ϕ ; it then applies itself again recursively with
+
+. Note that
+the recursions cannot be done in parallel: the second recursion takes into account the result of the first
+recursion, and this is done using information contained in T . value .
+38
+
+The most delicate part of our signature algorithm is the fast Fourier sampling described in
+ffSampling
+,
+because it makes use of the Falcon tree and of discrete Gaussians over Z . The rest of the algorithm,
+including the compression of the signature, is rather straightforward to implement.
+Formally, given a private key sk and a message m , the signer uses sk to sign m as follows:
+1.
+A random salt r is generated uniformly in
+
+. The concatenated string r ∥ m is then hashed
+to a point Z
+
+ ϕ as specified by
+HashToPoint
+(algorithm
+3
+).
+2.
+A (not necessarily short) preimage of is computed, and is then given as input to the fast Fourier
+sampling algorithm, which outputs two short polynomials
+
+
+
+ Z ϕ (in FFT representa-
+tion) such that
+
+
+
+ , as specified by
+ffSampling
+(algorithm
+11
+).
+3.
+
+
+is encoded (compressed) to a bitstring s as specified in
+Compress
+(algorithm
+17
+).
+4.
+The signature consists of the pair r s .
+Algorithm 10
+Sign
+( m , sk , ⌊
+
+⌋ )
+Require:
+A message m , a secret key sk , a bound ⌊
+
+⌋
+Ensure:
+A signature sig of m
+1:
+r
+
+uniformly
+2:
+
+HashToPoint
+ r ∥ m
+3:
+
+(
+
+
+
+FFT ⊙ FFT
+
+
+FFT ⊙ FFT
+)
+▷ FFT FFT
+
+
+
+4:
+do
+5:
+do
+6:
+
+ffSampling
+
+ T
+7:
+
+
+ ▷ At this point, follows a Gaussian distribution:
+
+8:
+while ∥ ∥
+
+ ⌊
+
+⌋ ▷ Since is in FFT representation, one may use (
+3.8
+) to compute ∥ ∥
+
+9:
+
+
+
+
+ invFFT ▷
+
+
+
+ ϕ
+10:
+s
+Compress
+
+
+ sbytelen ▷ Remove byte for the header, and bytes for r
+11:
+while s
+12:
+return sig r s
+3.9.2 Fast Fourier Sampling
+This section describes our fast Fourier sampler:
+ffSampling
+(algorithm
+11
+). We note that we perform
+all the operations in FFT representation for efficiency reasons, but the whole algorithm could also be
+executed in coefficient representation instead, at a price of a penalty in speed.
+39
+
+Algorithm 11
+ffSampling
+
+ T
+Require:
+
+
+
+
+ FFT Q
+
+
+
+, a Falcon tree T
+Ensure:
+
+
+
+
+ FFT Z
+
+
+
+Format:
+All polynomials are in FFT representation.
+1:
+if then
+2:
+
+′
+ T value ▷ It is always the case that
+′
+
+
+
+
+
+3:
+
+
+
+SamplerZ
+
+
+
+′
+ ▷ Since ,
+
+ invFFT
+
+ Q and
+
+ invFFT
+
+ Z
+4:
+
+
+
+SamplerZ
+
+
+
+′
+
+5:
+return
+
+
+
+
+6:
+ ℓ T
+
+ T
+
+ T value T leftchild T rightchild
+7:
+
+
+
+splitfft
+
+
+ ▷
+
+
+
+ FFT
+(
+Q
+
+
+)
+
+8:
+
+
+
+ffSampling
+
+
+
+ T
+
+ ▷ First recursive call to
+ffSampling
+
+9:
+
+
+
+mergefft
+
+
+ ▷
+
+
+
+ FFT
+(
+Z
+
+
+)
+
+10:
+
+′
+
+
+
+
+
+
+
+ ⊙ ℓ
+11:
+
+
+
+splitfft
+
+′
+
+
+12:
+
+
+
+ffSampling
+
+
+
+ T
+
+ ▷ Second recursive call to
+ffSampling
+
+13:
+
+
+
+mergefft
+
+
+
+14:
+return
+
+
+
+
+3.9.3 Sampler over the Integers
+Let
+
+
+
+. This section shows how to sample securely Gaussian samples
+Z
+′
+
+for
+any
+′
+
+
+
+
+ and . This is done by
+SamplerZ
+(algorithm
+15
+), which calls
+BaseSampler
+(algorithm
+12
+) and
+BerExp
+(algorithm
+14
+) as subroutines. We use the notations ( >> ) and ( & ) to denote
+the bitwise right-shift and AND, respectively. We also introduce the notations J K and UniformBits :
+For any logical proposition J K
+
+
+
+ if is true
+ if is false
+(3.31)
+Note that J K needs to be realized in constant time for our algorithms to be resistant against timing attacks.
+ Z
+
+ UniformBits samples uniformly in
+
+ . (3.32)
+BaseSampler
+. Let pdt be as in Table
+3.1
+. Our first procedure is
+BaseSampler
+(algorithm
+12
+). It
+samples an integer
+
+ Z
+
+according to the distribution of support uniquely defined as:
+
+
+ pdt (3.33)
+Thedistribution isextremelyclosetothe“half-Gaussian”
+Z
+
+
+
+inthesensethat
+
+ ∥
+Z
+
+
+
+
+
+
+, where
+
+is the Rényi divergence. For completeness, Table
+3.1
+provides the values of:
+40
+
+•
+the (scaled) probability distribution table pdt ;
+•
+the (scaled) cumulative distribution table cdt
+∑
+
+pdt ;
+•
+the (scaled) reverse cumulative distribution table RCDT
+∑
+
+pdt
+
+ cdt .
+Table 3.1:
+Values of the {probability/cumulative/reverse cumulative} distribution table for the distribu-
+tion , scaled by a factor
+
+.
+i
+pdt[i]
+cdt[i]
+RCDT[i]
+0
+1 697 680 241 746 640 300 030
+1 697 680 241 746 640 300 030
+3 024 686 241 123 004 913 666
+1
+1 459 943 456 642 912 959 616
+3 157 623 698 389 553 259 646
+1 564 742 784 480 091 954 050
+2
+928 488 355 018 011 056 515
+4 086 112 053 407 564 316 161
+636 254 429 462 080 897 535
+3
+436 693 944 817 054 414 619
+4 522 805 998 224 618 730 780
+199 560 484 645 026 482 916
+4
+151 893 140 790 369 201 013
+4 674 699 139 014 987 931 793
+47 667 343 854 657 281 903
+5
+39 071 441 848 292 237 840
+4 713 770 580 863 280 169 633
+8 595 902 006 365 044 063
+6
+7 432 604 049 020 375 675
+4 721 203 184 912 300 545 308
+1 163 297 957 344 668 388
+7
+1 045 641 569 992 574 730
+4 722 248 826 482 293 120 038
+117 656 387 352 093 658
+8
+108 788 995 549 429 682
+4 722 357 615 477 842 549 720
+8 867 391 802 663 976
+9
+8 370 422 445 201 343
+4 722 365 985 900 287 751 063
+496 969 357 462 633
+10
+476 288 472 308 334
+4 722 366 462 188 760 059 397
+20 680 885 154 299
+11
+20 042 553 305 308
+4 722 366 482 231 313 364 705
+638 331 848 991
+12
+623 729 532 807
+4 722 366 482 855 042 897 512
+14 602 316 184
+13
+14 354 889 437
+4 722 366 482 869 397 786 949
+247 426 747
+14
+244 322 621
+4 722 366 482 869 642 109 570
+3 104 126
+15
+3 075 302
+4 722 366 482 869 645 184 872
+28 824
+16
+28 626
+4 722 366 482 869 645 213 498
+198
+17
+197
+4 722 366 482 869 645 213 695
+1
+18
+1
+4 722 366 482 869 645 213 696
+0
+Algorithm 12
+BaseSampler
+
+Require:
+-
+Ensure:
+An integer
+
+ such that ▷ is uniquely defined by (
+3.33
+)
+1:
+ UniformBits ▷ See (
+3.32
+)
+2:
+
+
+
+3:
+for do
+4:
+
+
+
+
+ J RCDT K ▷ Note that one should use RCDT , not pdt or cdt
+5:
+return
+
+BerExp
+and
+ApproxExp
+.
+BerExp
+(algorithm
+14
+)anditssubroutine
+ApproxExp
+(algorithm
+13
+)serve
+to perform rejection sampling. Let be the following list of 64-bit numbers (in hexadecimal form):
+41
+
+ [0x00000004741183A3, 0x00000036548CFC06, 0x0000024FDCBF140A, 0x0000171D939DE045,
+0x0000D00CF58F6F84, 0x000680681CF796E3, 0x002D82D8305B0FEA, 0x011111110E066FD0,
+0x0555555555070F00, 0x155555555581FF00, 0x400000000002B400, 0x7FFFFFFFFFFF4800,
+0x8000000000000000]
+Let R be the polynomial defined as:
+
+
+
+
+∑
+
+
+
+
+ serves as a very good approximation of over , see [
+ZSS20
+]. This is leveraged by
+ApproxExp
+(algorithm
+13
+) to compute integral approximations of
+
+ for in a certain
+range. Note that the intermediate variables in
+ApproxExp
+are always in the range
+
+ ,
+with one exception: if , then at the end of the for loop (lines
+4
+and
+5
+) we have
+
+. This makes
+it easy to represent using, for example, the C type uint64_t .
+Algorithm 13
+ApproxExp
+
+Require:
+Floating-point values and
+Ensure:
+An integral approximation of
+
+
+1:
+ = [0x00000004741183A3,0x00000036548CFC06,0x0000024FDCBF140A,0x0000171D939DE045,
+0x0000D00CF58F6F84, 0x000680681CF796E3, 0x002D82D8305B0FEA, 0x011111110E066FD0,
+0x0555555555070F00, 0x155555555581FF00, 0x400000000002B400, 0x7FFFFFFFFFFF4800,
+0x8000000000000000]
+2:
+ ▷ and remain in
+
+ the whole algorithm.
+3:
+ ⌊
+
+ ⌋
+4:
+for do
+5:
+ >> ▷ fits in 126 bits, but we only need the top 63 bits
+6:
+ ⌊
+
+ ⌋
+7:
+ >>
+8:
+return
+Given inputs ,
+BerExp
+(algorithm
+14
+) returns a single bit 1 with probability .
+SamplerZ
+. Finally,
+SamplerZ
+(algorithm
+15
+) use the previous algorithms as subroutines and, given
+inputs
+′
+in a certain range, outputs an integer
+Z
+′
+
+in an isochronous manner.
+Known Answer Tests (KAT). To help the proper implementation of
+SamplerZ
+(algorithm
+15
+) and
+its subroutines, Table
+3.2
+provides test vectors. Let
+
+ (the value of
+
+for Falcon -
+512). Each line of Table
+3.2
+provides a tuple
+′
+ randombytes such that when replacing internal
+42
+
+Algorithm 14
+BerExp
+
+Require:
+Floating point values
+Ensure:
+A single bit, equal to 1 with probability
+1:
+ ⌊ ⌋ ▷ Compute the unique decomposition
+
+ , with Z
+
+2:
+
+3:
+
+4:
+
+ApproxExp
+ >> ▷
+
+
+
+
+5:
+
+6:
+do
+7:
+
+8:
+ UniformBits >> & 0xFF
+9:
+while ( and ) ▷ This loop does not need to be done in constant-time
+10:
+return J K ▷ Return 1 with probability
+
+
+Algorithm 15
+SamplerZ
+
+′
+
+Require:
+Floating-point values
+′
+ such that
+′
+
+
+
+
+
+Ensure:
+An integer Z sampled from a distribution very close to
+Z
+′
+1:
+ ⌊ ⌋ ▷ must be in
+2:
+
+
+
+′
+▷ helps to make the algorithm running time independent of
+′
+3:
+while (1) do
+4:
+
+
+
+BaseSampler
+
+5:
+ UniformBits & 0x1
+6:
+
+
+7:
+
+
+
+
+′
+
+
+
+
+
+
+
+8:
+if
+BerExp
+ then
+9:
+return ⌊ ⌋
+calls to UniformBits with reading bytes from randombytes (acting as a random bytestring):
+SamplerZ
+
+′
+ (3.34)
+For readability, Table
+3.2
+splits randombytes according to each iteration of
+SamplerZ
+. As an exam-
+ple, line 1 of Table
+3.2
+indicates that for ,
+′
+ ,
+randombytes = 0fc5442ff043d66e91d1eacac64ea5450a22941edc6c and , the equation
+(
+3.34
+) is verified when running
+SamplerZ
+with randomness randombytes . In addition,
+SamplerZ
+it-
+erates twice before terminating. More precisely, randombytes is used as follows:
+0fc5442ff043d66e91 d1 ea
+
+
+
+Iteration 1
+ cac64ea5450a22941e dc 6c
+
+
+
+Iteration 2
+At each iteration, the first random bytes are used by
+BaseSampler
+, the next one by line
+5
+and the last
+one(s) by
+BerExp
+. Note that at each call,
+BerExp
+has a probability
+
+
+
+of using more than random byte;
+43
+
+this is rare, but happens. This is illustrated by line 9 of Table
+3.2
+, which contain an example for which
+one iteration of
+BerExp
+uses random bytes.
+For further testing, this submission package contains more extensive and detailed test vectors. See:
+Supporting_Documentation/additional/test-vector-sampler-falcon{512,1024}.txt
+Table 3.2:
+Test vectors for
+SamplerZ
+(
+
+ )
+Center
+Standard deviation
+′
+randombytes
+Output
+1
+-91.90471153063714
+1.7037990414754918
+0fc5442ff043d66e91d1ea
+cac64ea5450a22941edc6c
+-92
+2
+-8.322564895434937
+1.7037990414754918
+f4da0f8d8444d1a77265c2
+ef6f98bbbb4bee7db8d9b3
+-8
+3
+-19.096516109216804
+1.7035823083824078
+db47f6d7fb9b19f25c36d6
+b9334d477a8bc0be68145d
+-20
+4
+-11.335543982423326
+1.7035823083824078
+ae41b4f5209665c74d00dc
+c1a8168a7bb516b3190cb4
+2c1ded26cd52aed770eca7
+dd334e0547bcc3c163ce0b
+-12
+5
+7.9386734193997555
+1.6984647769450156
+31054166c1012780c603ae
+9b833cec73f2f41ca5807c
+c89c92158834632f9b1555
+8
+6
+-28.990850086867255
+1.6984647769450156
+737e9d68a50a06dbbc6477
+-30
+7
+-9.071257914091655
+1.6980782114808988
+a98ddd14bf0bf22061d632
+-10
+8
+-43.88754568839566
+1.6980782114808988
+3cbf6818a68f7ab9991514
+-41
+9
+-58.17435547946095
+1.7010983419195522
+6f8633f5bfa5d26848668e
+3d5ddd46958e97630410587c
+-61
+10
+-43.58664906684732
+1.7010983419195522
+272bc6c25f5c5ee53f83c4
+3a361fbc7cc91dc783e20a
+-46
+11
+-34.70565203313315
+1.7009387219711465
+45443c59574c2c3b07e2e1
+d9071e6d133dbe32754b0a
+-34
+12
+-44.36009577368896
+1.7009387219711465
+6ac116ed60c258e2cbaeab
+728c4823e6da36e18d08da
+5d0cc104e21cc7fd1f5ca8
+d9dbb675266c928448059e
+-44
+13
+-21.783037079346236
+1.6958406126012802
+68163bc1e2cbf3e18e7426
+-23
+14
+-39.68827784633828
+1.6958406126012802
+d6a1b51d76222a705a0259
+-40
+15
+-18.488607061056847
+1.6955259305261838
+f0523bfaa8a394bf4ea5c1
+0f842366fde286d6a30803
+-22
+16
+-48.39610939101591
+1.6955259305261838
+87bd87e63374cee62127fc
+6931104aab64f136a0485b
+-50
+44
+
+3.10 Signature Verification
+3.10.1 Overview
+The signature verification procedure is much simpler than the key pair generation and the signature gen-
+eration. Given a public key pk , a message m , a signature sig = ( r , s ) and an acceptance bound ⌊
+
+⌋ ,
+the verifier uses pk to verify that sig is a valid signature for the message m as specified hereinafter:
+1.
+The value r (called “the salt”) and the message m are concatenated to a string r ∥ m which is hashed
+to a polynomial Z
+
+ ϕ as specified by
+HashToPoint
+(algorithm
+3
+).
+2.
+s is decoded (decompressed) to a polynomial
+
+ Z ϕ , see
+Decompress
+(algorithm
+18
+).
+3.
+The value
+
+
+
+ is computed.
+4.
+If ∥
+
+
+
+ ∥
+
+ ⌊
+
+⌋ , then the signature is accepted as valid. Otherwise, it is rejected.
+3.10.2 Specification
+The specification of the signature verification is given in
+Verify
+(algorithm
+16
+).
+Algorithm 16
+Verify
+( m , sig , pk , ⌊
+
+⌋ )
+Require:
+A message m , a signature sig r s , a public key pk Z
+
+ ϕ , a bound ⌊
+
+⌋
+Ensure:
+Accept or reject
+1:
+
+HashToPoint
+ r ∥ m
+2:
+
+
+
+Decompress
+ s sbytelen
+3:
+if
+
+ then
+4:
+reject ▷ Reject invalid encodings
+5:
+
+
+
+
+ ▷
+
+should be normalized between
+⌈
+
+
+
+⌉
+and
+⌊
+
+
+⌋
+6:
+if ∥
+
+
+
+ ∥
+
+ ⌊
+
+⌋ then
+7:
+accept
+8:
+else
+9:
+reject ▷ Reject signatures that are too long
+Computation of
+
+can be performed entirely in Z
+
+ ϕ ; the resulting values should then be normal-
+ized to the ⌈ ⌉ to ⌊ ⌋ range. In order to avoid computing a square root, the squared norm can be
+computed, using only integer operations, and then compared to ⌊
+
+⌋ .
+45
+
+3.11 Encoding Formats
+3.11.1 Bits and Bytes
+A byte is a sequence of eight bits (formally, an octet ). Within a byte, bits are ordered from left to right.
+A byte has a numerical value, which is obtained by adding the weighted bits; the leftmost bit, also called
+“top bit” or “most significant”, has weight 128; the next bit has weight 64, and so on, until the rightmost
+bit, which has weight 1.
+Some of the encoding formats defined below use sequences of bits. When a sequence of bits is represented
+as bytes, the following rules apply:
+•
+The first byte will contain the first eight bits of the sequence; the second byte will contain the next
+eight bits, and so on.
+•
+Within each byte, bits are ordered left-to-right in the same order as they appear in the source bit
+sequence.
+•
+If the bit sequence length is not a multiple of 8, up to 7 extra padding bits are added at the end of
+the sequence. The extra padding bits MUST have value zero.
+This handling of bits matches widely deployed standard, e.g. bit ordering in the SHA-2 and SHA-3
+functions, and BIT STRING values in ASN.1.
+3.11.2 Compressing Gaussians
+In Falcon , the signature of a message essentially consists of a polynomial Z
+
+ ϕ which co-
+efficients are distributed around according to a discrete Gaussian distribution of standard deviation
+
+
+ ≪ . A naive encoding of would require about ⌈
+
+ ⌉ ϕ bits, which is far from
+optimal for communication complexity.
+In this section we specify algorithms for compressing and decompressing efficiently polynomials such as
+ . The description of this compression procedure is simple:
+1.
+For each coefficient
+
+, a compressed string str
+
+is defined as follows:
+(a)
+The first bit of str
+
+is the sign of
+
+;
+(b)
+The next bits of str
+
+are the least significant bits of
+
+ , in order of significance, i.e. most
+to least significant;
+(c)
+The last bits of str
+
+are an encoding of the most significant bits of
+
+ using unary coding. If
+⌊
+
+
+
+⌋ , then its encoding is 0 0
+
+
+
+ times
+1 , which we also note 0
+
+1 ;
+2.
+The compression of is the concatenated string str str
+
+∥ str
+
+∥ ∥ str
+
+ .
+3.
+str is padded with zeroes to a fixed width slen .
+46
+
+This encoding is based on two observations. First, since
+
+
+
+is close to uniform, it is pointless to
+compress the least significant bits of
+
+. Second, if a Huffman table is computed for the most signifi-
+cant bits of
+
+ , it results in the unary code we just described. So our unary code is actually a Huffman
+code for the distribution of the most significant bits of
+
+ . A formal description is given in
+Compress
+(algorithm
+17
+).
+Algorithm 17
+Compress
+ slen
+Require:
+A polynomial
+∑
+
+
+
+
+ Z of degree , a string bitlength slen
+Ensure:
+A compressed representation str of of slen bits, or
+1:
+str ▷ str is the empty string
+2:
+for from to do ▷ At each step, str str ∥ str
+
+ , where str
+
+encodes
+
+3:
+str str ∥ , where 1 if
+
+ , 0 otherwise ▷ Encode the sign of
+
+4:
+str str ∥
+
+
+
+
+
+ , where
+
+
+
+ >> & 0x1 ▷ Encode in binary the low bits of
+
+
+5:
+
+
+ >>
+6:
+str str ∥ 0
+
+1 ▷ Encode in unary the high bits of
+
+
+7:
+if str slen then
+8:
+str ▷ Abort if str is too long
+9:
+else
+10:
+str str ∥ 0
+slen str
+ ▷ Pad str to slen bits
+11:
+return str
+Thecorrespondingdecompressionalgorithmisgivenin
+Decompress
+(algorithm
+18
+). Foranypolynomial
+ Z such that
+Compress
+ slen ̸ , it holds that
+Decompress
+
+Compress
+ slen slen .
+We now enforce unique encodings: a polynomial should have at most one valid encoding str . This is
+done via three additional checks in
+Decompress
+:
+1.
+only accept bitstrings of length slen sbytelen (see lines
+1
+and
+2
+);
+2.
+only accept 000000001 – and not 100000001 – as a valid encoding of the coefficient (see lines
+9
+and
+10
+);
+3.
+force the last bits of str to be 0 (see lines
+12
+and
+13
+).
+3.11.3 Signatures
+A Falcon signature consists of two strings r and s . They may conceptually be encoded separately, be-
+cause the salt r must be known before beginning to hash the message itself, while the s value can be ob-
+tained or verified only after the whole message has been processed. In a format that supports streamed
+processing of long messages, the salt r would normally be encoded before the message, while the s value
+would appear after the message bytes. However, we here define an encoding that includes both r and s .
+The first byte is a header with the following format (bits indicated from most to least significant):
+0 c c 1 n n n n
+47
+
+Algorithm 18
+Decompress
+ str slen
+Ensure:
+A bitstring str str
+ slen
+, a bitlength slen
+Require:
+A polynomial
+∑
+
+
+
+
+ Z , or
+1:
+if str ̸ slen then ▷ Enforce fixed bitlength
+2:
+return
+3:
+for from to do
+4:
+
+′
+
+
+∑
+
+
+
+
+ str ▷ We recover the lowest bits of
+
+ .
+5:
+ ▷ We recover the highest bits of
+
+ .
+6:
+while str do
+7:
+
+8:
+
+
+
+str
+
+′
+
+
+
+ ▷ We recompute
+
+.
+9:
+if (
+
+ ) and ( str 1 ) then ▷ Enforce unique encoding if
+
+
+10:
+return
+11:
+str str ℓ ▷ We remove the bits of str that encore
+
+.
+12:
+if str ̸ 0
+ str
+ then ▷ Enforce trailing bits at 0
+13:
+return
+14:
+return
+∑
+
+
+
+
+
+
+with these conventions:
+•
+The leftmost bit is 0 , and the fourth bit from the left is 1 (in previous versions of Falcon , these
+bits may had have different values).
+•
+Bits cc are 01 or 10 to specify the encoding method for s . Encoding 01 uses the compression
+algorithm described in Section
+3.11.2
+; encoding 10 is alternate uncompressed encoding in which
+each coefficient of s is encoded over a fixed number of bits.
+•
+Bits nnnn encode a value ℓ such that the Falcon degree is
+ℓ
+. ℓ must be in the allowed range
+(1 to 10).
+Following the header byte are the nonce string r (40 bytes), then the encoding of s itself.
+Signatures are then normally padded with zeros up to the prescribed length ( sbytelen ). Verifiers may also
+support unpadded signatures, which do not have a fixed size, but are (on average) slightly shorter than
+padded signatures. Partial padding is not valid: if the signature has padding bytes, then all padding bytes
+must be zero, and the total padded length must be equal to sbytelen .
+When using the alternate uncompressed format ( cc is 10 in the header byte), all elements of s are encoded
+over exactly 12 bits each (signed big-endian encoding, using two’s complement for negative integers; the
+valid range is to , the value being forbidden)
+2
+. This uncompressed format yields
+larger signatures and is meant to support the uncommon situations in which signature values and signed
+messages are secret: uncompressed signatures can be decoded and encoded with constant-time imple-
+mentations that do not leak information through timing-based side channels.
+2
+In some reduced versions of Falcon , with degree 16 or less, fewer bits may be used. These reduced versions do not offer
+any security and are used only for research and tests.
+48
+
+3.11.4 Public Keys
+A Falcon public key is a polynomial whose coefficients are considered modulo . An encoded public
+key starts with a header byte:
+0 0 0 0 n n n n
+with these conventions:
+•
+The four leftmost bits are 0 (in some previous versions of Falcon , the leftmost bit could have
+been non-zero).
+•
+Bits nnnn encode a value ℓ such that the degree is
+ℓ
+. ℓ must be in the allowed range ( to ).
+After the header byte comes the encoding of : each value (in the to range) is encoded as a 14-bit
+sequence (since , 14 bits per value are used). The encoded values are concatenated into a bit
+sequence of bits, which is then represented as ⌈ ⌉ bytes.
+3.11.5 Private Keys
+Private keys use the following header byte:
+0 1 0 1 n n n n
+with these conventions:
+•
+The four leftmost bits are 0101 .
+•
+Bits nnnn encode the value ℓ such that the degree is
+ℓ
+. ℓ must be in the allowed range ( to
+ ).
+Following the header byte are the encodings of , , and , in that order. Each coordinate is encoded
+over a fixed number of bits, which depends on the degree:
+•
+Coefficients of and use:
+–
+8 bits each for degrees 2 to 32;
+–
+7 bits each for degrees 64 and 128;
+–
+6 bits each for degrees 256 and 512;
+–
+5 bits each for degree 1024.
+•
+Coefficients of use 8 bits each, regardless of the degree.
+Of course, small degrees do not offer real security, and are meant only for test and research purposes. In
+practical situations, the degree should be 512 or 1024.
+Each coefficient uses signed encoding, with two’s complement for negative values. Moreover, the minimal
+value is forbidden; e.g. when using degree 512, the valid range for a coefficient of or is to ;
+ is not allowed.
+49
+
+The polynomial is not encoded. It is recomputed when the key is loaded, thanks to the NTRU equa-
+tion:
+ ϕ (3.35)
+Since the coefficients of , , and are small, this computation can be done modulo as well, using
+the same techniques as signature verification (e.g. the NTT).
+3.11.6 NIST API
+The API to be implemented by candidates to the NIST call for post-quantum algorithms mandates a
+different convention, in which the signed message and the signature are packed into a single aggregate
+format. In this API, the following encoding is used:
+•
+First two bytes are the “signature length” (big-endian encoding).
+•
+Then follows the nonce r (40 bytes).
+•
+The message data itself appears immediately after the nonce.
+•
+The signature comes last. This signature uses a nonce-less format:
+–
+Header byte is: 0010nnnn
+–
+Encoded s immediately follows, using compressed encoding.
+There is no signature padding; the signature has a variable length. The length specified in the first two
+bytes of the package is the length, in bytes, of the signature, including its header byte, but not including
+the nonce length.
+3.12 A Note on the Key-Recovery Mode
+We mentioned in Section
+2.7
+that Falcon can be implemented in key-recovery mode. While we do not
+propose this mode as part of the specification, we outline here how this can be done:
+•
+The public key becomes pk for some collision-resistant hash function ;
+•
+The signature becomes s
+
+ s
+
+ r , with s
+
+
+Compress
+
+
+ ;
+•
+The verifier accepts the signatures if and only if:
+–
+
+
+
+
+ is short;
+–
+pk
+(
+
+
+
+
+HashToPoint
+ r ∥ m
+
+
+)
+We note that
+
+
+
+HashToPoint
+ r ∥ m
+
+ , so the verifier can recover during the ver-
+ification process, hence the name key-recovery mode . We also note that unlike the other modes, this
+one requires
+
+to be invertible ϕ . Finally, the output of should be bits long to ensure
+collision-resistance, but if we assume that the adversary can query at most
+
+public keys (similarly to the
+bound imposed on the number of signatures), perhaps it can be shortened to
+
+
+
+.
+50
+
+The main impact of this mode is that the public key becomes extremely compact: pk . The
+signature becomes about twice larger, but the total size pk sig becomes about 15% shorter. Indeed,
+we trade with
+
+; the bitsize of
+
+can be reduced by about 35% using
+Compress
+, whereas cannot be
+compressed efficiently (it is assumed to be computationally indistinguishable from random).
+3.13 Recommended Parameters
+We specify two sets of parameters that address security levels I and V as defined by NIST [
+NIS16
+, Section
+4.A.5]. These can be found in Table
+3.3
+. Core-SVP hardness is given for the best known classical (C) and
+quantum (Q) algorithms.
+Falcon -512
+Falcon -1024
+Target NIST Level
+I
+V
+Ring degree
+512
+1024
+Modulus
+12289
+Standard deviation
+165.736 617 183
+168.388 571 447
+
+
+1.277 833 697
+1.298 280 334
+
+
+1.8205
+Max. signature square norm ⌊
+
+⌋
+34 034 726
+70 265 242
+Public key bytelength
+897
+1 793
+Signature bytelength sbytelen
+666
+1 280
+Key-recovery:
+
+
+
+
+
+BKZ blocksize (
+2.3
+)
+Core-SVP hardness (C)
+Core-SVP hardness (Q)
+458
+936
+133
+273
+121
+248
+Forgery:
+
+
+
+
+
+BKZ blocksize (
+2.4
+)
+Core-SVP hardness (C)
+Core-SVP hardness (Q)
+411
+952
+120
+277
+108
+252
+Table 3.3:
+Falcon parameter sets.
+51
+
+
+Chapter 4
+Implementation and Performances
+We list here a number of noteworthy points related to implementation.
+4.1 Floating-Point
+Signature generation, and also part of key pair generation, involve the use of complex numbers. These
+can be approximated with standard IEEE 754 floating-point numbers (“binary64” format, commonly
+known as “double precision”). Each such number is encoded over 64 bits, that split into the following
+elements:
+•
+a sign (1 bit);
+•
+an exponent in the to range (11 bits);
+•
+a mantissa such that (52 bits).
+In general, the represented value is
+
+. The mantissa is encoded as
+
+ ; it has 53 bits of
+precision, but its top bit, of value 1 by definition, is omitted in the encoding.
+The exponent uses 11 bits, but its range covers only 2046 values, not 2048. The two extra possible values
+for that field encode special cases:
+•
+The value zero. IEEE 754 has two zeros, that differ by the sign bit.
+•
+Subnormals: they use the minimum value for the exponent ( ) but the implicit top bit of
+the mantissa is 0 instead of 1.
+•
+Infinites (positive and negative).
+•
+Erroneous values, known as NaN (Not a Number).
+Apart from zero, Falcon does not exercise these special cases; exponents remain relatively close to zero;
+no infinite or NaN is obtained.
+The C language specification does not guarantee that its double type maps to IEEE 754 “binary64”
+53
+
+type, only that it provides an exponent range and precision that match at least that IEEE type. Support
+of subnormals, infinites and NaNs is left as implementation-defined. In practice, most C compilers will
+provide what the underlying hardware directly implements, and may include full IEEE support for the
+special cases at the price of some non-negligible overhead, e.g. extra tests and supplementary code for
+subnormals, infinites and NaNs. Common x86 CPU, in 64-bit mode, use SSE2 registers and operations
+for floating-point, and the hardware already provides complete IEEE 754 support. Other processor types
+have only a partial support; e.g. many PowerPC cores meant for embedded systems do not handle subnor-
+mals (such values are then rounded to zeros). Falcon works properly with such limited floating-point
+types.
+SomeprocessorsdonothaveaFPUatall. Thesewillneedtousesomeemulationusingintegeroperations.
+As explained above, special cases need not be implemented.
+4.2 FFT and NTT
+4.2.1 FFT
+The Fast Fourier Transform for a polynomial computes for all roots of ϕ (over C ). It is normally
+expressed recursively. If ϕ
+
+ , and
+
+
+
+
+
+
+
+ , then the following holds for any root
+ of ϕ :
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(4.1)
+
+
+is a root of
+
+ : thus, the FFT of is easily computed, with multiplications and additions
+or subtractions, from the FFT of
+
+and
+
+, both being polynomials of degree less than , and taken
+modulo ϕ
+′
+
+
+ . This leads to a recursive algorithm of cost operations.
+The FFT can be implemented iteratively, with minimal data movement and no extra buffer: in the equa-
+tions above, the computed and will replace
+
+
+
+ and
+
+
+
+ . This leads to an implementa-
+tion known as “bit reversal”, due to the resulting ordering of the : if
+
+
+
+, then
+
+
+ends up in slot rev , where rev is the bit-reversal function over
+
+ bits (it encodes its input in binary
+with left-to-right order, then reinterprets it back as an integer in right-to-left order).
+In the iterative, bit-reversed FFT, the first step is computing the FFT of sub-polynomials of degree
+1, corresponding to source index pairs , , and so on.
+Some noteworthy points for FFT implementation in Falcon are the following:
+•
+The FFT uses a table of pre-computed roots
+
+
+
+. The inverse FFT nominally
+requires, similarly, a table of inverses of these roots. However,
+
+
+
+
+
+; thus, inverses can be
+efficiently recomputed by negating the imaginary part.
+•
+ϕ has distinct roots in C , leading to values
+
+ , each being a complex number, with a real
+and an imaginary part. Storage space requirements are then floating-point numbers. However,
+if is real, then, for every root of ϕ ,
+ is also a root of ϕ , and
+
+ . Thus, the FFT repre-
+sentation is redundant, and half of the values can be omitted, reducing storage space requirements
+54
+
+to complex numbers, hence floating-point values.
+•
+The Hermitian adjoint of is obtained in FFT representation by simply computing the conjugate
+of each , i.e. negating the imaginary part. This means that when a polynomial is equal to
+its Hermitian adjoint (e.g.
+⋆
+
+⋆
+), then its FFT representation contains only real values. If
+then multiplying or dividing by such a polynomial, the unnecessary multiplications by can be
+optimized away.
+•
+The C language (since 1999) offers direct support for complex numbers. However, it may be con-
+venient to keep the real and imaginary parts separate, for values in FFT representation. If the real
+and imaginary parts are kept at indexes and , respectively, then some performance ben-
+efits are obtained:
+–
+The first step of FFT becomes free. That step involves gathering pairs of coefficients at in-
+dexes , and assembling them with a root of
+
+ , which is . The source
+coefficients are still real numbers, thus
+
+
+
+ yields
+
+
+
+, whose real and imaginary
+parts must be stored at indexes and respectively, where they already are. The whole
+loop disappears.
+–
+When a polynomial is equal to its Hermitian adjoint, all its values in FFT representation are
+real. The imaginary parts are all null, and they represent the second half of the array. Storage
+requirements are then halved, without requiring any special reordering or move of values.
+4.2.2 NTT
+The Number Theoretic Transform is the analog of the FFT, in the finite field Z
+
+of integers modulo a
+prime . ϕ
+
+ will have roots in Z
+
+if and only if . The NTT, for an input
+polynomial whose coefficients are integers modulo , computes for all roots of ϕ in Z
+
+.
+Signature verification is naturally implemented modulo ; that modulus is chosen precisely to be NTT-
+friendly:
+
+Computations modulo can be implemented with pure 32-bit integer arithmetics, avoiding divisions
+and branches, both being relatively expensive. For instance, modular addition of x and y may use this
+function:
+static inline uint32_t
+mq_add(uint32_t x, uint32_t y, uint32_t q)
+{
+uint32_t d;
+d = x + y - q;
+return d + (q & -(d >> 31));
+}
+55
+
+This code snippet uses the fact that C guarantees operations on uint32_t to be performed modulo
+
+;
+since operands fits on 15 bits, the top bit of the intermediate value d will be 1 if and only if the subtraction
+of q yields a negative value.
+For multiplications, Montgomery multiplication is effective:
+static inline uint32_t
+mq_montymul(uint32_t x, uint32_t y, uint32_t q, uint32_t q0i)
+{
+uint32_t z, w;
+z = x * y;
+w = ((z * q0i) & 0xFFFF) * q;
+z = ((z + w) >> 16) - q;
+return z + (q & -(z >> 31));
+}
+The parameter q0i contains
+
+, a value which can be hardcoded since is also known at
+compile-time. Montgomery multiplication, given and , computes
+
+ . The interme-
+diate value z can be shown to be less than , which is why a single conditional subtraction is sufficient.
+Modular divisions are not needed for signature verification, but they are handy for computing the public
+key from anf , as part of key pair generation. Inversion of modulo can be computed in a number
+of ways; exponentation is straightforward:
+
+ . For , minimal addition chains
+on the exponent yield the result in 18 Montgomery multiplications (assuming input and output are in
+Montgomery representation).
+Key pair generation may also use the NTT, modulo a number of small primes
+
+, and the branchless
+implementation techniques described above. The choice of the size of such small moduli
+
+depends on
+the abilities of the current architecture. The Falcon reference implementation, that aims at portability,
+uses moduli
+
+which are slightly below
+
+, a choice which has some nice properties:
+•
+Modular reductions after additions or subtractions can be computed with pure 32-bit unsigned
+arithmetics.
+•
+Values may fit in the signed int32_t type.
+•
+When doing Montgomery multiplications, intermediate values are less than
+
+and thus can be
+managed with the standard type uint64_t .
+On a 64-bit machine with multiplications, 63-bit moduli would be a nice choice.
+4.3 LDL Tree
+From the private key properly said (the , , and short polynomials), signature generation involves
+two main steps: building the LDL tree, and then using it to sample a short vector. The LDL tree depends
+56
+
+only on the private key, not the data to be signed, and is reusable for an arbitrary number of signatures;
+thus, it can be considered part of the private key. However, that tree is rather bulky (about 90 kB for
+ ), and will use floating-point values, making its serialization complex to define in all generality.
+Therefore, the Falcon reference code rebuilds the LDL tree dynamically when the private key is loaded;
+its API still allows a built tree to be applied to many signature generation instances.
+It would be possible to regenerate the LDL tree on the go, for a computational overhead similar to that
+of sampling the short vector itself; this would save space, since at no point would the full tree need to
+be present in RAM, only a path from the tree root to the current leaf. For degree , a saved path would
+amount to about floating-point values, i.e. roughly 16 kB. On the other hand, computational cost per
+signature would double.
+Both LDL tree construction and sampling involve operations on polynomials, including multiplications
+(and divisions). It is highly recommended to use FFT representation, since multiplication and division of
+two degree- polynomials in FFT representation requires only elementary operations. The LDL tree
+is thus best kept in FFT.
+4.4 Key Pair Generation
+4.4.1 Gaussian Sampling
+The and polynomials must be generated with an appropriate distribution. It is sufficient to generate
+each coefficient independently, with a Gaussian distribution centered on 0; values are easily tabulated.
+4.4.2 Filtering
+As per the Falcon specification, once and have been generated, some tests must be applied to deter-
+mine their appropriateness:
+•
+ and its orthogonalized version must be short enough.
+•
+ must be invertible modulo ϕ and ; this is necessary in order to be able to compute the public
+key ϕ . In practice, the NTT is used on : all the resulting coefficients of
+in NTT representation must be distinct from zero. Computing is then straightforward.
+•
+The Falcon reference implementation furthermore requires that ϕ and ϕ be
+both odd. If they are both even, the NTRU equation does not have a solution, but our imple-
+mentation cannot tolerate that one is even and the other is odd. Computing the resultant modulo
+2 is inexpensive; here, this is equal to the sum of the coefficients modulo 2.
+If any of these tests fails, new must be generated.
+57
+
+4.4.3 Solving The NTRU Equation
+Solving the NTRU equation is formally a recursive process. At each depth:
+1.
+Input polynomials and are received as input; they are modulo ϕ
+
+ for a given .
+2.
+New values
+′
+ and
+′
+ are computed; they live modulo ϕ
+′
+
+
+ , i.e. half
+the degree of ϕ . However, their coefficients are typically twice longer than those of and .
+3.
+The solver is invoked recursively over
+′
+and
+′
+, and yields a solution
+′
+
+′
+ such that
+
+′
+
+′
+
+′
+
+′
+
+4.
+Unreduced values are generated, as:
+
+′
+
+
+
+′
+
+
+ ϕ
+
+′
+
+
+
+′
+
+
+ ϕ
+(4.2)
+ and are modulo ϕ (of degree ), and their coefficients have a size which is about three times
+that of the coefficients of inputs and .
+5.
+Babai’s nearest plane algorithm is applied, to bring coefficients of and down to that of the
+coefficients of and .
+RNS and NTT
+The operations implied in the recursion are much easier when operating on the NTT representation of
+polynomials. Indeed, if working modulo , and is a root of
+
+ modulo , then:
+
+′
+
+
+
+
+
+
+′
+
+
+
+(4.3)
+Therefore, the NTT representations of
+′
+and
+′
+can be easily computed from the NTT representations
+of and ; and, similarly, the NTT representation of and (unreduced) are as easily obtained from
+the NTT representations of
+′
+and
+′
+.
+This naturally leads to the use of a Residue Number System (RNS), in which a value is encoded as a
+sequence of values
+
+
+
+for a number of distinct small primes
+
+. In the Falcon reference
+implementation, the
+
+are chosen such that
+
+
+
+(to make computations easy with pure integer
+arithmetics) and
+
+ (to allow the NTT to be applied).
+Conversion from the RNS encoding to a plain integer in base
+
+is a straightforward application of
+the Chinese Remainder Theorem; if done prime by prime, then the only required big-integer primitives
+will be additions, subtractions, and multiplication by a one-word value. In general, coefficient values are
+signed, while the CRT yields values ranging from to
+∏
+
+
+ ; normalisation is applied by assuming
+that the final value is substantially smaller, in absolute value, than the product of the used primes
+
+.
+58
+
+Coefficient Sizes
+Key pair generation has the unique feature that it is allowed occasional failures: it may reject some cases
+which are nominally valid, but do not match some assumptions. This does not induce any weakness
+or substantial performance degradation, as long as such rejections are rare enough not to substantially
+reduce the space of generated private keys.
+In that sense, it is convenient to use a priori estimates of coefficient sizes, to perform the relevant memory
+allocations and decide how many small primes
+
+are required for the RNS representation of any integer
+at any point of the algorithm. The following maximum sizes of coefficients, in bits, have been measured
+over thousands of random key pairs, at various depths of the recursion:
+depth
+max ,
+std. dev.
+max ,
+std. dev.
+10
+6307.52
+24.48
+6319.66
+24.51
+9
+3138.35
+12.25
+9403.29
+27.55
+8
+1576.87
+7.49
+4703.30
+14.77
+7
+794.17
+4.98
+2361.84
+9.31
+6
+400.67
+3.10
+1188.68
+6.04
+5
+202.22
+1.87
+599.81
+3.87
+4
+101.62
+1.02
+303.49
+2.38
+3
+50.37
+0.53
+153.65
+1.39
+2
+24.07
+0.25
+78.20
+0.73
+1
+10.99
+0.08
+39.82
+0.41
+0
+4.00
+0.00
+19.61
+0.49
+These sizes are expressed in bits; for each depth, each category of value, and each key pair, the maximum
+size of the absolute value is gathered. The array above lists the observed averages and standard deviations
+for these values.
+A Falcon keypairgeneratormaythussimplyassumethatvaluesfitcorrespondinglydimensionedbuffers,
+e.g. by using the measured average added to, say, six times the standard deviation. This would ensure that
+values almost always fit. A final test at the end of the process, to verify that the computed and match
+the NTRU equation, is sufficient to detect failures.
+Note that for depth 10, the maximum size of and is the one resulting from the extended GCD, thus
+similar to that of and .
+Binary GCD
+At the deepest recursion level, inputs and are plain integers (the modulus is ϕ ); a solution
+can be computed directly with the Extended Euclidean Algorithm, or a variant thereof. The Falcon
+reference implementation uses the binary GCD. This algorithm can be expressed in the following way:
+59
+
+•
+Values , ,
+
+,
+
+,
+
+and
+
+are initialized and maintained with the following invariants:
+
+
+
+
+
+
+
+
+(4.4)
+Initial values are:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(4.5)
+•
+At each step, or is reduced: if and/or is even, then it is divided by 2; otherwise, if both
+values are odd, then the smaller of the two is subtracted from the larger, and the result, now even, is
+divided by 2. Corresponding operations are applied on
+
+,
+
+,
+
+and
+
+to maintain the invariants.
+Note that computations on
+
+and
+
+are done modulo , while computations on
+
+and
+
+are
+done modulo .
+•
+Algorithm stops when , at which point the common value is the GCD of and .
+If the GCD is 1, then a solution
+
+
+
+ can be returned. Otherwise, the Falcon reference
+implementation rejects the pair. Note that the (rare) case of a GCD equal to itself is also rejected;
+as noted above, this does not induce any particular algorithm weakness.
+The description above is a bit-by-bit algorithm. However, it can be seen that most of the decisions are
+taken only on the low bits and high bits of and . It is thus possible to group updates of , and other
+values by groups of, say, 31 bits, yielding much better performance.
+Iterative Version
+Each recursion depth involves receiving from the upper level, and saving them for the duration of
+the recursive call. Since degrees are halved and coefficients double in size at each level, the storage space
+for such an pair is mostly constant, around 13000 bits per depth. For , depth goes to 10,
+inducing a space requirement of at least 130000 bits, or 16 kB, just for that storage. In order to reduce
+space requirements, the Falcon reference implementation recomputes dynamically from start
+when needed. Measures indicate a relatively low CPU overhead (about 15%).
+A side-effect of this recomputation is that each recursion level has nothing to save. The algorithm thus
+becomes iterative.
+Babai’s Reduction
+When candidates and have been assembled, they must be reduced against the current and . Re-
+duction is performed as successive approximate reductions, that are computed with the FFT:
+60
+
+•
+Coefficients of , , and are converted to floating-point values, yielding
+
+ , ,
+
+ and
+
+ . Scaling
+is applied so that the maximum coefficient of
+
+ and
+
+ is about
+
+times the maximum coefficient
+of
+
+ and ; scaling also ensures that all values fit in the exponent range of floating-point values.
+•
+An integer polynomial is computed as:
+
+⌊
+
+
+
+
+⋆
+
+
+
+⋆
+
+
+
+
+⋆
+
+⋆
+⌉
+(4.6)
+This computation is typically performed in FFT representation, where multiplication and division
+of polynomials are easy. Rounding to integers, though, must be done in coefficient representation.
+•
+ and are subtracted from and , respectively. Note that this operation must be exact, and
+is performed on the integer values, not the floating-point approximations. At high degree (i.e. low
+recursion depth), RNS and NTT are used: the more efficient multiplications in NTT offset the
+extra cost for converting values to RNS and back.
+This process reduces the maximum sizes of coefficients of and by about 30 bits at each iteration; it is
+applied repeatedly as long as it works, i.e. the maximum size is indeed reduced. A failure is reported if the
+final maximum size of and coefficients does not fit the target size, i.e. the size of the buffers allocated
+for these values.
+4.5 Performances
+The Falcon referenceimplementationachievesthefollowingperformanceonanIntel®Core®i5-8259U
+CPU (“Coffee Lake” core, clocked at 2.3 GHz):
+degree
+keygen (ms)
+keygen (RAM)
+sign/s
+vrfy/s
+pub length
+sig length
+512
+8.64
+14336
+5948.1
+27933.0
+897
+666
+1024
+27.45
+28672
+2913.0
+13650.0
+1793
+1 280
+The following notes apply:
+•
+For this test, in order to obtain stable benchmarks, CPU frequency scaling (“TurboBoost”) has
+been disabled. This CPU can nominally scale its frequency up to 3.9 GHz (for short durations),
+for a corresponding increase in performance. In particular, since all operations at degree 512 fit in
+L1 cache (both code and data), one may expect performance to be proportional to frequency, up
+to about 10000 signatures per second at the maximum frequency. The figures shown above are for
+sustained workloads in which signatures are repeatedly computed over prolonged periods of time.
+•
+RAM usage for key pair generation is expressed in bytes. It includes temporary buffers for all
+intermediate values, including the floating-point polynomials used for Babai’s reduction.
+•
+Public key length and average signature length are expressed in bytes. The size of public keys in-
+cludes a one-byte header that identifies the degree and modulus. For signatures, compression and
+padding is used, thus leading to a fixed signature length.
+61
+
+•
+Signature generation time does not include the LDL tree building, which is done when the private
+key is loaded. These figures thus correspond to batch usage, when many values must be signed
+with a given key. This matches, for instance, the use case of a busy TLS server. If, in a specific
+scenario, keys are used only once, then the LDL tree building cost must be added to each signature
+attempt; this almost doubles the signature cost, but reduces RAM usage.
+•
+The implementation used for this benchmark is fully constant-time. It uses AVX2 and FMA op-
+codes for improved performance. Compiler is Clang 10.0, with optimization flags:
+-O3 -march=skylake .
+62
+
+Bibliography
+[ABD16]
+Martin R. Albrecht, Shi Bai, and Léo Ducas. A subfield lattice attack on overstretched NTRU as-
+sumptions - cryptanalysis of some FHE and graded encoding schemes. In Matthew Robshaw and
+Jonathan Katz, editors, CRYPTO 2016, Part I , volume 9814 of LNCS , pages 153–178, Santa Barbara,
+CA, USA, August 14–18, 2016. Springer, Heidelberg, Germany.
+16
+[ADH
+
+19]
+Martin R. Albrecht, Léo Ducas, Gottfried Herold, Elena Kirshanova, Eamonn W. Postlethwaite, and
+Marc Stevens. The general sieve kernel and new records in lattice reduction. In YuvalIshai and Vincent
+Rijmen, editors, EUROCRYPT 2019, Part II , volume 11477 of LNCS , pages 717–746, Darmstadt,
+Germany, May 19–23, 2019. Springer, Heidelberg, Germany.
+16
+[ADPS16]
+Erdem Alkim, Léo Ducas, Thomas Pöppelmann, and Peter Schwabe. Post-quantum key exchange -
+A new hope. In Thorsten Holz and Stefan Savage, editors, USENIX Security 2016 , pages 327–343,
+Austin, TX, USA, August 10–12, 2016. USENIX Association.
+15
+[Bab85]
+L Babai. On lovasz’ lattice reduction and the nearest lattice point problem. In Proceedings on STACS
+85 2Nd Annual Symposium on Theoretical Aspects of Computer Science , New York, NY, USA, 1985.
+Springer-Verlag New York, Inc.
+10
+[Bab86]
+László Babai. On lovasz’ lattice reduction and the nearest lattice point problem. Combinatorica , 6(1),
+1986.
+10
+[BCD
+
+16]
+JoppeW.Bos, CraigCostello, LéoDucas, IlyaMironov, MichaelNaehrig, ValeriaNikolaenko, Ananth
+Raghunathan, and Douglas Stebila. Frodo: Take off the ring! Practical, quantum-secure key exchange
+from LWE. In Edgar R. Weippl, Stefan Katzenbeisser, Christopher Kruegel, Andrew C. Myers, and
+Shai Halevi, editors, ACM CCS 2016 , pages 1006–1018, Vienna, Austria, October 24–28, 2016. ACM
+Press.
+12
+[BDF
+
+11]
+Dan Boneh, Özgür Dagdelen, Marc Fischlin, Anja Lehmann, Christian Schaffner, and Mark Zhandry.
+Random oracles in a quantum world. In Dong Hoon Lee and Xiaoyun Wang, editors, ASI-
+ACRYPT 2011 , volume 7073 of LNCS , pages 41–69, Seoul, South Korea, December 4–8, 2011.
+Springer, Heidelberg, Germany.
+9
+,
+11
+,
+19
+[BDGL16]
+Anja Becker, Léo Ducas, Nicolas Gama, and Thijs Laarhoven. New directions in nearest neighbor
+searching with applications to lattice sieving. In Robert Krauthgamer, editor, 27th SODA , pages
+10–24, Arlington, VA, USA, January 10–12, 2016. ACM-SIAM.
+15
+,
+16
+[BLL
+
+15]
+Shi Bai, Adeline Langlois, Tancrède Lepoint, Damien Stehlé, and Ron Steinfeld. Improved security
+proofs in lattice-based cryptography: Using the Rényi divergence rather than the statistical distance.
+63
+
+InTetsuIwataandJungHeeCheon, editors, ASIACRYPT 2015, Part I ,volume9452of LNCS ,pages
+3–24, Auckland, New Zealand, November 30 – December 3, 2015. Springer, Heidelberg, Germany.
+32
+[BM19]
+Alexandra Boldyreva and Daniele Micciancio, editors. CRYPTO 2019, Part II , volume 11693 of
+LNCS , Santa Barbara, CA, USA, August 18–22, 2019. Springer, Heidelberg, Germany.
+64
+,
+66
+[CD20]
+André Chailloux and Thomas Debris-Alazard. Tight and optimal reductions for signatures based on
+average trapdoor preimage sampleable functions and applications to code-based signatures. In Agge-
+los Kiayias, Markulf Kohlweiss, Petros Wallden, and Vassilis Zikas, editors, PKC 2020, Part II , volume
+12111 of LNCS , pages 453–479, Edinburgh, UK, May 4–7, 2020. Springer, Heidelberg, Germany.
+19
+[CDW17]
+Ronald Cramer, Léo Ducas, and Benjamin Wesolowski. Short stickelberger class relations and appli-
+cation to ideal-SVP. In Coron and Nielsen [
+CN17
+], pages 324–348.
+16
+[CGM19]
+Yilei Chen, Nicholas Genise, and Pratyay Mukherjee. Approximate trapdoors for lattices and smaller
+hash-and-sign signatures. In Steven D. Galbraith and Shiho Moriai, editors, ASIACRYPT 2019,
+Part III , volume 11923 of LNCS , pages 3–32, Kobe, Japan, December 8–12, 2019. Springer, Hei-
+delberg, Germany.
+14
+[CJL16]
+Jung Hee Cheon, Jinhyuck Jeong, and Changmin Lee. An algorithm for NTRU problems and crypt-
+analysisoftheGGHmultilinearmapwithoutalowlevelencodingofzero. CryptologyePrintArchive,
+Report 2016/139, 2016.
+http://eprint.iacr.org/2016/139
+.
+16
+[CN17]
+Jean-Sébastien Coron and Jesper Buus Nielsen, editors. EUROCRYPT 2017, Part I , volume 10210 of
+LNCS , Paris, France, April 30 – May 4, 2017. Springer, Heidelberg, Germany.
+64
+,
+65
+[DFMS19]
+Jelle Don, Serge Fehr, Christian Majenz, and Christian Schaffner. Security of the Fiat-Shamir transfor-
+mation in the quantum random-oracle model. In Boldyreva and Micciancio [
+BM19
+], pages 356–383.
+19
+[DLP14]
+Léo Ducas, Vadim Lyubashevsky, and Thomas Prest. Efficient identity-based encryption over NTRU
+lattices. In Palash Sarkar and Tetsu Iwata, editors, ASIACRYPT 2014, Part II , volume 8874 of LNCS ,
+pages 22–41, Kaoshiung, Taiwan, R.O.C., December 7–11, 2014. Springer, Heidelberg, Germany.
+6
+,
+9
+,
+11
+,
+13
+,
+18
+,
+20
+[dLP16]
+Rafaël del Pino, Vadim Lyubashevsky, and David Pointcheval. The whole is less than the sum of
+its parts: Constructing more efficient lattice-based AKEs. In Vassilis Zikas and Roberto De Prisco,
+editors, SCN 16 , volume 9841 of LNCS , pages 273–291, Amalfi, Italy, August 31 – September 2,
+2016. Springer, Heidelberg, Germany.
+9
+,
+20
+[DN12]
+Léo Ducas and Phong Q. Nguyen. Learning a zonotope and more: Cryptanalysis of NTRUSign
+countermeasures. In Xiaoyun Wang and Kazue Sako, editors, ASIACRYPT 2012 , volume 7658 of
+LNCS , pages 433–450, Beijing, China, December 2–6, 2012. Springer, Heidelberg, Germany.
+6
+,
+10
+,
+14
+[DP16]
+Léo Ducas and Thomas Prest. Fast fourier orthogonalization. In Sergei A. Abramov, Eugene V. Zima,
+and Xiao-Shan Gao, editors, Proceedings of the ACM on International Symposium on Symbolic and
+Algebraic Computation, ISSAC 2016, Waterloo, ON, Canada, July 19-22, 2016 , pages 191–198. ACM,
+2016.
+6
+,
+14
+64
+
+[Duc18]
+Léo Ducas. Shortest vector from lattice sieving: A few dimensions for free. In Jesper Buus Nielsen
+and Vincent Rijmen, editors, EUROCRYPT 2018, Part I , volume 10820 of LNCS , pages 125–145,
+Tel Aviv, Israel, April 29 – May 3, 2018. Springer, Heidelberg, Germany.
+15
+,
+16
+[FKT
+
+20]
+Pierre-Alain Fouque, Paul Kirchner, Mehdi Tibouchi, Alexandre Wallet, and Yang Yu. Key recovery
+fromGram-Schmidtnormleakageinhash-and-signsignaturesoverNTRUlattices. InAnneCanteaut
+and Yuval Ishai, editors, EUROCRYPT 2020, Part III , volume 12107 of LNCS , pages 34–63, Zagreb,
+Croatia, May 10–14, 2020. Springer, Heidelberg, Germany.
+7
+[GGH97]
+Oded Goldreich, Shafi Goldwasser, and Shai Halevi. Public-key cryptosystems from lattice reduction
+problems. In Burton S. Kaliski Jr., editor, CRYPTO’97 , volume 1294 of LNCS , pages 112–131, Santa
+Barbara, CA, USA, August 17–21, 1997. Springer, Heidelberg, Germany.
+6
+,
+10
+[GPV08]
+Craig Gentry, Chris Peikert, and Vinod Vaikuntanathan. Trapdoors for hard lattices and new crypto-
+graphic constructions. In Richard E. Ladner and Cynthia Dwork, editors, 40th ACM STOC , pages
+197–206, Victoria, BC, Canada, May 17–20, 2008. ACM Press.
+5
+,
+6
+,
+9
+,
+10
+,
+11
+[HHP
+
+03]
+Jeffrey Hoffstein, Nick Howgrave-Graham, Jill Pipher, Joseph H. Silverman, and William Whyte.
+NTRUSIGN: Digital signatures using the NTRU lattice. In Marc Joye, editor, CT-RSA 2003 , vol-
+ume 2612 of LNCS , pages 122–140, San Francisco, CA, USA, April 13–17, 2003. Springer, Heidel-
+berg, Germany.
+6
+,
+10
+[How07]
+Nick Howgrave-Graham. A hybrid lattice-reduction and meet-in-the-middle attack against NTRU.
+In Alfred Menezes, editor, CRYPTO 2007 , volume 4622 of LNCS , pages 150–169, Santa Barbara,
+CA, USA, August 19–23, 2007. Springer, Heidelberg, Germany.
+16
+[HPRR20]
+James Howe, Thomas Prest, Thomas Ricosset, and Mélissa Rossi. Isochronous gaussian sampling:
+From inception to implementation. In Jintai Ding and Jean-Pierre Tillich, editors, Post-Quantum
+Cryptography - 11th International Conference, PQCrypto 2020 , pages 53–71, Paris, France, April 15–17
+2020. Springer, Heidelberg, Germany.
+7
+,
+20
+[HPS98]
+Jeffrey Hoffstein, Jill Pipher, and Joseph H. Silverman. NTRU: A ring-based public key cryptosystem.
+In Joe Buhler, editor, Algorithmic Number Theory, Third International Symposium, ANTS-III,
+Portland, Oregon, USA, June 21-25, 1998, Proceedings , volume 1423 of Lecture Notes in Computer
+Science , pages 267–288. Springer, 1998.
+12
+[JNRV20]
+Samuel Jaques, Michael Naehrig, Martin Roetteler, and Fernando Virdia. Implementing grover ora-
+cles for quantum key search on AES and LowMC. In Anne Canteaut and Yuval Ishai, editors, EURO-
+CRYPT 2020, Part II , volume 12106 of LNCS , pages 280–310, Zagreb, Croatia, May 10–14, 2020.
+Springer, Heidelberg, Germany.
+16
+[KF17]
+Paul Kirchner and Pierre-Alain Fouque. Revisiting lattice attacks on overstretched NTRU parame-
+ters. In Coron and Nielsen [
+CN17
+], pages 3–26.
+16
+[Kle00]
+Philip N. Klein. Finding the closest lattice vector when it’s unusually close. In David B. Shmoys,
+editor, 11th SODA , pages 937–941, San Francisco, CA, USA, January 9–11, 2000. ACM-SIAM.
+9
+,
+10
+,
+13
+,
+14
+65
+
+[KRSS19]
+Matthias J. Kannwischer, Joost Rijneveld, Peter Schwabe, and Ko Stoffelen. pqm4: Testing and
+benchmarking NIST PQC on ARM cortex-M4. Cryptology ePrint Archive, Report 2019/844, 2019.
+https://eprint.iacr.org/2019/844
+.
+7
+[KRVV19]
+Angshuman Karmakar, Sujoy Sinha Roy, Frederik Vercauteren, and Ingrid Verbauwhede. Pushing
+the speed limit of constant-time discrete gaussian sampling. A case study on falcon. DAC , 2019.
+7
+[Laa16]
+Thijs Laarhoven. Search problems in cryptography: from ﬁngerprinting to lattice sieving . PhD thesis,
+Department of Mathematics and Computer Science, 2 2016. Proefschrift.
+15
+[LAZ18]
+Xingye Lu, Man Ho Au, and Zhenfei Zhang. Raptor: A practical lattice-based (linkable) ring signa-
+ture. Cryptology ePrint Archive, Report 2018/857, 2018.
+https://eprint.iacr.org/2018/
+857
+.
+7
+[LDK
+
+19]
+Vadim Lyubashevsky, Léo Ducas, Eike Kiltz, Tancrède Lepoint, Peter Schwabe, Gregor Seiler,
+and Damien Stehlé. CRYSTALS-DILITHIUM. Technical report, National Institute
+of Standards and Technology, 2019. available at
+https://csrc.nist.gov/projects/
+post-quantum-cryptography/round-2-submissions
+.
+19
+[Lyu12]
+Vadim Lyubashevsky. Lattice signatures without trapdoors. In Pointcheval and Johansson [
+PJ12
+],
+pages 738–755.
+19
+[LZ19]
+Qipeng Liu and Mark Zhandry. Revisiting post-quantum Fiat-Shamir. In Boldyreva and Micciancio
+[
+BM19
+], pages 326–355.
+19
+[MP12]
+Daniele Micciancio and Chris Peikert. Trapdoors for lattices: Simpler, tighter, faster, smaller. In
+Pointcheval and Johansson [
+PJ12
+], pages 700–718.
+13
+,
+14
+[MW16]
+Daniele Micciancio and Michael Walter. Practical, predictable lattice basis reduction. In Marc Fischlin
+and Jean-Sébastien Coron, editors, EUROCRYPT 2016, Part I , volume 9665 of LNCS , pages 820–
+849, Vienna, Austria, May 8–12, 2016. Springer, Heidelberg, Germany.
+15
+[MW17]
+Daniele Micciancio and Michael Walter. Gaussian sampling over the integers: Efficient, generic,
+constant-time. In Jonathan Katz and Hovav Shacham, editors, CRYPTO 2017, Part II , volume 10402
+of LNCS , pages 455–485, Santa Barbara, CA, USA, August 20–24, 2017. Springer, Heidelberg, Ger-
+many.
+17
+[NIS15]
+NIST. Sha-3 standard: Permutation-based hash and extendable-output functions, 2015.
+http://
+dx.doi.org/10.6028/NIST.FIPS.202
+.
+31
+[NIS16]
+NIST. Submissionrequirementsandevaluationcriteriaforthepost-quantumcryptographystandard-
+ization process, 2016.
+https://csrc.nist.gov/Projects/Post-Quantum-Cryptography
+.
+7
+,
+8
+,
+17
+,
+23
+,
+32
+,
+51
+[NR06]
+Phong Q. Nguyen and Oded Regev. Learning a parallelepiped: Cryptanalysis of GGH and NTRU
+signatures. In Serge Vaudenay, editor, EUROCRYPT 2006 , volume 4004 of LNCS , pages 271–288,
+St. Petersburg, Russia, May 28 – June 1, 2006. Springer, Heidelberg, Germany.
+6
+,
+10
+,
+14
+66
+
+[OSHG19]
+Tobias Oder, Julian Speith, Kira Höltgen, and Tim Güneysu. Towards practical microcontroller im-
+plementation of the signature scheme Falcon. In Jintai Ding and Rainer Steinwandt, editors, Post-
+Quantum Cryptography - 10th International Conference, PQCrypto 2019 , pages 65–80, Chongqing,
+China, May 8–10 2019. Springer, Heidelberg, Germany.
+7
+[Pei10]
+Chris Peikert. An efficient and parallel Gaussian sampler for lattices. In Tal Rabin, editor,
+CRYPTO 2010 , volume 6223 of LNCS , pages 80–97, Santa Barbara, CA, USA, August 15–19, 2010.
+Springer, Heidelberg, Germany.
+9
+,
+13
+,
+14
+[PFH
+
+17]
+Thomas Prest, Pierre-Alain Fouque, Jeffrey Hoffstein, Paul Kirchner, Vadim Lyubashevsky, Thomas
+Pornin, Thomas Ricosset, Gregor Seiler, William Whyte, and Zhenfei Zhang. FALCON. Technical
+report, National Institute of Standards and Technology, 2017. available at
+https://csrc.nist.
+gov/projects/post-quantum-cryptography/round-1-submissions
+.
+8
+[PFH
+
+19]
+Thomas Prest, Pierre-Alain Fouque, Jeffrey Hoffstein, Paul Kirchner, Vadim Lyubashevsky, Thomas
+Pornin, Thomas Ricosset, Gregor Seiler, William Whyte, and Zhenfei Zhang. FALCON. Technical
+report, National Institute of Standards and Technology, 2019. available at
+https://csrc.nist.
+gov/projects/post-quantum-cryptography/round-2-submissions
+.
+8
+[PJ12]
+David Pointcheval and Thomas Johansson, editors. EUROCRYPT 2012 , volume 7237 of LNCS ,
+Cambridge, UK, April 15–19, 2012. Springer, Heidelberg, Germany.
+66
+[Por19]
+ThomasPornin. Newefficient, constant-timeimplementationsofFalcon. CryptologyePrintArchive,
+Report 2019/893, 2019.
+https://eprint.iacr.org/2019/893
+.
+7
+,
+20
+[PP19]
+Thomas Pornin and Thomas Prest. More efficient algorithms for the NTRU key generation using
+the field norm. In Dongdai Lin and Kazue Sako, editors, PKC 2019, Part II , volume 11443 of LNCS ,
+pages 504–533, Beijing, China, April 14–17, 2019. Springer, Heidelberg, Germany.
+7
+,
+32
+,
+35
+[Pre15]
+Thomas Prest. Gaussian Sampling in Lattice-Based Cryptography . Theses, École Normale Supérieure,
+December 2015.
+13
+[Pre17]
+Thomas Prest. Sharper bounds in lattice-based cryptography using the Rényi divergence. In Tsuyoshi
+Takagi and Thomas Peyrin, editors, ASIACRYPT 2017, Part I , volume 10624 of LNCS , pages 347–
+374, Hong Kong, China, December 3–7, 2017. Springer, Heidelberg, Germany.
+14
+,
+17
+,
+19
+,
+32
+[SKD20]
+Dimitrios Sikeridis, Panos Kampanakis, and Michael Devetsikiotis. Post-quantum authentication in
+TLS 1.3: A performance study. In NDSS 2020 , San Diego, CA, USA, February 23-26, 2020. The
+Internet Society.
+7
+[SS11]
+Damien Stehlé and Ron Steinfeld. Making NTRU as secure as worst-case problems over ideal lattices.
+In Kenneth G. Paterson, editor, EUROCRYPT 2011 , volume 6632 of LNCS , pages 27–47, Tallinn,
+Estonia, May 15–19, 2011. Springer, Heidelberg, Germany.
+6
+,
+12
+[ZSS20]
+Raymond K. Zhao, Ron Steinfeld, and Amin Sakzad. FACCT: fast, compact, and constant-time
+discrete gaussian sampler over integers. IEEE Trans. Computers , 69(1):126–137, 2020.
+7
+,
+42
+67
+
