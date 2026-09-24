@@ -10,9 +10,13 @@ object rather than something a session holds in its head.
 
 ## Running
 
-| # | run | writes | dispatched |
-|---|---|---|---|
-| 1 | route the eight unowned defects found 2026-09-21 to 2026-09-23 | `records/lenses/`, `records/findings.md` | 2026-09-23 |
+none.
+
+## Done
+
+| # | run | landed |
+|---|---|---|
+| 1 | route the eight unowned defects found 2026-09-21 to 2026-09-23 | `285c219` |
 
 ## Queued, in order
 
@@ -27,6 +31,8 @@ object rather than something a session holds in its head.
 | 8 | six `REACHES` documents the census found, one walk each | `revisit` | the crypto roster |
 | 9 | `goals/password-manager` conditions 1, 4, 3, 2 | `arc-open` | one arc per condition |
 | 10 | retag every attack axis security against obfuscation, two ceilings each | `revisit` | `.planning/ROUTE-ATTACK-AXES.md` |
+| 11 | amend the blocked-egress premise. ⚑ **Measured 2026-09-24: raw egress works.** `curl` to rfc-editor returns 200 and DNS resolves from the shell | `revisit` | `docs/decisions/decision-inspiration-policy.md` |
+| 12 | replace the remembered post-quantum sizes with pinned ones. `.planning/REACH-MODEL.md:528-533` carries ML-KEM-768, ML-DSA-65, FALCON-512, SLH-DSA and X25519 from memory, and the wire budget and the 1.1 KB wall rest on them | `research` | an `FD` row |
 
 ## Blocked on the author
 
