@@ -23,8 +23,9 @@ none.
 | # | run | skill | writes |
 |---|---|---|---|
 | 2 | the six design conclusions from the 2026-09-23 discussion | capture | `.planning/MARK-AND-HANDLE-DISCUSSION.md` |
-| 3 | gate `K2` before it mints | `pipeline-audit` DESIGN | `docs/arcs/parts/crypto-primitives-K2.md` |
-| 4 | where a mark actually appears on the wire, and what a 64-byte mark does to §12's budget | `research` | an `FD` row |
+| 3 | **replace the remembered post-quantum sizes with pinned ones.** `.planning/REACH-MODEL.md:528-533` carries ML-KEM-768, ML-DSA-65, FALCON-512, SLH-DSA and X25519 from memory, and the wire budget and the 1.1 KB wall rest on them. Reordered ahead of the budget work 2026-09-24, because that work would otherwise compute against remembered numbers | `research` | an `FD` row |
+| 4 | where a mark actually appears on the wire, and what a 64-byte mark does to §12's budget, against run 3's pinned figures | `research` | an `FD` row |
+| 4b | gate `K2` before it mints | `pipeline-audit` DESIGN | `docs/arcs/parts/crypto-primitives-K2.md` |
 | 5 | the gather for `K1` | `research` | `.planning/sources/keccak-p.gather` |
 | 6 | write the Keccak translation | `translate` | `docs/translations/keccak-p.md` |
 | 7 | gate the AEAD translation, on a level that has never run against real work | `pipeline-audit` TRANSLATE | `docs/translations/aead-chacha20-poly1305.md` |
@@ -32,7 +33,8 @@ none.
 | 9 | `goals/password-manager` conditions 1, 4, 3, 2 | `arc-open` | one arc per condition |
 | 10 | retag every attack axis security against obfuscation, two ceilings each | `revisit` | `.planning/ROUTE-ATTACK-AXES.md` |
 | 11 | amend the blocked-egress premise. ⚑ **Measured 2026-09-24: raw egress works.** `curl` to rfc-editor returns 200 and DNS resolves from the shell | `revisit` | `docs/decisions/decision-inspiration-policy.md` |
-| 12 | replace the remembered post-quantum sizes with pinned ones. `.planning/REACH-MODEL.md:528-533` carries ML-KEM-768, ML-DSA-65, FALCON-512, SLH-DSA and X25519 from memory, and the wire budget and the 1.1 KB wall rest on them | `research` | an `FD` row |
+| 12 | **audit each settled crypto ruling against `PRINCIPLES.md`.** `T1` was audited by hand 2026-09-23 and came back supporting principles 1, 2 and 5 and in tension with 3 and 4, and the tension was real enough to force a measurement. `T9`, the maximize ruling, and every design this arc settles owe the same pass | `revisit` per ruling | the ruling's own file, and a `records/` row |
+| 13 | the unconfident areas, one research run each: whether two hops' pre-issued tag sequences for one route are independent, which the whole unlinkability claim rests on and no file states; whether randomized hashing has ever been applied to content addressing, and what is done about the publisher-as-adversary case | `research` | `FD` rows |
 
 ## Blocked on the author
 
