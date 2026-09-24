@@ -61,13 +61,13 @@ The extension is a kind rather than a dialect, and the end state is that a kind
 is parsed differently while staying the same language. A manifest can be written
 and turned into code, and code back into a manifest; a `.manifest` is a view of
 the code, structured for its purpose as a view; the same applies to `.protocol`,
-`.grammar` and more. `MAP.md` is the contract.
+`<name>.m.gram` and more. `MAP.md` is the contract.
 
 ## Honest limits
 
 - `.manifest` resolves as an import target and nothing checks that its contents
   are data, so the kind is a naming convention until E163. `.protocol` is minted
-  as E183 and unbuilt, `.grammar` is named nowhere in the tree, and the
+  as E183 and unbuilt, `<name>.m.gram` is named nowhere in the tree, and the
   `.profile` extension `MAP.md` names has zero files. The round-trip law that
   would make a view and its code the same artifact is `parse(source(v)) == v` in
   [[arcs/file-types-arc]], unbuilt for both carriers.

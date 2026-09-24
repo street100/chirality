@@ -31,8 +31,8 @@ where this block says otherwise.
 cheap.** `Sig` carries nine registries (globals, prims, datas, latoms, ldatas,
 targets, profiles, kinds, sheets). A manifest feeds `globals`, whose entries are
 `def`s; `.protocol` feeds `datas`. Neither needs the traversal to learn a new
-slot, so neither adds a judgment. `.grammar` feeds none of the nine, which makes
-it a new registry and a judgment in all but name; it is minted as **E190**
+slot, so neither adds a judgment. `<name>.m.gram` feeds none of the nine, which
+makes it a new registry and a judgment in all but name; it is minted as **E190**
 2026-09-02 and owes that argument before it owes an implementation.
 
 **2. The round-trip law does a second job beyond formatting: it is the VIEW law.** `read (show
@@ -285,3 +285,44 @@ transitions, protocol message layouts (E183), and a program in another language
 Ceiling: the author never writes control flow. Conditionals and recursion live in the
 interpreter. A file with no computation cannot do what the interpreter does not
 already permit.
+
+## ⚑ Amended 2026-09-23: the name collides with a file, and the model's one instance runs the printing direction
+
+Two corrections to the block above. Neither changes the design and both change
+how it reads against the tree. `records/checker-core.md` `CK-03` and
+`records/file-types.md` `FT-06` carry the measurements.
+
+**The name.** This document calls its front end *"the pretty parser"* at `:1`,
+`:9`, `:14` and `:144`. `lib/surface/pretty.chiral:1` heads itself *"E181: the
+term printer -- `Term` -> `Doc`, and its output IS chirality source"*, and that
+file's own header at `:3-8` places it in `surface/` because *"`surface/parse`
+reads, this writes"*. So the tree's `pretty` writes source and this document's
+`pretty` reads it, which are opposite directions under one word. The design is
+unaffected: the front end named here is the reader, and reading it as the file
+sharing its name inverts the arrow in the diagram at `:9`. A later pass renames
+one of the two, and this run renames neither.
+
+**The one instance runs the printing direction.** The `new` cell at `:238`,
+*"Schema-consulting printer over `Sig`"*, has one thing in the tree that already
+does its job for one type: `pp-of : (-> Str Term Doc)` at
+`lib/surface/pretty.chiral:395`, whose `pp-term` at `:272-332` carries sixteen
+arms and no catch-all. That is the printer half of the law at `:18-20`, and it
+consults no schema: it takes a `Term` it is handed. ⚑ **The reader half has no
+instance at all.** Censused 2026-09-23, the only functions under `lib/` from a
+`DataDecl` toward `Term` are field accessors: `ctor-fields` at
+`lib/typing/kernel.chiral:460` returns the fields a declaration already holds,
+and `decl-params` at `:461` returns its parameter types, read at `:1041-1043` and
+`:1086-1088` to compare two arities. Neither builds a term from a shape.
+`quote-val` (declared `:430`, defined `:762`) is the nearest thing to an inverse
+and is a different function: its domain is `Value`, the evaluator's semantic
+domain, so it reads back what `eval-term` produced rather than anything a
+declaration describes. ⚑ **The schema this document would consult is built and every reader
+of it judges.** `sig-data` at `lib/typing/kernel.chiral:401` and `ctor-fields`
+declared at `:460` and defined at `:1013` have seven call sites: five in the
+kernel's own checking (`:1038`, `:1069`, `:1072`, `:1263`, `:1306`) and two
+redeclaration tests in `lib/module/loader.chiral` at `:550` and `:571`. This
+document already named that mechanism: requirement 3 at `:118` reads
+*"Constructors have named fields"* with the justification *"`ctor-fields` is the
+only mechanical key source"*. So the distance from here to *"a configuration's reader is derived from the type
+declaration"* is one traversal over a `DataDecl`, and nothing in the tree has
+written one.

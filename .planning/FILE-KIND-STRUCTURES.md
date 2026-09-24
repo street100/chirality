@@ -1,13 +1,13 @@
 # File kind structures
 
 **Opened 2026-09-02.** The structure shared across `.manifest`, `.protocol`,
-`.grammar` and the checker kind. Amend as the design changes.
+`<name>.m.gram` and the checker kind. Amend as the design changes.
 
 Two documents already hold pieces of this. This file points at them:
 
 | already written | holds |
 |---|---|
-| `.planning/README-PLAN.md:308-322` | the end-game requirements, and the honest limit that `.grammar` is named nowhere in the tree |
+| `.planning/README-PLAN.md:308-322` | the end-game requirements, and the honest limit that `<name>.m.gram` is named nowhere in the tree |
 | `.planning/MANIFEST-DESIGN-MAP.md` | the one-translator model, `.manifest`'s three shapes, the round-trip law, built-versus-new |
 
 ⚑ **Scope widened 2026-09-02.** This opened as a file-kind note. The session
@@ -172,7 +172,7 @@ logic needs a home, which is a kind.
 |---|---|---|
 | `.manifest` | 2 tracked files, resolver probes it, content property checked nowhere | `lib/lowering/tal/target-linux.manifest`, `prog/climb.manifest` |
 | `.protocol` | absent from `MAP.md` and from the tree. E183, minted, unbuilt | 5 hand-written codecs, 1,891 L, 177 defs, 122 byte-ops |
-| `.grammar` | named nowhere in the tree except `README-PLAN.md` | none |
+| `<name>.m.gram` | named nowhere in the tree; `README-PLAN.md`'s end-game list carries it as a flat `.grammar`, superseded by `records/author-calls.md:56` | none |
 | checker kind | unnamed | `Spec` / `SpecRule`, `lib/typing/kernel-core.chiral:28-29`, declared and unpopulated |
 
 ⚑ `SpecRule` is `(spec-rule (form JForm) (name Str) (statement Str))`. The
@@ -231,12 +231,173 @@ part of the chain altitude is supposed to be about.
   check-time call to an untyped oracle puts a crossing into the elaboration's own
   effect row. A kind whose parser runs producer logic during elaboration is
   inside that open question.
-- **`.grammar` has no seed.** The other three each point at something in the
-  tree. This one points at nothing, so its positions cannot be drawn from what
-  existing code does.
+- **`<name>.m.gram` has no seed.** The other three each point at something in
+  the tree. This one points at nothing, so its positions cannot be drawn from
+  what existing code does.
 - **The pilot.** scriba proposed as the forcing case, 41 files, 10,351 L.
   Measured: no scriba file is manifest-shaped today, every one has at least 2
   `lam`. `init-loader.chiral` is 638 L with 52 `lam` and is the config path.
+
+## Amended 2026-09-23, author-led
+
+A session ruled three things, measured four, and gave a four-point statement of
+what the kind family must provide whose fourth point it left unfilled. The
+sections above stand except
+where this block says otherwise. Every ruling is `ruled` in
+`records/author-calls.md` with the author's words quoted. Cite that row.
+
+### What the family must provide
+
+Author's statement, 2026-09-23, given as four points. Three are recorded here in
+the author's own terms. The fourth is an empty slot the author has not filled.
+
+1. **A structured view for some type of domain, using a parser.** The kind is
+   the view and the parser is what produces it. This is §The frame's round-trip
+   law seen from the authoring side: a view is legitimate exactly when
+   `read (show v) = v`.
+2. **The parser handles generalizable things under the hood, with required
+   fields or structures.** What every member of the family shares rides in the
+   parser, and a member declares the fields it requires. `data` is the working
+   precedent already measured above: the author writes names and types, and
+   coverage, positivity and linearity are never written and always checked
+   (`lib/module/loader.chiral:547-595`, `lib/surface/data.chiral`).
+3. **Work outside the category goes in another file entirely, instead of
+   under-the-hood or generalized logic.** The author's example: a broker
+   `.m.check` using types from one or more `.m.type` files. So the escape hatch
+   from a kind's generality is a second file of a second facet, and the
+   generalized path is left alone.
+4. ⚑ **UNFILLED.** The author's words, verbatim: *"something else important i
+   just forgot but really need to remember"*. The slot is recorded open. Nothing
+   here fills it and no session should guess at it; it is the author's to
+   complete.
+
+⚑ **Point 3 is constructible today in shape**, measured 2026-09-23 and recorded
+as `FT-05` in `records/file-types.md`. A file of one kind already imports a file
+of another, because an import statement spells a module key and carries no
+extension: the resolver supplies it by probing `CHIRALITY_EXTS`, declared
+`(.chiral .port .manifest)` at `bin/chirality-resolve.sh:65` and executed at
+`:174-199`. Both directions are live. `lib/ports/ports.chiral:32` reads
+`(import "ports/fd")` against `lib/ports/fd.port`, and
+`lib/lowering/tal/target-linux.manifest:9` reads
+`(import "lowering/tal/sys-check")` against
+`lib/lowering/tal/sys-check.chiral`. A broker importing the types it brokers
+therefore costs an import statement and no new mechanism. What stays open is
+whether the facets of one filename are one module key or several, which is
+[[records/author-calls]] the module-key call, and `docs/arcs/file-types-arc.md`
+§Constraints this arc works under now carries the measurement it is decided
+against.
+
+### The three rulings
+
+**1. A kind is named `<name>.m.<facet>`, superseding the flat extension**
+(`records/author-calls.md:56`). The author's reason: a manifest-shaped file with
+structure rules for semantically similar scenarios is the durable beginning, and
+`.manifest` is too general to identify anything. The scheme makes the shared
+machinery visible in the filename, which is what §The frame already claims in
+prose: one translator, one configuration per kind.
+
+⚑ **Only `gram` is assigned.** The author gave the set as
+`{filename}.m.{conf,check,type,gram,etc.}` with `something like` and `etc.` in
+the sentence, then re-asserted `gram` specifically against this session's drift.
+Which facet each EXISTING kind takes is `unreviewed` at
+[[records/author-calls]] the suffix-mapping call. `.protocol` has no evident member: it carries a
+wire format, `conf` is configuration, and `type` reads as a type declaration,
+which is a third thing.
+
+**2. The join point is an optional `{parse ->}` stage in FRONT of upper**
+([[records/author-calls]] the join-point ruling), with `upper -> lower -> binary` always below it.
+A kind may skip the s-expression reader. It may not skip the kernel check or the
+lowering chain.
+
+Two consequences. **ELF identity is free rather than owed**: one path exists
+below the term language, so anything converging above upper produces the same
+bytes by construction and no kind owes a binary-equivalence gate. **The kinds are
+independent of the surface-syntax fork**: joining above upper does not require a
+kind to be expressible in the s-expression surface, so `file-types` does not wait
+on `surface-syntax/SY1`, which is itself co-gated on `E38` and `E39`.
+
+⚑ This supersedes `.planning/MANIFEST-DESIGN-MAP.md`'s model line, which says the
+pretty parser emits upper chirality **source**, text to text and auditable by
+reading. Source is a third position the ruling neither takes nor forbids, and
+that file owes the amendment.
+
+**3. A declared grammar is two positions, and the derivation rule survives both**
+([[records/author-calls]] the grammar-split ruling). The line is the reflective floor:
+`docs/decisions/decision-reflective-floor.md` settles that a runtime's judgment is
+"staged-in, never granted-to, and not swappable after staging completes". A
+grammar the front end reads source with is inside that judgment because it decides
+what a source file denotes. A grammar a program applies to input is ordinary data
+below it.
+
+**The derivation rule holds on both sides. What changes is what discharges
+it.** Below the floor the round trip `read (show v) = v` closes on the value.
+Above it the grammar IS the referent, so no internal gate exists and the only one
+available is differential against the existing reader.
+
+⚑ This makes §The kinds' `.grammar` row wrong in both halves, and makes the
+"new registry" cost the weaker objection. Below the floor the same declaration
+feeds `datas` and `globals` and adds no registry at all.
+`docs/arcs/parts/file-types-K3.md` works the split up and is `status: blocked` on
+one author call.
+
+### What was measured, and has no other home
+
+**The reader is 8-bit clean and UTF-8 needs no decision.** `lib/surface/sexp.chiral`
+is byte-directed and its `is-delim` at `:74-78` is exactly ` \t\r\n();"`, so every
+byte >= 128 is a non-delimiter and passes into symbols and strings unchanged.
+`lib/text/matcher.chiral:5-6` states the same rule for the text layer: "Bytes
+throughout. A UTF-8 lead byte is >= 194 and fails every ASCII range." Codepoints
+are owned by one module, `lib/protocol/utf8.chiral` (RFC 3629), which is a
+terminal-side decoder and is not on the reader's path.
+
+⚑ **What does NOT exist is normalization or a confusable check**, and for a kind
+that names capabilities that is a live hole rather than an encoding question. Two
+crossing names differing only by a Cyrillic homoglyph are distinct to `str-eq` and
+identical to a reviewer. No row anywhere carries this.
+
+**ELF is not load-bearing and is the wrong place to look for security.**
+`lib/lowering/x64/elf.chiral` is 4,845 B over 9 defs, and its own header says
+"minimal static ET_EXEC ELF64 header, as PURE byte layout ... No sections, no
+symbol/string tables, no dynamic linking". `lib/lowering/x64/emit.chiral` is 644 B.
+Replacing the container is cheap in lines and costs the kernel loader, `execve`
+and every existing tool, and would need a loader of our own, which grows the
+trusted base in the direction the rest of the design shrinks it. The one argument
+that survives is carrying the certificate beside the code, and
+`docs/decisions/decision-split-checker.md` calls that tier a target rather than a
+switch already thrown, so there is no evidence to carry yet.
+
+**The grammar-as-value seed exists and two element rows deny it.**
+`lib/text/matcher.chiral:24` (`Cls`) and `:92` (`Pat`) hold a pattern language as
+a value, 602 lines, 41 defs, total and pure, imported by `prog/prose-lint.prog:43`
+and gated at Phase 19 (`docs/definitions/status-ledger.md:165`).
+`docs/elements/catalog.md:502` and `docs/elements/ledger.md:323` both call the kind
+"the only one of the three with no seed in the tree". That has been false since
+E173 landed. `.planning/FILE-KIND-STRUCTURES.md:234` above carries the same false
+claim and is now named in that artifact's residue table.
+
+**Declaration to reader is total for a record and not for a grammar.** This is
+why `gram` does not sit beside `conf`, `check` and `type` as a fourth
+configuration of one mechanism. `ctor-fields` gives field names, the ascription
+gives the tag, the list type gives `cons`/`nil`, and the reader falls out
+mechanically. Grammar to parser is not total: ambiguity, termination and
+confluence are all reachable. `docs/elements/catalog.md:502` already prices this
+off the prior art, a signature giving rules declaratively and no decidable
+algorithm.
+
+### Rejected this session
+
+- **Joining the pipeline below upper, "the same thing chirality raw would produce
+  for ELF".** Proposed and withdrawn by the author in the same session. The trap:
+  joining below the kernel check makes the kind a second TRUSTED producer, which
+  destroys the `decision-split-checker` argument that adding kinds costs no
+  trusted surface. It also buys nothing, because converging above upper already
+  gives byte-identical output.
+- **A custom executable container in place of ELF**, on security grounds. See the
+  measurement above.
+- **Leading with "a tenth registry" as the cost of a compiler-facing grammar.**
+  It is the weaker objection and it evaporates below the floor.
+- **Renaming `.manifest` and `.protocol` on the obvious reading.** The scheme is
+  ruled and the per-kind mapping is not. [[records/author-calls]] the suffix-mapping call holds it.
 
 ## Rejected
 

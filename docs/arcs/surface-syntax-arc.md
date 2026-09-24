@@ -184,7 +184,7 @@ Run 2026-09-14 against the table above.
 
 ## What this arc does not take
 
-- **`.grammar`, the surface syntax as a declared signature.**
+- **`<name>.m.gram`, the surface syntax as a declared signature.**
   [[arcs/file-types-arc]] rosters `E190` as `file-types/K3` and its requirement
   6 owns it. The boundary is which question each answers: `E190` asks whether a
   grammar can be a declared kind the reader is derived from, and its own catalog

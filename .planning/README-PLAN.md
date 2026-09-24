@@ -315,11 +315,11 @@ Q2 through Q7 below are the standing drafts.
 > does not hold for the tooling: nine Python tools remain against a target of
 > zero. `.manifest` resolves as an import target and nothing checks that its
 > contents are data, so the kind is a naming convention until E163. `.protocol`
-> is minted as E183 and unbuilt, and `.grammar` is named nowhere in the tree, so
-> two thirds of the end-game list are still to be minted. The round-trip law that
-> would make a view and its code the same artifact is stated in
-> `docs/arcs/file-types-arc.md` as `parse(source(v)) == v`, and it is unbuilt for
-> both carriers.
+> is minted as E183 and unbuilt, and `<name>.m.gram`, which the list above
+> spells `.grammar`, is named nowhere in the tree, so two thirds of the end-game
+> list are still to be minted. The round-trip law that would make a view and its
+> code the same artifact is stated in `docs/arcs/file-types-arc.md` as
+> `parse(source(v)) == v`, and it is unbuilt for both carriers.
 
 **Q3. Could escape hatches like `unsafe`, `any` and raw casts be made into checked routes?**
 
