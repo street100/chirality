@@ -1,0 +1,7802 @@
+Provable Security for the Onion Routing and
+Mix Network Packet Format Sphinx
+Philip Scherer
+KIT Karlsruhe
+firstname.lastname@student.kit.edu
+Christiane Weis
+NEC Laboratories Europe
+firstname.lastname@neclab.eu
+Thorsten Strufe
+KIT Karlsruhe
+firstname.lastname@kit.edu
+ABSTRACT
+Onion routing and mix networks are fundamental concepts to pro-
+vide users with anonymous access to the Internet. Various corre-
+sponding solutions rely on the Sphinx packet format. However,
+flaws in Sphinx's underlying proof strategy were found recently. It
+is thus currently unclear which guarantees Sphinx actually provides,
+and, even worse, there is no suitable proof strategy available.
+In this paper, we restore the security foundation for all these
+works by building an analytical framework for Sphinx. We dis-
+cover that the previously-used Decisional Diffie-Hellman (DDH)
+assumption is insufficient for a security proof and show that the
+Gap Diffie-Hellman (GDH) assumption is required instead. We ap-
+ply it to prove that a slightly adapted version of the Sphinx packet
+format is secure under the GDH assumption. We are thus, to the
+best of our knowledge, the first to provide a detailed, in-depth se-
+curity proof for Sphinx that holds. Our adaptations to Sphinx are
+necessary, as we demonstrate with an attack on sender privacy that
+would otherwise be possible in Sphinx's adversary model.
+KEYWORDS
+Privacy, Anonymity, Provable Security, Onion Routing, Mix Net-
+works, Sphinx
+1 INTRODUCTION
+The majority of today's Internet traffic discloses private information
+about its users since the exposed IP addresses serve as identifiers.
+167
+address this issue by hiding the users' IP addresses. OR and mix
+networks are similar in the sense that both use relays together with
+multiple layers of encryption to hide the link between the sender
+and the message and receiver. The sender wraps the message in
+multiple encryption layers, thus creating an "onion" packet. The
+layers are peeled off one by one while traversing the relays on
+the onion's path. As a critical distinction, mix networks protect
+against a global adversary by changing the order of packets at each
+relay (hencemixingthe communications). This comes at the cost of
+introducing additional delays. OR networks avoid these delays, but
+become vulnerable to global passive adversaries. Proposed works
+for both OR and mix networks exist in two network models: In the
+integrated-system model, the receiver acts as the last relay. On the
+contrary, in the service model, the receiver is unaware of the OR or
+This work is licensed under the Creative Commons Attribu-
+tion 4.0 International License. To view a copy of this license
+visit https://creativecommons.org/licenses/by/4.0/ or send a
+letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+Proceedings on Privacy Enhancing Technologies 2024(4), 755-783
+©2024 Copyright held by the owner/author(s).
+https://doi.org/10.56553/popets-2024-0140
+mix network. The last relay, which is called the exit relay, retrieves
+and forwards the message to the receiver in plaintext.
+To hide the relationship between senders and their messages
+and receivers, protocol designers aim to make all incoming and
+outgoing packets at honest relays unlinkable for the adversary. This
+requires special care when designing the packet formats, as any
+14
+OR scheme that is being broadly applied against local adversaries,
+but mix networks against global adversaries are being increasingly
+developed. The most efficient and commonly used mix network
+12
+268,9
+12
+an additional party, the nymserver.
+1
+Senders send onions with reply
+information to the nymserver. Exit relays send anonymous reply
+messages via the nymserver, which uses the reply information
+to build a reply packet. Sphinx packets consist of a header and a
+payload. The header contains encrypted routing information and
+keys. The payload contains the encrypted message. Using only
+group exponentiations and well-known symmetric cryptography,
+Sphinx's privacy has been proven using a proof strategy by
+5
+2
+Camenisch and Lysyanskaya's
+proof strategy first proposes an idealized version of OR in the form
+of an ideal functionality in the Universal Composability frame-
+6
+of an OR protocol, from which privacy guarantees can be derived
+more readily. As proving that a protocol securely realizes this func-
+tionality directly is cumbersome, they also create a set of game-
+based properties which they claim imply realization of the ideal
+5
+used in Sphinx's privacy proof, are insufficent to realize the ideal
+While Kuhn et al.propose new properties that indeed imply the
+21
+reasons. First, Sphinx, along with many real-world applications,
+works in the service model, while Camenisch and Lysyanskaya's
+ideal functionality is in the integrated-system model. Secondly,
+Sphinx does not protect the integrity of the payload at each hop
+and thus allows for a malleability attack on the payload: If the adver-
+sarytags(i.e., flips bits of the payload) an onion leaving its sender,
+the exit relay processing the Sphinx packet will notice that the
+payload has been modified and drop the message. If Sphinx is used
+1
+While the name is the same, this server is unrelated to the anonymization network
+2
+5
+(ab-)use the onion terminology in the rest of this paper, while always meaning ORand
+mix networks and considering a global adversary.
+755
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+in the integrated-system model, this attack allows an adversarial
+receiver colluding with the first relay to learn which user was con-
+tacting it. As this violates the desired privacy goal, it follows that
+Sphinx does not achieve the integrated-system properties proposed
+by Kuhn et al.21
+an adversary to link the sender to the exit relay and completely
+destroys the message in the process. Hence, there is hope that the
+highly efficient Sphinx packet format is still secure to use as long
+as it is in its intended service model. Indeed, this question is highly
+relevant since all known protocols that prevent this attack while
+supporting anonymous replies incur extremely high overhead due
+22
+the Sphinx packet format is used in multiple OR and mixnet proto-
+8,9,13,19,26,27
+these instantiations are known to be insecure due to the tagging
+In addition to the problems noted above, we discover that the
+Decisional Diffie-Hellman (DDH) assumption used by Danezis and
+Goldberg to prove that Sphinx satisfies Camenisch and Lysyan-
+12
+curity proof.
+In this paper, we hence set out to perform a thorough analysis
+and provide the missing privacy proofs for Sphinx. We first pro-
+vide the necessary framework for the service model: A reusable
+game-based proof strategy which is of independent interest for
+future work on packet formats as well as as ideal functionality in
+the UC framework for use in analyzing the privacy guarantees of
+service-model OR protocols. We first define this new ideal function-
+ality, which incorporates both the relaxed privacy accounting for
+payload malleability as well as the changes required for the service
+model. We then construct our game-based "onion properties" and
+prove that a protocol satisfying them implies that that protocol
+also realizes the ideal functionality. During the work on this proof,
+we also discover and fix mistakes and details in the proof for the
+Secondly, we turn to an analysis of Sphinx and realize that an
+adaptation must be made to the packet format and its operation in
+order to achieve provable security. As originally defined, Sphinx
+uses a nymserver to enable its reply functionality. However, the use
+of such third parties allows for an additional tagging attack based
+on payload malleability. For secure operation of Sphinx, we hence
+propose an adaptation of the Sphinx protocol that works without
+a nymserver, but still supports anonymous replies. This works by
+simply embedding the reply information in the packet's payload
+instead of sending it separately. Lastly, we discuss the effect of our
+privacy relaxation and detail criteria for the secure usage of Sphinx.
+In summary, our main contributions are:
+•the definition of repliable service OR schemes,
+•
+the construction of an ideal functionality tailored to Sphinx
+as well as corresponding game-based properties,
+•
+minor fixes in the proof for the related integrated-system
+model work,
+•
+the discovery that the GDH assumption is required to prove
+Sphinx secure instead of the DDH assumption,
+•
+the first detailed security proof for (a slightly adapted) Sphinx
+under the GDH assumption, and
+•a discussion of criteria for secure usage of Sphinx.
+Outline.Section 2 introduces the required background. Section 3
+constructs the formal foundations for repliable OR in the service
+model, which Section 4 uses to analyze and adapt Sphinx. Section 5
+discusses the privacy achieved by our adapted Sphinx as well as
+relevant criteria under which the adapted Sphinx is considered
+secure. Finally, Section 6 concludes this paper.
+2 BACKGROUND AND RELATED WORK
+We first introduce our privacy requirements, onion routing and
+mix networks and the general network model before providing
+background on the formal analysis in this work and the Sphinx
+packet format itself.
+2.1 Onion Routing and Mix Network Packet
+Formats
+Onion routing and mix networks aim to hide the sender of a packet
+in a set of users called theanonymity set. They thereby prevent
+linking the sender both to the sent message and the receiver. The
+networks employ multiple relays between the sender and receiver
+that process packets and forward them to the next relay or the
+receiver. As the message in the packet is typically wrapped into
+multiple layers of encryption, it is also called anonionand every
+processing result on an onion's relay path is anonion layer
+Relay services are typically run by volunteers that want to help
+the sender increase its privacy against adversarial receivers, but also
+internet providers and possibly even nation-state adversaries. Due
+to this open nature of the network, it is assumed that a fraction of the
+14
+to protect against a global adversary and therefore not only change
+the representation of the onion packet, but also reorder incoming
+packets before forwarding them. Onion routing networks, however,
+traditionally protect only against local adversaries and prioritize
+14
+packet format, however, the networks are similar -- they share the
+underlying idea of layered encryption. For the sake of compatibility
+with related work, we use OR as a representative for both OR and
+mix network packet formats. We stress that we nonetheless target
+a global adversary.
+2.2 Network Models and Functionalities
+We distinguish between two network models for OR protocols: The
+integrated-system model assumes that the receiver is aware of and
+runs the OR protocol, while the service model assumes that the
+receiver can be unaware of the OR protocol. The last relay before
+the receiver, theexit relay, translates the packets accordingly.
+We further distinguish between two functionalities:Non-repliable
+OR only sends messages from senders to receivers in one direc-
+tion andrepliableOR acts as two-way communication. Repliable
+OR schemes involve sending requests asforwardmessages and
+receiving responses asreplymessages.
+By design, the anonymity of the sender is required to hold even
+against a malicious replying receiver. Thus, the receiver must not
+know to whom it sends its reply. To achieve this, the sender can
+prepare an anonymized "return envelope" and include it in its onion.
+Some repliable OR protocols (including Sphinx) additionally require
+forward and reply packets to be indistinguishable from each other
+756
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+while they are moving through the network in order to increase
+2.3 Formally Analyzing Mix Network Packet
+Formats
+The state of the art uses the Universal Composability (UC) frame-
+6
+desired security is defined by an ideal functionalityF, which is
+an optimal, abstract version of the protocol.Fperforms all com-
+putations on a trusted third party and clearly specifies how the
+environment (which controls the honest parties) and the adversary
+are allowed to interact with that third party. The goal is then to
+show that a real protocol is as secure asFand thussecurely realizes
+F. This means all attacks against the real protocol must also work
+inF(which is secure by definition). In this model, the environment
+controls all of the honest parties and the adversary controls the
+corrupted parties. To show that a protocol securely realizesF, one
+constructs a simulator that translates the actions of the real-world
+adversary into the ideal-worldF's adversarial entity's behavior
+and the ideal world's honest parties' actions into real-world pro-
+tocol messages. The environment and the adversary are allowed
+to collaborate and the environment's view after the protocol ends
+is given to a distinguisher. Only if the view of the environment
+when it is interacting with the simulator andFis indistinguishable
+from the view created from an interaction of the environment with
+the real-world adversary and the real protocol does the protocol
+securely realizeF
+2.3.1 Overview of Analyses.The first approach to consider OR in
+the UC framework was proposed by Camenisch and Lysyanskaya.
+They create an ideal functionality and (as they claim) corresponding
+game-based security properties for the integrated-system model
+5
+properties is that proving that a protocol securely realizes an ideal
+functionality is complex and involves multiple steps: One must
+construct a simulator for every adversary and then prove that the
+simulator simulates the adversary indistinguishably. Since many
+OR protocols operate in a similar way, Camenisch and Lysyanskaya
+reduce this overhead by defining their game-based properties. Their
+secure realization proof works for any OR protocol in their model
+that satisfies the game-based properties, taking advantage of the
+similarities between protocols. For authors of packet formats, this
+means that they only need to prove that their format satisfies the
+game-based properties in order to securely realize the ideal func-
+A series of protocols have based their security proofs on Ca-
+8,9,12
+et al.find flaws in the proposed properties as well as in the corre-
+new OR properties that imply the ideal functionality as originally
+proposed by Camenisch and Lysyanskaya.
+Ando and Lysyanskaya extend the ideal functionality and OR
+properties to include replies in the integrated-system model and
+Kuhn et al.22
+improving the privacy in the schemes, ideal functionality, and the
+onion properties for repliable integrated-system-model OR.
+2.3.2 Summary of Integrated-System Framework.In the follow-
+ing, we give a high-level summary of the integrated-system frame-
+22
+formalization.
+The ideal functionalityF
+for repliable OR in the integrated-
+system model offers an interface to the environment and adversary
+that allows relays to send and forward onions. The honest and
+corrupted parties send messages to the trusted third party to trig-
+ger these actions.F
+then provides the appropriate outputs to the
+parties -- these correspond to the ideal outputs one would expect
+from a secure OR protocol. For example, the adversary is notified
+when an onion is forwarded by an honest relay and receives a tem-
+porary onion identifier that it can send back toF
+when it decides
+to deliver that onion to the next honest relay. However,F
+never
+constructs or outputs any "real" onions. Instead, the parties only
+receive information about the onions associated with the aforemen-
+tioned temporary onion identifiers, These identifiers include no
+information about the sender, the receiver, the path, or the message
+of the respective onion. The identifiers are also replaced with a
+new random temporary identifier at each honest relay. This is done
+because any honest relay in an OR network breaks the link between
+the onion layers before and after itself.
+Proving UC-realization for each OR protocol individually in-
+volves a lot of redundant work. In line with earlier work, Kuhn
+et al.thus define onion properties that are sufficient to prove that
+an integrated-system packet format securely realizesF
+. These
+areCorrectness,Forwards Layer Unlinkability(LU
+→),Backwards
+Layer Unlinkability(LU
+←), andRepliable Tail Indistinguishability
+(TI
+↔
+Correctnessrequires that onions follow their set paths and de-
+crypt correctly if they are honestly processed.
+In theForwards Layer Unlinkability(LU
+→) game, onion layers
+between honest relays on the forward path of the onion are replaced
+with random onion layers taking the same path. The adversary is
+required to distinguish the replacement from the original. If the
+adversary cannot do so, the packet format ensures that onion layers
+on the forward path of an onion cannot be linked across an honest
+relay.
+In theBackwards Layer Unlinkability(LU
+←) game, onion lay-
+ers on thereply path(instead of the forward path) are replaced
+with random onion layers. Notably, it replaces them with random
+forwardonion layers. Again, the adversary must distinguish the
+replacement from the original. If it cannot do so, the packet for-
+mat ensures unlinkability of reply onion layers. This property also
+implies indistinguishability of forward and reply onions.
+In theRepliable Tail Indistinguishability(TI
+↔) game, onion layers
+going to a corrupted receiver relay are replaced with random onion
+layers with the same path and message contents. The adversary
+must once again tell the difference between the two. If it cannot,
+the packet format guarantees that different onions with the same
+message going to a corrupted receiver are indistinguishable.
+Note that, if all four properties are satisfied, every layer of an
+onion can be replaced with a random layer such that only the
+respective subpaths between honest relays stay the same (and the
+message, if the layer goes to a corrupted receiver). Effectively, this
+means that an adversary learns no more from any given sequence
+757
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+of onion layers than it would if given a temporary onion identifier
+and the corresponding subpath like inF
+.
+These onion properties combine to allow us to prove secure
+realization: When constructing the simulator that simulates the
+adversary, but interacts only withF
+, the simulator does not learn
+the full path or message of onions from honest senders, but only
+the subpaths between two honest relays. This is by construction
+ofF
+. In order to translate the ideal-world onion into a real-world
+onion, it must thus replace the real onion layers that the adversary
+and environment would expect to see with random (forward) onion
+layers that only match the original onion in their subpath (and their
+message if an adversarial receiver gets the onion). The properties
+ensure that the replacement cannot be detected, allowing the proof
+to be completed in this manner.
+2.4 Sphinx
+12
+model following the adversary model and privacy goals described
+above.
+2.4.1 The Sphinx Packet.A Sphinx packet consists of a header
+and a payload. The header of the packet contains all of the
+routing information for the packet while the payload contains the
+message and the receiver address. The sender of the packet builds
+both components layer by layer, starting at the final innermost
+layer and adding one additional layer of encryption for each relay
+on the packet's "path" as chosen by the sender. If the path is shorter
+than the configured maximum path length, padding is added to
+the final layer of the header. The relays each remove one layer
+of that encryption when they process the packet. The final relay
+removes the last layer of encryption from the packet and discovers
+the message and receiver address. It then delivers the message to
+12
+Section 4.1.
+The separation of the header and payload allows for Sphinx's
+replies: A sender forms a repliable packet by creating a header for
+the reply as well as a key for the reply payload before sending the
+"forward" packet. The reply header and the key are sent to a third-
+partynymserverusing another forward packet and stored under
+a pseudonym there. After receiving a reply from the receiver, the
+exit relay of the packet sends the nymserver the reply message and
+the pseudonym it learned from the forward packet. The nymserver
+encrypts the reply payload using the key and attaches it to the reply
+2.4.2 Sphinx Security.12
+flaws. The first is due to the padding in the final layer of the header.
+In the original Sphinx definition, this padding consists of only 0
+15,21
+is recognizable, a corrupted exit relay learns information about the
+15
+using random bits instead. In the following, we consider the version
+of Sphinx that includes this fix.
+Payload Tagging.Sphinx's second flaw concerns the integrity
+of the payload. Due to how Sphinx handles replies, it cannot use
+a standard integrity check like a MAC of the payloadat each
+relay: In order to calculate a MAC of the payload, the payload
+contents must be known. This is trivial for forward packets, but
+impossible for replies since the sender does not know what the
+receiver's reply will be ahead of time. Since the exit relay is not
+trusted, it cannot be used to calculate the payload MACs either: A
+global adversary could re-identify MACs it calculated at exit relays
+elsewhere in the network. As it stands, providing integrity for reply
+payloads has yet to be done efficiently. Some OR schemes provide
+integrity using complex cryptographic primitives like SNARGS and
+updatable encryption, but these are too computationally expensive
+A different option is to provide integrity only for forward pay-
+loads, but not reply payloads. However, this comes at the cost of
+the adversary being able to distinguish forward and reply packets,
+which Sphinx is deliberately designed to avoid. We consider the
+indistinguishability of forward and reply packets an important fea-
+ture of Sphinx since it doubles the size of the potential anonymity
+set of a packet. As a result, we choose to preserve this property
+of Sphinx at the expense of payload malleability. Adversarial mod-
+ifications of Sphinx payloads thus go unnoticed until the packet
+reaches its exit relay, which notices (and drops) the modified packet
+during the integrity check on the payload. Crucially, this allows
+the adversary to link the packet it "tagged" (by, e.g., flipping bits in
+its payload) to the packet that was dropped by the exit relay. The
+payload is completely destroyed in the process. If Sphinx is used
+8
+sender and receivers and thereby completely breaks the scheme's
+security. However, if Sphinx is used in its intended service model,
+the attack only links the sender to its corresponding exit relay. This
+can be an acceptable leak in some settings, as we discuss later.
+3
+2.4.3 Current Relevance of Sphinx.As of the writing of this paper,
+the Sphinx packet format is used in several different mix networks
+and OR protocols. However, many of these instantiations of Sphinx
+are insecure due to the tagging attack allowing adversaries to link
+senders to their chosen final relay, which is not independent of the
+sender's choice of receiver.
+Sphinx was originally designed in 2009 by Danezis and Goldberg.
+In 2015, HORNET was developed, which uses Sphinx in its setup
+phase to negotiate circuits before switching to a different format
+8.created a modified version
+3
+Loopix, a mix network built in 2017, uses Sphinx in its original
+26
+9.
+discovered that Sphinx is vulnerable to tagging attacks especially
+in the integrated-system model, demonstrating that HORNET and
+21
+is in active deployment since 2021 and is based on the Loopix design
+13.also
+published their Loopix- and Sphinx-based multicast mix scheme
+18
+19
+as recently as 2024, PolySphinx is a modified version of Sphinx
+3
+Note that tagging the Sphinx header in this manner is not possible: The header's
+integrity is protected by a MAC that is checked at every relay for both forward and
+reply onions. The reason for this being easier to achieve than payload integrity is that
+the reply header can be built by the sender ahead of time, while the reply payload
+cannot (as the sender does not know the reply message).
+758
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+that allows users to efficiently send a message to multiple receivers
+27
+measurement studies and payment channel networks such as the
+3 REPLIABLE SERVICE ONION ROUTING
+We formalize repliable OR in the service model, hereafter referred to
+as repliable service OR (RSOR), and construct an ideal functionality
+and corresponding onion properties that allow for the payload
+malleability attack on Sphinx. We base our formalization on Kuhn
+3.1 Defining Repliable Service Onion Routing
+3.1.1 Notation.In general, we follow the notation of the corre-
+12,22
+messages with, headers with, and payloads, which include
+along with other metadata, with. A packet is the combination
+ofand. We also refer to packets as onion layers and shorten
+the termonion layertoonionwhere appropriate. Onion paths
+P=(
+1
+, . . . ,
+)consist of a sequence of relays with
+being
+the-th relay's name and
+being the exit relay., the receiver, is
+not part of the onion's path.
+and
+are the public and secret
+key of relay
+.
+is the-th onion layer, i.e., the processing result
+that
+−1produces and sends to
+. For reply information, we use
+the same notation with an additional superscript arrow:
+←indi-
+cates the reply counterpart to the forward component. A notation
+table is provided in Table 1.
+3.1.2 Assumptions.We make use of the following standard as-
+sumptions regarding the OR protocol, which we inherit from related
+21,22
+just limit the packet schemes our model applies to. To the best of our
+knowledge, every previously-proposed OR scheme and protocol
+adheres to these assumptions.
+Assumption 1.A maximum path length (number of relays on
+the path) ofis used (inclusive upper bound).
+Assumption 2.Honest senders choose acyclic paths (to increase
+the chance of picking at least one honest relay).
+Assumption 3.Replay protection at honest relays drops onions
+whose headers are bit-for-bit identical to ones that have already been
+seen at that relay. A non-duplicate onion is only dropped with a
+negligible probability.
+Assumption 4.A sender always knows the public keys
+of
+any relays
+it uses for its onions' paths.
+Assumption 5.An onionconsists of a headerand a payload
+such that=(, ).
+Next, we introduce new assumptions related to the service model.
+Assumption 6.Receivers drop any onions sent to them. Similarly,
+relays drop any onions they get from links to receivers.
+Since we assume that receivers are unaware of the OR network,
+they cannot process onions. Traffic between receivers is not part of
+our OR model.
+Notation Definition
+FIdeal Functionality
+LU
+→
+Forwards Layer Unlinkability
+TLU
+→
+Tagging-Forward Layer Unlinkability
+LU
+←
+Backwards Layer Unlinkability
+SLU
+←
+RSOR-Backwards Layer Unlinkability
+TI
+↔
+Tail Indistinguishability
+STI
+↔
+RSOR-Tail Indistinguishability
+Onion header
+Onion payload
+Plaintext message
+POnion path
+Onion relay
+Exit relay
+Onion sender
+Message receiver
+,Public and secret keys
+Onion
+Onion layer
+Security parameter
+Public parameters
+NSet of onion relays
+RRandomness
+ridReply ID
+ZEnvironment
+SUC Simulator
+AAdversary
+Table 1: Notation used throughout the paper.
+Assumption 7.An onion in an RSOR packet format never has
+an empty forward path. If it is repliable, it does not have an empty
+backward path.
+An onion with an empty forward path is effectively not an onion
+at all since the sender is also the exit relay. The packet format
+should thus not allow a valid onion to have an empty path. We
+use an empty backward path as a sentinel value for a non-repliable
+onion.
+Assumption 8.An honest relay will always drop an unsolicited re-
+ply (i.e., a reply with a header the relay does not recognize as belonging
+to the final reply layer of an onion it sent).
+This is not a surprising limitation. Honest relays will only pro-
+cess replies that they expect. Finally, we add one cryptographic
+assumption that we require for our game-based properties and UC
+realization proof:
+Assumption 9.Onion payloads are encrypted with a pseudoran-
+dom permutation (PRP).
+With this assumption, any modification of a payload (i.e., a tag-
+ging attack) will completely randomize and thus destroy the payload
+contents, which we require for security against these attacks.
+759
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+3.1.3 Formal RSOR Schemes.We build an RSOR scheme using the
+•Key generation algorithmffifor∈ N:
+(, ) ←ffi(1
+, , ),
+whereare the public parameters of the protocol andNis
+the set of participating onion relays.
+•Onion sending algorithmFormOnion(,
+←
+≤):
+←FormOnion(,R,,,P,P
+←
+,
+P
+,
+P
+←
+),
+P
+(←)
+=(
+(←)
+1
+, . . . ,
+(←)
+(←)
+) ∈ N
+(←)
+,
+P
+(←)
+=(
+(←)
+1
+, . . . ,
+(←)
+(←)
+),
+whereis the index of the onion layer to output (in practice,
+=1, but our proofs require>1as well) andRis the
+randomness to be used. If>,is ignored and the onion
+is formed like a reply with the message.P
+←may be
+empty if no reply is desired. Otherwise,P
+←contains the
+"reply receiver" (which is the sender
+) as its final relay.
+FormOnionis deterministic in its inputs.
+•Onion processing algorithmProcOnionat:
+(
+′
+,
+′
+) ←ProcOnion(, , ).
+processingwith its secret keyresults in an onion
+′
+to send to the next relay
+′. In case of an error,(
+′
+,
+′
+)=
+(⊥,⊥).ProcOnionmay use internal randomness.
+(, )=ProcOnion(
+,
+, )
+ifis the exit relay of the
+onion.is the message for receiver.
+(
+←
+,⊥)=ProcOnion(
+,
++
+←
+,
+)
+if sender
+(with
+private key
+) received the reply onion
++
+←containing
+reply message
+←
+.
+•Reply sending algorithmFormReply:
+(
+←
+,
+←
+) ←FormReply(
+←
+, , , ).
+The reply onion
+←to be sent to
+←is created from the
+reply message
+←and the original onionas processed by
+'s exit relaywith the secret key. If an error occurs,
+(
+←
+,
+←
+)=(⊥,⊥).FormReplymay use internal random-
+ness.
+Definition 1
+AnRSOR schemeis a tuple of the polynomial-time algorithms (ffi,
+FormOnion,ProcOnion,FormReply), as defined above.
+Using an RSOR scheme, we can construct a correspondingRSOR
+protocolas follows:
+(1)
+A sender selects the parameters for its onion, builds it using
+FormOnion, and sends
+1
+to
+1
+.
+(2)
+Each relay
+processes the onion in turn usingProcOnion
+and sends
++1
+to
++1
+.
+(3)
+The onion's exit relay
+gets(, ) ←ProcOnion(
+,
+,
+). It generates a random "reply ID", remembers
+in a map as(,
+), and sends(, )to.
+(4)
+receives(, )and decides to reply to the message. It
+sends its reply(
+←
+, )back to
+.
+(5)
+gets the reply message and finds (,
+) in its map. It
+calculates(
+←
+,
+←
+) ←FormReply(
+←
+,
+,
+,
+)and
+sends
+←
+to
+←
+.
+(6)
+The reply onion follows its reply path like in step four until
+the sender receives
+←
+←and processes it to receive(
+←
+,⊥).
+We introduce the concept of "reply IDs" (s) in the protocol de-
+scription. These IDs are intended to be abstractions of some stateful
+delivery and reply mechanism used by the receivers (e.g., TCP con-
+nections in the case of web servers). To avoid the complexity these
+mechanisms would bring into our definitions, we represent them as
+a simple device that allows a receiver to send a reply directly to the
+relay it received thefrom. Our protocols do not protects, so
+they can be manipulated by adversaries.
+4
+This corresponds to the
+adversaries' capability to control links and the delivery of packets
+on those (unauthenticated) links, which cannot be mitigated in the
+service model.
+In addition to the algorithms defined above, we also require the
+algorithmRecognizeOnion(,,R,,,P,P
+←,
+P,
+P
+←
+)to
+be defined for RSOR analogously to its original definition by Kuhn
+et al.22to the-th layer
+of the onion originally created from the given inputs including the
+secret randomnessR. For our RSOR schemes, this means that the
+message is not checked since it is in the payload. Note that this
+algorithm is required even thoughFormOnionis deterministic
+in its inputs becauseProcOnionandFormReplymay introduce
+internal randomness.
+3.2 RSOR Ideal Functionalities
+In this section, we provide an overview of our ideal functionality
+F
+RSORfor RSOR, focusing on the core ideas and issues in its con-
+struction. We base it on Kuhn et al.'sF
+22
+differences betweenF
+RSORandF
+.F
+RSORis given in pseudocode
+in Appendix A.
+3.2.1 Ideal Functionality.Recall from Section 2.3 that, in an UC
+ideal functionalityF, all processing happens on a trusted party
+with a set of interfaces and procedures that the environmentZand
+the adversarySinteract with and receive information from.
+Fundamental concept.Following the related work, onion layers
+are abstracted into a series of random temporary identifiers, the
+temp IDs (s). When an onion is forwarded through an honest
+relay, it receives a new, thus rendering the layers before the relay
+and after the relay unlinkable. Corrupted relays do not cause the
+to be replaced. As an onion is forwarded between honest relays,S
+receives thes for the layers along with information on the layers'
+paths. This corresponds to the intuition that the adversary learns
+nothing about the content of the onion and cannot link the layers
+before and after an honest relay to each other.F
+RSORmodels all of
+the interactions between relays and between relays and receivers
+in the network including all possible adversarial capabilities in our
+adversary model. This includes corner cases and unusual adversary
+behavior.
+Detailed Interaction.To send a new onion inF
+RSOR,Z(for honest
+parties) orS(for adversarial parties) notifyF
+RSORwith the desired
+receiver, message, and forward and reply paths. The resulting temp
+IDis given toS, which controls the links and may choose to
+deliver the(i.e., the onion) to the next honest relay. If the onion
+was sent by a corrupted sender,Sreceives all of the information
+4
+Note that theses must not be linkable to the onion they are mapped to, or an
+adversary could use them to link the onion's receiver to the onion layers before an
+honest exit relay.
+760
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+on the onion for every path segment.
+5
+Z
+can decide when honest
+relays are done processing an onion and forward it to the next relay.
+While the onion is being forwarded through the network,S
+can also choose totagit. This feature behaves like the tagging of
+a Sphinx packet (which is explained in Section 2.4.2). When the
+onion is forwarded by its last honest relay, it is either discarded (if
+it was tagged) or the message and receiver are leaked toS.
+Reply handling comes in two variants: If the last honest relay
+is the exit relay of the onion,F
+RSORgenerates a reply ID(an
+abstraction of a connection that could be established by a protocol
+like TCP) and gives it toS.Scan use theto provide the exit relay
+with a message for the reply onion. On the other hand, if the exit
+relay of the onion is corrupted,Sreceives ait can use to send
+the reply onion with a reply message from any corrupted relay.
+6
+Since the channels between the relays and receivers are not secure,
+we have to assume thatShas complete control over message and
+reply delivery. Honest receivers can also initiate sending a reply to
+a message with an.
+3.2.2 Comparison with Repliable Integrated-System OR.While we
+are able to reuse large parts of Kuhn et al.'sF
+22F
+RSOR,
+switching to the service model requires several additions to the
+existingF
+.
+First, the new tagging feature marks onions to be discarded
+when they reach their last honest relay.
+7
+Notably, tagging behaves
+asymmetrically: when a forward onion is tagged, the last honest
+relay discards it. On the reply path, a tagged onion is noticed by
+the reply receiver. If the reply receiver is honest,Sis not informed
+about the tag.
+Second,F
+RSORadds handling of message and reply delivery on
+the final link. Since these links are not secure, a real-life adversary
+is capable of manipulating the traffic on them in many ways. These
+include delivering messages ands to the wrong receivers or exit
+relays, swappingand message pairs, impersonating exit relays
+to receivers and vice versa, and sending reply onions from other
+corrupted relays if the exit relay is corrupted.F
+RSORpermits all of
+these adversarial behaviors in its interface toS.
+In particular, the first of these two changes relaxesF
+RSOR's secu-
+rity requirements, which allows RSOR schemes to have malleable
+payloads. Accordingly, using RSOR protocols requires additional
+care, as detailed in Section 5.1.
+3.3 RSOR Onion Properties
+Our properties are based on the properties defined by Kuhn et al.22
+with appropriate adjustments for the new algorithms and function-
+ality. We detail one property and sketch the others here. For a
+formal definition of the other properties see Appendix B.
+3.3.1 RSOR-Correctness.This property requires that the scheme
+works as intended if no adversarial actions take place. Precisely,
+this means that, as the onion is processed usingProcOnion, each
+5
+This matches the behavior of real packet formats like Sphinx, where the sender
+calculates every layer itself and can thus recognize them.
+6
+A packet format cannot prevent the adversary from sending messages using any of
+the relays under its control.
+7
+Since the ideal functionality itself does not model adversarial processing, this is the
+case even when the last honest relay is not the exit relay. In that case,Sis provided
+with the remainder of the onion's path.
+1
+(b)
+(a)
+−1
+=
+ff
++1
++1
+←
+←
+−1
+(, )
+←
+1
+1
++1
+Figure 1: TheTLU
+→onion property. The adversary is given
+either its chosen onion
+1(a) or the random onion
+1
+(b) and
+must distinguish the two cases. Relays marked in this style
+are adversarial, while those in the normal style are honest.
+Omitted adversary-chosen paths are shown with dashed lines.
+The secondary output
++1after
+is the same in both cases.
+relay decrypts the correct address of the next relay and the next
+onion layer and the final layer decrypts to the message chosen by
+the sender. The same applies to the corresponding reply onion.
+3.3.2 Tagging-Forwards Layer Unlinkability (See Figure 1).TLU
+→
+is the RSOR equivalent ofLU
+→. It replaces onion layers between
+the honest sender and the first honest relay of an onion with random
+layers using that path segment. The introduction of tagging requires
+us to adjust this property. The original definition ofLU
+→provides
+the adversary with the challenge onion
+1or its replacement onion
+1
+as produced by the sender and recognizes the processed layer
+or
+when the adversary submits it to the processing oracle
+of the first honest relay. This recognition is based on the onion's
+header, so a tagged onion is still recognized. In the=0case, the
+tagged
+is processed normally and a tagged
++1is output to the
+adversary. However, in the=1case, the tagged
+is recognized
+by the oracle and the original
++1is output without being tagged.
+The adversary can simply finish the onion's processing to tell the
+difference.
+To alleviate this issue,TLU
+→'s oracle recognizes when the pay-
+load of the challenge onion has been tagged and "forwards" the
+tag by tagging
++1before sending it. If the honest relay is the exit
+relay, the oracle outputs nothing in this case. Since we assume that
+the payload is encrypted using a PRP, tagging the onion simply
+involves replacing the payload with randomness.
+The following full definition ofTLU
+→is derived from Kuhn
+et al.22 this style. We also abbre-
+viateRecognizeOnionasROnionfor the sake of formatting.
+Definition 2
+Tagging-Forwards Layer Unlinkabilityis defined as:
+(1)
+The adversary receives the router names
+ff,
+and chal-
+lenge public keys
+,
+ff, chosen by the challenger as
+(
+ff
+,
+ff
+) ←ffi(1
+, ,
+ff
+)
+and(
+,
+) ←ffi(1
+, ,
+)
+.
+(2)Oracle access: The adversary may submit any number of
+ProcandReplyrequests for
+ffor
+to the challenger.
+For anyProc(
+ff
+, ), the challenger checks whetheris
+on the
+ff-list. If it is not on the list, it sends the output
+ofProcOnion(
+ff
+, ,
+ff
+), storeson the
+ff-list and
+on the
+ff-list. For anyReply(
+ff
+, ,), the challenger
+checks ifis on the
+ff-list and if so, the challenger sends
+FormReply(, ,
+ff
+,
+ff
+)to the adversary. (Similar for re-
+quests on
+with the
+-list).
+(3)
+The adversary submits a message, a receiver, a position
+with1≤≤, a pathP=(
+1
+, . . . ,
+, . . . ,
+)with
+761
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+=
+ff
+, a pathP
+←
+=(
+←
+1
+, . . . ,
+←
+←
+=
+)and public keys
+for all relays
+(1≤≤for the relays on the path and
+<for the other relays).
+(4)
+The challenger checks that the chosen paths are acyclic, the
+router names and public keys are valid and that the same
+key is chosen if the router names are equal, and if so, sets
+=
+ff
+and
+←
+←
+=
+and picks∈0,1at random.
+(5)
+The challenger creates the onion
+1with the adversary's
+input choice and honestly chosen randomnessR:
+FormOnion(1,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)
+and a replacement onion
+1
+with the first part of the forward
+path
+P=(
+1
+, . . . ,
+)
+, a random message∈, another
+honestly chosen randomness
+R
+, an honestly chosen random
+receiver
+, and an empty backward path
+P
+←
+=():
+FormOnion(1,
+R,,
+,
+P,
+P
+←
+,
+P
+,
+P
+←
+)
+(6) If=0, the challenger gives
+1
+to the adversary.
+Otherwise, the challenger gives
+1
+to the adversary.
+(7)
+Oracle access: If=0the challenger processes all oracle
+requests as in step 2).
+Otherwise, the challenger processes all requests as in step 2)
+except for:
+•If<:
+- Proc(
+ff
+, )with
+ROnion(, ,
+R,,
+,
+P,
+P
+←
+,
+P
+,
+P
+←
+),
+and the expected payload
+,is not on the
+ff-list and
+ProcOnion(
+ff
+, ,
+ff
+)≠(⊥,⊥):
+The challenger outputs(
++1
+,
+)with
+←FormOnion(+1,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)
+and addsto the
+ff
+-list andto the
+ff
+-list.
+- Proc(
+ff
+, )with
+ROnion(, ,
+R,,
+,
+P,
+P
+←
+,
+P
+,
+P
+←
+)
+but the incorrect payload
+′,is not on the
+ff-list and
+ProcOnion(
+ff
+, ,
+ff
+)≠(⊥,⊥):
+The challenger outputs(
++1
+,
+~
+)with
+←FormOnion(+1,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)
+and
+~
+being
+with a tagged payload and addsto
+the
+ff
+-list andto the
+ff
+-list.
+•If=:
+- Proc(
+ff
+, )with
+ROnion(, ,
+R,,
+,
+P,
+P
+←
+,
+P
+,
+P
+←
+),
+is not in the
+ff
+-list and
+ProcOnion(
+ff
+, ,
+ff
+)≠(⊥,⊥):
+The challenger outputs(, )and addsto the
+ff-list
+andto the
+ff
+-list.
+- Reply(
+ff
+, ,
+←
+)with
+ROnion(, ,
+R,,
+,
+P,
+P
+←
+,
+P
+,
+P
+←
+)
+is on the
+ff-list and has not been replied before and
+FormReply(
+←
+, ,
+ff
+,
+ff
+)≠(⊥,⊥):
+The challenger outputs(
+,
+←
+1
+)with
+←FormOnion(+1,R,
+←
+, ,P,P
+←
+,
+P
+,
+P
+←
+).
+(8) The adversary produces guess
+′
+.
+TLU
+→
+is achieved if any PPT adversaryAcannot guess
+′
+=
+with a probability non-negligibly better than
+1
+2
+.
+←
+←
++1
+←
+←
+=
+ff
+(b)
+(a)
+←
+←
+−1
+←
+←
+−1
++1
+1
+(, )
+←
+←
++1
+1
+←
+←
+←
+−
+←
+←
+←
+1
+Figure 2: TheSLU
+←onion property. The adversary is initially
+given its chosen onion
+1. The oracle at the relay
+←
+←will
+then return either its chosen onion
+←
+←
++1(a) or the random
+onion
+1
+(b) and must distinguish the two scenarios. Relays
+marked in this style are adversarial, while those in the nor-
+mal style are honest. Omitted adversary-chosen paths are
+shown with dashed lines.
+=
+ff
+(b)
+(a)
++1
++1
+←
+−1
+←
+=
+←
+ff
+(, )
++1
+1
+←
+←
+←
+Figure 3: TheSTI
+↔onion property. The adversary is given
+either its chosen onion
++1(a) or the random onion
+1
+(b)
+and must distinguish the two cases. Relays marked in this
+style are adversarial, while those in the normal style are hon-
+est. Omitted adversary-chosen paths are shown with dashed
+lines.
+3.3.3 RSOR-Backwards Layer Unlinkability (See Figure 2).The def-
+inition of theSLU
+←property is analogous to theTLU
+→property,
+but replaces the challenge onion on a path segment of the reply
+path. Additionally, the replacement onion is a forward onion, not
+a reply onion. This ensures that a scheme satisfyingSLU
+←will
+have indistinguishable forward and reply onions in the OR network.
+We do not need to adaptSLU
+←to account for the tagging attack
+since the reply receiver processing oracle never produces output for
+onions with the challenge headers, so it cannot produce a wrong
+(untagged) output.
+3.3.4 RSOR-Tail Indistinguishability (See Figure 3).TheSTI
+↔prop-
+erty is RSOR's counterpart for theTI
+↔property in the integrated-
+system model. It replaces the challenge onion with a random onion
+using the same path segment between an honest relay on the for-
+ward path and a second honest relay on the reply path. InSTI
+↔,
+we do not allow the exit relay to be the honest relay since that
+situation is already covered bySLU
+←
+.
+3.3.5 Comparison with Integrated-System Properties.Besides the
+adaptions necessary for the different representation of the receiver
+and path, the main difference between the integrated-system proper-
+ties and RSOR properties is the introduction of tagging intoTLU
+→.
+The other two properties do not require provisions for tagging
+mitigation:SLU
+←remains unaffected because of the previously-
+described asymmetry of the tagging attack on the reply path, while
+STI
+↔
+never outputs a challenge onion from its oracles.
+762
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+3.4 Properties implyF
+RSOR
+With the properties defined above, we can now definesecureRSOR
+schemes and protocols as those that satisfy the properties and
+behave in the way described in Section 3.1.3.
+Definition 3
+An RSOR scheme (ffi,FormOnion,ProcOnion,FormReply) that
+satisfies the four onion propertiesRSOR-Correctness,TLU
+→,SLU
+←,
+andSTI
+↔
+is asecureRSOR scheme.
+Definition 4
+Asecure RSOR protocolis based on a secure RSOR scheme and
+behaves as defined in Section 3.1.3. A full definition of the protocol
+behavior is given in Appendix C.
+Theorem 1.AsecureRSOR protocol securely realizesF
+RSOR
+.
+The proof of this theorem is analogous to Kuhn et al.'s original
+proof for integrated-system protocols andF
+22
+brief sketch of the proof and the required changes here. The full
+proof is given in Appendix D. First, we construct a simulatorS
+that interacts with the adversaryAandF
+RSOR, replicating the ad-
+versary's real-world actions inF
+RSORand vice versa. After that, we
+use a hybrid proof to show that any RSOR protocol that satisfies the
+RSOR properties is indistinguishable from our simulator interacting
+withF
+RSOR
+.
+When interacting withF
+RSORandA,Smust correctly translate
+the onions and messages sent by honest relays inF
+RSORinto the
+real world without complete information on the contents or paths
+of the onions. The RSOR properties ensure that the simulator can
+create replacement onions with randomized contents and truncated
+paths whenever it needs to do so withoutAorZnoticing the
+replacement.
+Differences toF
+.Introducing tagging requires additional logic in
+the simulator. When the adversary tags an onion from an honest
+sender, the simulator can tell that the payload has been manipulated
+and tag the onion inF
+RSOR. If the onion is from a corrupted sender,
+Snotices the manipulation when it processes the onion at its honest
+exit relay and can tag it inF
+RSORat that point. This behavior allows
+the simulator to handle tagging attacks correctly.
+In addition,Snow also needs to handle communication with
+external receivers involving messages and reply IDs. Translating
+these betweenF
+RSORand the real world involves forwarding the
+appropriate communications while potentially impersonating exit
+relays or receivers.
+In our hybrid machine construction, we fix an error in Kuhn
+et al.'s proof: They apply theLU
+→(andLU
+←) properties to path
+segments that do not start at the honest sender (or end at the honest
+22
+situations. We fix this problem by applying theSTI
+↔property
+once in these situations to truncate the paths of the corresponding
+onions. Afterwards, we can apply theTLU
+→orSLU
+←properties
+as before. The same change (usingTI
+↔) can be used to repair the
+4 ANALYZING SPHINX'S SECURITY
+We now aim to show that the Sphinx securely realizesF
+RSOR. There-
+fore, we use our RSOR properties and show that Sphinx satisfies
+each of them. However, to be able to do so, we have to make two
+further adjustments to the Sphinx protocol: Firstly, we remove the
+nymserver, as it allows for attacks (in Section 4.2). Doing so is pos-
+sible by including reply headers in payloads instead of forwarding
+them to the nymserver separately. Secondly, we need to change
+the underlying cryptographic assumption to enable our proof (in
+Section 4.3.2).
+4.1 The Sphinx Packet
+A Sphinx packet consists of a header=(, ,)and a payload
+(see Section 2.4.1 for an overview).contains the shared secret keys
+encrypted for each relay,holds the routing information padded
+by the sender, andis a MAC for. Note that we adopt the notation
+Each relay
+has an asymmetric key pair of the form(
+,
+:=
+)
+with
+∈Z
+∗
+andas a generator of a cyclic groupGwith
+the prime order.should be approximately2
+2
+, whereis the
+12
+dom oracles in order to encapsulate the shared secret keys used
+for the symmetric cryptographic primitives in each layer of the
+Sphinx packet. We refer to this part of the packet format as Sphinx's
+random oracle-key encapsulation mechanism (RO-KEM). The RO-
+KEM's ciphertext is, the first component of the Sphinx packet
+is formed using the public keys of the relays on the sender's
+chosen path. First, the sender chooses a secret∈Z
+∗
+, whereZ
+∗
+is
+the multiplicative group of whole numbers modulowithout 0.
+is the only source of randomness in the Sphinx packet. Using, the
+sender generates the-key encapsulation for the first onion layer
+(which is layer 0):
+8
+0
+=
+. The sender then derives the shared
+secret for the first relay:
+0
+=
+0, where
+0is the public key of the
+first relay.
+9
+When the first layer of the onion reaches the first relay,
+it can derive
+0using its secret key:
+0
+=
+0
+0. The keys and random
+values used in the cryptographic primitives in the Sphinx packet
+are all derived from
+0using the random oraclesℎ
+,ℎ
+,ℎ
+, and
+ℎ
+In particular, the random oracleℎ
+is used to build the key encap-
+sulations for the following onion layers: To calculate
+1, the sender
+lets
+0
+=ℎ
+(
+0
+,
+0
+)and
+1
+=
+0. The corresponding shared secret
+is similarly calculated as
+1
+=
+0
+1, using the public key of the
+second relay on the onion's path. The
+are referred to asblinding
+factors. When the first relay processes the first onion layer, it can
+calculate
+1
+=
+0
+0with the blinding factor
+0that it gets from the
+same random oracleℎ
+. With this, the second relay can derive its
+shared secret using its private key. This process is repeated for each
+onion layer. Note that only
+0is included in the "final first onion
+layer" -- the later
+are calculated by the relays themselves and
+replace the respective
+−1
+8
+In this section, onion layer indices start at 0 for consistency with Sphinx's original
+9
+Note that our indicesfor relay names are relative to a single packet's path for clarity.
+763
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+Since we focus on Sphinx's RO-KEM in the following sections,
+we only give a short overview of the remaining packet structure
+here. For a more detailed and technical description, see Appendix E.
+The other two components of the Sphinx header areand. In
+each onion layer,
+is simply a MACof
+keyed withℎ
+(
+).
+Here,ℎ
+is one of the random oracles keyed with that layer's shared
+secret.
+contains the address of the next relay
++1, the next MAC
++1, and a prefix of the next
++1in that order. This information
+is XORed with the output of a PRGkeyed withℎ
+(
+). When
+processing an onion layer, the relay
+creates
++1from
+by
+appending a string of zero bits to
+, XORing the PRG output onto
+the result, and cutting off the relay address and MAC at the start of
+the end result. The construction of Sphinx's padding scheme means
+that the XORing the zero-bit extension with the PRG output results
+in exactly the missing suffix of
++1
+.
+Finally, the Sphinx packet payloadis simply constructed tho-
+rugh multiple layers of encryption with a pseudorandom permu-
+tation (PRP), which is keyed withℎ
+(
+)in the-th layer.
+10
+The
+payload is constructed by the sender in reverse order, layering en-
+cryption from the final onion layer to the first. The innermost layer
+contains a zero padding of length equal to the security parame-
+ter, the receiver address, and the message in that order. When a
+relay processes an onion, it simply removes one layer of encryption
+from the payload. The final relay performs an integrity check by
+checking that the zero padding at the beginning of the payload is
+intact.
+4.2 Nymserver
+12
+nymserverto hold the reply headers for the onions in the network.
+To create a repliable onion, the sender first sends a non-repliable
+onion containing the reply header and a symmetric key for the
+payload to the nymserver under a pseudonym. The sender is re-
+sponsible for embedding that pseudonym in the forward onion for
+the exit relay to find. If the receiver decides to reply, it sends its
+reply message back to the exit relay. The exit relay sends the reply
+message and the pseudonym to the nymserver. The nymserver finds
+the reply header associated with the pseudonym in its database,
+encrypts the payload, attaches it to the reply header, and sends the
+We observe that this nymserver construction is insecure in the
+presence of an attacker that can tag or drop onions and controls the
+nymserver or observes its traffic: A sender that wants to send a repli-
+able onion actually sends two onions, one going to the nymserver.
+The attacker tags (or drops) one of these onions, hoping that it
+picked the nymserver onion. If it is successful, the reply header
+is not stored in the nymserver. When the exit relay (on behalf of
+the receiver, which is trivally linkable to the exit relay) sends the
+message and pseudonym to the nymserver, the attacker can observe
+that no onion is produced by the nymserver,
+11
+thus learning the
+connection between the sender and the receiver.
+10
+Note that using a PRP here means that every added layer of encryption is indistin-
+guishable from a random permutation to an attacker. In particular, tagging one of the
+layers will completely destroy the payload after decryption.
+11
+If the attacker controls the nymserver itself, it can simply see that the requested
+pseudonym does not exist.
+To fix this problem and create a version of Sphinx that can be
+proven secure, we adapt Sphinx to include the reply header and pay-
+load symmetric key in the forward onion payload directly.
+12
+In the
+original definition of Sphinx, a forward payload has the contents
+0
+∥∥
+and a reply payload has the contents0
+∥
+←
+12
+13
+In
+our adaptation, a forward payload is now formed as0
+∥∥
+0
+∥
+~
+∥
+withas the receiver address,
+0as the reply header, and
+~
+as
+the symmetric key. Non-repliable forward payloads and reply pay-
+loads contain zero paddingspad
+→
+,andpad
+←
+,of the appropriate
+lengths instead of
+0
+∥
+~
+and∥
+0
+∥
+~
+respectively. This means a
+non-repliable forward payload contains0
+∥∥pad
+→
+,
+∥and a re-
+ply payload contains0
+∥pad
+←
+,
+∥
+←
+. This change fixes the issue
+while removing a third party from the protocol and simplifying
+Sphinx. With this change, the exit relay is now responsible for tak-
+ing the reply message from the receiver, embedding it in the reply
+payload, and sending the completed reply onion.
+Efficiency.Including the reply header in the Sphinx payload leads
+to an increase in the overhead of a Sphinx packet. The size of
+a Sphinx header in bytes is given by Danezis and Goldberg as
++ (2+1), whereis the size of a group element,is the
+fixed maximum hop count, andis the security parameter in bytes.
+The total overhead of an original Sphinx packet thus comes out to
++ (2+2)bytes when accounting for the additional zero padding
+12
+key to the payload, exactly doubling the overhead:2+ (4+4)
+bytes of overhead go into a nymserverless Sphinx packet. Using
+Danezis and Goldberg's calculations for a Sphinx instantiation on
+an EC group with=32,=16, and=5, the total overhead is
+now 448 bytes. This is less overhead than incurred by Mixminion,
+11
+our modified Sphinx at only 400 bytes using the same parameters,
+In addition, our modified Sphinx does not send a packet to the
+nymserver, which would otherwise incur its own overhead of+
+(
+2+2)bytes in addition to the reply header and symmetric key
+in the payload. Accounting for this, the total traffic caused by a
+single repliable Sphinx packet is reduced by our modification. If
+the reduction in the number of packets is a concern for practical
+instantiations, cover traffic can be added to replace the packets to
+the nymserver.
+4.3 Sphinx Key Encapsulation Mechanism
+(KEM)
+Before we move on to the RSOR properties, we discuss the security
+of Sphinx's random oracle (RO-)KEM, which is used to form the
+in each header. To simplify its analysis in isolation, we define the
+KEM separately from the rest of the packet format and prove that
+it satisfies a modified version of the IND-CCA property for KEMs
+10
+14
+where
+12
+Note that there are other feasible mitigations for this attack, e.g., sending multiple
+reply headers ahead of time to make linking the missing reply header to the original
+sender more difficult for an attacker. However, our adaptation both completely prevents
+the attack and simplifies the Sphinx protocol while being very simple itself. We thus
+consider it the most appropriate fix for the problem.
+13
+Messages are always padded to the full length of the PRP's message space.
+14
+The property we use here is defined in Section 7.1.2.
+764
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+the challenger outputs additional information that we require in
+our later onion property proofs. In those proofs, we will make
+use of our Sphinx-KEM-IND-CCA property in order to randomize
+the blinding factors and symmetric keys used in the challenge
+onion. In this section, we abbreviate the concatenation of the three
+random oraclesℎ
+,ℎ
+, andℎ
+asℎ
+∗for legibility since they operate
+identically with regards to the KEM.
+Definition 5(Sphinx RO-KEM)
+The Sphinx RO-KEM is a tuple of polynomial-time algorithms
+(KeyGen,Encap,Decap) with:
+•Key generation:
+KeyGen(1
+):=(=
+, =)
+with←
+Z
+∗
+andas the public generator of the groupG.
+•Encapsulation:
+Encap(1
+, =
+):=((ℎ
+∗
+(
+′
+), ℎ
+(
+′
+,
+′
+)),
+′
+)
+for a random
+′
+∈Z
+∗
+, withℎ
+∗andℎ
+being the random
+oracles used to key the components of the Sphinx header.
+•Decapsulation:
+Decap(1
+, =, =
+′
+):=(ℎ
+∗
+(
+), ℎ
+(,
+)),
+whereis an encapsulation produced byEncap
+4.3.1 Sphinx-KEM-IND-CCA.The basic KEM-IND-CCA game as
+10
+our later proofs, where we require information on the RO outputs
+used in other (non-challenge) layers. We thus define a modified
+Sphinx-KEM-IND-CCA that outputs all of the information required
+to build a Sphinx packet while embedding the KEM challenge at an
+adversary-chosen index.
+Definition 6(Sphinx-KEM-IND-CCA)
+(1)
+The challenger chooses(, ) ←KeyGen(1
+)
+and sends
+to the adversary.
+(2)
+Oracle access: The adversary can submit requests to the
+decapsulation oracleOand the random oraclesℎ
+∗
+andℎ
+.
+(3) The adversary submits
+•−
+1public keys
+0
+, . . . ,
+−1
+,
++1
+, . . . ,
+−1with<.
+These are the public keys for the non-honest relays on the
+"KEM's path",
+•and a positionwith0≤<.
+(4)
+The challenger checks that the
+are all distinct and valid
+public keys.
+(5)
+The challenger creates the KEM challenge for the adversary
+by choosing a random
+′
+∈Z
+∗
+and generating the first
+encapsulations
+0through
+−1and secrets
+like for a
+Sphinx header:
+←
+′
+0
+···
+−1,
+←
+′
+0
+···
+−1
+,
+←
+ℎ
+(
+,
+).
+(6)
+The challenger sends the adversary its "auxiliary informa-
+tion":
+15
+•The first encapulation
+0
+,
+•theℎ
+∗
+outputsℎ
+∗
+(
+0
+), . . . ,ℎ
+∗
+(
+−1
+),
+•and the blinding factors
+0
+, . . . ,
+−1
+.
+(7)
+The challenger provides the adversary with the KEM chal-
+lenge: It picks∈ {0,1}at random. If=0, the challenger
+lets
+=ℎ
+(
+,
+)and gives the adversary(
+, ℎ
+∗
+(
+),
+).
+15
+Note that this is all of the information required to build any layer of the Sphinx
+packet preceding the challenge layer.
+Otherwise, the adversary gets(
+,
+1
+,
+)for
+1
+←
+{0,1}
+3
+and
+←
+Z
+∗
+. Finally, the challenger generates the rest of
+the KEM layers
++1, . . . ,
+with
++1, . . . ,
+and
++1, . . . ,
+the same way as the previous layers (using the correspond-
+ing
+) and gives the adversaryℎ
+∗
+(
++1
+), . . . ,ℎ
+∗
+(
+)and
++1,
+. . . ,
+.
+(8)
+Oracle access: The adversary gets access to the sameO,ℎ
+∗,
+andℎ
+oracles.
+(9) The adversary submits its guess
+′
+to the challenger.
+Sphinx-KEM-IND-CCA is achieved if any PPT adversaryAcan-
+not guess
+′
+=with a probability non-negligibly better than
+1
+2
+.
+4.3.2 Security.In order to show that the Sphinx RO-KEM satis-
+fies our security property, we can perform a reduction proof to
+a Diffie-Hellman assumption. The original Sphinx definition uses
+theDecisional Diffie-Hellman(DDH) assumption for the Sphinx
+RO-KEM in order to show that the blinding factors and symmetric
+12
+However, a more detailed analysis reveals that the DDH assumption
+is insufficient to prove the Sphinx RO-KEM secure: In a reduction
+from Sphinx-KEM-IND-CCA to the DDH assumption, the DDH
+attacker must simulate both the decapsulation oracleOas well as
+the random oraclesℎ
+∗andℎ
+consistently for the Sphinx-KEM-
+IND-CCA attacker. Doing so correctly for adversary-chosen inputs
+involves identifying which encapsulationsand secretsbelong
+together. Since being able to do so efficiently would already break
+DDH, the reduction is not possible in this form. We use theGap
+Diffie-Hellmanassumption instead. It states that the CDH problem
+is hard even given an oracle that solves the DDH problem. It is
+generally assumed that the GDH assumption holds in the standard
+24
+duction, this means that we are reducing Sphinx-KEM-IND-CCA
+to the CDH problem, but our CDH attacker additionally receives a
+DDH oracleO
+ffi. UsingO
+ffi, the CDH attacker can correctly identify
+matching secrets and encapsulations. It follows that:
+Theorem 2.The Sphinx RO-KEM satisfies Sphinx-KEM-IND-CCA
+under the GDH assumption.
+Proof Sketch.
+We use a Sphinx-KEM-IND-CCA attackerAon
+the Sphinx RO-KEM to construct a GDH attackerB
+O
+ffiwith the
+DDH oracleO
+ffi.Buses its CDH challenge(,
+1
+,
+2
+)as a public
+key=
+1and a challenge=
+2. After getting the challenge
+indexand the other public keys fromA,Bsets
+=and
+constructs the rest of the KEM's path by choosing random blinding
+factors
+andℎ
+∗outputs for every layer, programming its choices
+into the ROs.Balso randomly chooses a bit∈ {0,1}to determine
+which scenario it simulates. The only difference between the two
+is whether the random oracle outputs on layerare programmed
+into the ROs.Bthen simulates the oracles, keeping the outputs
+consistent using its DDH oracleO
+ffi. In order forAto tell the
+scenarios apart, it must requestℎ
+∗orℎ
+with
+1
+2, allowingBto
+win the GDH game. For the full proof see Appendix F.
+4.4 Sphinx Security Analysis
+In order to prove that Sphinx securely realizesF
+RSOR, we show
+that it satisfies our new properties. For the sake of brevity, we only
+765
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+sketch the proof forTLU
+→here along with short proof outlines
+forSLU
+←andSTI
+↔. The full proofs for all three properties can be
+found in Appendix G.1, Appendix G.2 and Appendix G.3. RSOR-
+Correctness follows from inspection of the Sphinx scheme.
+Theorem 3.Sphinx satisfies TLU
+→
+under the GDH assumption.
+Proof Sketch.
+To show that Sphinx satisfiesTLU
+→, we prove
+that an adversary cannot distinguish the=0scenario of the
+TLU
+→game from the=1scenario through a hybrid argument
+starting at=0and ending at=1. We gradually move from the
+=0scenario to the=1scenario by constructing one hybrid after
+another. The first hybrid game is simply the=0scenario. Each
+hybrid changes the challenge onion or the challenger's behavior
+in an indistinguishable way until the final hybrid is identical to
+the=1scenario. We summarize the hybrids' construction here,
+see Appendix G.1 for details. For clarity, we also separate the proof
+into two cases: One where=and the other where<. In
+theTLU
+→game,determines the index of the honest relay on the
+challenge onion's path.
+Case 1(=):In this case, the honest relay on the forward path
+is also the exit relay of the onion and thus also the sender of the
+reply onion. This case demands that the entire forward onion is
+replaced with an onion using the same forward path, but containing
+a random message and receiver as well as having an empty reply
+path.
+To perform this replacement, we take advantage of the inner-
+most layer of the PRP protecting the payload's contents: Since the
+adversary cannot tell what the contents of the payload are, we
+can replace the message, receiver, and reply header with a random
+message, a random receiver, and padding (i.e., an empty reply path)
+respectively.
+The original reply header is still used to form the actual reply
+onion at the honest exit relay. We use the PRP's security and the im-
+plicit integrity check in the forward payload (via the zero padding)
+to show that the adversary does not notice this change and cannot
+manipulate the payload in order to to affect the reply header. With
+this, the forward onion given to the adversary is completely inde-
+pendent of the challenge onion and contains a random message, a
+random receiver, and an empty reply path. The reply header of the
+challenge onion is still used on the reply path. This is identical to
+the=1scenario.
+Case 2(<):Now, we consider the case where the honest relay
+on the forward path is not the exit relay. This case is more complex
+since the forward path of our replacement onion is not the same as
+the forward path of the challenge onion. Our hybrids thus need to
+truncate the forward path of the challenge onion at the honest relay
+in order to move to the=1scenario. In addition, our hybrids must
+also handle a potential tagging attack by the adversary correctly.
+Proceed as follows:
+(1)
+First, we need to handle tagging attacks. If the adversary
+tags the challenge onion in the=0scenario, the payload
+will be mangled by the PRP decryption step in the honest
+relay's processing. The key aspect of this mangling is that
+the PRP's output in that case is indistinguishable from a
+random bitstring of the same length. We take advantage
+of this fact in the first hybrids: Instead of processing the
+challenge payload normally at the honest relay, the hybrid
+checks whether the payload has been modified. If not, the
+next layer of the challenge onion with the correct next pay-
+load layer is output. If the payload has been modified (i.e.,
+tagged), then the payload output is replaced with a random
+bitstring. This change reduces to the PRP's security at the
+honest relay and the reply receiver.
+With the new payload handling, we have effectively decou-
+pled the onion layers before and after the honest relay: Any
+adversary modification to the layers before the honest relay
+either results in a failure in processing (due to the MAC if
+the header is modified) or in the payload being replaced with
+randomness (if the payload is modified). We can thus change
+the contents of both the header and payload layers before
+the honest relay and replace the changed onion with the
+original challenge onion at the honest relay oracle without
+the adversary being able to "sneak" information through the
+honest relay. The contents of the payload layers before the
+honest relay are replaced with a random message, a random
+receiver, and an empty reply path like in the=case.
+(2)
+Next, we "detach" the layers of the challenge onion's header
+before the honest relay (which we will refer to as) from
+the layers after it (referred to as).
+As a first step, the final layer ofis no longer processed at the
+honest relay. The first layer ofis always output as the next
+layer's header instead. We detachfromin multiple steps:
+First, replace the innermost contents of's header layers
+with the contents of a final Sphinx header layer such that the
+layers are now formed as if the onion's path ended at the
+honest relay. We can do so since the PRG protects that header
+information until the honest relay. Second, the KEM keys
+used to buildare replaced with a new instance of the KEM
+that starts at the honest relay. We use the randomness of the
+blinding factor multiplied onto the exponent at the honest
+relay to secure this step. Finally, the padding in, which still
+contains's padding, is changed: The bits corresponding
+to's padding are replaced with random bits in the last
+header layer of. This is possible due to Sphinx's padding
+construction and the PRG's security. After these steps, the
+header layers are completely independent of theheader
+layers.
+(3)
+In a last step, we adjust's padding and KEM construction so
+that thelayers are built like part of the complete challenge
+onion again. Now,is an independent forward onion with a
+truncated path, an empty reply path, and a random message
+and receiver, whileis built like the original challenge onion.
+This corresponds to the=1scenario ofTLU
+→
+.
+SLU
+←
+: TheSLU
+←proof works similarly to theTLU
+→proof. First,
+the part of the challenge reply onion after the honest relay is "de-
+tached" from the first part. Then, the second part's header and
+payload contents are adapted into those of a forward onion.
+STI
+↔
+: For theSTI
+↔proof, we have to truncate the forward and
+reply paths of the challenge onion to move from one scenario to
+the other. Truncating the forward path is like performing hybrid
+766
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+H
+9
+from theTLU
+→proof and adjusting the padding accordingly.
+Truncating the reply path is analogous to hybridH
+7
+.
+Given that Sphinx satisfies each of the RSOR properties, it follows
+that
+Theorem 4.Nymserverless Sphinx securely realizesF
+RSORunder
+the GDH assumption.
+5 DISCUSSION
+In this section, we argue that the relaxation used in our ideal func-
+tionality is acceptable in practice under certain specific conditions.
+5.1 Relaxed Security Requirements ofF
+RSOR
+We stress thatF
+RSORstill prevents all tagging attacks except for the
+malleability attack on the payload. Thus, if an adversary is able to
+link layers of an honest sender's onion that do not involve the exit
+relay, bothF
+RSOR
+and our properties are not achieved.
+However, we also emphasize that the reduction in security due to
+allowing the malleability attack can be critical and RSOR protocols
+should only be used under two conditions:
+(1)
+On the forward path, the link between a sender and its cho-
+sen exit relay must not leak any critical information about
+the sender's communication. Since the tagging attack lets
+the adversary learn sender-exit relay links, these must not
+contain information that would help the adversary break the
+protocol's privacy goals.
+For example, the sender's choice of exit relay cannot depend
+on the receiver
+16
+or the message of the onion. Instead, (as in
+many protocols) the exit relays must be chosen uniformly
+at random or randomly according to their capacities. In par-
+ticular, this means an RSOR protocol cannot be used in the
+integrated-system model, where the exit relay is identical to
+the receiver.
+As another example, RSOR protocols also cannot use sessions
+visible to the exit relay. If they did, the adversary could tag
+one of the onions in the session to learn the sender-exit relay
+link and observe another onion from the same session at the
+exit relay to discover the receiver and message.
+Several existing instantiations of Sphinx violate this con-
+8
+9
+discovered by Kuhn et al.2126
+the exit relays are long-term service providers chosen by
+19
+27
+modifies Loopix to use random exit relays instead of fixed
+service providers, mitigating the vulnerability.
+(2)
+Similarly, on the reply path, tagging a reply payload must
+not leak any information about the sender of the forward
+message (who is the reply receiver). Note that a tagging
+attack on the reply path will only be discovered by the honest
+reply receiver. Hence, it is crucial that whether the reply
+receiver received a tagged reply payload or a well-formed
+payload must not be visible to the adversary. If it was visible,
+a corrupted exit relay could tag the reply payload to link the
+16
+This might be considered in order to have an exit relay that is topologically close to
+the receiver.
+sender and the receiver (which is known to the exit relay).
+As an example, if an RSOR packet format is used as part of a
+larger protocol, an honest sender receiving a reply message
+must not trigger any output to the adversary.
+The examples listed for each condition are intended to provide an
+intuition for the aspects of OR protocol design that must be carefully
+considered when usingF
+RSOR. We stress that these examples are
+by no means exhaustive. An in-depth analysis of when protocols
+satisfy our two generic conditions is interesting future work.
+5.2 Using Sphinx in a Network
+We want to give practical advice on the cases in which we consider
+the usage of Sphinx in its intended RSOR model a secure choice.
+First of all, Sphinx should only be used with the changes we apply
+in this paper. Precisely, one must include the fix for path padding
+(random bits instead of zero bits) as described in Section 2.4.2 and
+the Sphinx reply header has to be included in the forward payload
+to avoid attacks based on the nymserver (see Section 4.2). Finally,
+it is important to ensure that all of the conditions mentioned for
+security in Section 5.1 are met.
+6 CONCLUSION
+The widely-used Sphinx packet format has thus far lacked a suitable
+analytical framework as well as a security proof. With this paper, we
+aim to rectify this. We provide the privacy formalization for repli-
+able service-model OR protocols with our ideal functionalityF
+RSOR
+and the four new onion properties RSOR-Correctness, Tagging-
+Forward Layer Unlinkability, RSOR-Backwards Layer Unlinkability,
+and RSOR-Tail Indistinguishability, which we prove implyF
+RSOR.
+Our formalization pays close attention to consider all the new edge
+cases of the service model and to relax the security in an acceptable
+way to allow for payload malleability.
+To prove Sphinx's security, we change the cryptographic group
+assumption for the Sphinx scheme from DDH to GDH. Additionally,
+we realize that a security proof is not possible in the presence of the
+nymserver. We propose to include the reply header in the forward
+payload instead. With our formal groundwork, we are then able
+to prove this adapted version of Sphinx secure according toF
+RSOR.
+To our knowledge, we are the first to provide a security proof for
+Sphinx at our level of detail. We thereby ensure that the OR and
+mix networks that base their protocols on the Sphinx packet format
+can rely on a thoroughly-analyzed foundation again. Considering
+that Sphinx is currently actively used in real-world mix networks
+like Nym, this is a very important step.
+Of course, there is still progress in OR, mix networks, and packet
+formats to be expected in future works. Authors of new OR and
+mix network protocols benefit from our investigation of the criteria
+for using Sphinx in a secure way to decide whether or not to base
+their protocols on Sphinx. In addition, future works on OR and mix
+network packet formats profit from our formalization in the service
+model, especially by using our new onion properties to build their
+algorithms and prove their privacy.
+767
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+ACKNOWLEDGMENTS
+We thank Dennis Hofheinz for pointing us towards the GDH as-
+sumption. This work has been funded by the Helmholtz Association
+through the KASTEL Security Research Labs (HGF Topic 46.23), and
+by funding of the German Research Foundation (DFG, Deutsche
+Forschungsgemeinschaft) as part of Germany's Excellence Strat-
+egy -- EXC 2050/1 -- Project ID 390696704 -- Cluster of Excellence
+"Centre for Tactile Internet with Human-in-the-Loop" (CeTI) of
+Technische Universität Dresden.
+REFERENCES
+2024. Lightning Network Specifications BOLT #4. Git version control. 04-onion-
+routing.md in the Lightning Bolts repository - available at https://github.com/
+lightning/bolts/blob/master/04-onion-routing.md.
+Megumi Ando and Anna Lysyanskaya. 2021. Cryptographic Shallots: A Formal
+Treatment of Repliable Onion Encryption. InTheory of Cryptography, Kobbi Nis-
+sim and Brent Waters (Eds.). Springer International Publishing, Cham, 188-221.
+Filipe Beato, Kimmo Halunen, and Bart Mennink. 2016. Improving the Sphinx
+Mix Network. InCryptology and Network Security, Sara Foresti and Giuseppe
+Persiano (Eds.). Springer International Publishing, Cham, 681-691.
+Mihir Bellare and Phillip Rogaway. 2005. The Birthday Problem. InIntroduction
+to Modern Cryptography. 273-274. https://web.cs.ucdavis.edu/~rogaway/classes/
+227/spring05/book/main.pdf
+Jan Camenisch and Anna Lysyanskaya. 2005. A Formal Treatment of Onion
+Routing. InAdvances in Cryptology - CRYPTO 2005, Victor Shoup (Ed.). Springer
+Berlin Heidelberg, Berlin, Heidelberg, 169-187.
+Ran Canetti. 2001. Universally Composable Security: A New Paradigm for Cryp-
+tographic Protocols. InProceedings 42nd IEEE Symposium on Foundations of
+Computer Science. IEEE Computer Society, Newport Beach, CA, USA, 136-145.
+https://doi.org/10.1109/SFCS.2001.959888
+David L Chaum. 1981. Untraceable Electronic Mail, Return Addresses, and Digital
+Pseudonyms.Commun. ACM24, 2 (1981), 84-90.
+Chen Chen, Daniele E. Asoni, David Barrera, George Danezis, and Adrain Perrig.
+2015. HORNET: High-Speed Onion Routing at the Network Layer. InProceedings
+of the 22nd ACM SIGSAC Conference on Computer and Communications Security
+(Denver, Colorado, USA)(CCS '15). Association for Computing Machinery, New
+York, NY, USA, 1441-1454. https://doi.org/10.1145/2810103.2813628
+Chen Chen, Daniele E. Asoni, Adrian Perrig, David Barrera, George Danezis, and
+Carmela Troncoso. 2018. TARANET: Traffic-Analysis Resistant Anonymity at
+the Network Layer. In2018 IEEE European Symposium on Security and Privacy
+(EuroS&P). IEEE Computer Society, Newport Beach, CA, USA, 137-152. https:
+//doi.org/10.1109/EuroSP.2018.00018
+Ronald Cramer and Victor Shoup. 2004. Design and Analysis of Practical
+Public-Key Encryption Schemes Secure against Adaptive Chosen Ciphertext
+Attack.SIAM J. Comput.33, 1 (Jan 2004), 167-226. https://doi.org/10.1137/
+S0097539702403773
+George Danezis, Roger Dingledine, and Nick Mathewson. 2003. Mixminion:
+Design of a Type III Anonymous Remailer Protocol. In2003 Symposium on Security
+and Privacy, 2003.IEEE Computer Society, Newport Beach, CA, USA, 2-15. https:
+//doi.org/10.1109/SECPRI.2003.1199323
+George Danezis and Ian Goldberg. 2009. Sphinx: A Compact and Provably Secure
+Mix Format. In2009 30th IEEE Symposium on Security and Privacy. IEEE Computer
+Society, Newport Beach, CA, USA, 269-282. https://doi.org/10.1109/SP.2009.15
+Claudia Diaz, Harry Halpin, and Aggelos Kiayias. 2021. The Nym Network.
+(2021). https://nymtech.net/nym-whitepaper.pdf
+Roger Dingledine, Nick Mathewson, and Paul Syverson. 2004. Tor: The Second-
+Generation Onion Router. In13th USENIX Security Symposium (USENIX Security
+04). USENIX Association, San Diego, CA. https://www.usenix.org/conference/
+13th-usenix-security-symposium/tor-second-generation-onion-router
+Ian Goldberg. 2016. SphinxClient.py - Padding Fix. Git version con-
+trol system. Python source file SphinxClient.py in the UCL-InfoSec
+Sphinx repository - available at https://github.com/UCL-InfoSec/sphinx/blob/
+c05b7034eaffd8f98454e0619b0b1548a9fa0f42/SphinxClient.py#L67.
+David Goldschlag, Michael Reed, and Paul Syverson. 1996. Hiding Routing
+Information. InProceedings of the First International Workshop on Information
+Hiding. Springer Berlin Heidelberg, Berlin, Heidelberg. https://doi.org/10.1007/3-
+540-61996-8_37
+Daniel Hugenroth and Alastair R. Beresford. 2023. Powering Privacy: On the
+Energy Demand and Feasibility of Anonymity Networks on Smartphones. In
+32nd USENIX Security Symposium (USENIX Security 23). USENIX Association,
+Anaheim, CA, 5431-5448. https://www.usenix.org/conference/usenixsecurity23/
+presentation/hugenroth
+Daniel Hugenroth, Martin Kleppmann, and Alastair R. Beresford. 2021. Roller-
+coaster: An Efficient Group-Multicast Scheme for Mix Networks. In30th USENIX
+Security Symposium (USENIX Security 21). USENIX Association, San Diego, CA,
+3433-3450. https://www.usenix.org/conference/usenixsecurity21/presentation/
+hugenroth
+Ceren Kocao§ullar, Daniel Hugenroth, Martin Kleppmann, and Alastair R. Beres-
+ford. 2023. Pudding: Private User Discovery in Anonymity Networks. (2023).
+Chelsea H Komlo, Nick Mathewson, and Ian Goldberg. 2020. Walking Onions:
+Scaling Anonymity Networks while Protecting Users. InProceedings of the 29th
+USENIX Conference on Security Symposium. USENIX Association, San Diego, CA,
+USA, 1003-1020.
+Christiane Kuhn, Martin Beck, and Thorsten Strufe. 2020. Breaking and (Partially)
+Fixing Provably Secure Onion Routing. In2020 IEEE Symposium on Security
+and Privacy (SP). IEEE Computer Society, Newport Beach, CA, USA, 168-185.
+https://doi.org/10.1109/SP40000.2020.00039
+Christiane Kuhn, Dennis Hofheinz, Andy Rupp, and Thorsten Strufe. 2021. Onion
+Routing with Replies. InAdvances in Cryptology - ASIACRYPT 2021, Mehdi
+Tibouchi and Huaxiong Wang (Eds.). Springer International Publishing, Cham,
+573-604.
+Bodo Möller. 2003. Provably Secure Public-Key Encryption for Length-Preserving
+Chaumian Mixes. InTopics in Cryptology -- CT-RSA 2003, Marc Joye (Ed.). Springer
+Berlin Heidelberg, Berlin, Heidelberg, 244-262.
+Tatsuaki Okamoto and David Pointcheval. 2001. The Gap-Problems: A New
+Class of Problems for the Security of Cryptographic Schemes. InPublic Key
+Cryptography, Kwangjo Kim (Ed.). Springer Berlin Heidelberg, Berlin, Heidelberg,
+104-118.
+ Lennart Oldenburg, Marc Juarez, Enrique Argones Rúa, and Claudia Diaz. 2024.
+MixMatch: Flow Matching for Mixnet Traffic.Proceedings on Privacy Enhancing
+Technologies2024, 2 (2024). https://lirias.kuleuven.be/4133083
+Ania M Piotrowska, Jamie Hayes, Tariq Elahi, Sebastian Meiser, and George
+Danezis. 2017. The Loopix Anonymity System. In26th USENIX Security Sympo-
+sium (USENIX Security 17). USENIX Association, San Diego, CA, 1199-1216.
+Daniel Schadt, Christoph Coijanovic, Christiane Weis, and Thorsten Strufe. 2024.
+PolySphinx: Extending the Sphinx Mix Format With Better Multicast Support. In
+2024 IEEE Symposium on Security and Privacy (SP). IEEE Computer Society, Los
+Alamitos, CA, USA. https://doi.org/10.1109/SP54263.2024.00044
+768
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+A IDEAL FUNCTIONALITY
+Modifications to Kuhn et al.'sF
+are highlighted in this style in the
+pseudocode.
+Algorithm 1Ideal FunctionalityF
+RSOR
+(1)
+⊲Data structures:
+Bad: Set of corrupted relays and receivers
+: List of onions processed by adversarial relays
+: List of onions held by relay
+: List of receiver replies held by relay
+: List of messages tagged by the adversary
+: Map froms to reply paths and forward IDs
+fl
+: Map from a reply onion ID to a forward onion ID
+: Map of reply identifiers tos at exit relay
+On messageProcessNewOnion(,,P,P
+←
+)fromZorSvia
+if| P |>or| P
+←
+|>then reject
+else
+←
+session ID
+← (,
+, ,,P,0, )
+Out.Cor.Sender(
+, , ,,P,P
+←
+,start, )
+Proc.NextStep()
+procedureProcessNewReply(, )
+if(, . . .)∉then reject
+else
+(,
+,P,P
+←
+,
+′
+,_) ←
+←
+session ID
+Store(,
+′
+)infl
+← (,
+,
+,,P
+←
+,(),0, )
+Out.Cor.Sender(
+, ,
+,,P,P
+←
+,start, )
+Proc.NextStep()
+On messageDeliverOnion()fromS
+if(,_,_) ∈
+then
+(, =(,
+, /
+,,P,P
+←
+, , ), ) ←
+← (,
+, /
+,,P,P
+←
+, , )
+if=and=| P |then
+if≠⊥and∉
+then
+Send(
+, "Messagereceived as reply")
+⊲Not forwarded toZ
+else
+′
+←
+temporary ID
+Send(
+, "
+′
+received")
+Store(
+′
+, )in
+On messageForwardOnion(
+′
+)fromZorSvia
+if(
+′
+,_) ∈
+then
+Pop(
+′
+, )from
+Proc.NextStep()
+else if(
+′
+,_) ∈
+then
+Pop(
+′
+,, )from
+ProcessNewReply(, )
+On messageTag()fromS
+if(,_,_) ∈
+then
+Retrieve(, ,_)from
+Storein
+procedureOut.Cor.Sender(
+, , /
+,,P,P
+←
+, , )
+if=and
+∈Badthen
+Send(S, "is from
+with,,,P,P
+←
+,")
+else if=and
+∈Badthen
+Send(S, "is reply from
+with,
+,,P,P
+←
+,
+, replying to onion from
+withfl
+()")
+Algorithm 2Ideal FunctionalityF
+RSOR
+(2)
+procedureProc.ToRelay(=(,
+, /
+,,P,P
+←
+, , ))
+←
+with smallest>such that
+∉Bad
+←
+temporary ID
+Send(S, "
+sendsto
+via(
++1
+, . . . ,
+−1
+)")
+Send(
+, "Sent onion to
++1
+")
+Out.Cor.Sender(
+, , ,, ,P, , )
+if=and=0then
+Send(S, "belongs to")
+Add(, , )to
+procedureSetupReply(=(,
+, ,,P,P
+←
+, , ), )
+←
+temporary ID
+Store(,
+,P,P
+←
+,
+, )in
+if=| P |then
+Store(, )in
+Send(S, "Reply with reply ID")
+else
+P
+←
+1
+←prefix ofP
+←
+up to (including) the first honest relay
+Send(S, "Reply with, reply path begins withP
+←
+1
+")
+procedureLeakMessage(=(,
+, ,,P,P
+←
+, , ))
+if=⊥then return
+Out.Cor.Sender(
+, , ,,P,P
+←
+,end, )
+ifP≠()then
+←
+temporary ID
+SetupReply(, )
+if=| P |thenSend(
+, "Sent message to")
+elseSend(
+, "Sent onion to
++1
+")
+Send(S, "
+sends onion with messageto
+via(
++1
+, . . . ,
+)")
+On messageDeliverMessage(, , )fromS
+Send(, "Messagereceived")
+if≠⊥then
+Send(, "Message is repliable with")
+On messageInitiateReply(, )fromZorSvia
+Send(S, "replies towith message")
+⊲
+creates an onion from's reply request
+On messageDeliverReply(
+,, )fromS
+Send(
+, "Reply(, )received")
+if(,_) ∈
+then
+(, ) ←
+′
+←
+temporary ID
+Store(
+′
+,, )in
+Send(
+, "Send reply onion with
+′
+")
+⊲Suses aID to bypass replying via an exit relay
+On messageBypassReply(, )fromSvia
+if(, . . .) ∈then
+ProcessNewReply(, )
+procedureLeakReply(=(,
+,
+,,P,P
+←
+, , ))
+Send(S, "
+sends replywith messageto
+via(
++1
+, . . . ,
+−1
+)")
+Send(
+, "Sent onion to
++1
+")
+Out.Cor.Sender(
+, ,
+,,P,P
+←
+, , )
+procedureProc.NextStep(=(,
+, /
+,,P,P
+←
+, , ))
+if∀>:
+∈Bador=| P |then
+if∈
+then
+Out.Cor.Sender(
+, , /
+,,P,tagged, )
+if<then
+Send(S, "
+sends tagged via(
++1
+, . . . ,
+)")
+Send(Z, "
+sends onion to
++1
+")
+elseSend(Z, "Onion at
+fails integrity check")
+else
+if=thenLeakMessage()
+elseLeakReply()
+elseProcessToRelay()
+769
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+B RSOR ONION PROPERTIES
+The following definitions are copied from Kuhn et al.22
+modifications are given in this style. We also abbreviateRecog-
+nizeOnionasROnionfor the sake of formatting.
+B.1 RSOR-Correctness
+RSOR-Correctnessis defined as:
+17
+Let (ffi,FormOnion,ProcOnion,FormReply) be a RSOR scheme
+with maximal path length N and polynomial|N|and||. Then for
+all,
+←
+<, ∈N, all choices of the public parameter, all
+choices of randomnessR, all choices of receiver, all choices of
+the pathsP=(
+1
+, . . . ,
+)andP
+←
+=(
+←
+1
+, . . . ,
+←
+), all keypairs
+(
+(←)
+,
+(←)
+)generated byffi(1
+, ,
+(←)
+)
+, all messages,
+←,
+all possible choices of internal randomness used byProcOnion
+andFormReply, the following needs to hold:
+Correctness of forward path.
+=
+,for1≤≤and
+1
+:=
+1
+,
+1
+←FormOnion(1,R,, ,P,P
+←
+,
+P
+,
+P
+←
+),
+(
++1
+,
++1
+) ←ProcOnion(
+,
+,
+).
+Correctness of request reception.
+(, )=ProcOnion(
+,
+,
+).
+Correctness of backward path.
+←
+=
+←
+for1≤≤
+and(
+←
+1
+,
+←
+1
+) ←FormReply(
+←
+,
+,
+,
+),
+(
+←
++1
+,
+←
++1
+) ←ProcOnion(
+←
+,
+←
+,
+←
+).
+Correctness of reply reception.
+(
+←
+,⊥)=ProcOnion(
+←
+←
+,
+←
+←
+,
+←
+←
+).
+B.2 RSOR-Backw. Layer Unlinkability (SLU
+←
+)
+RSOR-Backward Layer Unlinkabilityis defined as:
+(1)
+The adversary receives the router names
+ff,
+and chal-
+lenge public keys
+,
+ff, chosen by the challenger as
+(
+ff
+,
+ff
+) ←ffi(1
+, ,
+ff
+)
+and(
+,
+) ←ffi(1
+, ,
+)
+.
+(2)Oracle access: The adversary may submit any number of
+ProcandReplyrequests for
+ffor
+to the challenger.
+For anyProc(
+ff
+, ), the challenger checks whetheris
+on the
+ff-list. If it is not on the list, it sends the output
+ofProcOnion(
+ff
+, ,
+ff
+), storeson the
+ff-list and
+on the
+ff-list. For anyReply(
+ff
+, ,), the challenger
+checks ifis on the
+ff-list and if so, the challenger sends
+FormReply(, ,
+ff
+,
+ff
+)to the adversary. (Similar for re-
+quests on
+with the
+-list).
+(3)
+The adversary submits a message, a receiver, a position
+←with0≤
+←
+≤
+←, a pathP=(
+1
+, . . . ,
+)where
+=
+ffif
+←
+=0, a pathP
+←
+=(
+←
+1
+, . . . ,
+←
+←
+, . . . ,
+←
+←
+=
+)
+with the honest relay
+ffat backward position
+←if
+1≤
+←
+≤
+←, and the second honest relay
+at position
+←, and public keys for all relays
+(1≤≤for the
+relays on the path and<for the other relays).
+(4)
+The challenger checks that the chosen paths are acyclic, the
+router names and public keys are valid and that the same
+key is chosen if the router names are equal, and if so, sets
+17
+5
+slightly different format.
+←
+←
+=
+ff
+(resp.
+if
+←
+=0),
+←
+←
+=
+and sets
+bitat random.
+(5)
+The challenger creates the onion
+1with the adversary's
+input choice and honestly chosen randomnessR:
+FormOnion(1,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)
+and sends
+1
+to the adversary.
+(6) The adversary gets oracle access as in step 2) except if:
+(a) The request is. . .
+•for
+←
+>0:Proc(
+ff
+, )with
+ROnion(+
+←
+, ,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)=,
+is not on the
+ff
+-list and
+ProcOnion(
+ff
+, ,
+ff
+)≠(⊥,⊥):
+storeson the
+ff
+andon the
+ff
+-list and . . .
+•for
+←
+=0:Reply(
+ff
+, ,
+←
+)with
+ROnion(, ,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)=,
+is on the
+ff-list and no onion with thishas been
+replied to before and
+FormReply(
+←
+, ,
+ff
+,
+ff
+)≠(⊥,⊥). . .
+. . . then: The challenger picks the rest of the return path
+P=(
+←
+←
++1
+, . . . ,
+←
+←
+)
+, an empty backward path
+P
+←
+=
+()
+, and a random message, another honestly chosen
+randomness
+R
+, an honestly chosen random receiver
+,
+and generates an onion
+1
+:
+FormOnion(1,
+R,,
+,
+P,
+P
+←
+,
+P
+,
+P
+←
+)
+•If=0, the challenger calculates
+(
+←
++1
+,
+←
+←
++1
+)=
+(
+ProcOnion(
+ff
+, ,
+←
+←
+),
+←
+>0,
+FormReply(
+←
+, ,
+←
+←
+,
+ff
+),
+←
+=0
+and gives
+←
++1
+for
+←
+←
++1
+to the adversary.
+•
+Otherwise, the challenger gives
+1
+for
+←
+←
++1to the
+adversary.
+(b)Proc(
+, )
+withbeing the challenge onion as processed
+for the final receiver on the backward path, i.e.:
+•for=0:
+ROnion(+
+←
+, ,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)=
+•for=1:
+ROnion(
+←
+−
+←
+, ,
+R,,
+,
+P,
+P
+←
+,
+P
+,
+P
+←
+)=
+. . . then the challenger outputs nothing.
+(7) The adversary produces guess
+′
+.
+SLU
+←
+is achieved if any PPT adversaryAcannot guess
+′
+=
+with a probability non-negligibly better than
+1
+2
+.
+B.3 RSOR-Tail Indistinguishability (STI
+↔
+)
+RSOR-Tail Indistinguishabilityis defined as:
+(1)
+The adversary receives the router names
+ff,
+←
+ff,
+, and
+challenge public keys
+,
+ff,
+←
+ff, which are chosen
+by the challenger by letting(
+ff
+,
+ff
+) ←ffi(1
+, ,
+ff
+)
+,
+(
+←
+ff
+,
+←
+ff
+) ←ffi(1
+, ,
+←
+ff
+),(
+,
+) ←ffi(1
+, ,
+).
+(2)
+Oracle access: The adversary may submit any number of
+ProcandReplyrequests for
+ff,
+←
+ff, or
+to the chal-
+lenger. For anyProc(
+ff
+, ), the challenger checks whether
+is on the
+ff-list. If it is not on the list, it sends the out-
+put ofProcOnion(
+ff
+, ,
+ff
+), storeson the
+ff-list and
+on the
+ff-list. For anyReply(
+ff
+, ,), the challenger
+checks ifis on the
+ff-list and if so, the challenger sends
+770
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+FormReply(, ,
+ff
+,
+ff
+)
+to the adversary. (Similar for re-
+quests on
+←
+ff
+,
+).
+(3)
+The adversary submits a message, a receiver, a path
+P=(
+1
+, . . . ,
+, . . . ,
+)with the honest relay
+ffor
+←
+ffat
+position,0≤<, a pathP
+←
+=(
+←
+1
+, . . . ,
+←
+)with the
+honest relay
+←
+ffat position1≤
+←
+≤
+←and public keys
+for all relays
+(1≤≤
+←for the relays on the path and
+<for the other relays).
+(4)
+The challenger checks that the given paths are acyclic, the
+router names and public keys are valid and that the same
+key is chosen if the router names are equal, and if so, sets
+=
+ff(or
+=
+←
+ff, if the adversary chose
+←
+ffat
+this position as well),
+←
+←
+=
+←
+ff,
+←
+←
+=
+and sets
+bitat random.
+(5)
+The challenger creates the onion
++1with the adversary's
+input choice and honestly chosen randomnessR:
+FormOnion(+1,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)
+and a replacement onion
+1
+with the path from the honest
+relay
+ffto the corrupted exit relay
+P=(
++1
+, . . . ,
+)
+and
+the backward path ending at
+←:
+P
+←
+=(
+←
+1
+, . . . ,
+←
+←
+)
+; and
+another honestly chosen randomness
+R:
+FormOnion(1,
+R,, ,
+P,
+P
+←
+,
+P
+,
+P
+←
+)
+(6) If=0: The challenger sends
++1
+to the adversary.
+Otherwise: The challenger sends
+1
+to the adversary.
+(7)
+Oracle access: the challenger processes all requests as in step
+2) except for. . .
+. . .Proc(
+←
+ff
+, )withbeing the challenge onion as pro-
+cessed for the honest relay on the backward path, i.e.:
+•for=0:
+ROnion(+
+←
+, ,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)=
+•for=1:
+ROnion((−) +
+←
+, ,
+R,, ,
+P,
+P
+←
+,
+P
+,
+P
+←
+)=
+. . . then the challenger outputs nothing.
+(8) The adversary produces guess
+′
+.
+STI
+↔
+is achieved if any PPT adversaryAcannot guess
+′
+=with
+a probability non-negligibly better than
+1
+2
+.
+C SECURE RSOR DEFINITIONS
+The following definition is adapted from Kuhn et al.'s definition
+for repliable integrated-system-model OR (as shown in Section 2.3).
+Our changes compared to their definitions are shown in this style,
+and[. . .]indicates a deletion.
+Definition 7
+An RSOR protocol is secure in theF
+fl-F
+-hybrid model if and
+only if it is built on a secure RSOR scheme according to Definition 3
+and operates the following way:
+•
+Setup:Each relay
+generates a keypair(
+,
+) ←ffi(1
+)
+and publishes
+by usingF
+fl
+.
+•
+Sending a message:If
+wants to send∈ Mtoover
+the pathP=(
+1
+, . . . ,
+)with≤and wants to allow a
+reply over the pathP
+←
+=(
+←
+1
+, . . . ,
+←
+←
+)with
+←
+≤and
+←
+←
+=
+, it chooses a randomnessRand calculates
+1
+←FormOnion(1,R,, ,P,P
+←
+,
+P
+,
+←
+P
+←
+)
+and sends
+1
+to
+1
+usingF
+.
+•Processing an onion:
+receives
+and runs
+(
+,
+) ←ProcOnion(
+,
+,
+).
+If
+=⊥,
+outputs "Received=
+as a reply" if
+≠⊥
+[. . .]
+. If
+≠⊥,
+is a valid relay name or receiver. and
+generates a randomand stores(,(
+,
+))in its
+outgoing buffer and notifies the environment about.
+•
+Sending an onion:When the environment instructs
+to for-
+ward,
+looks upin its buffer. If
+does not find such
+an entry, it aborts. Otherwise, it finds(,(
+,
+)). If
+is
+a relay name, it sends
+to
+usingF
+. If
+=for a re-
+ceiver,
+checks whetherFormReply(
+←
+,
+,
+,
+)≠
+⊥
+for an arbitrary
+←. If so,
+chooses a random, stores
+(,
+)in its reply buffer, and sends(
+, )to
+without
+F
+. If not,
+sends(
+,⊥)to
+withoutF
+.
+•
+Receiving a message:When a receiver gets a message(, )
+from a relay
+, it outputs "Received messagefrom
+" to
+the environment. If≠⊥, it additonally outputs "It is
+repliable with".
+•
+Sending a reply message:When the environment instructs
+to reply to
+withand
+←,sends(
+←
+, )to
+withoutF
+.
+•
+Creating a reply onion:When
+receives(
+←
+, )from a
+receiver,
+looks upin its reply buffer. If there is no
+entry with,
+stops. If it finds(, )in its buffer, it
+calculates
+(
+←
+1
+,
+←
+1
+) ←FormReply(
+←
+, ,
+,
+)
+and sends
+←
+1
+to
+←
+1
+usingF
+.
+DF
+RSOR
+UC REALIZATION PROOF
+Theorem 1.An RSOR protocol according to Section 3.1.3 with a PRP-
+encrypted payload that satisfies RSOR-Correctness, Tagging-Forward
+Layer Unlinkability, RSOR-Backward Layer Unlinkability, and RSOR-
+Tail Indistinguishability securely realizesF
+RSOR
+.
+This proof is taken from Kuhn et al.22
+Our modifications are given in this style. Some parts of the proof
+also make use of elements from Kuhn et al.'s proof of UC-realization
+Proof.
+For UC-realization, we show that every attack on the
+real world protocolΠcan be simulated by an ideal world attack
+without the environment being able to distinguish those. We first
+describe the simulator S. Then we show indistinguishability of the
+environment's view in the real and ideal world.
+Constructing SimulatorS.Sinteracts with the ideal functionality
+F
+RSORas the ideal world adversary, and simulates the real-world
+honest parties for the real world adversaryA. All outputsAdoes
+are forwarded to the environment byS. First,Scarries out the
+trusted set-up stage: It generates public and private key pairs for all
+the real-world honest parties.Sthen sends the respective public
+keys toAand receives the real world corrupted parties' public keys
+fromA. The simulatorSmaintains four internal data structures:
+•
+The-list consisting of tuples of the form (onion, prevRelay,
+nextRelay, tid,). Each entry in this list corresponds to a stage
+in processing an onion that belongs to a communication of
+an honest sender or an onion that was injected intoF
+RSOR
+byS. By "stage", we mean that the next action to this onion
+771
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+is adversarial (i.e., it is sent over a link or processed by an
+adversarial router).
+•
+The-list containing onions sent by corrupted senders to-
+gether with the information about the communication (onion-
+list, path, currentPosition, information).
+•
+The-list containing reply information together with
+the forward id for communications with a corrupted sender
+(
+,reply information).
+•
+The-list containing reply information with the tid for com-
+munications with an honest sender(
+, , ).
+S
+'s behavior on a message fromF
+RSOR:In case the received
+output belongs to an adversarial sender's communication:
+Case I:"startbelongs to reply from
+with,
+,, ,P,P
+←
+, ,
+replying to onion from
+with"; an honest relay is replying
+to an onion of a corrupted sender.Sknows that the next output
+"Onionin directionfrom . . . " includes the first part of this
+backward path, that he chose to consist of the correct sequence of
+honest relays potentially followed by one adversarial relay[. . .].
+To construct the right real world reply onion,Slooks up the reply
+information(,replyinfo)for thisin the-list and uses
+the information to construct the reply onion
+(
+1
+,
+1
+) ←FormReply(,replyinfo,
+,
+)
+followed by the next onion layers as far asScan process them with
+the secret keys of the honest relays. Since the sender of the forward
+onion is corrupted, there must be at least one adversarial relay on
+the reply path of the onion, soSwill be able to process the onion
+up to the pair(
+′
+,
+′
+)with an adversarial
+′. This results in a list of
+onionsO=(
+1
+, . . . ,
+)and a list of relaysP=(
+1
+, . . . ,
+).
+Pis identical to the reply path of the onion that was already created
+in the ideal world.Ssends
+1to
+1, if
+1is adversarial, or toA's
+party representing the link between
+and
+1, if
+1is honest. (Note
+that
+cannot be adversarial for this output as then both sender
+and receiver would be corrupted, which only activates casesVIIIb
+andII(as it works without including any reply onion from the
+view of the ideal world). If the next relay
+1on the reply onion's
+path is honest, thenSneeds to be able to associate that onion layer
+and the ones following it in the real world with the ideal-world
+onion as the layers are processed and sent along the honest relays.
+Conversely, if
+1is adversarial, then the onion leavesS's control
+after this case.
+18
+(1)
+If the first relay
+1is an honest relay,Sadds the tuple
+(O,P,0,(
+, ,
+′
+,,P,()))onto the-list and the tuple
+(
+1
+,
+,
+1
+, , )to the-list, whereis the ID thatSre-
+ceived along with the output fromF
+RSORandis the index
+of the-list entry.
+(2) If
+1
+is adversarial,Sdoes no additional work.
+Case II:"startbelongs to onion from
+with, ,,P,P
+←
+, ".
+This is just the result ofS's reaction to an onion fromAthat
+was not the protocol-conform processing of an honest sender's
+communication (CaseVIII).Sdoes nothing.
+Case IIIa:any output together with "belongs to onion/reply
+from
+with, /
+,,P,P
+←
+, " for∉{start,end}. This
+means an honest relay is done processing an onion received fromA
+that was not the protocol-conform processing of an honest sender's
+18
+If
+1is adversarial, the reply path of the ideal-world onionScreated for this reply
+in caseVIIIwill also end at
+1
+.
+communication (processing that follows CaseVII).Sfinds (onion-
+list, path,:=currentPosition, information) with these inputs as
+information andP[]=
+where
+is the relay that sent the
+onioninF
+RSOR21 in the-list (notice that there has to be
+such an entry). Letbe the index of the entry in the
+S
+must now send the correct onion from the list in the-list
+entry over the next link while keeping track of it so that it can
+reassociate it with the-list entry when it next receives it as the
+following honest relay. To this end,Sstores(O[],P[],P[+
+1], , )to the-list and sendsO[]to the link toP[+1]from
+P[]
+Case IIIb:any output together with "endbelongs to onion/reply
+from
+with, /
+,,P,P
+←
+, ". This case occurs whenever
+one of the onionsScreates inF
+RSORin caseVIIIreaches the end of
+its path and either an adversarial relay or the receiver of the onion
+comes next.Scan tell the difference by examining whether another
+relayP[+1]and onionO[]remain in the lists of the-list entry
+(onionlist, path,:=currentPosition, information) corresponding to
+this onion (Sfinds the entry like in caseIIIa).
+(1)
+If another relay follows,SsendsO[]to the link toP[+1]
+fromP[]
+(2)
+If there is no next relay, thenSmust send the message
+contained in the onion to the receiver along with the correct
+reply ID if the onion is repliable (if it is,Salso receives
+"Reply with reply ID" in the output).Ssends(, )
+(or(,⊥)if the onion is not repliable) to the link tofrom
+in the real world, where
+is the relay that sent the
+message inF
+RSOR
+, triggering this case.
+Case IIIc:Any output together with the new output "taggedbe-
+longs to onion from
+with, ,, ,P". IfSreceives this mes-
+sage, the final honest relay on the forward path of a corrupted
+sender's onion just processed a tagged onion over either the final
+path segment consisting of only corrupted relays or the final link
+to the receiver itself. Depending on which is the case,Sperforms
+different actions:
+(1)
+IfP[+1]is set: The onion is not at the exit relay yet and
+the tagging will not be discovered by an honest router.S
+behaves like in caseIIIa.
+(2)
+IfP[+1]is not set: The honest exit relay has noticed the
+tagging. The protocol would discard such an onion, so no
+action is required fromS.
+In case the received output belongs to an honest sender's communi-
+cation:
+Case IV:"
+sends onionto
++1via()". In this case,Sneeds
+to make it look as though an onion was passed from the honest
+party
+to the honest party
++1:Spicks the pathP=(
+,
++1
+)
+and random message
+.Shonestly picks a randomnessRand
+a random receiverand calculates
+1
+←FormOnion(1,R,
+, ,P,(),
+P
+,())
+and sends the onion
+1toA's party representing the link be-
+tween the honest relays as if it was sent from
+to
++1.Sstores
+(
+1
+,
+,
++1
+, ,⊥)on the-list.
+Case V:"
+sends onionto
+via(
++1
+, . . . ,
+−1
+)". To handle
+this case,Spicks the pathP=(
++1
+, . . . ,
+−1
+), a randomnessR
+and a random receiverand a message
+and calculates
+1
+←FormOnion(1,R,
+, ,P,(),
+P
+,())
+772
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+and sends the onion
+1to
++1, as if it came from
+.Sstores
+(
+−−1
+,
+−1
+,
+, ,⊥)on the-list.
+Case VIa:Sreceives the message "
+sends onion with message
+tovia(
++1
+, . . . ,
+−1
+)". The behavior in this case depends on
+whether the onion is repliable and whether
+is the onion's exit
+relay or not:
+(1)
+The onion is not repliable and
+is its exit relay. In this
+case,Ssends(,⊥)to the adversary's link toas
+in
+the real world.
+(2)
+The onion is not repliable and
+is not its exit relay. Here,
+Sneeds to build an onion that will carry the message across
+the remaining adversarial relays to the receiver. This hap-
+pens just like in the original case:Spicks the pathP=
+(
++1
+, . . . ,
+), randomnessR, calculates
+1
+←FormOnion(1,R,, ,P,(),
+P
+,())
+and sends the onion
+1
+to
++1
+, as if it came from
+.
+(3)
+The onion is repliable and
+is the exit relay.Sreceives
+the additional output "Reply with reply ID" and sends
+(, )to the adversary's link toas
+in the real world.
+(4)The onion is repliable and
+is not the exit relay. Now,S
+needs to use the extra output "Reply with. Its reply path
+begins withP
+←" to construct an onion that will carry the
+message to the receiver and allow it to reply such that the
+reply onion will follow the beginning of the reply path to
+the first honest relay on it, whereSwill expect it.Spicks
+the pathP=(
++1
+, . . . ,
+), randomnessR, calculates
+1
+←FormOnion(1,R,,,P,P
+←
+,
+P
+,
+P
+←
+)
+and sends the onion
+1to the relay
++1, as if it was sent
+from the relay
+. Further,Sstores(P
+←
+.,  , )
+withinfo=(+ P
+←
+.,R,, ,P,P
+←
+,
+P
+,
+P
+←
+)
+on the-list. (Note that, as this is an honest communication,
+P
+←
+.is honest.)
+Case VIb:Sreceives the message "
+sends tagged onion via
+(
++1
+, . . . ,
+)". This means that an honest relay has processed a
+tagged onion from an honest sender on the forward path and is
+delivering it to the exit relay.(
++1
+, . . . ,
+)is never empty when
+Sreceives this input sinceF
+RSORguards against that case with
+the condition<. To translate this onion into the real world,S
+behaves like in caseVIa2, but doesn't learn the message or the
+receiver of the onion and must additionally tag the new onion
+before sending it. To this end,Schooses a random
+∈and
+∈and builds the onion using those. Before sending it,S
+tags the onion.
+Case IX:"replies towith message".Sneeds to recreate
+this reply in the real world by sending(, )to the adversary
+from the honest receiver.
+19
+S
+'s behavior on a message fromA:S, as real world honest
+party
+, received an onion=(~,
+~
+)or a message-reply ID-pair
+(, )fromAas adversarial player
+.
+Case VIIa:((~,
+~
+),
+−1
+,
+, , )is on the-list for some. In this
+case,is the protocol-conform processing of an onion from an hon-
+est sender's communication.ScalculatesProcOnion(
+, ,
+).
+If it returns a fail (is a replay or modification that is detected and
+dropped by
+),Sdoes nothing. Otherwise,Ssends the message
+19
+S
+can keep track of which relay to send(, )to by remembering which relay
+originally sent a forward message with.
+DeliverOnion()
+toF
+RSORand incrementscurrentPositionfor
+the-th entry in the-list if≠⊥
+Case VIIb:((~,
+′
+),
+−1
+,
+, , )is on the-list for some
+and a
+′
+≠
+~
+.Ahas tagged the onion in flight.Scalculates
+ProcOnion(
+, ,
+). If it returns a fail (e.g.,is a replay that
+is detected and dropped by the protocol),Sdoes nothing. IfPro-
+cOniondoes not return a fail,ScallsTag()to tag the onion
+in the ideal world as well before callingDeliverOnion(). If
+≠⊥,Sincreases the position of the-th entry in the-list. To
+forward the tag in the real world,Salso replaces the onion list
+O=(
+1
+, . . . , , . . . ,
+)in the-list entry with the new onion list
+O
+′
+=(
+1
+, . . . ,
+′
+, . . . ,
+′
+), where
+′
+is the result of processing
+′
+repeatedly like in caseVIII.
+Case VIII:(~,
+−1
+,
+, , )is not on the-list for any. This
+onion must have been sent by the
+relay itself since the links
+between relays are secure channels due toF
+. In order to replicate
+this onion in the ideal world,Smust first process it until it cannot be
+processed any further because either: 1) the next relay is a receiver,
+in which case the reply path must also be processed, 2) there is
+no next relay because the onion is a reply, 3) the next relay is
+adversarial, soSdoes not know the necessary keys, 4) or processing
+In any case,Sprocessesrepeatedly until it has the final result
+(
+′
+,
+′
+)along with the list of onionsO=(
+1
+, . . . ,
+)and re-
+laysP=(
+, . . . ,
+)encountered along the way. The following
+behavior depends on what form(
+′
+,
+′
+)
+(1)(
+′
+,
+′
+)=(, )
+: First,Schecks whether
+is repliable.
+If so, thenSforms a reply
+(
+←
+1
+,
+←
+1
+) ←FormReply(
+′
+,
+,
+,
+)
+to it with an arbitrary message
+′and processes it until it
+cannot proceed, resulting in a list of reply onionsO
+←
+=
+(
+←
+1
+, . . . ,
+←
+)
+and relaysP
+←
+=(
+←
+1
+, . . . ,
+←
+). If the onion
+is not repliable, letO
+←
+=P
+←
+=().
+Now,Screates the ideal-world onion by sending the mes-
+sageProcessNewOnion(,,P,P
+←
+)toF
+RSORin the role
+of
+. After doing so,Simmediately delivers the first onion
+by callingDeliverOnion()with theID it received
+fromF
+RSORwithout running caseIIIa. It does so because
+Ahas already delivered the onion from
+to
+.Salso
+stores(O,P,0,(
+, , ,,P,P
+←
+))on the21
+(,
+)on the-list.
+(2)(
+′
+,
+′
+)=(,⊥)
+:[. . .]
+is the recipient and
+′is a mes-
+sage. This means the adversary possibly replied to an hon-
+est senders forward onion with a corrupted exit relay.S
+checks for all(
+, , )tuples in the-list to see if
+~matches any-info on this list. If so (it was a reply
+to),Ssends the messageBypassReply(, )toF
+RSOR
+on
+'s behalf and, asAalready delivered this message
+to the honest party, sendsDeliverOnion(
+′
+)for the be-
+longing
+′. Otherwise, this onion is an unsolicited reply
+to an honest sender and will be ignored.S(creating this
+onion in theF
+RSOR) sends the invalid onion on behalf of
+:
+ProcessNewOnion(⊥,⊥,P,())andDeliverOnion()
+for the correspondingwithout running caseIIIa. (Notice
+773
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+thatSknows whichandbelongs to this communi-
+cation as it is started at an adversarial party
+).Sadds
+(O,P,0,(
+, ,⊥,⊥,P,()))to the-list.
+(3)(
+′
+,
+′
+≠⊥)
+:
+′is the next adversarial relay and
+′is the
+onion it should receive.Spicks a message∈ Mand
+a new random receiver.Ssends on
+'s behalf the mes-
+sage,ProcessNewOnion(,,P,())(notice that this onion
+cannot be replied to)[. . .]andDeliverOnion()for the
+belongingtoF
+RSORwithout running caseIIIa(notice that
+Sknows theas in case (a)). As the last step,Sadds the
+entry(O∥(
+′
+),P∥(
+′
+),0,(
+, , ,,P,()))to the-list.
+(4)(
+′
+,
+′
+)=(⊥,⊥)
+: This onion failed to be processed at
+,
+soSmust also send an invalid onion that takes this path
+inF
+RSOR:SsendsProcessNewOnion(⊥,⊥,P,())in the
+role of
+. If the header of the onion processes correctly
+as a last layer header, but the payload does not,Scalls
+Tag()on the correspondingID. Then,Sfollows it
+withDeliverOnion()without running caseIIIa.Sadds
+(O,P,0,(
+, ,⊥,⊥,P,()))to the-list.
+Case X:Sreceives(, )as the honest receiver.Ssends the
+messageDeliverMessage(, , )toF
+RSOR
+.
+Case XI:Sreceives(, )as the honest relay
+Ssends the
+messageDeliverReply(
+,, )toF
+RSOR
+.
+Indistinguishability:
+Notation:H
+describes the first hybrid that replaces a certain
+part of any communication for the first communication. InH
+<
+this part of the communication is replaced for the first−1commu-
+nications. Finally inH
+∗
+this part of the communication is replaced
+in all communications.
+HybridH
+0:This machine sets up the keys for the honest parties
+(so it has their secret keys). Then it interacts with the environment
+andAon behalf of the honest parties. It invokes the real protocol
+for the honest parties in interacting withA.
+Replacing between honest - Forward Onion:We replace the
+onion layers in the way they appear in the communication. So the
+first onion layers (close to the sender) are replaced first.
+HybridH
+1:In this hybrid, for the first one forward communi-
+cation the onion layers from its honest sender to the next honest
+relay on the forward path (relay or receiver) are replaced with
+random onion layers embedding the same path. More precisely,
+this machine acts likeH
+0except that the consecutive onion layers
+1
+,
+2
+, . . . ,
+from an honest sender
+0to the next honest relay
+are replaced with
+1
+and its following processings by calculating
+(with honestly chosen randomnessR
+′and a random receiver
+)
+1
+←FormOnion(1,R
+′
+,
+,
+,P
+′
+,(),
+P
+′
+,())
+where
+is a random message,P
+′
+=(
+1
+, . . . ,
+).H
+1now main-
+tains a new
+-list, which it uses to recognize replacement onions. It
+stores( =(R
+′
+,
+,
+,P
+′
+,(),
+P
+,()),
+,
+,(
+1
+,
++1
+))
+there, where are the randomness and parameters used for the
+replacement onion's creation,
+is the payload of the-the onion
+layer, and
+1
+is calculated as
+1
+←FormOnion(+1,R,, ,P,P
+←
+,
+P
+,
+P
+←
+),
+where the randomness, receiver, paths and message are chosen as
+in the original sender's call inH
+0. If an onion
+~
+is sent to
+, the
+machine tests if processing results in a fail (replay/modification
+detected and dropped). If it does not,H
+1
+uses
+ROnion(,
+~
+,R
+′
+,
+,
+,P
+′
+,P
+←
+,
+P
+,
+P
+←
+)
+for every recognize-information stored in the
+-list where the third
+entry is
+. If it finds a match, it compares
+~
+'s payload to the
+in the entry. If those also match, the belonging
+1is sent to
++1as the processing result of
+. If only the payload comparison
+fails, the onion has been tagged.H
+1adds the original onion's input
+parameters to aTag-list for later recognition. If
+is the onion's exit
+relay (
++1
+=⊥),H
+1produces no output. Otherwise,H
+1recreates
+the tag on
+1and sends it to
++1. If no onion with a matching
+header is found,ProcOnion(
+,
+~
+,
+)is used.
+H
+0
+≈
+fl
+H
+1
+:
+The environment gets notified when an honest party
+receives an onion layer (and about their repliability) and inputs
+when this party is done. As we just exchange onion layers with
+others (with the same repliability), the behavior to the environment
+is indistinguishable for both machines.Aobserves the onion layers
+after
+0and, if it sends an onion to
+, the result of the processing
+after the honest relay. Depending on the behavior ofA, three cases
+occur:Adrops the onion belonging to this communication before
+,Abehaves protocol-conform and sends the expected onion to
+orAmodifies the expected onion before sending it to
+. Notice
+that dropping the onion leaves the adversary with no further output.
+Thus, we can focus on the other cases:
+We assume there exists a distinguisherDbetweenH
+0andH
+1
+and construct a successful attack onTLU
+→
+.
+The attack receives key and name of the honest relay and uses
+the input of the replaced communication as choice for the challenge,
+where it replaces the name of the first honest relay with the one
+that it got from the challenger. For the other relays, the attack
+decides on the keys asA(for corrupted) and the protocol (for
+honest) do. It receives
+~
+from the challenger. The attack usesD.
+ForD, it simulates all communications except the one chosen for
+the challenge, with the oracles and knowledge of the protocol and
+keys. For simulating the challenge communication, the attack hands
+~
+toAas soon asDinstructs to do so. To simulate further forD
+it uses
+~
+to calculate the later layers and does any actionsAdoes
+on the onion.
+A
+either sends the honest processing of
+~
+to the challenge router
+orAmodifies it. The attack uses the oracle to simulate the further
+processing of
+~
+or its modification. IfAchooses to tag
+~
+, then the
+challenger will output an onion with a random payload in bothH
+0
+andH
+1since the tag completely randomizes the payload contents.
+Thus, either the challenger chose=0and the attack behaves
+likeH
+0underD; or the challenger chose=1and the attack
+behaves likeH
+1underD. The attack outputs the same bit asD
+does for its simulation to win with the same advantage asDcan
+distinguish the hybrids.
+HybridH
+<
+1:In this hybrid, for the first−1forward communi-
+cations, onion layers from an honest sender to the next honest relay
+on the forward path are replaced with a random onion sharing this
+ thatH
+1
+=H
+<2
+1and letH
+∗
+1be the hybrid where the
+H
+<−1
+1
+≈
+fl
+H
+<
+1
+:
+Analogous to above. Apply argumentation of
+indistinguishability (H
+0
+≈
+fl
+H
+1
+) for every replaced subpath.
+HybridH
+2:In the two hybridsH
+2andH
+2, for the first
+forward communication for which, in the adversarial processing,
+774
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+no recognition-falsifying modification (i.e. on) occurred and other
+modification does not result in a fail, onion layers between two
+consecutive honest relays on the forward path (the second might
+be the exit relay) are replaced with random onion layers embedding
+the same path. We do so in two hybrid steps because we require
+both theSTI
+↔andTLU
+→properties to truncate the forward path
+of the onion before the first of the two honest relays and then
+replace the onion layers between the honest relays. Additionally,
+for all forward communications, replacements between the sender
+and the first relay happen as inH
+∗
+1. More precisely,H
+2acts like
+H
+∗
+1except for the processing of
+. The onion layers
++1, . . . ,
+,
+←
+1, . . . ,
+←
+←are replaced with
+1
+, . . . ,
+−
+,
+←
+1
+, . . . ,
+←
+←
+; the
+hybrid sends
+1
+instead of
++1
+. The replacement is formed as
+1
+←FormOnion(1,R
+′
+,, ,P
+′
+,P
+←
+,
+P
+′
+,
+P
+←
+)
+with an honestly chosen randomnessR
+′andP
+′
+=(
++1
+, . . . ,
+).
+If the onion's information is on theTag-list, the tag is recreated on
+1
+before it is sent.
+H
+∗
+1
+≈
+fl
+H
+2
+:
+H
+2
+replaces the onion layers on the path after an
+honest relay and does so for an onion that has already had all
+of its subpaths between honest relays prior to this honest relay
+replaced before. The original onion layers before this honest relay
+are thus never output to the adversary while the layers used as
+replacements are chosen independently at random. We can reduce
+the new replacement toSTI
+↔with
+STI
+↔
+=and
+←
+STI
+↔
+=
+←as the
+positions of the honest relays in the challenge thanks to this. Since
+the layers before
+are independent of the challenge, the attack
+can recognize tagged payloads on those layers and recreate the tag
+on the challenge onion from theSTI
+↔
+challenger if necessary.
+HybridH
+2:In this hybrid, we perform the actual replacement
+of the onion layers between the honest relays for the onion whose
+forward path was truncated inH
+2. In essence, the consecutive
+onion layers
+1
+, . . . ,
+′
+−
+from a communication of an honest
+sender, starting at the next honest relay
+to the next following
+honest relay
+′, are replaced with
+^
+1
+, . . . ,
+^
+′
+−
+by sending
+^
+1
+.
+Thereby, for honestly chosen randomnessR
+′and a random receiver
+:
+^
+1
+←FormOnion(1,R
+′
+,
+,
+,P
+′′
+,(),
+P
+′′
+,()),
+where
+is a random message,P
+′′
+=(
++1
+, . . . ,
+′
+)is the path
+between the honest relays.H
+2
+stores
+((R
+′′
+,
+,
+,P
+′′
+,(),
+P
+′′
+,()),
+′
+−
+,
+′
+,(
+1
+,
+′
++1
+)),
+where
+1
+is calculated with
+FormOnion(
+′
+−+1,R
+′
+,,,P
+′
+,P
+←
+,
+P
+′
+,
+P
+←
+),
+where the randomness, receiver, paths and message are chosen as
+H
+2chose them, on the
+-list. Like inH
+∗
+1, if an onion
+~
+is sent
+to
+′, processing is first checked for a fail. If it does not fail,H
+2
+checks
+ROnion(
+′
+−,
+~
+,R
+′′
+,
+,
+,P
+′′
+,(),
+P
+′′
+,())
+for any info on the
+-list where the second entry is
+′. If it finds
+a match, it checks whether the original onion's information is on
+theTag-list and compares
+~
+'s payload to
+′
+−. If the information
+is on the list or the payloads do not match, one of the previous
+replacements were tagged or the current replacement was tagged.
+If the original onion's information is not on theTag-list yet, it is
+added. If
+is the onion's exit relay,H
+2does nothing. Otherwise,
+H
+2recreates the tag on
+1and sends it to
+′
++1. On the other
+hand, if the onion was not tagged until now, the belonging
+1is
+used as the processing result of
+′. If no onion with a matching
+header is found,ProcOnion(
+′
+,
+~
+,
+′
+)is used.
+H
+2
+≈
+fl
+H
+2
+:
+H
+2
+replaces, for one communication (and all its
+replays), the first subpath between two consecutive honest relays
+after an honest sender. The output toAincludes the earlier (byH
+∗
+1)
+replaced onion layers
+before the first honest relay (these
+layers are identical inH
+2andH
+2) that take the original subpath
+but are otherwise chosen randomly; the original onion layers after
+the first honest relay for all communications not considered byH
+2
+(output byH
+∗
+1) or in case of the communication considered byH
+2,
+the newly drawn random replacement (generated byH
+2); and the
+processing after
+′
+.
+Similarly to our argument forH
+2, the
+layers are ran-
+dom and independent of the replaced layers, so they can be built
+without needing theTLU
+→
+challenger.
+Thus, all that is left are the original/replaced onion layer after
+the first honest relay and the processing afterwards. This is the
+same output as inH
+0
+≈
+fl
+H
+1. Hence, if there exists a distinguisher
+betweenH
+2
+andH
+2
+there exists an attack onTLU
+→
+.
+Counting explanation forH
+<
+2:From here, we refer to the
+combination ofH
+2andH
+2asH
+2for convenience. Communica-
+tion paths consist of multiple possible honest subpaths (paths from
+an honest relay to the next honest relay). We count (and replace)
+all these subpaths from the subpath closest to the sender until the
+one closest to the receiver. We first replace all such subpaths for
+the first communication, then for the second and so on. Below we
+use<to signal how many such subpaths will be replaced in the
+ thatH
+2
+=H
+<2
+2and letH
+∗
+2be the hybrid
+HybridH
+<
+2:In this hybrid, the first−1honest subpaths
+(honest relay to next honest relay) of honest senders' forward com-
+munications is replaced with a random onion sharing the path. Ad-
+ditionally, for all forward communications, replacements between
+the sender and the first relay happen as inH
+∗
+1. IfApreviously
+(i.e., in onion layers up to the honest relay starting the selected
+subpath) modifiedof an onion layer in this communication or
+modifies other parts such that processing fails, the communication
+is skipped.
+H
+<−1
+2
+≈
+fl
+H
+<
+2
+:
+Analogous to above.
+Replacing between Honest - Backward Onion
+On the backward path, we replace the last onion layers first,
+then the second last and so on. Each machine only starts replacing
+at a certain point and if a message does not come that far (it is
+modified or dropped), they simply do not use any replacement. For
+all following hybrids, the replacements on the forward path are
+done as inH
+∗
+2
+.
+HybridH
+←
+1:Similar toH
+1, but this time one backward com-
+munication between the last honest relay (which could be the exit
+relay) until the honest (forwards) sender is replaced. More precisely,
+this machine acts likeH
+∗
+2except that the consecutive onion layers
+←
++1
+, . . . ,
+←
+←from a reply to an honest (forward) sender from the
+last honest relay
+←
+to the (forward) sender
+←
+←
+=
+0are replaced
+with
+1
+, . . . ,
+←
+−
+with (for an honestly chosenR
+′and a random
+775
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+receiver
+):
+1
+←FormOnion(1,R
+′
+,
+,
+,P
+′
+,(),
+P
+′
+,())
+where
+is a random message,P
+′
+=(
+←
++1
+, . . . ,
+←
+←
+)is the path
+from
+←
++1to
+←
+←.H
+←
+1stores(info,
+←
+←
+=
+0
+,
+)on the
+-list.
+When looking up entries (withROnion) on the
+-list,H
+←
+1checks
+the belonging last entry to be an onion before sending it to the next
+relay.
+H
+∗
+2
+≈
+fl
+H
+←
+1
+:
+The environment gets notified when an honest
+party receives an onion layer and inputs when this party is done.
+As we just exchange onion layers with others (with the same repli-
+ability), the behavior to the environment is indistinguishable for
+both machines.
+A
+observes the onion layers before
+←
+and, if it sends an onion
+to
+←
+←, the result of the processing after the honest relay. Depend-
+ing on the behavior ofA, three cases occur:Adrops the onion
+belonging to this communication before
+←
+←,Abehaves protocol-
+conform and sends the expected onion to
+←
+←orAmodifies the
+expected onion before sending it to
+←
+←. Notice that dropping the
+onion leaves the adversary with no further output. Thus, we can
+focus on the other cases.
+We assume there exists a distinguisherDbetweenH
+∗
+2andH
+←
+1
+and construct a successful attack onSLU
+←
+:
+The attack receives key and name of the honest relay and uses the
+input of the replaced communication as the choice for the challenge,
+where it replaces the name of the honest relay with the one that
+it got from the challenger. For the other relays, the attack decides
+on the keys asA(for corrupted) and the protocol (for honest) do.
+It receives
+1from the challenger and forwards it toAfor the
+corrupted first relay (on the forward path). The attack simulates all
+other communications with oracles (or their replacements as in the
+games before) and at some point, asAreplies to
+1(after receiving
+its processing
++1), so does our attack. The reply is processed
+(with the knowledge of the keys) until the honest relay, where the
+replaced onion layers start and this processed reply is forwarded
+to the oracle of the challenger asto process it. The challenger
+returns
+~
+. The attack sends
+~
+, as the processing of the answer, to
+Aas soon asDinstructs to do so. To simulate further forDit uses
+~
+to calculate the later layers and does any actionsAdoes on the
+onion. Further, the attack simulates all other communications with
+the oracles and knowledge of the protocol and keys (or the random
+replacement onions, if replaced before).
+Thus, either the challenger chose=0and the attack behaves
+likeH
+∗
+2underD; or the challenger chose=1and the attack
+behaves likeH
+←
+1underD. The attack outputs the same bit asD
+does for its simulation to win with the same advantage asDcan
+distinguish the hybrids.
+HybridH
+<←
+1:In this hybrid, for the first−1backward
+communications, onion layers from the last honest relay to the
+honest sender (=backwards receiver) are replaced with a random
+onion sharing this path. The replacement is again stored on the
+-list as before.
+H
+<−1←
+1
+≈
+fl
+H
+<←
+1
+:
+Analogous to above. Apply argumentation
+of indistinguishability (H
+∗
+2
+≈
+fl
+H
+←
+1
+) for every replaced subpath.
+HybridH
+←
+2:In the hybridsH
+←
+2andH
+←
+2, for the first backward
+communication (and all its replays) for which, in the adversarial
+processing, no recognition-falsifying modification occurred and
+other modification did not lead to failed processing, onion layers
+between the two last consecutive honest relays (the first might be
+the forward receiver (=backward sender)) are replaced with random
+onion layers embedding the same path. We separate this hybrid
+into two just likeH
+2for the same reason. Letbe the index of
+the first of the two honest relays in question and
+′the index of
+the second.H
+←
+2acts likeH
+∗←
+1except for the processing of
+′′,
+where
+′′is the index of the last honest relay on the forward path of
+the onion. Due toH
+2, the onion's path starts at the second-to-last
+honest relay on the original onion's forward path. The onion layers
+′′
++1, . . . ,
+,
+1, . . . ,
+′are replaced with
+′′
++1
+, . . . ,
+,
+1
+, . . . ,
+′
+, where
+′′
++1
+is formed as
+FormOnion(
+′′
++1,R
+′
+,, ,P,P
+←′
+,
+P
+,
+P
+←′
+)
+with honestly chosen randomnessR
+′andP
+←′
+=(
+←
+1
+, . . . ,
+←
+′
+),
+effectively cutting off the end of the onion's reply path. If the onion's
+information is on theTag-list, the tag is recreated on
+′′
++1
+before
+it is sent.
+H
+∗←
+1
+≈
+fl
+H
+←
+2
+:
+We construct an attacker onSTI
+↔with
+STI
+↔
+=0
+and
+←
+STI
+↔
+=
+′from any distinguisher of the two hybrids the same
+way as forH
+2. Due to the previous hybrid, the original onion
+layers after relay
+′are never output to the adversary since they
+have been replaced with random layers.
+HybridH
+←
+2:In this hybrid, we perform the actual replacement
+of the onion layers between the honest relays for the onion whose
+backward path was truncated inH
+←
+2. In essence, the consecutive
+onion layers
+←
++1
+, . . . ,
+←
+′
+from a backward communication of an
+honest (forward) sender, starting at the second last honest relay
+←
+to the next following honest relay
+←
+′(on the backward path),
+are replaced with
+^
+1
+, . . . ,
+^
+′
+−
+. Thereby for an honestly chosen
+R
+′′
+and a random receiver
+:
+^
+1
+←FormOnion(1,R
+′′
+,
+,
+,P
+′
+,(),
+P
+′
+,())
+where
+is a random message,P
+′
+=(
+←
++1
+, . . . ,
+←
+′
+)is the path
+from
+←
+to
+←
+′
+.
+Further, the hybrid calculates (and stores) another replacement
+for the next part after the current replacement(
+~
+←
+′
++1
+,
+~
+)(by ex-
+ploiting the fact that the sender knows the backward path and can
+infer the message from any layer) as in the hybridH
+∗←
+1before.
+Then it also stores(info,
+←
+′
+,(
+~
+,
+~
+←
+′
++1
+))to the
+-list (to ensure
+the replacement of the later path is used as well). As before, the
+-list will be checked to pick the right processing of an onion.
+H
+←
+2
+≈
+fl
+H
+←
+2
+:
+H
+←
+2
+replaces for one backward communication,
+the last subpath between two consecutive honest relay before an
+honest (forward) sender. The output toAincludes the later (by
+H
+∗←
+1) replaced onion layers
+after the second honest re-
+lay (these layers are identically generated inH
+←
+2andH
+←
+2) that
+take the original subpath but are otherwise chosen randomly; the
+original onion layers after the first of the honest relays for all com-
+munications not considered byH
+←
+2(output byH
+←
+2) or, in case of
+the communication considered byH
+←
+2
+, the newly drawn random
+replacement (generated byH
+←
+2); and the processing before the
+first honest relay
+←
+.
+Similarly to our argument forH
+←
+2, the
+layers are random
+and independent of the replaced layers, so they can be built without
+needing theSLU
+←
+challenger.
+776
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+Thus, all that is left are the original/replaced onion layer after the
+honest relay and the original layers before. This is the same output
+as inH
+∗
+2
+≈
+fl
+H
+←
+1. Hence, if there exists a distinguisher between
+H
+←
+2
+andH
+←
+2
+, there exists an attack onSLU
+←
+.
+HybridH
+<←
+2:From here, we refer to the combination ofH
+2
+←
+andH
+←
+2asH
+←
+2for convenience. In this hybrid, for the first−1
+honest subpaths on backwards communications are replaced with
+a random onion sharing the path and the other replacements cal-
+culated as before and all are stored on the
+-list. IfApreviously
+(i.e., in onion layers up to the honest relay starting the selected
+subpath) modifiedof an onion layer in this communication or
+modified another part such that processing fails, the communication
+is skipped.
+H
+<−1←
+2
+≈
+fl
+H
+<←
+2
+:
+Analogous to above.
+Onion replacement for corrupted receivers
+We replace the missing part between the onion layers already
+replaced on the forward path and the onion layers already replaced
+on the backward path. Due to the structure of RSOR, this part exists
+for every onion and includes the link between the exit relay and
+the receiver. Note that if the exit relay is the last honest relay on
+the onion's path, then no replacement can take place because the
+message is simply sent to the receiver in plaintext. We thus only
+consider onions that still have at least one adversarial relay left on
+their path (which also implies that their exit relay is adversarial).
+HybridH
+3:In this hybrid, for the first forward communication
+for which, in the adversarial processing, no recognition-falsifying
+modification (i.e., a modification on) occurred (and no other mod-
+ification caused the processing to fail) so far, forward onion layers
+from its last honest relay to the corrupted exit relay are replaced
+with random onions sharing this path, receiver, and message and
+the first part of the reply-path. More precisely, this machine acts
+likeH
+∗←
+2except for the processing of
+; in essence, the consecu-
+tive onion layers
++1
+, . . . ,
+from a communication of an honest
+sender, starting at the last honest relay
+to the corrupted exit
+relay
+are replaced with
+1
+, . . . ,
+−
+; Thereby, for an honestly
+chosenR
+′
+:
+1
+←FormOnion(1,R
+′
+,, ,P
+′
+,P
+′←
+,
+P
+′
+,
+P
+′←
+),
+whereis the message of this communication,is the receiver,
+P
+′
+=(
+, . . . ,
+)is the path from
+to
+andP
+′←is the first
+part of the reply-path (until the first honest relay), that a reply to
+the original onion would have taken. If the onion's information is
+on theTag-list, then the tag is recreated on
+1
+before it is sent.
+H
+3
+further checks for every onion (ending at)P
+←
+., if it was
+a reply to these replaced onion layers (by using the informationinfo
+stored andROnion). If so, it uses its knowledge about the original
+forward onion (before replacement) and the sender to construct
+the belonging original reply. With it, it computes the replacement
+of the later onion layers for this communication as in hybridH
+∗←
+2
+and stores the corresponding information on the
+-list. As before,
+the
+-list will be checked to pick the right processing of an onion.
+H
+∗←
+2
+≈
+fl
+H
+3
+:
+Similar toH
+∗
+1
+≈
+fl
+H
+2, the forward onion layers
+before
+are independent and hence can be simulated for the dis-
+tinguisher by an attack onSTI
+↔. If the adversary tags one of those
+layers, the attack can recognize the tag since it knows the expected
+payload it should be receiving at each honest relay. The attack can
+then recreate the tag after getting the challenge onion from the
+STI
+↔challenger. Similarly toH
+∗←
+1
+≈
+fl
+H
+←
+2, the backward onion
+layers afterP
+←
+.are independent and hence can be simulated
+for the distinguisher by an attack onSTI
+↔. The remaining outputs
+suffice to construct an attack onSTI
+↔similar to the one onTLU
+→
+inH
+∗
+1
+andH
+2
+.
+HybridH
+<
+3:In this hybrid, for the first−1forward commu-
+nications for which, in the adversarial processing, no recognition-
+falsifying modification (and no other modification that results in
+failed processing) occurred so far, the onion layers between its last
+honest relay to corrupted exit relay are replaced with random onion
+layers sharing the path, message, receiver, and first part of the reply
+path.
+H
+<−1
+3
+≈
+fl
+H
+<
+3
+: Analogous to above.
+HybridH
+4:This machine acts the way thatSacts in combina-
+tion withF
+RSOR. Note thatH
+∗
+3only behaves differently fromSin
+(a) routing onions through the honest parties and (b) where it gets
+its information needed for choosing the replacement onion layers:
+(a)H
+∗
+3actually routes them through the real honest parties that
+do all the computation.H
+4instead runs the way thatF
+RSORand
+Soperate: there are no real honest parties, and the ideal honest
+parties do not do any crypto work. (b)H
+∗
+3gets inputs directly from
+the environment and gives output to it. InH
+4, the environment in-
+stead gives inputs toF
+RSORandSgets the needed information (i.e.,
+parts of path and the included message, if the receiver is corrupted)
+from outputs ofF
+RSORas the ideal world adversary.F
+RSORgives
+the outputs to the environment as needed.
+H
+∗
+3
+≈
+fl
+H
+4
+:
+For the interaction with the environment from the
+protocol/ideal functionality, it is easy to see that the simulator
+directly gets the information it needs from the outputs of the ideal
+functionality to the adversary: Whenever an honest relay is done
+processing, it needs the path from it to the next honest relay or path
+from it to the corrupted receiver and in this case also the message
+and beginning of the backward path. This information is given to
+SbyF
+RSOR
+.
+Further, in the real protocol, the environment is notified by hon-
+est relays when they receive an onion together with some random
+ID that the environment sends back to signal that the honest relay
+is done processing the onion. The same is done in the ideal function-
+ality. Notice that the simulator ensures that every communication
+is simulated inF
+RSORsuch that those notifications arrive at the
+environment without any difference (this includes them having the
+same repliability).
+For the interaction with the real world adversary, we distinguish
+the outputs in communications from honest and corrupted senders.
+(0)Corrupted (forward) senders: In the case of a corrupted
+sender, bothH
+∗
+3andH
+4(i.e.,S + F
+RSOR) do not replace
+any onion layers except that with negligible probability a
+collision on the
+-list resp.-list occurs. (Notice that even
+for honest receivers (and thus backward senders) layers fol-
+lowing the protocol can be and are created.)
+(1) Honest senders:
+1.1)
+No recognition-falsifying modification of the onion by the
+adversary happens (and if modification happens at all, the
+ that a failing processing is
+777
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+replaced with randomly drawn onion layers
+. The way
+those layers are chosen is identical forH
+∗
+3andH
+4(i.e.,
+S + F
+RSOR
+).
+1.2)
+The onion is tagged by the adversary: If the tagging oc-
+curs on the forwards path between two honest relays, the
+onion's information is added to theTag-list at the next
+honest relay. This list exactly corresponds to the
+list
+inF
+RSORfor forward onions and the onion is treated ac-
+cordingly at the last honest relay: If that relay is the exit
+relay, no output is produced. If it is not the exit relay, the
+steps inH
+∗
+3ensure that the corrupted exit relay receives
+a tagged onion. If the tagging occurs on the backwards
+path, the onion's information is not added to theTag-list
+and the final onion layer delivered to the reply receiver is
+not tagged. This does not change the output toZbecause
+received replies are never output to the environment by
+honest relays.
+1.3)
+Some recognition-falsifying modification of the onion or a
+drop or insert happens: As soon as a recognition-falsifying
+modification happens, bothH
+∗
+3andH
+4continue to use
+the bit-identical onion for the further processing except
+when, with negligible probability, a collision on the
+-list
+resp.-list occurs. In case of a dropped onion, it is simply
+not processed further in any of the two machines.
+Note that the view of the environment in the real protocol is
+the same as its view in interacting withH
+0. Similarly, its view
+in the ideal protocol with the simulator is the same as its view
+in interacting withH
+4. As we have shown indistinguishability in
+every step, we have indistinguishability in their views.□
+E SPHINX: PACKET FORMAT DESCRIPTION
+This section is meant as a compact reference for the structure of
+the Sphinx packet, which is used in the following appendices. For
+12
+Sphinx packet is made of a header=(, ,)and a payload
+.is built using the public keys
+:=
+for each relay
+on
+the onion's path. The sender chooses a secret∈Z
+∗
+and lets
+=
+0
+···
+−and
+=
+0
+···
+−1
+, where
+=ℎ
+(
+−1
+,
+−1
+).
+is
+the group element contained in the-th layer of the header, and
+is the corresponding secret it shares with
+.
+20
+The
+are blinding
+factors that transformat each relay. They are calculated with a
+random oracleℎ
+. The remainder of the header is built using the
+shared secrets
+after passing them through more random oracles:
+ℎ
+,ℎ
+, andℎ
+are each used to key a different primitive. The
+are
+built starting at the final layer:
+−1
+:={∗/
+∥fl∥
+(2(−)+2)−||
+}⊕
+{(ℎ
+(
+−1
+))
+[...(2(−)+3)−1]
+}∥Φ
+−1
+.
+21
+In this definition,∗/
+is either a sentinel value indicating that
+this is a forward packet or the address of the original sender in a
+reply packet.flis an identifier used by
+to recognize replies.
+is the global maximum path length in this Sphinx instance.is
+a PRG keyed withℎ
+(
+).Φ
+is padding formed via the repeated
+20
+Note that our indicesfor relay names are relative to a single packet's path for
+clarity.
+21
+Note that we use the randomized padding described in Section 2.4.2 here.
+application of thePRG:Φ
+0
+is empty, while
+Φ
+={Φ
+−1
+∥0
+2
+} ⊕(ℎ
+(
+))
+[(2(−)+3)...(2+3)−1]
+.
+The remaining
+are built as
+={
++1
+∥
++1
+∥
++1
+[...(2−1)−1]
+} ⊕(ℎ
+(
+))
+[...(2+1)−1]
+.
+Effectively, the construction of the padding is designed such that
+Φ
+is a suffix of
+.
+is the MAC(ℎ
+(
+),
+)of
+. Finally, a
+forward payloadis formed as
+−1
+=(ℎ
+(
+−1
+),0
+∥∥)
+and
+=(ℎ
+(
+),
++1
+), whereis a PRP keyed withℎ
+(
+).
+The packet sent by the sender is((
+0
+,
+0
+,
+0
+),
+0
+). Each relay
+then processes the packet it gets into((
++1
+,
++1
+,
++1
+),
++1
+)12
+F SPHINX: ADAPTED KEM-IND-CCA
+Proof.
+We will use a PPT attackerAon the Sphinx-KEM-IND-
+CCA property for the Sphinx RO-KEM to construct an attacker
+B
+O
+ffi
+on the GDH assumption using the DDH oracleO
+ffi
+.
+The GDH attackerBmaintains five lists:
+•
+: List of group elements
+with their associated oracle
+outputs (ℎ
+∗
+(
+),ℎ
+∗
+(
+1
+∗
+),ℎ
+(
+,
+1
+∗
+)).
+•
+: List of up totuples, one for each adversarial relay on
+the KEM path: Each holds(
+, ℎ
+∗
+(
+), ℎ
+(
+,
+)).
+•
+: List of(
+,
+)element pairs with their corresponding
+ℎ
+(
+,
+)values.
+•
+O
+: List of
+′
+s that have been requested fromO.
+•
+ℎ
+: List of group elements that have been requested fromℎ
+∗.
+Breceives a CDH challenge(,
+1
+,
+2
+)from the GDH chal-
+lengerC.Buses
+1as the public keyof the "honest relay"
+and
+2as the challenge
+. The attacker sendstoAand gives
+Aaccess to the programmed random oraclesℎ
+∗andℎ
+and the
+decapsulation oracleO(which are described below). Next,Bre-
+ceivesand
+for≠fromAand checks that the public keys
+are valid.Bnow chooses
+0
+, . . . ,
+randomly fromZ
+∗
+. To cal-
+culate
+for<,Bcalculates the inverses
+−1
+0
+, . . . ,
+−1
+−1and
+uses them to form
+=
+−1
+...
+−1
+−1
+. To make
+for>, let
+=
+...
+−1
+. Next,Bchoosesrandom
+0
+, . . . ,
+values as out-
+puts forℎ
+∗
+(
+). To remember these choices in the programmed
+random oracles,Bstores(
+,
+,
+)in
+for≠. Now, it flips a
+bitto determine whether it will simulate the KEM game for=0
+or=1. If=0,Bsets[][1]:=
+, and[][2]:=
+. Finally,
+0
+,
+0
+, . . . ,
+−1
+,
++1
+, . . . ,
+and
+0
+, . . . ,
+−1
+,
++1
+, . . . ,
+are sent to
+Aalong with(
+,
+,
+).
+To simulate the decapsulation oracleOand the random oracles
+ℎ
+∗
+andℎ
+,Bbehaves as described in Algorithm 3.
+Using a bad-flag analysis, we can see that any attackerAwith a
+non-negligible advantage in the KEM game must trigger the
+flag non-negligibly often, soBcan also win the GDH game non-
+negligibly often. The random oraclesℎ
+∗andℎ
+are set up to behave
+correctly in combination withOexcept if a "collision" is created
+in the challenge creation phase (steps 3-7). Here, a collision refers
+toBassigning two different random values to the same random
+oracle inputs on accident. This can occur in two ways:
+(1) The attacker already requestedO()in step two.
+(2)
+The attacker already requestedℎ
+∗
+(
+)orℎ
+(
+,
+)for0≤
+≤
+in step two orBgenerates its own collision on accident
+when
+1
+=
+2
+for
+1
+≠
+2
+.
+778
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+Algorithm 3KEM attackerB's oracles
+functionO(
+′
+)
+ifgeneratedand
+′
+=then abort
+if[
+′
+] [1]is not setthen
+Add
+′
+to
+O
+for
+∈
+ℎ
+do
+ifO
+ffi
+(, ,
+′
+,
+)then
+[
+′
+] [1] ←[
+] [0]
+if[
+′
+] [1]is not setthen
+[
+′
+] [1] ←
+{0,1}
+3
+for(
+,
+) ∈
+where
+=
+′
+do
+ifO
+ffi
+(, ,
+′
+,
+)then
+[
+′
+] [2] ←
+[(
+′
+,
+) ]
+if[
+′
+] [2]is not setthen
+[
+′
+] [2] ←
+Z
+∗
+return([
+′
+] [1], [
+′
+] [2])
+functionℎ
+∗
+(
+)
+if[
+] [0]is not setthen
+Add
+to
+ℎ
+ifgeneratedandO
+ffi
+(, , ,
+)then
+bad←1
+for(
+,
+,_) ∈
+do
+ifO
+ffi
+(,
+,
+,
+)then
+[
+] [0] ←
+for
+′
+∈
+O
+do
+ifO
+ffi
+(, ,
+′
+,
+)then
+[
+] [0] ←[
+′
+] [1]
+if[
+] [0]is not setthen
+[
+] [0] ←
+{0,1}
+3
+return[
+] [0]
+functionℎ
+(
+,
+)
+if
+[(
+,
+) ]is not setthen
+ifO
+ffi
+(, ,
+,
+)then
+ifgeneratedand
+=then
+bad←1
+if[
+] [2]is setthen
+[(
+,
+) ] ←[
+] [2]
+if(
+,_,_) ∈
+at index
+andO
+ffi
+(,
+,
+,
+)then
+Retrieve(
+,_,
+)from
+[(
+,
+) ] ←
+if
+[(
+,
+) ]is not setthen
+[(
+,
+) ] ←
+Z
+∗
+return[(
+,
+) ]
+In any of the above cases,Bsimulates the oracles incorrectly.
+22
+Let the number of requestsAmakes to each oracleO,ℎ
+∗, andℎ
+be bounded by the polynomial(). The probability of each case
+is bounded by1/and⪅
+(()+)
+2
+2each for a collision onℎ
+∗and
+ℎ
+respectively.
+23
+According to Sphinx's definition, the orderof
+the groupGis on the order of2
+2
+, meaning that both of these
+probabilities are negligible.
+22
+UnlessBhappened to choose the same randomness in both cases, which only
+happens negligibly often.
+23
+This corresponds to an upper bound for the likelihood for a successful birthday
+attack given() +requests and a pre-image set with
+If neither of these events occur,Bsimulates the oracles correctly
+and wins the GDH game wheneverAwins the Sphinx-KEM-IND-
+CCA game.□
+G SPHINX ONION PROPERTY PROOFS
+G.1 RSOR-Tagging Layer Unlinkability (TLU
+→
+)
+Theorem 3.Sphinx satisfies TLU
+→
+under the GDH assumption.
+Proof.
+We prove that an adversary cannot distinguish the=0
+scenario from the=1scenario through a hybrid argument starting
+at=0and ending at=1. For clarity, we separate the proof into
+two cases: One where=and the other where<. Initially,
+this may seem problematic since the adversary choosesadaptively
+after the first round of oracle accesses, so we cannot predict which
+it will choose beforehand for our reductions. However, every step
+in our proofs is either common to both cases (so it does not require
+predicting) or only applies after the adversary has made its choice.
+Note that Danezis and Goldberg index Sphinx packet layers starting
+12
+0
+(=
+)would send the Sphinx
+layer with
+0
+in its header.
+Case 1(=):In this case, the honest relay on the forward path
+is also the exit relay of the onion and thus the sender of the reply
+onion.
+HybridH
+0:This hybrid is just the=0scenario ofTLU
+→with
+=.
+HybridH
+1:As a first step, we replace the secrets used at the
+honest relay (the exit relay) with randomness.H
+1replaces the
+random oracle outputsℎ
+∗
+(
+−1
+)with random{0,1}
+bitstrings
+when building the reply header.
+24
+Procrequests for onions with
+the challenge
+−1are also served using these random keys to keep
+the oracle's behavior consistent.
+H
+0
+≈
+fl
+H
+1
+:
+The difference between these hybrids reduces to
+Exp
+RO-KEM-IND-CCA
+RO-KEM,A
+(): The Sphinx-KEM-IND-CCA attackerA
+uses its inputs from the challenger and the assumed hybrid dis-
+tinguisherDto build the challenge onion and serves requests to
+theProcandReplyoracles using its decapsulation oracle.Proc
+requests with the challenge
+−1are served using the keys provided
+by the challenger.
+HybridH
+2:To ensure that only the challenge onion is recog-
+nized for "challenge processing" by the exit relay, theProcoracle
+at the relay now returns(⊥,⊥)on every request with
+−1in its
+header except if the rest of the header also matches the expected
+header of the challenge onion.
+H
+1
+≈
+fl
+H
+2
+:
+This reduces toExp
+sEUF-CMA-vq
+,A
+()using the fact
+that the PRFcan be viewed as a MAC with the randomized key
+ℎ
+(
+−1
+). Any request to theProcoracle at the exit relay with
+−1
+must contain a validMAC for thein the header to be processed.
+To notice a difference between the two hybrids, a distinguisher
+must submit such a request with a modifiedor. Sinceis sEUF-
+CMA-vq-secure, this request constitutes a MAC forgery.
+HybridH
+3:This hybrid swaps(ℎ
+(
+−1
+),·)with a random
+permutation (RP). Note thatℎ
+(
+−1
+)is already a random key be-
+fore this hybrid. Since Sphinx requires12
+bothand
+−1
+can be used as RPs after the replacement.
+24
+It also randomizes
+−1
+, but we do not need that for this proof.
+779
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+H
+2
+≈
+fl
+H
+3
+:
+A distinguisherDfor these hybrids is easily con-
+verted into an attackerAon Exp
+prp
+,A
+().
+HybridH
+4:In this hybrid, the honest exit relay
+ffonly sends
+the challenge reply in response to aReplyrequest if the onion
+received in the correspondingProcrequest has a payload that
+matches the expected payload
+−1
+of the forward onion exactly.
+H
+3
+≈
+fl
+H
+4
+:
+Since
+−1
+(ℎ
+(
+−1
+),·)is now an RP, every input is
+mapped to a random output. In order for a distinguisher to notice
+a difference between the two hybrids, it must submit a modified
+payload attached to the challenge header that is accepted by the
+oracle. After decrypting the payload, the oracle checks that the first
+bits of the contents are all zero and discards the onion it that is
+not the case. A manipulated payload only starts with0
+negligibly
+often, so the distinguisher only has a negligible chance of success.
+HybridH
+5:This hybrid replaces the contents of the forward
+payload with the contents as they would be in the=1scenario.
+The original contents are0
+∥∥
+0
+∥
+~
+∥
+, while the replacements are
+0
+∥
+∥
+→
+,
+∥
+with a random receiver
+, a random message,
+and padding instead of a reply header. When building the challenge
+reply onion,
+ffstill uses the original
+0reply header. TheProc
+oracle also outputs the original message and receiver.
+H
+4
+≈
+fl
+H
+5
+:
+TheProcandReplyoracles at the exit relay behave
+the same way inH
+4andH
+5.
+ffconsistently uses
+0as the chal-
+lenge reply header in both hybrids. The replacement of the payload
+contents reduces to Exp
+1-LR-CPA
+,A
+().
+HybridH
+6:In this hybrid, we rewind the temporary changes
+made in the hybridsH
+4
+,H
+3
+,H
+2
+, andH
+1
+.
+H
+5
+≈
+fl
+H
+6
+:
+Apply the previous arguments in reverse. This con-
+cludes the=case of theTLU
+→
+proof.
+Case 2(<):For the second part of this proof, the honest relay
+on the forward path is not the exit relay, i.e.,<.
+HybridH
+0
+:The=0case ofTLU
+→
+with<.
+HybridH
+1:This hybrid performs the same steps as the hybrids
+H
+1
+andH
+2
+in the=case.
+H
+0
+≈
+fl
+H
+1
+:
+See the corresponding hybrids in the=case.
+HybridH
+2:In this hybrid, we replace(ℎ
+(
+−1
+),·)with an
+RP.
+H
+1
+≈
+fl
+H
+2
+:
+Analogous to Case 1'sH
+2
+≈
+fl
+H
+3
+.
+HybridH
+3:Previously (inH
+2), if
+′
+−1matches the original
+−1,
+the resulting output is the correct
+. Otherwise, the RP causes the
+output to be a uniformly random{0,1}
+()
+string.
+InH
+3, instead of actually processing
+′
+−1, the honest relay only
+checks whether
+′
+−1
+=
+−1. If so,
+is used as the output onion's
+payload. Otherwise, a random{0,1}
+()
+string is output instead.
+H
+2
+≈
+fl
+H
+3
+:
+If a distinguisherDchooses to submit the correct
+challenge payload, the output in both hybrids is identical. IfDsends
+a manipulated payload,H
+2outputs a new RP output whileH
+3pro-
+duces a completely random string. These two distributions are only
+distinguishable ifH
+3happens to choose
+as its random output,
+whichH
+2would never do. The probability of that happening is
+negligible.
+HybridH
+4:This hybrid is analogous to Case 1'sH
+5. It replaces
+the contents of
+−1(which were originally
+) with the new con-
+tents0
+∥
+∥
+→
+,
+∥
+,
+andbeing a random receiver and mes-
+sage.
+H
+3
+≈
+fl
+H
+4
+:
+Analogous toH
+5
+in Case 1.
+HybridH
+5:In the honest relay's challenge processing,H
+5al-
+ways produces the same challenge header (the one belonging to the
+challenge onion's layer
+) without actually processing the header
+input the relay is given. The challenge output of
+ffnow only
+depends on whether the payload was manipulated (i.e., tagged).
+H
+4
+≈
+fl
+H
+5
+:
+Due toH
+1
+, the honest relay only performs the chal-
+lenge processing steps on headers that match the challenge header
+exactly. Thus, both hybrids always output the same challenge
+header for the challenge onion.
+HybridH
+6:This hybrid replaces the PRG output(ℎ
+(
+−1
+))
+with a random string.
+H
+5
+≈
+fl
+H
+6
+:
+Given a distinguisherDfor the two hybrids, con-
+struct an attackerAon Exp
+,A
+().
+HybridH
+7:In this hybrid, we replace the first(2(−) +3)
+bits of the contents of
+−1. These bits correspond to the address
+of the relay
++1, the MAC
+, and
+[...(2−1)−1]. The rest of
+constitutes padding that we leave unchanged. The replacement is
+{∗∥0
+∥
+[(2(−)+2)−||]
+}.
+H
+6
+≈
+fl
+H
+7
+:
+Since(ℎ
+(
+−1
+))is a random string, this change
+can be reduced toExp
+1-LR-CPA
+OTP,A. The new contents are exactly what
+−1would contain if
+←
+ffwere the last relay on the path. The suffix
+[(2(−) +3) . . .(2+1)−1]
+of
+−1isΦ
+−1by construction.
+25
+With this change, the layers
+0,
+. . . ,
+−1
+are now independent of the later layers
+, . . . ,
+−1
+.
+HybridH
+8:The second part of the challenge onion still contains
+the paddingΦ
+0, . . . ,Φ
+−1nested in
+'sΦ
+padding. To alleviate
+this,H
+8
+replacesΦ
+with a random string of length2.
+H
+7
+≈
+fl
+H
+8
+:
+InH
+7
+,Φ
+is calculated fromΦ
+−1
+as
+Φ
+←(ℎ
+(
+−1
+))
+[(2(−)+3)...]
+⊕ {Φ
+−1
+∥0
+2
+}.
+Since(ℎ
+(
+−1
+))is a random string, the replacement
+Φ
+←(ℎ
+(
+−1
+))
+[(2(−)+3)...]
+is indistinguishable from the original. As a result, this change re-
+duces to Exp
+1-LR-CPA
+OTP,A
+.
+HybridH
+9:This hybrid replaces the KEM instance used for the
+second part of the challenge onion after the honest relay. Previously,
+=
+−1
+−1and
+=
+0
+···
+−1
+. Now,H
+9picks a new
+′
+←
+Z
+∗
+,
+setting
+=
+′and
+=
+′
+and adjusting the later
+and
+following them accordingly.
+H
+8
+≈
+fl
+H
+9
+:
+H
+1
+randomizes
+−1into a unformly distributed ele-
+ment ofZ
+∗
+. It follows that
+−1
+−1and
+′are identically distributed.
+The same argument holds for the laters and secrets.
+HybridH
+10:This hybrid "fixes" the second part of the onion so
+that it becomes a complete onion starting at
+again. To that end,
+H
+10starts building new
+′
+0, . . . ,
+′
+−1onion layers that follow the
+same path as the original
+0, . . . ,
+−1. These new layers are built
+as a prefix to
+, so the payload content of
+′
+−1is
+and
+′
+−1is
+formed with
+in its contents. The random oracle outputsℎ
+∗
+(
+′
+−1
+)
+andℎ
+(
+′
+−1
+,
+′
+−1
+)are randomized.
+25
+Technically, Sphinx uses the output oftwice when building a header: Once to
+generate the padding and a second time to encrypt. However, these use different
+substrings of the PRG output.Acan thus submit the two differentcontents with
+an appropriate zero padding to the 1-LR-CPA challenger to extract the random string
+required for the padding calculation.
+780
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+Most importantly,
+is now formed as
+′
+′
+−1
+−1, with the secrets
+being built analogously.
+H
+9
+≈
+fl
+H
+10
+:
+The new layers
+′
+0, . . . ,
+′
+−1are never actually given
+to the adversary. Their construction is thus entirely invisible to
+the attacker except for the change in how
+is formed. Using
+H
+8
+≈
+fl
+H
+9's argument,
+still has the same distribution in both
+hybrids.
+HybridH
+11:This hybrid replaces(ℎ
+(
+′
+−1
+))with a random
+string.
+H
+10
+≈
+fl
+H
+11
+:
+SeeH
+5
+≈
+fl
+H
+6
+.
+HybridH
+12:InH
+8,Φ
+is replaced with a random string instead
+of containing the previousΦ
+−1. Now, we replace that random
+string with
+(ℎ
+(
+′
+−1
+))
+[(2(−)+3)...]
+⊕ {Φ
+−1
+∥0
+},
+so thatΦ
+is formed as the-th layer of padding in the
+′
+0
+, . . . ,
+,
+. . . ,
+−1
+onion.
+H
+11
+≈
+fl
+H
+12
+:
+Analogous toH
+8
+.
+HybridH
+13:This hybrid replaces the randomized oracle outputs
+for
+′
+−1
+with the actual outputsℎ
+∗
+(
+′
+−1
+)andℎ
+(
+′
+−1
+,
+′
+−1
+).
+H
+12
+≈
+fl
+H
+13
+:
+SeeH
+1
+≈
+fl
+H
+0
+.
+HybridH
+14:In this hybrid, we rewind all of the temporary
+changes made in the previous hybrids in the reverse order:H
+11,
+H
+6
+,H
+2
+, andH
+1
+.
+H
+13
+≈
+fl
+H
+14
+:
+Apply the previous arguments in reverse. This con-
+cludes the<case of theTLU
+→
+proof.
+We have proven that Sphinx satisfiesTLU
+→
+.□
+G.2 RSOR-Backw. Layer Unlinkability (SLU
+←
+)
+Theorem 5.Sphinx satisfies SLU
+←
+under the GDH assumption.
+Proof.
+We prove that an adversary cannot distinguish the=0
+scenario from the=1scenario through a hybrid argument starting
+at=0and ending at=1. For clarity, we separate the proof into
+two cases: One where
+←
+=0and the other where
+←
+>0.
+Case 1(
+←
+=0):In this case, the honest relay on the return path
+is identical to the exit relay on the forward path and is thus also
+the sender of the reply onion.
+HybridH
+0:This hybrid is just the=0case ofSLU
+←with
+←
+=0.
+HybridH
+1:H
+1replaces the random oracle outputsℎ
+∗
+(
+←
+←
+−1
+)
+with random{0,1}
+bitstrings when building the reply header.Proc
+requests for onions with the challenge
+←
+←
+−1are also served using
+these random keys.
+H
+0
+≈
+fl
+H
+1
+:
+This difference reduces to Sphinx-KEM-IND-CCA.
+See hybridH
+1
+in theTLU
+→
+proof for details.
+HybridH
+2:To ensure that only the challenge reply onion is
+"absorbed" by the reply receiver, theProcoracle now returns(⊥,⊥)
+on every request with the challenge
+←
+←
+−1except if the rest of the
+header also matches the challenge reply (in that case, no output is
+produced at all).
+H
+1
+≈
+fl
+H
+2
+:
+See hybridH
+2
+in theTLU
+→
+proof.
+HybridH
+3:We repeat the changes in hybridsH
+1andH
+2for
+the honest relay
+ffto randomizeℎ
+∗
+(
+−1
+)and reject challenge
+onions with modified headers inProcat
+ff
+.
+H
+2
+≈
+fl
+H
+3
+:
+Analogous toH
+0
+≈
+fl
+H
+1
+andH
+1
+≈
+fl
+H
+2
+.
+HybridH
+4
+:This hybrid exchanges(ℎ
+(
+−1
+),·)with an RP.
+H
+3
+≈
+fl
+H
+4
+:
+A distinguisherDfor these hybrids is easily con-
+verted into an attackerAon Exp
+prp
+,A
+().
+HybridH
+5:In this hybrid, the honest exit relay
+ffonly sends
+the challenge reply in response to aReplyrequest if the onion
+received in the correspondingProcrequest has a payload that
+matches the expected payload
+−1
+of the forward onion exactly.
+H
+4
+≈
+fl
+H
+5
+:
+See hybridH
+4
+inTLU
+→
+'s Case 1.
+HybridH
+6:This hybrid replaces the reply header
+0and sym-
+metric key
+~
+in the contents of
+−1with a new reply header that
+uses the same path, but different randomness and a random
+~
+′
+when
+building the forward onion. The challenge reply onion's header is
+no longer read from the payload of the forward onion. Instead, the
+actual reply header and symmetric key are built "at"
+ffwhen the
+challengeReplyis requested.
+H
+5
+≈
+fl
+H
+6
+:
+The behavior of theProcandReplyoracles is in-
+distinguishable between the two hybrids, since both process the
+onion and reply to it using the same header. The only other change
+is to the contents of
+−1. We can construct an attackerAon
+Exp
+1-LR-CPA
+,A
+()using any distinguisherD.
+HybridH
+7:In this hybrid, replace(ℎ
+(
+←
+←
+−1
+),·)and(
+~
+,·)
+with RPs when building the reply onion.
+H
+6
+≈
+fl
+H
+7
+:
+Analogous toH
+3
+≈
+fl
+H
+4
+.
+HybridH
+8:Previously, the first layer
+←
+1of the reply onion
+had a payload encrypted with the RP(
+~
+,·). We now replace this
+permutation with(ℎ
+(
+←
+0
+), (ℎ
+(
+←
+1
+),· · ·(ℎ
+(
+←
+←
+−1
+),·) · · · ))
+while encrypting the same contents. The new permutation corre-
+sponds to how a forward onion payload is encrypted at the sender.
+H
+7
+≈
+fl
+H
+8
+:
+Since chaining the permutations(ℎ
+(
+←
+),·)after
+the RP(ℎ
+(
+←
+←
+−1
+),·)results in a new RP, we have simply replaced
+one RP with another.
+HybridH
+9:Until now, the contents of the reply onion payload
+were0
+∥pad
+←
+,
+∥
+←
+, where
+←is the adversary-chosen message.
+We replace them with0
+∥
+∥pad
+→
+,
+∥
+, where
+andare ran-
+domly chosen receivers and messages.
+H
+8
+≈
+fl
+H
+9
+:
+Analogous toH
+5
+≈
+fl
+H
+6
+.
+HybridH
+10:This hybrid replaces(ℎ
+(
+←
+←
+−1
+))with a random
+string when building the "reply" onion header.
+H
+9
+≈
+fl
+H
+10
+:
+Reduce to Exp
+prg
+,A
+().
+HybridH
+11:When building the "reply" onion header,H
+11uses
+∗∥0
+instead of
+∥flin the contents of
+←
+←
+−1
+.
+H
+10
+≈
+fl
+H
+11
+:
+Since the change in
+←
+←
+−1's contents does not af-
+fect the padding, we can reduce this change toExp
+1-LR-CPA
+OTP,Awithout
+further provisions. At this stage,
+←
+1is built just like
+1
+in the
+=1case ofSLU
+←
+.
+HybridH
+12:This hybrid rewinds all of the temporary changes
+made in the previous hybridsH
+10,H
+7,H
+5,H
+4,H
+3,H
+2, andH
+1in
+that order.
+H
+11
+≈
+fl
+H
+12
+:
+Apply the previous arguments in reverse. This con-
+cludes the
+←
+=0case of theSLU
+←
+proof.
+Case 2(
+←
+>0):Now, we consider the case where the honest
+relay is on the reply path of the challenge onion.
+HybridH
+0
+:The=0scenario ofSLU
+←
+with
+←
+>0.
+HybridH
+1:This hybrid performs the same steps as the hybrids
+H
+1
+,H
+2
+, andH
+3
+in Case 1.
+781
+Proceedings on Privacy Enhancing Technologies 2024(4) Philip Scherer, Christiane Weis, and Thorsten Strufe
+H
+0
+≈
+fl
+H
+1
+:
+See the corresponding hybrids in Case 1.
+HybridH
+2:In this hybrid, we exchange the two permutations
+−1
+(ℎ
+(
+←
+←
+−1
+),·)and(ℎ
+(
+←
+←
+−1
+),·)for RPs.
+H
+1
+≈
+fl
+H
+2
+:
+A distinguisherDfor this hybrid is easily converted
+into attackersAandBon Exp
+prp
+−1
+,A
+(). and Exp
+prp
+,B
+().
+HybridH
+3:In this hybrid, we change how the challenge onion's
+payload
+←
+←
+−1is processed at
+ff. Normally, Sphinx calculates
+←
+←
+by applying the
+−1(P)RP to the payload. We replace
+−1with the
+RP(ℎ
+(
+←
+←
+), (ℎ
+(
+←
+←
++1
+),· · ·(ℎ
+(
+←
+←
+−1
+),·) · · · )).
+H
+2
+≈
+fl
+H
+3
+:
+Analogous to Case 1'sH
+8
+.
+HybridH
+4:Now, instead of running the RP on
+←
+←
+−1during the
+challenge processing,H
+4runs it on0
+∥
+∥pad
+→
+,
+∥
+for a random
+receiver
+and message. This completely replaces the original,
+adversary-chosen payload with a forward payload.
+H
+3
+≈
+fl
+H
+4
+:
+SeeH
+5
+≈
+fl
+H
+6
+in Case 1.
+HybridH
+5:In this hybrid,
+ffdoes not process the challenge
+onion. Instead, it outputs the header of
+←
+←and the payload as
+defined inH
+3
+andH
+4
+.
+H
+4
+≈
+fl
+H
+5
+:
+The processing output to the adversary is identical
+in bothH
+4
+andH
+5
+.
+HybridH
+6:H
+6replaces(ℎ
+(
+←
+←
+−1
+))with a random string of
+the same length when building
+←
+1
+.
+H
+5
+≈
+fl
+H
+6
+:
+See Case 1'sH
+10
+.
+HybridH
+7:In this hybrid, we replace the first(2(−
+←
+) +3)
+bits of the contents of
+←
+←
+−1with randomness when building
+←
+1.
+This corresponds to the next relay address and the next MAC as
+well as the(2(− (
+←
+−1)) +3)-bit prefix of
+←
+←
+that does not
+contain padding.
+←
+←itself is still used for the
+←
+←reinserted at
+ff
+.
+H
+6
+≈
+fl
+H
+7
+:
+Reduce this change toExp
+1-LR-CPA
+OTP,A
+()like in Case
+1'sH
+11. After this change,
+←
+←
+−1can be built without using any of
+the secrets
+←
+←
+−1, . . . ,
+←
+←
+−1or the random oracle outputs derived
+from them.
+HybridH
+8:This hybrid replaces the keys used to generate
+←
+←.
+Instead of choosing
+←
+←
+=
+←
+←
+←
+−1
+←
+−1and
+←
+←
+=
+←
+←
+0
+···
+←
+←
+−1
+←,H
+8
+picks a new
+′
+←
+Z
+∗
+and lets
+←
+←
+=
+′and
+←
+←
+=
+′
+←. The later
+←
+,
+←
+,>
+←
+are calculated accordingly.
+26
+H
+7
+≈
+fl
+H
+8
+:
+See hybridH
+9
+inTLU
+→
+'s Case 2.
+HybridH
+9:InH
+9, we move the first2
+←
+bits ofΦ
+←
+−1(cor-
+responding toΦ
+←) into the-padding inside
+←
+←
+−1. To do so,
+the-padding is extended by2
+←
+bits andΦ
+←
+−1is truncated
+toΦ
+←
+−1[2
+←
+...]
+.
+H
+8
+≈
+fl
+H
+9
+:
+For this step, assume a distinguisherDfor the two
+hybrids. We will construct an attackerAonExp
+1-LR-CPA
+OTP,A
+(2).A
+submits
+(ℎ
+(
+←
+←
+))
+[(2(−(
+←
++1))+3)...(2(−1)+3)−1]
+⊕ · · ·
+⊕(ℎ
+(
+←
+−2
+))
+[(2(−(−1))+3)...(2(−(−1−
+←
+))+3)−1]
+26
+InH
+1, the random oracle outputs for
+←
+←
+−1at the reply receiver
+are randomized.
+H
+8remains consistent with this behavior by also randomizing the random oracle
+outputs for the "new"
+←
+←
+−1. Since the "original"
+←
+←
+−1is not in use, there is still
+exactly one set of randomized oracle outputs at
+.
+and
+(ℎ
+(
+←
+−1
+))
+[(2(−)+3)...(2(−(−
+←
+))+3)−1]
+to the challenger and uses the challenge ciphertext as the substring
+[(2(− (
+←
++1)) +3) . . .(2(−1) +3)−1]
+of
+←
+−1.Φ
+←
+←is already a random string due to it being the result
+of an XOR operation with the random string(ℎ
+(
+←
+←
+−1
+)), so the
+first scenario simulatesH
+3
+and the second simulatesH
+4
+.
+HybridH
+10:This hybrid replaces(ℎ
+(
+←
+←
+−1
+))with a random
+string when building
+←
+←
+.
+H
+9
+≈
+fl
+H
+10
+:
+Analogous to this case'sH
+5
+≈
+fl
+H
+6
+.
+HybridH
+11:Just like in Case 1'sH
+11, we use∗∥0
+instead of
+∥flin the contents of
+←
+←
+−1
+.
+H
+10
+≈
+fl
+H
+11
+:
+Analogous to Case 1'sH
+10
+≈
+fl
+H
+11
+.
+HybridH
+12:This hybrid rewinds the temporary changes made
+in the previous hybrids:H
+10,H
+7,H
+6,H
+2, andH
+1are unwound in
+that order. Note that unwindingH
+7means replacing the random
+contents in
+←
+←
+−1with the "legitimate" rest of the reply header, not
+thes that were transformed into the
+1
+header.
+H
+11
+≈
+fl
+H
+12
+:
+Apply the previous arguments in reverse. This con-
+cludes the
+←
+>0case of theSLU
+←
+proof.
+We have now shown thatH
+0
+≈
+fl
+H
+12withH
+0
+=SLU
+←
+=0and
+H
+12
+=SLU
+←
+=1for both the
+←
+=0and
+←
+>0cases, proving that
+Sphinx satisfiesSLU
+←
+.□
+G.3 RSOR-Tail Indistinguishability (STI
+↔
+)
+Theorem 6.Sphinx satisfies STI
+↔
+under the GDH assumption.
+Proof.
+We prove that an adversary cannot distinguish the=0
+scenario from the=1scenario through a hybrid argument starting
+at=0and ending at=1. We gradually transform the
+onion
+into the
+0
+onion in successive hybrids.
+HybridH
+0
+:This hybrid is just the=0case ofSTI
+↔
+.
+HybridH
+1: If=0, the following hybrids do nothing. Skip
+to hybridH
+6in that case. In this hybrid, we begin truncating the
+forward path. When building
+, choose
+:=
+′and
+:=
+′
+with a random
+′
+∈Z
+∗
+.
+H
+0
+≈
+fl
+H
+1
+1
+: See hybridH
+9in theTLU
+→proof's Case 2. Note
+that
+−1
+is a random oracle output that is never used elsewhere.
+HybridH
+2:When building the Sphinx packet, replaceℎ
+(
+−1
+)
+with a random{0,1}
+-bitstring.ℎ
+(
+−1
+)is only required to calcu-
+lateΦ
+.
+H
+1
+≈
+fl
+H
+2
+:
+−1
+behaves like a uniformly random group element.
+By definition of a random oracle, these hybrids are indistinguish-
+able.
+HybridH
+3:Replace(ℎ
+(
+−1
+))with a random string. Since
+Φ
+is calculated from an XOR operation with(ℎ
+(
+−1
+)), it is now
+also a random string.
+H
+2
+≈
+fl
+H
+3
+:
+See hybridH
+6
+in theTLU
+→
+'s Case 2.
+HybridH
+4:When building
+−1,H
+3extends the random bits
+in its contents by2extra random bits and truncatesΦ
+−1by the
+same amount.
+H
+3
+≈
+fl
+H
+4
+:
+See hybridH
+9
+inSLU
+←
+'s Case 2.
+HybridH
+5:This hybrid does not generate
+0, . . . ,
+−1,
+0, . . . ,
+−1
+,
+0
+, . . . ,
+−1
+,
+0
+, . . . ,
+−1
+, orΦ
+0
+, . . . ,Φ
+−1
+.
+782
+Provable Security for the Onion Routing and Mix Network Packet Format Sphinx Proceedings on Privacy Enhancing Technologies 2024(4)
+H
+4
+≈
+fl
+H
+5
+:
+The parts of the packet destined for the path prefix
+are not used inH
+4, so not generating them in the first place goes
+unnoticed by any distinguisher.
+HybridH
+6:If
+←
+=
+←, we can skip the following hybrids
+because the original and truncated paths are identical. We thus
+assume
+←
+<in the following. This hybrid replacesℎ
+(
+←
+←
+−1
+),
+ℎ
+(
+←
+←
+−1
+), andℎ
+(
+←
+←
+−1
+)with random{0,1}
+strings. In order to
+processProcrequests for
+←
+ffwiths that are identical to theof
+the challenge header,H
+6
+uses the new random keys.
+H
+5
+≈
+fl
+H
+6
+:
+See hybridH
+1
+inTLU
+→
+'s Case 1.
+HybridH
+7:This hybrid adjusts the processing of onions at the
+second honest relay
+←
+←by returning(⊥,⊥)for anyProcrequest
+with the challengeunless the entire header matches the one of
+the challenge onion.
+H
+6
+≈
+fl
+H
+7
+:
+See hybridH
+2
+inTLU
+→
+'s Case 1.
+HybridH
+8:This hybrid replaces(ℎ
+(
+←
+←
+−1
+))with a random
+string when forming
+←
+←
+−1
+andΦ
+←
+.
+H
+7
+≈
+fl
+H
+8
+:
+The difference between these two hybrids reduces to
+Exp
+,A
+().
+HybridH
+9:This hybrid replaces the actual contents of
+←
+←
+−1.
+InH
+8
+, these were
+{
+←
+←
+∥
+←
+←
+∥
+←
+←
+[...(2−1)−1]
+}.
+H
+9
+replaces the first(2(−
+←
+) +3)bits of that with
+{
+∥fl
+←
+∥
+[(2(−
+←
+)+2)−|Δ|]
+}.
+The rest of
+←
+←
+−1
+is unchanged padding.
+H
+8
+≈
+fl
+H
+9
+:
+SeeH
+3
+≈
+fl
+H
+4
+.
+HybridH
+10:This hybrid reverts the temporary changes in the
+previous hybrids:H
+8
+,H
+7
+, andH
+6
+are unwound in that order.
+H
+9
+≈
+fl
+H
+10
+:
+Apply the previous arguments in reverse.
+HybridH
+13:This hybrid does not generate
+←
+←, . . . ,
+←
+←
+−1,
+←
+←, . . . ,
+←
+←
+−1,
+←
+←, . . . ,
+←
+←
+−1,ℎ
+(
+←
+←
+), . . . ,ℎ
+(
+←
+←
+−1
+), orΦ
+←
+←,
+. . . ,Φ
+←
+←
+−1
+.
+H
+12
+≈
+fl
+H
+13
+:
+These components are no longer required to form
+the challenge packet: The later
+←s have been replaced by the new
+contents of
+←
+←
+−1
+along with the laterΦ
+←
+s.
+H
+13
+is the=1case ofSTI
+↔. SinceH
+0
+≈
+fl
+H
+13, Sphinx satisfies
+STI
+↔
+.□
+783

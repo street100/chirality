@@ -1,0 +1,3377 @@
+TARANET: Traffic-Analysis Resistant Anonymity
+at the NETwork layer
+Chen Chen
+chenche1@andrew.cmu.edu
+Carnegie Mellon University
+David Barrera
+david.barrera@polymtl.ca
+Polytechnique Montreal
+Daniele E. Asoni
+daniele.asoni@inf.ethz.ch
+ETH Z"urich
+George Danezis
+g.danezis@ucl.ac.uk
+University College London
+Adrian Perrig
+adrian.perrig@inf.ethz.ch
+ETH Z"urich
+Carmela Troncoso
+carmela.troncoso@epfl.ch
+EPFL
+Abstract--Modern low-latency anonymity systems, no matter
+whether constructed as an overlay or implemented at the
+network layer, offer limited security guarantees against traffic
+analysis. On the other hand, high-latency anonymity systems
+offer strong security guarantees at the cost of computational
+overhead and long delays, which are excessive for interactive
+applications. We propose TARANET, an anonymity system
+that implements protection against traffic analysis at the net-
+work layer, and limits the incurred latency and overhead.
+In TARANET's setup phase, traffic analysis is thwarted by
+mixing. In the data transmission phase, end hosts and ASes
+coordinate to shape traffic into constant-rate transmission us-
+ing packet splitting. Our prototype implementation shows that
+TARANET can forward anonymous traffic at over 50 Gbps
+using commodity hardware.
+1. Introduction
+Users are increasingly aware of their lack of privacy and
+are turning to anonymity systems to protect their commu-
+Tor offers neither satisfactory performance nor strong an-
+onymity. With respect to performance, Tor is implemented
+as an overlay network and uses a per-hop reliable transport,
+respect to anonymity guarantees, Tor is vulnerable to traffic
+Users also have the option of anonymity systems with
+ever, these systems either scale poorly or incur prohibitive
+latency and reliability, making them unsuitable for many
+practical applications.
+In an effort to improve the performance of anonym-
+ity networks, research has built on the idea of network-
+the network infrastructure (e.g., routers) participates in es-
+tablishing anonymous communication channels and assists
+in forwarding anonymous traffic. Intermediate anonymity
+supporting network nodes (or nodes for short) first cooperate
+with senders to establish anonymous sessions or circuits,
+and then process and forward traffic from those senders to
+receivers. While these systems achieve high throughput and
+low latency, the security guarantees of these systems are no
+stronger than Tor's. Moreover, LAP and Dovetail leak the
+position of intermediate nodes on the path and the total path
+length, which reduces the anonymity set size, facilitating de-
+The problem space appears to have an unavoidable
+tradeoff:strong anonymity appears achievable only through
+drastically higher overhead
+push the boundaries of this anonymity/performance tradeoff
+by combining the speed of network-layer anonymity systems
+with strong defenses.
+To improve the anonymity guarantees, traffic analy-
+sis attacks need to be prevented, or made significantly
+harder/costlier to perform. The common method to achieve
+this is to insert chaff, which are dummy packets which
+to an adversary look indistinguishable from encrypted data
+packets. By mixing chaff with data packets, one can add
+noise to the underlying traffic patterns to defeat traffic
+analysis. For example, one can insert chaff to maintain a
+constant transmission rate on an adversarial network link, so
+that the traffic patterns observed by the observing adversary
+stay unchanged and leak no identifying information.
+However, both existing methods of applying chaff traffic,
+satisfactory. On one hand, constant-transmission-rate link
+padding uses chaff to shape traffic between adjacent pairs
+of nodes making it perfectly homogeneous, thus provably
+concealing the underlying traffic patterns from a network
+adversary. However, a compromised node is able to distin-
+guish chaff traffic from real traffic, giving link padding no
+anonymity guarantees when compromised nodes are present.
+On the other hand, probabilistic end-to-end padding enables
+end hosts to generate chaff traffic that is indistinguishable
+conceal the end-to-end transmission rate and can be defeated
+We take the best of both worlds and propose a new
+method of applying chaff traffic that has so far not been
+explored: anend-to-endpadding scheme that shapes a flow's
+traffic pattern intoconstant-rate transmission on all tra-
+versed links. At a flow's origin, the sender divides its traffic
+into smallflowletsthat transmit packets at a globally-fixed
+constant rate. Each forwarding node modulates the outgoing
+transmission rate of each flowlet so that the transmission rate
+remains constant over time and also remains constant across
+all links traversed by the flowlet. This approach prevents
+traffic patterns from propagating across nodes. We call this
+techniqueend-to-end traffic shaping.
+However, end-to-end traffic shaping is surprisingly tricky
+to achieve in the presence of natural packet loss, adversar-
+ial packet drops, or packet propagation delays. The main
+challenge for coordinated traffic shaping is how to maintain
+constant-rate transmission across all traversing links when
+a forwarding node's incoming transmission rate is lower
+than the outgoing transmission rate. A simple approach that
+enables a forwarding nodes to create valid packets to send
+toward the destination appears promising, but unfortunately,
+this approach could be abused, as packet injection requires
+the cryptographic keys that the sender shares with down-
+stream nodes. Moreover, such an approach would enable
+two malicious nodes that are on the same flowlet path to
+trivially link observed packets of the same flowlet. Simi-
+larly, allowing a node to replay existing packets cannot be
+permitted, as replicated packets themselves would constitute
+a trivially detectable pattern.
+An initial idea is to enable each node to have a spare
+packet queue, containing packets that can be sent to make
+up for the difference between the incoming transmission rate
+and the required outgoing transmission rate. But this poses a
+conundrum: how can we fill up the spare packet buffer if the
+flowlet rate remains constant in the first place? Our solution
+ispacket splitting, a cryptographic mechanism which allows
+an end host to generate a packet that splits into two different
+valid packets of the same size as the original packet at a
+specific node. Through splittable packets, an end host can
+fill up the spare packet queue at forwarding nodes, which in
+turn enables constant-rate transmission even in case of lost
+or delayed incoming packets.
+In this paper, we propose TARANET, a scalable, high-
+speed, and traffic-analysis-resistant anonymous communi-
+cation protocol, which uses the end-to-end traffic shaping
+assisted by packet splitting as one of its novel mechanisms.
+TARANET is directly built into the network infrastructure
+to achieve short paths and high throughput. It uses mixing
+for its setup phase and end-to-end traffic shaping for its data
+transmission phase to resist traffic analysis. Our paper makes
+the following contributions:
+1) We propose an efficient end-to-end traffic shaping tech-
+nique that maintains per-flow constant-rate transmis-
+sion on all links and defeats traffic analysis attacks. We
+also propose in-network packet splitting as the enabling
+mechanism for the end-to-end traffic shaping technique.
+2) We present an onion routing protocol that enables
+payload integrity protection, replay detection, and split-
+table packets, which are essential building blocks for
+end-to-end traffic shaping.
+3) We design, implement, and evaluate the security and
+performance of TARANET. Our prototype running on
+commodity hardware can forward over 50 Gbps of
+anonymous traffic, showing the feasibility to deploy
+TARANET on high-speed links.
+2. Background and Related Work
+This section presents background on network-layer ano-
+nymity protocols. We also discuss adversarial traffic analysis
+techniques to de-anonymize end points, focusing on those
+that current network-layer anonymity protocols fail to deter.
+2.1. Network-layer Anonymity Protocols
+network-layer an-
+onymity systemsthat incorporate anonymous communication
+as a service of network infrastructures in the Internet and
+assumption of a network-layer anonymity system is that Au-
+tonomous Systems (AS) can conduct efficient cryptographic
+operations when forwarding packets to conceal forwarding
+information. Additionally, a network-layer anonymity sys-
+tem uses direct forwarding paths rather than reroute packets
+would be done on (software) routers, for instance, but more
+abstractedly the termnodeis used to refer to the device or
+set of devices dedicated to the anonymity system within an
+AS.
+A network-layer anonymity system anonymizes its traf-
+fic by relying on ASes to collaboratively hide the forwarding
+paths between senders and receivers. We remark that a
+network-layer anonymity system can offer neithersender
+anonymitynorrecipient anonymityas defined by Pfizmann
+and K"
+path can observe the sender of a message, violating sender
+anonymity. Similarly, a compromised last-hop AS can iden-
+tify the receiver, which breaks recipient anonymity. Instead,
+a network-layer anonymity system offersrelationship ano-
+nymity
+Besides anonymity, the basic design goals for a network-
+layer anonymity system are scalability and performance.
+With respect to scalability, a network-layer anonymity sys-
+tem minimizes the amount of state kept on network routers
+who possess limited high-speed memory. With respect to
+performance, a network-layer anonymity system should of-
+fer low latency and high throughput.
+improves on the security guarantees for
+network-layer protocols by using full onion encryption to
+guarantee bitwise unlinkability. HORNET introduces sev-
+eral useful primitives for stateless onion routing, which we
+extend in TARANET.
+HORNET is circuit-based like overlay systems, but it
+operates at the network layer. As with LAP and Dovetail,
+processing data packets at intermediate nodes requires only
+symmetric cryptography. This design comes at the expense
+of a relatively slow round-trip time for setup packets which
+requires nodes on the path to perform public-key cryptog-
+raphy at the start of each session. During setup, the sender
+establishes keys between itself and every node on the path.
+The sender embeds these keys along with routing informa-
+tion for each hop into the header of each subsequent data
+packet. Since the state is carried within packets, intermediate
+nodes do not have to keep per-flow state, which enables high
+scalability.
+Through bit-pattern unlinkability in its traffic and con-
+fidentiality of the packet's path information, HORNET can
+defend against passive adversaries matching packets based
+on packet contents. Nevertheless, the protocol is vulnerable
+to more sophisticated active attacks. HORNET headers are
+re-used for all data packets in a session, and payloads are not
+integrity-protected. Thus, HORNET cannot protect against
+packet replays since an adversary could change a payload
+arbitrarily, making the packet look indistinguishable from a
+legitimate new packet to the processing node. Such a replay
+attack can be used in conjunction with traffic analysis to
+insert recognizable fingerprints into flows, which can help
+de-anonymize communicating endpoints.
+Lightweight anonymity systems.The first class of
+network-layer anonymity protocols proposed is the so-
+calledlightweightsystem, which consists of two proposals,
+topological attacks by encrypting forwarding information
+in packet headers. However, in both schemes, packets stay
+unchanged from hop to hop, thus enabling bit-pattern cor-
+relation of packets at distinct compromised nodes.
+2.2. Traffic Analysis Attacks
+Traffic analysis aims to identify communicating end-
+points based onmetadatasuch as volume, traffic patterns,
+and timing. The literature broadly classifies traffic analysis
+techniques into passive and active, depending on whether
+the adversary manipulates traffic.
+2.2.1. Passive Attacks. Flow dynamics matching.An ad-
+versary eavesdropping on traffic at two observation points
+(including an adversary observing the ingress and egress
+traffic of a single node) can try to detect whether (some of)
+the packets seen at the observation points belong to the same
+flow by searching for similarities among the dynamics of all
+Template attacks.An adversary can construct a database
+of traffic patterns (templates) obtained by accessing known
+websites or other web-services through the anonymous com-
+munication system. When eavesdropping on the traffic of
+a client, the adversary compares the observed flows with
+the patterns stored in the database, and if a match is found
+the adversary is able to guess the website or web-service
+Network statistics correlation.Another possible attack
+consists in monitoring network characteristics of different
+parts of the network, and comparing them to the char-
+acteristics of targeted anonymized flows. For instance, by
+comparing the round-trip time (RTT) of a target bidirectional
+flow with the RTTs measured to a large set of network
+locations, an adversary can identify the probable network
+location of an end host in case the RTT of the flow showed
+strong correlation with the RTT to one of the monitored
+(over time) of a unidirectional flow and comparing it with
+the throughput to various network location, the adversary
+2.2.2. Active Attacks.Active traffic analysis uses similar
+techniques as passive traffic analysis, but it additionally
+involves traffic manipulation by the adversary, in particular
+packet delaying and dropping, to introduce specific patterns.
+high success rates even when working with aggregate Net-
+flow data instead of raw packet traces.
+Flow dynamics modification.By modifying the flow dy-
+namics (inter-packet timings), the adversary can add awa-
+termark(ortag) to the flow, which the adversary is then
+able to detect when observing the flow at another point
+flow
+watermarking. A similiar attack, calledflow fingerprinting,
+enables an adversary to encode more information into the
+flow dynamics, which can later be extracted from the same
+attacks, depending on the coding technique, flows may
+require more or fewer packets for the watermark/fingerprint
+to be reliably identified within the network.
+Clogging Attacks.Flow dynamics modification requires
+that the adversary control multiple observation points in
+the network. Clogging attacks are similar, but the adversary
+only needs to be able to observe the target flow at a single
+network location. For these attacks, the adversary causes
+nodes in the network, and then observes whether these
+actions affect the observed target flow. If so, it is likely
+that the target flow traverses the nodes at which conges-
+tion/fluctuation has been caused.
+2.3. Chaff-based Defenses
+Adding chaff traffic (also referred to as padding traffic
+or dummy traffic) is a defense mechanism that thwarts
+traffic analysis by concealing real traffic patterns. An im-
+portant family of chaff-based anonymity protocols useslink
+padding
+with link encryption, allows neighboring forwarding nodes
+to add chaff to shape the patterns of all traffic on a network
+in link padding a node is able to distinguish chaff packets
+from real packets, attackers that compromise nodes are still
+capable of identifying the underlying traffic patterns and
+conduct traffic analysis.
+Another class of chaff-based protocols usesend-to-end
+padding
+craft chaff packets that traverse the network together with
+real packets, and the added chaff packets carry flags to
+inform the forwarding nodes about when to drop the chaff
+packets. Thus, an end host's traffic demonstrates different
+patterns as the traffic traverse the network. Compared to
+link padding, in end-to-end padding a compromised node
+cannot distinguish chaff traffic from real traffic, and is thus
+unable to discover the real traffic patterns. Nevertheless, the
+the timing information of the real traffic, and is trivially
+3. Problem Definition
+We consider a scenario where an adversary secretly
+conducts a network mass-surveillance program. By stealthily
+tapping into inter-continental fiber links, or by controlling a
+set of domestic ISPs/IXPs, the adversary gains bulk access to
+network traffic. Besides matching identifiers to filter packets,
+the adversary is also capable of conducting traffic manipu-
+lation and traffic pattern matching. A pair of anonymity-
+conscious users would like to communicate through the
+network, hiding the fact that they are communicating from
+the adversary. The communication between the pair of users
+is bi-directional. Without loss of generality, we call the user
+that initiates the anonymous communicationsender, and the
+other userreceiver.
+3.1. Network Assumptions
+The underlying network is divided into ASes, or simply
+nodes. Each node forwards packets according to a routing
+segment. Each routing segment contains forwarding infor-
+mation for a node between the sender and the receiver. For a
+sender to reach a receiver, the sender can obtain a sequence
+ofrouting segments, namedpath.
+Except the ingress and egress links that are needed as
+forwarding information through an AS, routing segments
+should leak no extra information about the end hosts or
+the path before or after the forwarding node. This prop-
+erty is satisfied by several next-generation Internet architec-
+3.2. Threat Model
+We consider a global active adversary, that is capable of
+controlling all links between any pair of ASes, or between
+an AS and an end host. This means that the adversary has
+bulk access to contents and timing information of packets on
+all links and can also inject, drop, delay, replay, and modify
+packets. We additionally assume that the adversary is able
+to compromise a fraction of ASes. By compromising an
+AS, the adversary learns all keys and settings, has access to
+all traffic that traverses the compromised AS, and is able to
+control the AS including delaying, redirecting, and dropping
+traffic, as well as fabricating, replaying, and modifying
+packets. We only guarantee relationship anonymity for end
+hosts if there exists at least one uncompromised AS on
+the path between sender and receiver. We remark that the
+adversary under this assumption is able to perform all traffic
+analysis attacks in Section 2.2.
+3.3. TARANET Goals
+Anonymity.TARANET aims to provide relationship ano-
+nymity (defined by Pfizmann and K"
+sender and a receiver share mutual trust. We refer to the rela-
+tionship anonymity under this condition asthird-party rela-
+tionship anonymity. While requiring trust in receivers limits
+our protocol's application scope, third-party anonymity is
+actually sufficient when communicating parties are authen-
+ticated end-to-end (e.g., VoIP), when avoiding censorship
+where the receiver (e.g., a foreign news site) is known not to
+cooperate with the censoring entity, when a warrant canary
+(e.g., www.rsync.net/resources/notices/canary.txt) has been
+recently updated for that endpoint, or when the receiver is
+a trusted node acting as a proxy.
+High throughput and low latency.The processing over-
+head should be small, i.e., it should only require symmetric
+cryptographic operations and access to a small amount of
+easy-to-manage per-flow state. Consequently, an efficient
+implementation (running at line speed) on a network device
+should be possible with a small amount of extra hardware.
+Scalability.Nodes should be capable of handling the large
+volume of simultaneous connections as observed on Internet
+core routers. TARANET aims to minimize the amount of
+per-flow state maintained. Specifically, TARANET guaran-
+tees that the amount of state on a router is bounded given
+a fixed throughput. Moreover, adding new nodes to the
+network should additionally not require coordination with
+all other nodes.
+4. Protocol Design
+Communication Model.Hosts communicate anonymously
+through TARANET-enabled Autonomous Systems (ASes)
+usingflowlets. A TARANET flowlet allows an end host to
+send traffic anonymously at a constant rateBfor a fixed
+time periodT. All anonymous traffic is divided into a set
+of flowlets by end hosts to leverage TARANET's service.
+Figure 1 graphs the lifecycle of a TARANET flowlet.
+A flowlet's life-cycle begins with asetup phasefol-
+lowed by adata transmission phase. At the beginning of
+the setup phase, a sender first anonymously retrieves two
+paths: a forward path from the sender to the receiver and
+AS2
+AS (
+AS1
+S
+6
+1
+)
+1
+AS)
+AS2
+AS (
+AS1
+S
+6
+AS)
+834353D0(S/01/0
+Setup Phase
+Data Transmission
+ Phase
+S/234(4/556D/789:(;6<<89D(69<(=9>0042839
+48?89D
+@53A5/2(BC3952692(D62/(80695E855839F
+;6>:/2(S4582
+;32/92865(;6>:/2(60345
+A4458>62839(806G>
+Figure 1. TARANET design overview.
+a backward path from the receiver back to the sender. A
+path contains the routing segments, the public keys, and
+the certificates of all nodes between the two end hosts.
+One mechanism for anonymously retrieving paths is to have
+end hosts query global topology servers through TARANET
+flowlets that are established using network configuration
+information (e.g., distributed to end hosts through a DHCP-
+inate paths and public keys throughout the network to end
+hosts, as done in certain future network architectures (e.g.,
+allows to trade off a lower communication overhead for an
+increased computation overhead on the servers providing the
+network information and the keys.
+Once the sender successfully obtains both paths, the
+sender and the receiver exchange two setup messages
+traversing the obtained paths. By processing a setup mes-
+sage, each on-path node establishes a shared symmetric key
+with the sender. The per-node shared key is later used to con-
+ceal routing information by layered encryption/decryption
+in the data transmission phase. To prevent storing per-flow
+cryptographic state on each node, a node encrypts the shared
+key using a local secret key that the node never reveals. The
+resulting encrypted shared key, which we call theForward-
+ing Segment(FS), is carried by all data packets and allows
+the node to dynamically retrieve its shared symmetric key.
+With routing segments, FSes, and per-node symmetric
+keys, the sender is able to create TARANET data packets
+that can reach the receiver. An on-path node can process a
+data packet with only symmetric cryptographic operations,
+enabling highly efficient packet forwarding. Within the first
+batch of packets along the forward path, the sender transmits
+all routing segments, FSes, and shared symmetric keys for
+the backward path, so that the receiver can send packets
+back to the sender.
+Traffic analysis resistance.TARANET resists traffic anal-
+ysis attacks by combining an onion routing protocol (an
+enhanced adaptation of the one in HORNET), a newly pro-
+posed end-to-end traffic shaping scheme, and mixing. First,
+compared to HORNET which provisions confidentiality, au-
+thenticity, and bit pattern unlinkability, TARANET addition-
+ally offers payload integrity protection, replay protection,
+and packet splitting, which is a vital enabling technique for
+the end-to-end traffic shaping scheme (Section 4.1). Second,
+for the data transmission phase, TARANET enables end-to-
+end traffic normalization for flowlet traffic. For each flowlet,
+the sender and receiver maintain a constant transmission rate
+shared by every end host. Each forwarding node maintains
+the same constant transmission rate for outgoing packets
+belonging to the flowlet (Section 4.2). Third, for messages
+in the setup phase, TARANET requires each node to conduct
+their timing and order (Section 4.3). Finally, to hide the
+difference between setup packets and data packets and to
+defeat a global eavesdropper that monitors the number of
+flowlets on links between nodes, TARANET additionally
+requires neighboring nodes to perform link encryption and
+link padding (Section 4.4).
+The rationale for adopting different techniques for the
+setup phase and the data transmission phase is due to our
+observation of the different performance requirements in
+these two phases. Regarding the setup phase, assuming a
+large number of simultaneous connection setups, batching
+setup messages on a node will result in a small delay
+for the setup phase. Moreover, because changing the order
+of messages received by a node has no impact on the
+performance of the setup phase, we can randomize the order
+of messages within each batch. Finally, since processing
+a chaff setup message requires public-key cryptographic
+operations, creating chaff setup messages would result in
+a large computational overhead.
+For the data transmission phase, on the other hand,
+because packet order is important for TCP performance,
+randomizing the message order severely impacts application
+performance. Additionally, because data packet processing
+is highly efficient, we can actively conduct traffic shaping
+on both end hosts and intermediate nodes by using chaff
+packets (Section 4.2).
+4.1. TARANET Onion Routing Protocol
+TARANET protocol offers bit-pattern unlinkability, pay-
+load confidentiality, and per-hop authenticity. Bit-pattern
+unlinkability eliminates any identifiers that facilitate packet
+matching. Payload confidentiality prevents leaking upper-
+layer sensitive information. Finally, each TARANET header
+contains per-hop MACs that protect the integrity of both
+the header and the payload, unlike HORNET, whose per-
+hop integrity guarantees only cover the header. Therefore,
+in TARANET, tampered or forged packets will be detected
+by benign nodes on the path and dropped immediately.
+TARANET also adopts the scalable design of HOR-
+NET, i.e., using packet-carried forwarding state. Storing per-
+flowlet state at core routers requires a large amount of high-
+speed memory, precluding scalability. Thus, in line with
+ 57,
+onion decryption keys, next-hop information, control flags)
+in packet headers instead of storing the state on routers.
+Protocol
+Bit-pattern
+unlinkability
+Scalability
+Payload
+Integrity
+Replay
+Protection
+Packet
+Splitting
+HORNET
+Yes Yes No No No
+TARANET
+Yes Yes Yes Yes Yes
+Table 1. COMPARISON BETWEENTARANETANDHORNETONION
+ROUTING PROTOCOLS
+We highlight three new features that TARANET intro-
+duces for the data transmission phase compared to HOR-
+NET. First, integrity protection is extended to data packets'
+payloads, eliminating tagging attacks targeting at manipulat-
+ing data payloads to create recognizable patterns. Second,
+data packets within the same flowlet have unique identifiers
+bound to the packets themselves, enabling replay protection.
+Third, TARANET allows an end host to create special chaff
+packets, each of which splits into two packets at a specific
+node. To all other nodes, the original packet and the resulting
+packets are indistinguishable from ordinary data packets in
+the same flowlet. Split packets traverse the same path as
+other packets in the flowlet and their per-hop MACs need
+to be correct at each downstream node. Splitting a chaff
+packet into multiple packets plays a vital role in the end-
+to-end traffic shaping technique described in Section 4.2.
+We defer the detailed description of the technical aspects of
+packet splitting to Section 5.
+Replay protection.In TARANET, each TARANET packet
+header is uniquely identifiable, enabling intermediate nodes
+to detect replay attacks by checking the header's freshness.
+Specifically, an intermediate node can retrieve 3 fields from
+each packet: (1) a shared secret with the sender, (2) a per-
+packet Initial Vector (IV), and (3) a per-packet expiration
+time. The first two fields together uniquely identify a packet
+and are used as input to membership queries and for the
+insertions to the replay detector. The third field is used to
+check and drop expired packets.
+TARANET nodes detect replayed packets by maintain-
+ing a rotating Bloom filters composed of 3 subject Bloom
+ti
+T T L
+2
+;(i+1)
+T T L
+2
+is checked against all 3 filters and
+is only inserted intoi
+0
+-th Bloom filter, wherei
+0
+=
+imod 3.
+Thei-th subject filter is cleared at time(3N+i)
+T T L
+2
+(N is
+an integer). The rotating Bloom filter guarantees that each
+packet inserted has a lifetime betweenT T Land
+3
+2
+T T L,
+whereT T Lis the maximum lifetime of a packet. To reduce
+cache misses and increase performance, we also useblocked
+Bloom filters
+Replay detection state is not per-flow state, since the size
+of the detector grows linearly with its node's bandwidth,
+and not with the number of flowlets traversing that node.
+The size of our detector is ~15 MB
+1
+for a 10 Gbps link
+when the false positive rate is at most10
+6
+andT T L= 6s
+(the maximum packet lifetime we consider in Section 5.4.1).
+Each false positive result causes the corresponding packet to
+be dropped. Given that the packet drop rate of the Internet
+allowing higher false positive rate.
+4.2. End-to-end Traffic Shaping
+Flowlet.Our basic idea for defending data transmission
+against traffic analysis is to shape traffic from heterogeneous
+applications into constant-rate transmission. A flowlet is the
+basic unit through which an end host is able to transmit
+packets at a constant throughputBand for a maximum
+lifetimeT. During the lifetimeTof a flowlet, the end
+host always transfers packets at rateB, inserting chaff
+packets if necessary. More generally, if an end host needs
+to transfer data at rateB
+0
+for timeT
+0
+, it initiates a sequence
+ofdT
+0
+=Teflowlet batches, each of which containsdB
+0
+=Be
+simultaneous flowlets.
+An end host shuts down a flowlet before the flowlet
+expires when there is no more data to send. When shutting
+down multiple simultaneous flowlets, an end host pads each
+flowlet with a random number of packets to prevent linking
+the flowlets by their expiration times. A node erases local
+state and terminates a flowlet when there are no more
+packets in its outgoing packet queue.
+The key property of a flowlet is to maintain constant
+transmission rates not only at end hosts but also on all
+traversed links, for which the flowlet relies on end-to-
+end padding instead of link padding. In link padding, a
+pair of neighboring intermediate nodes coordinate to inject
+chaff to maintain a constant sending rate on a link. While
+link padding is effective against a network adversary, it is
+insufficient in the case of compromised nodes, since they
+can distinguish chaff inserted by neighbors from actual data
+packets. To defend against compromised nodes, we need
+chaff packets that are indistinguishable from data packets.
+Because TARANET uses onion encryption as a basic build-
+ing block, one can create such indistinguishable chaff only
+when possessing shared keys with all traversing nodes. Thus,
+only sending end hosts are able to create such chaff.
+Necessity of packet splitting.To achieve constant-rate
+transmission, every flowlet should ideally arrive and leave
+with rateBat every node. However, drops/jitter may cause
+the incoming rate to vary: a higher rate is absorbed by the
+queues, but a lower rate requires that the node be able to
+produce "extra packets", which need to resemble legitimate
+packets to any downstream node. This implies that these
+packets must also be generated by the sender like end-to-end
+chaff. But since the sender cannot send at a rate higher than
+B, it cannot send additional packets for the nodes to cache
+and use when needed. The only option then seems to be to
+have very long queues, and let each node fill a significant
+1. Computed using the CAIDA dataset described in Section 7.
+fraction of them with packets when the transmission of the
+flowlet first begins, before the node starts forwarding packets
+for that flowlet. However, this requires far too much state,
+and also adds significant latency in terms of time to the first
+byte, making this option unfeasible. The apparent dilemma
+can be solved with a technique we callpacket splitting.
+The packet splitting technique allows an end host to
+create a packet that can be split into two packets at a
+specific intermediate node.
+2
+The resulting packets should
+be indistinguishable from other non-splittable packets. This
+requirement indicates that the resulting packets should still
+traverse the same path and reach the recipient's end host.
+We present the algorithm to split packets in Section 5.
+Traffic shaping for flowlet outgoing rate.To enable end-
+to-end traffic shaping, for each on-path noden
+i
+, an end
+host selects a slot in its transmission buffer with probability
+P r
+split
+i
+and fills in a newly generated splittable chaff packet
+that will split at noden
+i
+. As an optimization, the end host
+can also select a slot that already contains chaff packets
+and replace it with splittable chaff packets. When a node
+receives a packet that should be split at the node, the node
+performs the split and caches resulting packets in its chaff
+packet queue.
+Each node maintains a per-flowlet chaff queue of cached
+chaff packets. To guarantee an invariant outgoing flowlet
+rate, nodes periodically output a data packet from the data
+packet queue. In case that the data packet queue is empty, the
+node outputs a chaff packet from the flowlet's chaff queue.
+We limit the chaff queue size by a maximal lengthL
+chf
+. In
+the (unlikely) scenario where the chaff queue is also empty,
+a local per-flowlet failure counterhis increased. Whenh
+exceeds a thresholdHnegotiated during flowlet setup, the
+node terminates the flowlet.His a security parameter of the
+flowlet that determines how sensitive the flowlet is against
+potential malicious packet drops.
+When a node shuts down a flowlet, an intermediate node
+no longer receives packets from upstream nodes. It will first
+drain its local chaff packet queue and then terminate the
+flowlet when the thresholdHis reached. We remark that
+such a termination process results in successive termination
+on nodes and small variable intervals between termination
+times on different nodes because of the variable number of
+cached chaff packets.
+We remark that both the chaff queues and failure coun-
+ters constitute per-flow state. Nevertheless, the amount of
+state stored on a node is bounded by the node's bandwidth.
+Because each flowlet consumes a fixed amount of band-
+width, a node with fixed total bandwidth is only capable
+of serving a fixed number of flowlets. Thus, the amount of
+state that a node maintains for its flowlets is bounded given
+its total available bandwidth. Accordingly, a node will have
+to refuse setup messages for new flowlets if its bandwidth
+is already fully occupied. We evaluate the amount of state
+the queues require in detail in Section 7.
+2. The general packet splitting technique supports a n-way split. We con-
+sider only two-way packet splits because of limited Maximum Transmission
+Units (MTU) in the network.
+4.3. Mixing in the Setup Phase
+Each TARANET node applies a basic form of mixing
+when processing setup messages. After a setup message is
+processed by an intermediate node, the node queues the
+message locally into batches of sizem. Once there are
+enough setup messages to form a batch, the node first
+randomizes the message order within each batch and then
+sends out the batch.
+Through batching and order randomization, a
+TARANET node aims to obscure the timing and order for
+setup messages. An adversary that observes both input and
+output setup messages of a non-compromised node cannot
+match an output packet to its corresponding input packet
+within the batch.
+The batching technique introduces additional latency be-
+cause the setup messages have to wait until enough messages
+are accumulated. Assume thatr
+setup
+is the number of in-
+coming setup messages every second, the added latency can
+be computed as
+m
+r
+setup
+. Given the large number of simultane-
+ous connections within the network, the introduced latency
+is very low, as shown by our evaluation in Section 7.2.
+4.4. Link Encryption and Padding
+Each pair of neighboring TARANET nodes agree upon
+a constant transmission rate upon link setup. The negotiated
+transmission rate determines the maximum total rate for
+data packets. When the actual transmission rate exceeds
+the negotiated rate on a link, the sending node drops the
+excessive packets. When the actual transmission rate is
+lower than the negotiated rate, the sending node will add
+chaff traffic. The chaff traffic inserted by an intermediate
+node to shape traffic on a link only traverses the link and is
+dropped by the neighboring node.
+To prevent an adversary observing a link between two
+honest nodes from distinguishing chaff traffic from actual
+data traffic, all pairs of neighboring nodes negotiate a sym-
+metric key through the Diffie-Hellman protocol, and use it to
+encrypt all packets transmitted on their shared link. This also
+makes setup messages and data packets indistinguishable.
+As an optimization to reduce chaff traffic and improve
+bandwidth usage, we additionally allow neighboring nodes
+to agree on a schedule of transmission rates as long as
+transmission rate is detached from the dynamics of indi-
+vidual traffic rates. For example, because the actual link
+rate on a link often demonstrates similarity at the same
+time of different days, we can reduce the amount of chaff
+traffic by setting the transmission rate betweent; t
+0
+to
+B
+t;t
+0
++k
+t;t
+0
+.B
+t;t
+0
+is the historic average transmission
+rate betweent; t
+0
+,
+t;t
+0
+is the standard deviation for the
+transmission rate,kis a factor that allows administrators to
+account for temporal changes of the bandwidth usage.
+5. Protocol Details
+This section presents the details of TARANET data
+packet formats and processing functions. We show how to
+AS22 (1
+6 )8
+34
+5D0
+/)0126 )
+3AS4562
+76S2602
+ (8309S) 3(
+AS:13S2
+A561 /28)S)6
+86/06)28)S)6
+6(/0:A)62
+;<
+068)238276S260
+=>?
+create a fixed-size packet that can be split into two new
+packets of the same size whose per-hop MAC can still be
+verified. Using the packet processing functions, we present
+the TARANET data transmission phase on end hosts and
+intermediate nodes.
+5.1. Notation
+We first describe our notation. In general,sym
+dir
+stands
+for the symbolsymof a specific directiondir2 ff; bg,
+which is either forward (src to dst) or backward (dst to src).
+sym
+dir
+i
+indicates the symbolsymbelongs toi-th noden
+dir
+i
+on the path in directiondir. For simplicity, we denote the
+set of allsymfor a pathp
+dir
+asfsym
+dir
+i
+g. We also define
+a series of string operations:0
+z
+is a string of zeros with
+lengthz;jjis the length of the string;
+m::n
+refers to
+the substring betweenm-th bit ton-th bit of stringwhere
+mstarts from 0;
+1
+k
+2
+stands for concatenation of string
+1
+and
+2
+. Table 2 summarizes the notation in this paper.
+Symbol
+Meaning
+k
+security parameter used in the protocol
+c
+size of per-hop segment
+b
+size of control bits and expiration time
+r
+maximum path length permitted by the protocol
+m
+fixed-size of a data packet payload
+p
+dir
+path of a specific directiondir
+l
+dir
+length of a pathp
+dir
+n
+dir
+i
+thei-th node on pathp
+dir
+x
+dir
+i
+,g
+x
+dir
+i
+the private and public key pair of noden
+dir
+i
+h
+op
+a hash function to generate the key forop
+R
+routing segment, e.g., the ingress and egress ports
+EXP
+i
+expiration time for a packet at noden
+i
+F S
+forwarding segment
+s
+a symmetric onion key shared with the sender
+IV
+per-packet initial vector
+per-hopMAC
+the opaque component of a packet header
+O
+onion data packet
+Table 2. NOTATION USED IN THE PAPER.
+5.2. Initialization & Setup Phase
+In the setup phase, the sender node aims to anonymously
+establish a set of shared keysfs
+dir
+i
+gwith all nodes on the
+forward and backward path, and a shared keys
+SD
+with the
+receiver. In the following protocol description and in our
+implementation, we use HORNET's Sphinx-based single-
+but preserves perfect forward secrecy.
+Once the setup phase is complete, in addition to the
+shared keys, the sender also obtains from each node on both
+paths aForwarding Segment
+created by the noden
+dir
+i
+contains the key shared between
+the sender and that nodes
+dir
+i
+and the routing information
+R
+dir
+i
+which tells the node how to reach the next hop on the
+path. The FS is encrypted using a secret value known only
+to the router that created the FS. As shown in Section 5.4,
+these FSes are included in every data packet: each node can
+then the retrieve the FS it created, decrypt it, and recover
+Figure 2. TARANET packet format.
+the packet processing information within. Unlike HORNET,
+we do not store the expiration timeEXPin a FS, but include
+it alongside the FS in the packet (see Section 5.3.2). This
+allows the sender to set a different expiration time for each
+packet and limit the time window in which the packet is
+valid, which is necessary for replay protection.
+5.3. Data Packet Processing
+5.3.1. Requirements.TARANET data packets are fixed-
+size onion packets whose integrity is protected by per-hop
+MAC. Processing these packets should satisfy the following
+three requirements:
+An output packet cannot be linked to the correspond-
+ing input packet without compromising the processing
+node's local secret value.
+Processing a packet cannot leak a node's position on
+the path.
+Processing a packet cannot change the packet size
+regardless of underlying operations.
+The last requirement is particularly challenging to sat-
+isfy, since TARANET allows flow mutations. Consider the
+split operation, which takes a fixed-size packet and creates
+two uncorrelated packets of the same size. The splitting
+procedure needs to ensure that subsequent nodes can verify
+the MACs in both new packets.
+5.3.2. Data packet format.TARANET data packets are
+shown in Figure 2. At the beginning of each packet is an
+IVfield that carries a fresh initial vector for each packet
+in a flowlet. After theIVfield are four fields that form
+an onion layer: an FS, a per-hop MAC, control bits, and
+the expiration time. The rest of the fields, including the rest
+of header information, padding bits, and the payload, are
+encrypted, and are thus opaque to the processing node.
+When a packet arrives, the first three fields are accessible
+to a node without requiring cryptographic processing, so we
+call these fields as public state. The control bits and the
+expiration time are only available after the node decrypts
+the packet, so they are called secret state. In addition, each
+header is padded to a fixed size regardless of the actual
+number of nodes on the path, and the padding bits are
+inserted between the header and the payload.
+5.3.3. TARANET packet creation.Both end hosts gener-
+ate data packets using a subroutine shown in Algorithm 1.
+The subroutine creates an onion packet to be forwarded from
+noden
+k
+to noden
+l
+. For each onion layer, it computes a
+per-hop MAC (Line 14) and onion-encrypts both the header
+(Line 12) and the payload (Line 14).
+One important feature of this onion encryption algorithm
+is to add per-hop state (specifically, an FS, a MAC, control
+bits and an expiration time) to the packet header without
+changing its total size. The function achieves this feature by
+strategically pre-computing the padding bits in the header
+(Line 6) to ensure that the trailingcbits of header after
+encryption are always equal to0
+c
+. As a result, the trailing
+zero bits can be truncated without losing information when
+the header is encrypted again (Line 12).
+1:procedureCREATE
+ONION
+ROUTINE
+Input:fs
+i
+g,fF S
+i
+g,fctrl
+i
+g,fEXP
+i
+g,IV,k,l,O .withk < l
+Output:(IV
+k
+;FS
+k
+;
+k
+;
+k
+; O
+k
+)
+2:
+k
+ "
+3:IV
+k
+ IV
+4:fori k+ 1; : : : ; ldo
+5:IV
+i
+ PRP(h
+PRP
+(s);IV
+i1
+)
+6:
+i
+ (
+i1
+k0
+c
+)
+PRG(h
+PRG
+(s
+i1
+IV
+i1
+))
+ri1)c+b::rc+b
+7:end for
+8:
+l
+RAND(c(rl1))k
+l
+9:O
+l
+ ENC(h
+ENC
+(s
+l
+);IV
+l
+;O)
+10:
+l
+ MAC(h
+MAC
+(s
+l
+kIV
+l
+);FS
+l
+k
+l
+kO
+l
+)
+11:fori (l1); : : : ; kdo
+12:
+i
+n
+ctrl
+i
+kEXP
+i
+kFS
+i+1
+k
+i+1
+k
+i+1
+::c(r2)
+o
+PRG(h
+PRG
+(s
+i
+kIV
+i
+))
+::b+(r1)c
+13:
+i
+ MAC(h
+MAC
+(s
+i
+kIV
+i
+);FS
+i
+k
+i
+kO
+i
+)
+14:O
+i
+ ENC(h
+ENC
+(s
+i
+);IV
+i
+;O
+i+1
+)
+15:end for
+16:end procedure
+Algorithm 1:Create a partial data packet.
+Normally, an end host creates a packet that traverses the
+whole path from the first noden
+dir
+0
+to the last noden
+dir
+l
+dir
+1
+.
+It generates such a packet by settingk= 0,l=l
+dir
+1, and
+allctrl
+i
+=FWD in functionCREATE
+ONION
+ROUTINE.
+Generate splittable packets.Creating a data packet that can
+be split into two packet requires an end host to first create
+two children packets and then merge them into a single
+packet. Because we require all packets to have the same size,
+i.e., both children packets have to be of the same size as their
+parent, the key challenge is to guarantee that the per-hop
+MACs in the children packets successfully verify even after
+the splitting node adds padding bits to the children packets.
+For this reason, the splitting node generates padding bits by
+a PRG keyed by the key shared with the end host, so that
+the end host can predict the padding bits and pre-compute
+the per-hop MACs in both resulting packets accordingly.
+Algorithm 2 shows the function to cre-
+ate a splittable data packet. At a high level,
+CREATE
+SPLITTABLE
+DATA
+PACKETinvokes the
+CREATE
+ONION
+ROUTINEthree times: it first creates two
+children packets usingCREATE
+ONION
+ROUTINE(Line 3
+and 5), merges the resulting packets into a new payload
+(Line 6), and finally executesCREATE
+ONION
+ROUTINE
+again to generate the parent packet (Line 7). To ensure the
+correctness of the per-hop MACs in the children packets
+after the payloads are padded, the function generates the
+padding bits using a PRG keyed by the shared key between
+the end host and the splitting node so that the latter can
+re-generate the padding bits accordingly (Lines 3 and 4).
+After the MACs are computed for the children packets, the
+deterministic padding bits are truncated so that two children
+packets can fit into the payload of their parent packet.
+1:procedureCREATE
+SPLITTABLE
+DATA
+PACKET
+Input:fs
+i
+g,fF S
+i
+g,fctrl
+i
+g,fEXP
+i
+g,IV,IV
+0
+,IV
+1
+O
+0
+,O
+1
+,k
+Output:(IV
+0
+;FS
+0
+;
+0
+;
+0
+; O
+0
+)
+2:O
+0
+ O
+0
+kPRG(h
+PRG
+((s
+k
+IV
+0
+)k"left"))
+::
+m
+2
++rc
+3:(IV
+0
+0
+; F S
+0
+0
+;
+0
+0
+;
+0
+0
+; O
+0
+0
+)
+CREATE
+ONION
+ROUTINE(fs
+i
+;8ikg;fF S
+i
+;8ikg;
+fFWDg;fEXP
+i
+;8ikg; IV
+0
+; k; l
+dir
+1; O
+0
+)
+4:O
+1
+ O
+1
+kPRG(h
+PRG
+((s
+k
+kIV
+1
+)k"right"))
+::
+m
+2
++rc
+5:(IV
+0
+1
+; F S
+0
+1
+;
+0
+1
+;
+0
+1
+; O
+0
+1
+)
+CREATE
+ONION
+ROUTINE(fs
+i
+;8ikg;
+fF S
+i
+;8ikg;fFWDg; IV
+1
+; k; l
+dir
+1; O
+1
+)
+6:O
+0
+ (IV
+0
+0
+; F S
+0
+0
+;
+0
+0
+;
+0
+0
+;fO
+0
+0
+g
+::
+m
+2
++rc
+)k
+(IV
+0
+1
+; F S
+0
+1
+;
+0
+1
+;
+0
+1
+;fO
+0
+1
+g
+::
+m
+2
++rc
+)
+7:(IV
+0
+; F S
+0
+;
+0
+;
+0
+; O
+0
+)
+CREATE
+ONION
+ROUTINE(fs
+i
+;8i < kg;
+fF S
+i
+;8i < kg;fFWD, . . . , FWD, SPLITg;
+fEXP
+i
+;8i < kg; IV;0; k1; O
+0
+)
+8:end procedure
+Algorithm 2:Create a data packet that can be split into two
+new packets.
+5.3.4. Onion layer removal.Nodes remove onion layers
+when processing data packets. It essentially reverses a single
+step ofCREATE
+ONION
+ROUTINE. Algorithm 3 details this
+five step process. First, the intermediate node retrieves the
+symmetric onion keysshared with the sender (Line 3);
+second, the node verifies a per-hop MAC using a key derived
+froms(Line 4); third, the node ensures that the packet's size
+remains unchanged by adding padding bits to the header
+and decrypting the resulting padded header with a stream
+cipher; fourth, the control bits are extracted (Line 6); finally,
+the payload is decrypted (Line 7) and the next initialization
+vector is obtained by applying aPRPkeyed withsto the
+currentIV(Line 8).
+Note that the onion layer removal algorithm is different
+from a simple decryption in two ways. First, the size of the
+packet remains the same after processing, which prevents
+leaking information about the total number of hops between
+the sender and receiver. Second, the processing only happens
+at the head of the packet, which reveals no information about
+the processing node's position on the path.
+Depending on the value of control bitsctrl, the inter-
+mediate node performs one of the following two actions:
+FWD, or SPLIT. A node can split a data packet into two
+new packets by Algorithm 4. First, the payload is split into
+two new packets (Line 2). Then the node pads both newly
+generated packets to the fixed sizemusing pseudo-random
+bits obtained from a PRG keyed bys(Line 3 and 4).
+1:procedureREMOVE
+LAYER
+Input:P,SV
+Output:ctrl,P
+o
+,R,EXP
+2:fIVkFSkkkOg  P
+3:skR PRP
+1
+(SV;FS)
+4:check=MAC(h
+MAC
+(skIV);FSkkO)
+5:  fk0
+c
+g PRG(h
+PRG
+(skIV))
+:::(r1)c+b
+6:ctrlkEXPkFS
+0
+k
+0
+k
+0
+7:O
+0
+ DEC(h
+DEC
+(s);IV;O)
+8:IV
+0
+ PRP(h
+PRP
+(s);IV)
+9:P
+o
+  fIV
+0
+kFS
+0
+k
+0
+k
+0
+kO
+0
+g
+10:end procedure
+Algorithm 3:Remove an onion layer.
+1:procedureSPLIT
+ONION
+PACKET
+Input:O,s,IV
+Output:P
+o
+0
+,P
+o
+1
+2:fP
+0
+0
+kP
+0
+1
+g  O
+3:P
+o
+0
+ P
+0
+0
+kPRG(h
+PRG
+((skIV)k"left"))
+::
+m
+2
++rc
+4:P
+o
+1
+ P
+0
+1
+kPRG(h
+PRG
+((skIV)k"right"))
+::
+m
+2
++rc
+5:end procedure
+Algorithm 4:Split a data packet into two new packets.
+5.4. Data Transmission Phase
+5.4.1. End host processing.To send packets to receiver
+D, senderSfirst makes sure that the flowlet has not ex-
+pired. ThenSchooses a valueEXP
+min
+, which has to be
+larger than its local time plus the end-to-end forwarding
+delay plus the maximum global clock skew. We expect that
+adding 1 s to the local time would be adequate for most
+circumstances. However,Scannot set the packet expiration
+time to be equal at every hop, as otherwise this value
+could be used as common identifier (which violates the bit-
+pattern unlinkability property. Instead,Schooses an offset
+i
+2;
+max
+uniformly at random, for each noden
+f
+i
+on
+the path. For every packet sent out,SdeterminesEXP
+min
+and computesEXP
+i
+=EXP
+min
++
+i
+for each node. The
+valueneeds to be chosen large enough to ensure that the
+intervalEXP
+min
+;EXP
+min
+overlaps with the intervals
+of a large number of other concurrent flows. We expect that
+5s would be a safe choice.
+After determiningfEXP
+i
+g,Salso needs to decide which
+flow mutation actions the packet will adopt. In case of packet
+splitting,Salso needs to decide where to split the packet.
+For a packet that is forwarded to the receiver without being
+split, we denote the payload to send isO. For a packet that is
+split, we denote the payloads of the children packets asO
+0
+andO
+1
+. Letkbe the index of the node where the packet is
+split. Accordingly,ctrl
+i
+=FWD,8i6=k. Third,Susess
+SD
+to encrypt the payload. This end-to-end encryption prevents
+the last hop node from obtaining information about the data
+payload.Salso generates a unique nonceIVfor the packet.
+If the packet is splittable,Sgenerates another two unique
+noncesIV
+0
+andIV
+1
+. Fourth, if the packet will be split,S
+creates the packetPby
+P=CREATE
+SPLITTABLE
+DATA
+PACKET(fs
+f
+i
+g;fF S
+f
+i
+g;
+fctrl
+f
+i
+g;fEXP
+f
+i
+g; IV; IV
+0
+; IV
+1
+; O
+0
+; O
+1
+; k)(1)
+If the packet will only be forwarded to the receiver without
+a splitting action,Screates the packetPby
+P=CREATE
+ONION
+ROUTINE(fs
+f
+i
+g;fF S
+f
+i
+g;fctrl
+f
+i
+g;
+fEXP
+f
+i
+g; IV;0; l
+f
+1; O)(2)
+Finally,SforwardsPto the first hop node towards the
+receiver.
+The process by whichDsends packets back toSis sim-
+ilar to the above procedure, butDwill use the forwarding
+segments and onion keys for the backward path. However,
+right afterSfinishes the setup phase,Dhas not yet obtained
+g
+x
+S
+,fs
+b
+i
+g, norfF S
+b
+i
+g. In the TARANET data transmission
+phase, the first packet thatSsends toDincludesx
+S
+,fs
+b
+i
+g
+andfF S
+b
+i
+gas the payload.
+When an end host (SorD) receives a data packetP,
+it can retrieve the data payloadOfrom the packet byO=
+P
+rc::rc+m
+The resultingOcan thus be decrypted bys
+SD
+to retrieve the plaintext payload.
+5.4.2. Intermediate node processing.When a node re-
+ceives a data packetP= (IV; F S; ; ; O), with the local
+secretSV, it first removes an onion layer by
+ctrl; P
+o
+; R;EXP=REMOVE
+ONION
+LAYER(P; SV)(3)
+Note that the MAC must check inREMOVE
+ONION
+LAYER
+for the process to move on. Otherwise, the node simply
+drops the packet. Then, the node checkst
+curr
+<EXPand
+ensures that the flowlet has not expired. Afterwards, the
+node checks the control bits belonging to the current hop.
+Ifctrl=SPLIT, the resulting payloadP
+o
+must contain two
+sub packets. The node creates two children packetsP
+o
+0
+,P
+o
+1
+:
+fP
+o
+0
+; P
+o
+1
+g=SPLIT
+ONION
+PACKET(O; s; IV)(4)
+Lastly, if the packet is not dropped, the node forwards the
+resulting packet according to the routing decisionR.
+6. Security Analysis
+We discuss TARANET's defenses against passive (Sec-
+tion 6.1) and active attacks (Section 6.2). We also conduct
+a quantitative analysis of TARANET's anonymity set size
+using the Internet topology and real-world packet traces
+(Section 6.3). Our result shows that TARANET's anonymity
+set is 4 to 2
+18
+times larger than those of LAP and Dovetail.
+Finally, we present a formal proof that the TARANET
+protocol conforms to an ideal onion routing protocol defined
+6.1. Defense against Passive Attacks
+Flow dynamics matching.In flow-dynamics matching at-
+observed flows by their dynamics, such as transmission
+rate. TARANET prevents such attacks by normalizing the
+outgoing transmission rate of all flowlets through the use
+of chaff traffic. Adversarial nodes are unable to distinguish
+chaff traffic from real traffic. Accordingly, no flow dynamics
+are available to the adversary to perform matching.
+Template attacks.TARANET enables end hosts to shape
+their traffic by adding chaff packets to hide their real traffic
+patterns. The resulting traffic pattern of an outgoing flowlet
+is uniform across the network. In addition, all TARANET
+packets have the same length, preventing information leak-
+age from packet length. The combination of these two
+features completely neutralizes template attacks.
+Network statistics correlation.These attacks rely on the
+capability of the adversary to observe macroscopic flow
+characteristics which leak de-anonymizing information. Be-
+cause of the uniformity of flowlets, no such information is
+leaked in TARANET for isolated unidirectional flows. How-
+ever, if the attacker is able to link the flowlets corresponding
+to a bidirectional flow by their starting or ending time, then
+an attack based on the RTT (see Section 2.2.1) could still be
+possible. Such an attack can be thwarted by adding delays
+for setup packets and flowlet start at the receiver, according
+to the path length (the shorter the path, the longer the delay),
+6.2. Defense against Active Attacks
+Tagging attacks.A compromised node can modify packets
+adding tags that are recognizable by downstream colluding
+nodes. This enables flow matching across flows observed
+tacks through its per-hop packet authenticity (see Section 5).
+A benign node will detect and drop any modified packet.
+Clogging attacks.In clogging attacks, an adversary in-
+relay nodes, and match such patterns to deanonymize the
+path. Different from throughput fingerprint attacks that aim
+to exert no influence on existing traffic patterns, clogging
+attacks aggressively change the traffic patterns on victim
+links and are prone to detection. First, clogging attacks
+in TARANET itself require DDoS capabilities because of
+nodes' high bandwidth within the network. In addition,
+TARANET nodes attacked by clogging would run out of
+cached chaff packets, which in turn shuts down the flowlet
+and prevents any additional matching. Moreover, given the
+large number of flowlets in the network at any given time,
+the number of flowlets terminated due to normal operations
+is large, which hides the fact that the specific attacked
+flowlet is terminated.
+Flow dynamics modification attacks.Traffic pattern mod-
+ulation attacks require attackers to modulate inter-packet
+intervals to either create recognizable patterns (e.g., flow wa-
+adversarial nodes can deanonymize traffic by extracting the
+introduced traffic patterns. Depending on the amount of
+perturbation introduced by the adversary, we can distinguish
+two cases. In the first one, the adversarial actions fail to
+exhaust the cached chaff packets on the node under attack
+for the target flowlet. In this case, the outgoing rate for the
+flowlet at the node remains unchanged, and the attack is
+ineffective. In the second case, the victim node runs out of
+cached chaff packets for the target flowlet. In this case, the
+node terminates the flowlet to prevent downstream nodes
+from observing the injected patterns.
+6.3. Anonymity Set Size Evaluation
+Relationship anonymity set.Network-layer anonymity pro-
+tocols are vulnerable to passive attacks based on network
+topology information launched by a single compromised
+allows global re-routing, traffic of network-layer anonymity
+protocols follows paths created by underlying network ar-
+chitectures. By observing the incoming and outgoing links
+of a packet, a compromised AS can derive network location
+information of communicating end hosts. For example, in
+Figure 3(a), by forwarding a packet from AS1 to AS3, AS2
+knows that the sender must reside within the setfAS0,
+AS1gand the receiver falls into the setfAS3, AS4, AS5g.
+We name the former anonymity setsender anonymity set,
+denoted asS
+s
+, and call the latter anonymity setrecipient
+anonymity set, denoted asS
+d
+. Accordingly, we definerela-
+tionship anonymity setS
+r
+=f(s; d)js2S
+s
+; d2S
+d
+g.
+To evaluate relationship anonymity of different proto-
+cols, we use anonymity-set size as the metric. By definition
+ofS
+r
+, the anonymity-set sizejS
+r
+j=jS
+s
+j  jS
+d
+j. In Fig-
+ure 3(a), there are 8 hosts in both AS0 and AS1. Thus,
+jS
+s
+j= 16. Similarly, we can calculate thatjS
+d
+j= 24and
+jS
+r
+j= 1624 = 384.
+Protocol designs influence corresponding anonymity-
+set sizes. In LAP and Dovetail, by analyzing header for-
+mats, a passive adversary can determine its position on the
+packet's path, i.e., its distances from the sender and the
+knows the sender is 2 hops away and the receiver is 1 hops
+away through analyzing packet headers, it can deduce that
+the sender must be in AS0 and the receiver must be in AS3.
+The resulting anonymity-set size is reduced to 8 * 8 = 64.
+In comparison, TARANET and HORNET's header designs
+prevent their headers from leaking position information.
+Experiment setup.We use a trace-based simulation to
+evaluate anonymity set sizes of different network-layer an-
+onymity protocols in real world scenarios. We obtain the
+real-world AS-level topology from CAIDA AS relationship
+We use the traceroute traces on Dec. 12th, 2014. For each
+IP address-based trace, we convert it to AS path. Our
+preliminary analysis shows that the median AS path length is
+4 and the average AS path length is 4.2. More than 99.99%
+of AS paths have length less than 8.
+For each AS on a path in our path dataset, we compute
+the sizes of the relationship anonymity sets observed by the
+AS2 (16)
+AS1 (8)
+AS3 (8)
+AS4 (8)
+AS5 (8)
+S
+D
+AS0 (8)
+0 5 10 15 20 25 30 35 40 45 50 55 60 64
+Anonymity set size (log
+2
+)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+CDF of anonymity set size
+1 Hops
+2 Hops
+3 Hops
+4 Hops
+5 Hops
+6 Hops
+7 Hops
+0 5 10 15 20 25 30 35 40 45 50 55 60 64
+Anonymity set size (log
+2
+)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+CDF of anonymity set size
+1 Hops
+2 Hops
+3 Hops
+4 Hops
+5 Hops
+6 Hops
+7 Hops
+compromised AS in one of two scenarios: 1) the AS knows
+its position on path as in LAP and Dovetail; 2) the AS has
+no information about its position on the path as in HORNET
+and TARANET. To compute anonymity set sizes, we first
+derive relationship anonymity sets composed by ASes. Then
+we compute the number of hosts in the ASes as the size of
+anonymity set size. We approximate the number of hosts
+within an AS by the number of IPv4 addresses of that AS.
+Result.Figure 3(b) demonstrates CDFs of anonymity-set
+sizes for LAP and Dovetail observed by a compromised
+AS. Figure 3(c) shows the CDF of anonymity-set sizes for
+TARANET and HORNET. In general, anonymity-set sizes
+of TARANET and HORNET exceed2
+32
+with probabil-
+ity larger than 95% regardless of the adversary's on-path
+positions. The 90th percentiles of anonymity-set sizes of
+TARANET and HORNET are 4-2
+18
+times larger than those
+of LAP and Dovetail depending on the distances between
+senders and receivers. We remark that when an AS is 6 or
+7 hops away from a sender, it is the last-hop AS with high
+probability, because 99.99% paths are less than 8 hops long.
+When the compromised ASes are 1 hop away from senders
+and when the ASes are close to receivers (6-7 hops away
+from senders), the gap between TARANET/HORNET and
+LAP/Dovetail is largest.
+Topology-based attacks and traffic analysis.In LAP,
+Dovetail, and HORNET, when an adversary compromises
+more than 1 AS on a path, he/she can correlate obser-
+vation from different non-adjacent ASes by traffic anal-
+topology-based attacks. Assume that an adversary compro-
+misesqASes and observes a series of sender anonymity
+setsfS
+i
+s
+;i2; qgand a series of recipient anonymity sets
+fS
+i
+d
+;i2; qg. The resulting relationship anonymity set
+sizejS
+r
+j= min
+i2;q
+jS
+i
+s
+j min
+i2;q
+jS
+i
+d
+j. For example, in
+Figure 3(a), if the adversary compromises AS0 besides AS2
+and correlates traffic from the same flowlet, the resulting
+relationship anonymity-set sizejS
+r
+jis only24(124)
+compared to384when only AS2 is compromised.
+TARANET improves over LAP, Dovetail, and HOR-
+NET by introducing defense against traffic analysis (see
+Section 6.1 and 6.2). By defeating traffic analysis and
+preventing correlation of flowlets at multiple non-adjacent
+ASes, TARANET enlarges the observed relationship ano-
+nymity set size. The resulting relationship anonymity set
+is only the smallest one among the relationship anonym-
+ity sets observed by non-collaborative compromised ASes.
+jS
+r
+j= min
+i2;q
+jS
+i
+s
+j  jS
+i
+d
+j. For instance, when the adver-
+sary compromises AS0 besides AS2 and uses traffic analysis
+to correlate observed flowlets, the resulting relationship
+anonymity-set sizejS
+r
+jincreased to56.
+6.4. Formal Proof of Security
+Proof of TARANET security comes into two parts: the
+security proof of TARANET's setup phase protocol, and
+the security proof of TARANET's data transmission phase.
+We derive the security of TARANET's setup phase by the
+setup phase protocol directly uses the Sphinx protocol and
+Danezis and Goldberg have demonstrated that the Sphinx
+protocol realizes an ideal onion routing protocol defined by
+In this section, we focus on the security of TARANET's
+data transmission phase and prove that TARANET's data
+transmission phase is equivalent to an ideal onion rout-
+Camenisch and Lysyanskaya, a protocol is an ideal onion
+routing protocol if it offers four properties:correctness,
+integrity,wrap-resistance, andsecurity. We briefly rephrase
+the definitions of four properties as follows:
+Correctness. The protocol should operate correctly
+without adversaries.
+Integrity. There exists an upper boundNfor the pro-
+tocol, such that an adversary cannot forget a message
+that traverse more thanNhops in the network.
+Wrap-resistance. Given an output packet of an uncom-
+promised node, an adversary cannot forget the corre-
+sponding input packet.
+Security. An adversary cannot distinguish among pack-
+ets that enter an uncontrolled nodeneven if the adver-
+sary is able to 1) select paths for the packets forwarded
+byn, 2) control all nodes on the path exceptn, and
+3) observe all input and output packets ofnexcept the
+challenge packets.
+6.4.1. Correctness.A careful scrutiny of Section 5 should
+suffice to demonstrate the correctness of TARANET's data
+transmission protocol.
+6.4.2. Integrity.We show that with significantly less than
+2
+k
+work, an adversary cannot forge a message (IV
+0
+,F S
+0
+,
+0
+,
+0
+,O
+0
+) that traverses more thanrhops nodesn
+0
+,n
+1
+,
+  ,n
+r
+in the network, even if the adversary learns all the
+secret keysSV
+0
+,SV
+1
+,  ,SV
+r
+for the nodes on the path.
+We construct a proof of contradiction.
+For convenience, we introduce a series of notations:
+!(x; y) =PRP
+1
+(h
+PRP
+(x);y)
+::k
+(5)
+(iv; x; y) =PRG(h
+PRG
+(!(x; y)iv))(6)
+(iv; x; y) =PRP(h
+PRP
+(!(x; y));iv)(7)
+(iv; x; y; o) =DEC(h
+DEC
+(!(x; y));iv;o)(8)
+Assume that the adversary can create a message (IV
+0
+,
+F S
+0
+,
+0
+,
+0
+,O
+0
+) that traversesn
+0
+,n
+1
+,  ,n
+r
+. We can
+rewrite the message received byn
+r
+, (IV
+r
+,F S
+r
+,
+r
+,
+r
+,O
+r
+),
+(a) Example scenario
+(b) LAP and Dovetail
+(c) TARANET and HORNET
+Figure 3. a) A toy example of an adversary that exploits topology information to de-anonymize a flowlet between senderSand receiverD. ASx(y)
+denotes an AS with AS numberxandyhosts attached. We assume that the adversary compromised AS2. b) Cumulative Distribution Functions (CDF) of
+anonymity set sizes for LAP and Dovetail. c) CDFs of anonymity set sizes for TARANET and HORNET. In both b) and c), different lines demonstrate
+anonymity set size distribution observed by an adversary that is a fixed number of AS hops away fromS.
+as follows:
+F S
+r
+=
+r1
+M
+i=0
+(IV
+i
+; SV
+i
+; F S
+i
+)
+c(ri1)+b::c(ri1)+b+jF Sj
+(9)
+r
+=
+r1
+M
+i=0
+(IV
+i
+; SV
+i
+; F S
+i
+)
+c(ri1)+b+jF Sj::c(ri1)+b+jF Sj+k
+(10)
+r
+=
+r1
+M
+i=1
+(IV
+i
+; SV
+i
+; F S
+i
+)
+c(ri)::cr
+(11)
+whereIV
+i+1
+=(SV
+i
+; F S
+i
+; IV
+i
+)andO
+i
+=
+(IV
+i
+; SV
+i
+; F S
+i
+; O
+i1
+)80< i < r.
+In order for the MAC to check on noden
+r
+so thatn
+r
+will forward the packet, we need:
+r
+=MAC(h
+MAC
+(!(SV
+r
+; F S
+r
+));F S
+r
+jj
+r
+jjO
+r
+)(12)
+If we substitute Equation 9, 10, and 11 into Equation 12,
+the right side of Equation 12 becomes a function with input
+(IV
+0
+,O
+0
+,SV
+0
+,  ,SV
+r
+,F S
+0
+,  ,F S
+r1
+):
+r
+=MAC(h
+MAC
+(!(SV
+r
+; F S
+r
+));F S
+r
+jj
+r
+jjO
+r
+)
+=(IV
+0
+; O
+0
+; SV
+0
+;  ; SV
+r
+; F S
+0
+;  ; F S
+r
+)(13)
+Before continuing, we first prove the following lemma:
+Lemma 6.1.With significantly less than2
+k
+work, an ad-
+versary can only distinguish(IV
+0
+,O
+0
+,SV
+0
+,  ,SV
+r
+,
+F S
+0
+,  ,F S
+r1
+) from a random oracle with negligible
+probability.
+Proof.We prove a statement equivalent to the lemma: with
+significantly less than2
+k
+work, an adversary cannot find two
+sets
+(IV
+0
+; O
+0
+; SV
+0
+;  ; SV
+r
+; F S
+0
+;  ; F S
+r1
+)6=
+(IV
+0
+0
+; O
+0
+0
+; SV
+0
+0
+;
+0
+; SV
+0
+r
+; F S
+0
+0
+;  ; F S
+0
+r1
+)(14)
+such that they lead to the same value of. We will prove
+this by proof of contradiction.
+Assume the adversary found two distinguished values
+that yields the same value of. Because MAC is a random
+oracle, with significantly less than2
+k
+work, the attacker has
+to guarantee:
+!(SV
+r
+; F S
+r
+) =!(SV
+0
+r
+; F S
+0
+r
+)(15)
+(F S
+r
+jj
+r
+jjO
+r
+) = (F S
+0
+r
+jj
+0
+r
+jjO
+0
+r
+)(16)
+Given the definition of!and Equation 15, because
+PRPis a pseudo-random permutation andh
+PRP
+is collision
+resistant, the adversary must haveSV
+r
+=SV
+0
+r
+.
+In addition, Equation 16 determinesF S
+r
+=F S
+0
+r
+,
+r
+=
+0
+r
+. We will show that the latter means
+(IV
+0
+; SV
+0
+;  ; SV
+r1
+; F S
+0
+;  ; F S
+r1
+) =
+(IV
+0
+0
+; SV
+0
+0
+;  ; SV
+0
+r1
+; F S
+0
+0
+;  ; F S
+r1
+)
+0
+(17)
+Consider the lastcbits of
+r
+and
+0
+r
+. By Equation 11,
+we have
+(IV
+r1
+; SV
+r1
+; F S
+r1
+)
+c(r1)::cr
+=
+(IV
+0
+r1
+; SV
+0
+r1
+; F S
+0
+r1
+)
+c(r1)::cr
+(18)
+BecausePRGis a secure pseudo-random generator, the
+following equation holds
+!(SV
+r1
+; F S
+r1
+)IV
+r1
+=!(SV
+0
+r1
+; F S
+0
+r1
+)IV
+0
+r1
+(19)
+Or
+!(SV
+r1
+; F S
+r1
+)(SV
+r2
+; F S
+r2
+; IV
+r2
+) =
+!(SV
+0
+r1
+; F S
+0
+r1
+)(SV
+0
+r2
+; F S
+0
+r2
+; IV
+0
+r2
+)(20)
+Since!andare two independent random oracles and
+their inputs do not overlap, the attacker has to ensure
+SV
+r1
+=SV
+0
+r1
+,F S
+r1
+=F S
+0
+r1
+,SV
+r2
+=SV
+0
+r2
+,
+F S
+r2
+=F S
+0
+r2
+, andIV
+r2
+=IV
+0
+r2
+.
+The equation thatIV
+r2
+=IV
+r2
+impliesF S
+r3
+=
+F S
+0
+r3
+,SV
+r3
+=SV
+0
+r3
+, andIV
+r3
+=IV
+0
+r3
+, because
+is a random oracle. Repeating this logic, we will get
+Equation 17.
+Finally, givenO
+r
+=O
+0
+r
+and Equation 17, the attacker,
+with significantly less than2
+k
+work, has to make sure that
+O
+0
+=O
+0
+0
+.
+Let
+f(IV
+i
+; SV
+i
+; F S
+i
+) =(IV
+i
+; SV
+i
+; F S
+i
+)
+c(ri)::cr
+(21)
+We now can substitute Equation 10 and 21 into Equation 13
+and rewrite the latter as:
+f(IV
+0
+; SV
+0
+; F S
+0
+) =(IV
+0
+; O
+0
+; SV
+0
+;  ; SV
+r
+; F S
+0
+;  ; F S
+r
+)+
+r1
+M
+i=1
+f(IV
+i
+; SV
+i
+; F S
+i
+)(22)
+Because MAC is not used inf, the right hand side of the
+above equation is also a random oracle, which we can denote
+as
+g(IV
+0
+; O
+0
+; SV
+0
+;  ; SV
+r
+; F S
+0
+;  ; F S
+r
+)(23)
+To sum up, in order for the MAC
+r
+to check on node
+n
+r
+, the attacker needs to find the solution to
+f(IV
+0
+; SV
+0
+; F S
+0
+) =g(IV
+0
+; O
+0
+; SV
+0
+;  ; SV
+r
+; F S
+0
+;  ; F S
+r
+)
+(24)
+with two independent random oraclesfandg. With signif-
+icantly less than2
+k
+effort, the adversary can only succeed
+with negligible probability, which contradicts the assump-
+tion.
+6.4.3. Wrap resistance.We prove that given a packet
+(IV; F S; ; ; O), an adversary cannot output a message
+(IV
+0
+; F S
+0
+;
+0
+;
+0
+; O
+0
+)with significantly less than2
+k
+work,
+so that processing of the former packet on an uncompro-
+mised node leads to the latter one.
+If the adversary can succeed with significantly less than
+2
+k
+work, it is necessary that
+(IV
+0
+; SV; F S
+0
+)
+c(r1)::cr
+=
+c(r1)::cr
+(25)
+BecausePRP
+1
+,PRG,h
+PRP
+, andh
+PRG
+are all random
+oracles andSVis unknown to the adversary, with signif-
+icantly less than2
+k
+work, the adversary can only succeed
+to generate correct values of (IV
+0
+,F S
+0
+) with negligible
+probability.
+6.4.4. Security.To prove the security property, we con-
+struct the following gameG
+0
+. Given an uncompromised
+nodeN, the adversary selects two pathsn
+0
+; n
+1
+;  ; n
+1
+(0<  <=r) andn
+0
+0
+; n
+0
+1
+;  ; n
+0
+0
+1
+(0<
+0
+<=r)
+wheren
+i
+=n
+0
+i
+80ijandn
+j
+=n
+0
+j
+=N. The
+nodes followingNare not necessarily the same sets of the
+nodes and the length of two paths can be different. The
+adversary is also able to choose all secrets for all nodes
+except for N, including the public/private keys and local
+secrets. Moreover, the adversary can also arbitrarily decide
+the contents of payloadO.
+The challenger randomly selects a bitband proceeds in
+one of the two following ways:
+b= 0. The challenger establishes a flowlet through
+the pathn
+0
+;  ; n
+1
+and then creates a data packet with
+payloadOchosen by the adversary. The challenger out-
+puts(IV
+0
+; F S
+0
+;
+0
+;
+0
+; O
+0
+), which can be sent to noden
+0
+.
+We use(IV
+i
+; F S
+i
+;
+i
+;
+i
+; O
+i
+)to represent the corresponding
+packet received by noden
+i
+(n
+0
+i
+) on the path.
+b= 1. The challenger establishes a flowlet through the
+alternate pathn
+0
+0
+;  ; n
+0
+0
+1
+and outputs a data packet (IV
+0
+,
+F S
+0
+,
+0
+,
+0
+,O
+0
+) that can be sent ton
+1
+.
+Given the output(IV
+0
+; F S
+0
+;
+0
+;
+0
+; O
+0
+), the adversary is
+challenged to determineb. The adversary can additionally
+input up toqmessages so long as they are not equal to
+(IV
+j
+; F S
+j
+;
+j
+;
+j
+; O
+j
+).
+The adversary's advantage is defined as
+adv=jP r(success)
+1
+2
+j
+We will show that the advantage is negligible with less than
+2
+k
+work.
+Proof.We use a hybrid-game method by establishing the
+following two new gamesG
+1
+andG
+2
+. The definition ofG
+1
+is the same asG
+0
+except that we require thatN=n
+0
+=
+n
+0
+0
+, i.e., the first node is uncompromised. We further define
+G
+2
+, whose assumption is the same asG
+1
+with only one
+exception that(IV
+0
+; F S
+0
+;
+0
+;
+0
+; O
+e
+)are randomly drawn
+from the corresponding domains.
+First, because inG
+2
+, the message are all randomly
+drawn, the adversary's advantage in guessing the bit is
+0. Next, we would show that in a chain of gameG
+0
+!
+G
+1
+!G
+2
+, the adversary can only distinguish a game from
+the previous game with negligible success probability with
+significantly less than2
+k
+work.
+G
+0
+!G
+1
+. On one hand, it is obvious that an adversary
+who can succeed inG
+0
+is able to succeed inG
+1
+as the
+former one is a more general game. On the other hand,
+because the adversary fully control nodesn
+0
+;  ; n
+j1
+and
+can thus emulate their packet processing, the adversary can
+win gameG
+0
+if s/he can winG
+1
+.
+G
+1
+!G
+2
+. In order to distinguishG
+2
+fromG
+1
+, the
+following statements must be true:
+The adversary can distinguishF S
+0
+=PRP(h
+PRP
+(SV
+0
+);
+s
+0
+jjR
+0
+) from randomness without knowingSV
+0
+. Be-
+causePRPis pseudo-random permutation with security
+parameterk, the probability that the adversary succeeds
+with less than2
+k
+work is negligible.
+The adversary can distinguish
+0
+=PRG(h
+PRG
+(SV
+0
+)IV
+0
+)
+c(r1)::cr
+ctrl
+1
+jjF S
+1
+jj
+1
+jj
+1
+)(26)
+from random bits. BecausePRGis secure pseudo-
+random number generator, and the adversary has no
+knowledge ofSV
+0
+, the probability that the adversary
+succeeds is negligible.
+We can repeat the same logic to show that it is impos-
+sible to distinguish
+0
+andO
+0
+from random bits with
+non-negligible probability with significantly less than
+2
+k
+work.
+0 200 400 600 800 1000 1200 1400
+10
+3
+10
+4
+10
+5
+10
+6
+LAP
+Dovetail
+HORNET
+TARANET (FWD)
+TARANET (Drop)
+TARANET (Split)
+Sphinx
+0 200 400 600 800 1000 1200 1400
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+LAP
+Dovetail
+HORNET
+TARANET
+Sphinx
+0 200 400 600 800 1000 1200 1400
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+LAP
+Dovetail
+HORNET
+TARANET
+Sphinx
+0:00 0:05 0:10 0:15 0:20
+Drop Rate
+0:0
+0:1
+0:2
+0:3
+0:4
+0:5
+0:6
+0:7
+Split Rate
+0.90
+0.95
+0.99
+0:00 0:05 0:10 0:15 0:20
+Drop Rate
+0:00
+0:05
+0:10
+0:15
+0:20
+Split Rate
+1
+0 5 10 15 20 25
+Flowlet Rate (kbps)
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+Normalized Overhead
+All
+TCP only
+UDP only
+7. Evaluation
+This section describes our implementation of
+TARANET, a performance evaluation,and our evaluation of
+bandwidth overhead added by end-to-end traffic shaping.
+7.1. Implementation on High-speed Routers
+We implement TARANET's setup and data transmission
+logic on a software router. We use Intel's Data Plane Devel-
+packet processing in user space. We assemble a customized
+cryptography library based on the Intel AESNI sample
+libraries. We use 128-bit AES counter mode for encryption
+and 128-bit AES CBC-MAC.
+7.2. Performance Evaluation
+Our testbed is composed of a commodity Intel server
+server functions as a software router and is equipped with
+an Intel Xeon E5-2560 CPU (2.70 GHz, 2 sockets, 8 cores
+per socket) and 64 GB DRAM. The server also has 3
+Intel 82599ES network cards with 4 ports per card, and is
+connected to the packet generator through twelve 10-Gbps
+links. Thus the testbed can test throughput up to 120 Gbps.
+To remove implementation bias and allow fair com-
+parison with other anonymity protocols, we additionally
+DPDK. Note that LAP, Dovetail, and HORNET are high-
+speed network-layer anonymity protocols but cannot defend
+against traffic analysis attacks. Sphinx is a mix network that
+requires performing public key cryptographic operations for
+every data packet and incurs high computation overhead.
+We remind the reader that TARANET's performance
+is lower than LAP, Dovetail, and HORNET, because
+TARANET's traffic-analysis resistance property incurs ad-
+ditional overhead by design. However, TARANET should
+outperform Sphinx, which also offers traffic-analysis resis-
+tance. Additionally, as an essential requirement of high-
+speed network-layer anonymity protocol, we expect that
+TARANET should sustain high forwarding throughput.
+Processing latency.We first evaluate the average latency
+of processing a data packet on a single core using different
+anonymity protocols. For TARANET, we also compare the
+latency of performing different mutation actions. The results
+are shown in Figure 4(a).
+TARANET's processing latency is comparable to LAP,
+Dovetail, and HORNET. When the payload size is smaller
+than 64 bytes, processing a TARANET data packet (follow-
+ing the steps described above) incurs less than 1s (3700
+cycles) per-hop overhead on a single core. For payloads
+larger than 1024 bytes, the latency increases to up to 2s
+(7200 cycles). Splitting a TARANET packet incurs only
+additional 1s (4200 cycles). Since the total number of
+processing will add only20s to the end-to-end latency.
+Processing a setup packet on our test machine incurs
+around 250s (0.66M cycles) per hop per packet. This is
+due to setup packets requiring a DH key-exchange operation.
+However, for path lengths of less than 7 hops, this latency
+adds less than 2ms at the start of each flowlet.
+Goodput.Goodput measures the throughput of useful data
+that can be transmitted by the protocol as it separates data
+throughput and packet header overhead. Figures 4(b) and
+4(c) show the goodput of different protocols with 7-hop and
+14-hop headers, respectively, on a single 10 Gbps link with 1
+core assigned. We observe that even with longer processing
+latency and larger headers, TARANET still achieves45%
+of HORNET's goodput in both cases. With a single core,
+TARANET can still achieve0.37 Mpkt/s.
+Maximum total throughput.To evaluate the maximum
+total throughput of our protocol with respect to the number
+of cores, we test TARANET with all twelve 10 Gbps ports
+enabled while using all 16 CPU cores. Each port has 1 input
+queue and 1 output queue. To fully distribute the computa-
+tion power of 16 cores to 12 input and 12 output queues, we
+assign 8 cores exclusively to 8 input queues, 4 cores each to
+one input and one output queue, and the remaining 4 cores
+to 8 output queues. The packet generator generates packets
+that have random egress ports and saturate all 12 ports.
+Our evaluation finds that TARANET can process anonymous
+traffic at 50.96 Gbps on our software router for packets with
+512 bytes of payload, which is comparable to the switching
+Delay of flowlet setup.For the setup phase, TARANET
+uses packet batching and randomization to protect against
+traffic analysis. Our observation is that if the number of
+flowlet setups is sufficient large, batching setup packets can
+still end up yielding a short setup delay.
+We conduct a trace-driven simulation using the CAIDA's
+anonymized packet traces to evaluate the setup phase's
+delay. The packet traces are recorded by the "equinix-
+chicago" monitor on a Tier-1 ISP's 10 Gbps link between
+in each flow in the dataset is a flowlet setup packet. We
+simulate the latency introduced by batching, randomizing,
+and cryptographic processing by injecting the setup packet
+trace into a TARANET node and varying the batch size.
+The resulting latency of flowlet setups increases almost
+linearly as the batch sizes increases. When the batch size
+is 16, the per-hop latency is 1.61.0 ms (95% confidence
+interval). When the batch sizes reaches 128, the per-hop
+latency increases up to 127 ms. For a path with 7
+AS-hops that means the flowlet setup will introduce less
+than170 ms additional round-trip latency for the setup
+phase, which is a small proportion of the delay of an inter-
+continental path.
+7.3. Overhead Evaluation
+We conduct a trace-based evaluation of TARANET to
+evaluate added bandwidth overhead for end hosts and the
+(a) Latency
+(b) Goodput: 7-hop header
+(c) Goodput 14-hop header
+Figure 4. a) Average latency of processing a packet for different protocols with error bars (95% confidence intervals). For a packet with "SPLIT" flag,
+because the payload has to contain at least two other packet headers, we only test packets with payloads at least 768 bytes. Lower is better. b) Data
+forwarding goodput on a 10 Gbps link for packets with 7-hop headers and different payload sizes; c) data forwarding goodput on a 10 Gbps link for
+packets with 14-hop headers and different payload sizes. Higher is better.
+(a) Split Rate: Different Success Rate
+(b) Split Rate: DifferentH
+(c) Overhead Caused by Chaff Traffic
+Figure 5. a) Probability of splittable packets to guarantee different success rate. Failure counterH= 2. Different lines stand for different success rates.
+b) Probability of splittable packets for different parameterH(See Section 4.2) to achieve a 95% success rate. c) Bandwidth overhead caused by added
+chaff traffic for traffic shaping. We normalize the overhead by dividing the added overhead by the original bandwidth. Lower is better.
+amount of state for routers. For bandwidth overhead, we
+evaluate the number of splittable packets required to ac-
+commodate different levels of packet drops and the number
+of chaff traffic needed to shape real-world traffic. We use
+CAIDA's anonymized packet traces as discussed in Sec-
+tion 7.2. We filter away ICMP packets and small flows that
+has the size smaller than 10 packets or has the transmission
+rate lower than 1 byte/second.
+Split rate.First, we evaluate the number of splittable
+packets needed to account for packet drops. Note that an
+insufficient split rate causes a node to deplete its locally
+cached chaff and prematurely terminate a flowlet when there
+exist large number of packet drops. We convert each flow in
+the trace into flowlets whereB= 10kbps andT= 1min
+and run the trace with different per-hop split rates, different
+drop rates, and various failure countersH. We setL
+chf
+= 3
+to let a node to cache 3 chaff packets at maximum for each
+flowlet. Figure 5(a) shows the required per-hop split rates
+regarding different drop rates to achieve different success
+rates. The observed drop rate in the Internet is around
+H= 2, a node can set the per-hop split rate to almost
+0 and still obtain high success rates as much as 99%. To
+account for a highly lossy network link or an adversary that
+manipulates timing pattern through dropping packets, an end
+host can adjust the split rate up to 5% even for a very high
+per-hop drop rate 10% to achieve 95% success rates.
+Figure 5(b) demonstrates the required per-hop split rates
+with respect to different drop rates to guarantee a 95%
+success rate when the failure counterHranges from 1
+to 5. In general, given a certain packet drop rate, a larger
+Hhelps reduce the per-hop split rate. For instance, when
+H=1, the per-hop split rate can be as high as 12% for a
+packet drop rate of 5%. However, whenHincreases to 2,
+the required per-hop split rate is already at 3.4%. When we
+letsH=4, we can accommodate a per-hop drop rate of 15%
+by a per-hop split rate as small as 3.7%. We remark that
+when flowlets have smaller bandwidthB(as will be shown
+next), the success rate increases.
+Chaff overhead.We then evaluate the bandwidth overhead
+of the added chaff traffic. We convert real-world flows in the
+CAIDA's packet traces into flowlets and compute the amount
+of chaff required. Note that we normalize the resulting
+overhead through dividing it by the total traffic volumes, in
+order to remove the impact of traffic volumes and network
+sizes.
+Figure 5(c) plots the chaff overhead needed for the
+conversion when the bandwidth parameter of flowletsB
+varies andT=1 min. Generally, largeBresults in large chaff
+overhead. When we useB=5 kbps, the overhead of chaff
+packets is 7%. In comparison, whenBbecomes 20 kbps,
+the overhead of chaff traffic is increased to 31%. Moreover,
+we observe that small flow sizes, such as UDP flows for
+DNS lookups, lead to large chaff overhead given the same
+Bbecause more packets in the resulting flowlets are chaff
+packets. In Figure 5(c), the chaff overhead for UDP flows
+is larger than for TCP flows because the size of UDP flows
+is usually larger than the size of TCP flows.
+Required amount of state and scalability.To enable
+traffic shaping for flowlets, an intermediate node maintains
+state bounded by the node's bandwidth (Section 4.2). To
+demonstrate the scalability of TARANET with respect to
+the Internet traffic volumes, we evaluate the amount of state
+required for a node to process real Internet traffic.
+For each flowlet that consumes bandwidthB, a node
+maintainsL
+chf
+chaff packets and a failure counter required
+by the end-to-end traffic shaping technique (Section 4.2).
+We setL
+chf
+= 3and vary the bandwidth parameterBfor
+flowlets. Using the flowlets converted from our CAIDA flow
+trace, we can evaluate the amount of state required. Our
+results show that a node stores 90 MB state whenB=10 kbps
+for a 10 Gbps link and that the node needs to store 52 MB
+state whenB=20 kbps.
+8. Discussion
+8.1. Incremental Deployment
+Deployment Incentives.We envision that ISPs have incen-
+tives to deploy TARANET to offer strong anonymity as a
+service to their privacy-sensitive users or other customer
+ISPs who in turn desire to offer anonymous communica-
+tion services. This would give TARANET-deploying ISPs a
+competitive advantage: both private and business customers
+who want to use an anonymity service would choose an ISP
+that offers privacy protection.
+Incremental Deployment Strategy.The minimal require-
+ment for deploying TARANET includes a topology server
+that distributes path information, a few ISPs that deploy
+border routers supporting the TARANET protocol, and end
+hosts that run TARANET client software. We remark that the
+ogy servers as part of necessary control-plane infrastructure.
+Admittedly, the more ISPs that deploy TARANET would
+increase the anonymity set size which in turn benefits all
+users. However, a few initial TARANET-enabled ISPs that
+share no physical links can establish tunnels between each
+other through legacy ISPs and start to carry anonymous traf-
+fic among users. As more TARANET-capable ISPs join the
+TARANET network, tunnels are increasingly replaced with
+direct ISP-to-ISP connections, which provides increasingly
+better guarantees.
+8.2. Limitations
+Long-term Intersection Attack.An adversary who ob-
+serves presence of all sender and receiver clients over a long
+reveal pairs of clients that are repeatedly online during the
+same period. Clients can minimize their risk by being online
+not only when they are actively communicating, but in gen-
+eral this attack is difficult to defend against through technical
+means. For further defenses, TARANET could be enhanced
+which subset of pseudonyms appears online for a particular
+session. We leave analysis and evaluation of integration with
+such systems to future work.
+Routing Attacks.TARANET relies on underlying net-
+work architectures for routing packets. Adversarial nodes
+can attack underlying network architectures to place them-
+TARANET's scope, the network architecture candidates we
+consider offer control and integrity of packets' paths that
+hosts, enabling end hosts to select the traversing path.
+Denial-of-Service Attacks.An adversary can initiate a high
+volume of flowlets passing through a node, to exhaust
+the nodes computation power, bandwidth, and memory.
+TARANET itself cannot defend against such a DoS attack.
+To mitigate the DoS attack, a node can require flowlet
+an ISP that operates TARANET can also directly restrict the
+average flowlet-initiation rate of its customers. We note that
+a DoS attack aiming to exhaust a TARANET's memory state
+by initiating large number of flowlets will fail, because the
+amount of state that a TARANET node maintains is strictly
+linear to the node's actual bandwidth. If the adversary is
+able to accumulate sufficient bandwidth, such an attack will
+only jam the network link of the victim node and become
+a bandwidth-based DoS attack that can be mitigated.
+9. Conclusion
+In this paper, we have shown that it is possible to obtain
+the efficiency of onion-routing-based anonymity systems
+and the security of mix-based systems while avoiding their
+disadvantages. We have designed TARANET, which uses
+mixing and coordinated traffic shaping to thwart traffic
+analysis for the setup phase and the data transmission phase
+respectively. To achieve high performance and scalability,
+we build on the key observation that high-speed networks
+process enough volume that mixing at their core routers
+has minimal performance overhead. The performance and
+security properties achieved by our protocol suggest that
+efficient traffic-analysis-resistant protocol at the network
+layer is feasible, and that the increased security warrants
+the additional performance cost.
+10. Acknowledgments
+We would like to thank the anonymous reviewers for
+their suggestions for improving the paper. We also appre-
+ciate the insightful discussion with the members of ETH
+Zurich Network Security group.
+The research leading to these results has received fund-
+ing from the European Research Council under the European
+Union's Seventh Framework Programme (FP7/2007-2013) /
+ERC grant agreement 617605. We gratefully acknowledge
+support from ETH Zurich and from the Zurich Information
+Security and Privacy Center (ZISC).
+References
+ CAIDA AS-relationship dataset. http://www.caida.org/data/as-relationships/.
+ Cisco ASR-1000. http://www.cisco.com/c/en/us/products/routers/asr-1000-series-aggregation-services-routers/
+index.html.
+ curve25519-donna. https://code.google.com/p/curve25519-donna/.
+ DPDK: Data Plane Development Kit. http://dpdk.org/.
+ Intel AESNI Sample Library. https://software.intel.com/en-us/articles/download-the-intel-aesni-sample-library.
+ iPlane dataset. http://iplane.cs.washington.edu/data/data.html.
+ PolarSSL. https://polarssl.org/.
+ Routeview project. http://www.routeviews.org/.
+ Segment routing architecture (IETF draft). https://datatracker.ietf.org/doc/draft-ietf-spring-segment-routing/.
+Retrieved on January 27, 2016.
+ Spirent TestCenter. http://www.spirent.com/
+/media/Datasheets/Broadband/PAB/SpirentTestCenter/STC
+Packet
+Generator-Analyzer
+BasePackage
+datasheet.pdf.
+ The CAIDA UCSD Anonymized Internet Traces 2014. http://www.caida.org/data/passive/passive
+2014
+dataset.
+xml.
+ Tor metrics: Direct users by country. "https://metrics.torproject.org/userstats-relay-country.html. Retrieved on
+Nov.3, 2015.
+ Tom Anderson, Ken Birman, Robert Broberg, Matthew Caesar, Douglas Comer, Chase Cotton, Michael J
+Freedman, Andreas Haeberlen, Zachary G Ives, Arvind Krishnamurthy, et al. The nebula future internet
+architecture. InThe Future Internet, pages 16-26. Springer, 2013.
+ Oliver Berthold, Hannes Federrath, and Stefan K"opsell. Web mixes: A system for anonymous and unobservable
+internet access. InPETS, 2001.
+ Oliver Berthold and Heinrich Langos. Dummy Traffic against Long Term Intersection Attacks. InPETS, 2003.
+ Avrim Blum, Dawn Song, and Shobha Venkataraman. Detection of interactive stepping stones: Algorithms and
+confidence bounds. InRecent Advances in Intrusion Detection. Springer, 2004.
+ Jan Camenisch and Anna Lysyanskaya. A formal treatment of onion routing. InCRYPTO, 2005.
+ Sambuddho Chakravarty, Marco V. Barbera, Georgios Portokalidis, Michalis Polychronakis, and Angelos D.
+Keromytis. On the effectiveness of traffic analysis against anonymity networks using flow records. InPAM,
+2014.
+ Sambuddho Chakravarty, Angelos Stavrou, and Angelos D Keromytis. Traffic analysis against low-latency
+anonymity networks using available bandwidth estimation. InESORICS, 2010.
+ David Chaum. The dining cryptographers problem: Unconditional sender and recipient untraceability.Journal
+of cryptology, 1(1), 1988.
+ David L Chaum. Untraceable electronic mail, return addresses, and digital pseudonyms.Communications of the
+ACM, 24(2), 1981.
+ Chen Chen, Daniele E. Asoni, David Barrera, George Danezis, and Adrian Perrig. HORNET: High-speed onion
+routing at the network layer. InACM CCS, 2015.
+ Benny Chor, Oded Goldreich, Eyal Kushilevitz, and Madhu Sudan. Private information retrieval.Journal of the
+ACM, 45(6), 1998.
+ George Danezis. The traffic analysis of continuous-time mixes. InPETS, 2004.
+ George Danezis and Ian Goldberg. Sphinx: A compact and provably secure mix format. InIEEE S&P, 2009.
+ George Danezis and Andrei Serjantov. Statistical disclosure or intersection attacks on anonymity systems. InIH,
+2005.
+ Debajyoti Das, Sebastian Meiser, Esfandiar Mohammadi, and Aniket Kate. Anonymity trilemma: Strong
+anonymity, low bandwidth overhead, low latencychoose two. InIEEE S&P, 2018.
+ Roger Dingledine, Nick Mathewson, and Paul Syverson. Tor: The second-generation onion router. InUSENIX
+Security, 2004.
+ Roger Dingledine and Steven J. Murdoch. Performance Improvements on Tor or, Why Tor is slow and what we're
+going to do about it. "http://www.torproject.org/press/presskit/2009-03-11-performance.pdf, 2009. Retrieved on
+May. 23, 2016.
+ Nathan S Evans, Roger Dingledine, and Christian Grothoff. A practical congestion attack on tor using long paths.
+InUSENIX Security, 2009.
+ Michael J Freedman and Robert Morris. Tarzan: A peer-to-peer anonymizing network layer. InACM CCS, 2002.
+ P Godfrey, Igor Ganichev, Scott Shenker, and Ion Stoica. Pathlet routing.ACM SIGCOMM CCR, 39(4), 2009.
+ Philippe Golle and Ari Juels. Dining cryptographers revisited. InEurocrypt, 2004.
+ Xun Gong, Nikita Borisov, Negar Kiyavash, and Nabil Schear. Website Detection Using Remote Traffic Analysis.
+InPETS, 2012.
+ Nicholas Hopper, Eugene Y. Vasserman, and Eric Chan-Tin. How much anonymity does network latency leak?
+ACM TISSEC, 2010.
+ Amir Houmansadr and Nikita Borisov. SWIRL: A Scalable Watermark to Detect Correlated Network Flows. In
+NDSS, 2011.
+ Amir Houmansadr and Nikita Borisov. The need for flow fingerprints to link correlated network flows. InPETS,
+2013.
+ Amir Houmansadr, Negar Kiyavash, and Nikita Borisov. RAINBOW: A robust and invisible non-blind watermark
+for network flows. InNDSS, 2009.
+ Hsu Chun Hsiao, Tiffany Hyun Jin Kim, Adrian Perrig, Akira Yamada, Samuel C. Nelson, Marco Gruteser, and
+Wei Meng. LAP: Lightweight anonymity and privacy. InIEEE S&P, 2012.
+ Marc Juarez, Sadia Afroz, Gunes Acar, Claudia Diaz, and Rachel Greenstadt. A critical evaluation of website
+fingerprinting attacks. InACM CCS, 2014.
+ Stevens Le Blond, David Choffnes, William Caldwell, Peter Druschel, and Nicholas Merritt. Herd: A scalable,
+traffic analysis resistant anonymity network for VoIP systems. InACM SIGCOMM, 2015.
+ Stevens Le Blond, David Choffnes, Wenxuan Zhou, Peter Druschel, Hitesh Ballani, and Paul Francis. Towards
+Efficient Traffic-analysis Resistant Anonymity Networks. InACM SIGCOMM, 2013.
+ Taeho Lee, Christos Pappas, Adrian Perrig, Virgil Gligor, and Yih-Chun Hu. The case for in-network replay
+suppression. InACM AsiaCCS, 2017.
+ Brian N Levine, Michael K Reiter, Chenxi Wang, and Matthew Wright. Timing attacks in low-latency mix
+systems. InFC. Springer, 2004.
+ Brian N. Levine, Michael K. Reiter, Chenxi Wang, and Matthew K. Wright. Timing attacks in low-latency
+mix-based systems. InFC, 2004.
+ Nick Mathewson and Roger Dingledine. Practical traffic analysis: Extending and resisting statistical disclosure.
+InPETS, 2005.
+ Prateek Mittal, Ahmed Khurshid, Joshua Juen, Matthew Caesar, and Nikita Borisov. Stealthy traffic analysis of
+low-latency anonymous communication using throughput fingerprinting. InACM CCS, 2011.
+ Prateek Mittal, Ahmed Khurshid, Joshua Juen, Matthew Caesar, and Nikita Borisov. Stealthy traffic analysis of
+low-latency anonymous communication using throughput fingerprinting. InACM CCS, 2011.
+ Steven J Murdoch. Hot or not: Revealing hidden services by their clock skew. InACM CCS, 2006.
+ Steven J. Murdoch and George Danezis. Low-cost traffic analysis of Tor. InIEEE S&P, 2005.
+ Steven J Murdoch and Piotr Zieli'nski. Sampled traffic analysis by internet-exchange-level adversaries. InPETS,
+2007.
+ Lasse Overlier and Paul Syverson. Locating hidden servers. InIEEE S&P, 2006.
+ Andreas Pfitzmann and Marit K"ohntopp. Anonymity, unobservability, and pseudonymity - a proposal for
+terminology. InPETS, 2001.
+ Ania Piotrowska, Jamie Hayes, Tariq Elahi, Sebastian Meiser, and George Danezis. The loopix anonymity system.
+InUsenix Security, 2017.
+ Ryan Pries, Wei Yu, Xinwen Fu, and Wei Zhao. A new replay attack against anonymous communication networks.
+InICC'08, pages 1578-1582. IEEE, 2008.
+ Felix Putze, Peter Sanders, and Johannes Singler. Cache-, hash- and space-efficient bloom filters. InWorkshop
+on Experimental Algorithms, 2007.
+ Jody Sankey and Matthew Wright. Dovetail: Stronger anonymity in next-generation internet routing. InPETS,
+2014.
+ Rob Sherwood, Bobby Bhattacharjee, and Aravind Srinivasan. P
+5
+: A protocol for scalable anonymous
+communication. InIEEE S& P, 2002.
+ Vitaly Shmatikov and Ming-Hsiu Wang. Timing analysis in low-latency mix networks: Attacks and defenses. In
+ESORICS. Springer, 2006.
+ Yixin Sun, Anne Edmundson, Laurent Vanbever, Oscar Li, Jennifer Rexford, Mung Chiang, and Prateek Mittal.
+Raptor: routing attacks on privacy in tor. InUSENIX Security 15, 2015.
+ Srikanth Sundaresan, Walter de Donato, Nick Feamster, Renata Teixeira, Sam Crawford, and Antonio Pescap`e.
+Broadband Internet performance: a view from the gateway. InACM SIGCOMM, 2011.
+ Paul Syverson, Gene Tsudik, Michael Reed, and Carl Landwehr. Towards an analysis of onion routing security.
+InPETS, 2001.
+ Laurent Vanbever, Oscar Li, Jennifer Rexford, and Prateek Mittal. Anonymity on quicksand: Using bgp to
+compromise tor. InACM HotNet, 2014.
+ Tao Wang, Xiang Cai, Rishab Nithyanand, Rob Johnson, and Ian Goldberg. Effective attacks and provable
+defenses for website fingerprinting. InUSENIX Security, 2014.
+ Wei Wang, Mehul Motani, and Vikram Srinivasan. Dependent link padding algorithms for low latency anonymity
+systems. InCCS. ACM, 2008.
+ Xinyuan Wang and Douglas S. Reeves. Robust correlation of encrypted attack traffic through stepping stones by
+manipulation of interpacket delays. InACM CCS, 2003.
+ David Isaac Wolinsky, Henry Corrigan-Gibbs, Bryan Ford, and Aaron Johnson. Dissent in numbers: Making
+strong anonymity scale. InUsenix OSDI, 2012.
+ David Isaac Wolinsky, Ewa Syta, and Bryan Ford. Hang with your buddies to resist intersection attacks. InACM
+CCS, 2013.
+ Xiaowei Yang, David Clark, and Arthur W Berger. NIRA: a new inter-domain routing architecture.IEEE/ACM
+TON, 15(4), 2007.
+ Xin Zhang, Hsu-Chun Hsiao, Geoffrey Hasker, Haowen Chan, Adrian Perrig, and David G. Andersen. SCION:
+Scalability, control, and isolation on next-generation networks. InIEEE S&P, 2011.
+ Yin Zhang and Vern Paxson. Detecting stepping stones. InUSENIX Security, 2000.
+ Ye Zhu, Xinwen Fu, Bryan Graham, Riccardo Bettati, and Wei Zhao. On flow correlation attacks and
+countermeasures in mix networks. InPET, 2004.
+arXiv:1802.08415v1  [cs.CR]  23 Feb 2018

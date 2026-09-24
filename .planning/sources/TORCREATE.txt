@@ -1,0 +1,555 @@
+
+
+        Creating and extending circuits - Tor Specifications
+
+                            Auto
+                            Light
+                            Rust
+                            Coal
+                            Navy
+                            Ayu
+
+                    Tor Specifications
+
+                        Creating and extending circuits
+Users set up circuits incrementally, one hop at a time.
+To create a new circuit, clients send a CREATE2 cell to the first
+node, with the first half of an authenticated handshake;
+that node responds with a CREATED2 cell
+with the second half of the handshake.
+To extend a circuit past the first hop,
+the client sends an EXTEND2 client relay message
+(see Extend and Extended messages
+which instructs the last node in the circuit
+to send a CREATE2 cell to extend the circuit.
+In addition to CREATE2 and CREATED2 cells, there are also:
+
+An obsolete “CREATE/CREATED format
+used in old versions of Tor.
+A specialized “CREATE_FAST/CREATED_FAST” format
+for one hop circuits.
+
+Create and Created cells
+
+A CREATE2 cell contains:
+FieldDescriptionSize
+HTYPEClient Handshake Type2 bytes
+HLENClient Handshake Data Len2 bytes
+HDATAClient Handshake DataHLEN bytes
+
+A CREATED2 cell contains:
+FieldDescriptionSize
+HLENServer Handshake Data Len2 bytes
+HDATAServer Handshake DataHLEN bytes
+
+Recognized HTYPEs (handshake types) are:
+ValueDescription
+0x0000TAP  – the original (obsolete) Tor handshake; see The “TAP” handshake
+0x0001reserved
+0x0002ntor – the ntor+curve25519+sha256 handshake; see The “ntor” handshake
+0x0003ntor-v3 – ntor extended with extra data; see The “ntor-v3” handshake
+
+Relays always respond to a successful CREATE2 with a CREATED2.
+On failure, the relay sends a DESTROY
+to shut down the circuit.
+[CREATE2 is handled by Tor 0.2.4.7-alpha and later.]
+
+Choosing circuit IDs in create cells
+The CircID for a CREATE2 cell is a nonzero integer,
+selected by the node (client or relay)
+that sends the CREATE2 cell.
+Depending on the link protocol version,
+there are certain rules for
+choosing the value of CircID which MUST be obeyed,
+as implementations MAY decide to refuse in case of a violation.
+In link protocol 3 or lower, CircIDs are 2 bytes long;
+in protocol 4 or higher, CircIDs are 4 bytes long.
+In link protocol version 3 or lower,
+the nodes choose from only one half of the possible values
+based on the relays’ public identity keys, in order to avoid collisions.
+If the sending node has a lower key,
+it chooses a CircID with an MSB of 0;
+otherwise, it chooses a CircID with an MSB of 1.
+(Public keys are compared numerically by modulus.)
+A client with no public key MAY choose any CircID it wishes,
+since clients never need to process CREATE2 cells.
+In link protocol version 4 or higher,
+whichever node initiated the connection MUST set its MSB to 1,
+and whichever node didn’t initiate the connection MUST set its MSB to 0.
+The CircID value 0 is specifically reserved
+for cells that do not belong to any circuit:
+CircID 0 MUST not be used for circuits.
+No other CircID value, including 0x8000 or 0x80000000, is reserved.
+Existing Tor implementations choose their CircID values at random
+from among the available unused values.
+To avoid distinguishability, new implementations should do the same.
+Implementations MAY give up
+and stop attempting to build new circuits on a channel,
+if a certain number of randomly chosen CircID values are all in use
+(today’s Tor stops after 64).
+
+Extend and Extended messagess
+To extend an existing circuit,
+the client sends an EXTEND2 message,
+in a RELAY_EARLY cell, to the last node in the circuit.
+The body of an EXTEND2 message contains:
+FieldDescriptionSize
+NSPECNumber of link specifiers1 byte
+NSPEC times:
+- LSTYPELink specifier type1 byte
+- LSLENLink specifier length1 byte
+- LSPECLink specifierLSLEN bytes
+HTYPEClient Handshake Type2 bytes
+HLENClient Handshake Data Len2 bytes
+HDATAClient Handshake DataHLEN bytes
+
+Link specifiers describe the next node in the circuit
+and how to connect to it.
+Recognized specifiers are:
+ValueDescription
+[00]TLS-over-TCP, IPv4 address. A four-byte IPv4 address plus two-byte ORPort.
+[01]TLS-over-TCP, IPv6 address. A sixteen-byte IPv6 address plus two-byte ORPort.
+[02]Legacy identity. A 20-byte SHA-1 identity fingerprint. At most one may be listed.
+[03]Ed25519 identity. A 32-byte Ed25519 identity. At most one may be listed.
+
+Nodes MUST ignore unrecognized specifiers,
+and MUST accept multiple instances
+of specifiers other than ‘legacy identity’ and ‘Ed25519 identity’.
+(Nodes SHOULD reject link specifier lists
+that include multiple instances
+of either one of those specifiers.)
+For purposes of indistinguishability,
+implementations SHOULD send these link specifiers,
+if using them, in this order: [00], [02], [03], [01].
+The “Ed25519 identity” field is the Ed25519 identity key (KP_relayid_ed)
+of the target node.
+Including this key information allows the relay extending
+to verify that it is indeed connected to the correct target relay,
+and prevents certain man-in-the-middle attacks.
+The “legacy identity” and “identity fingerprint” fields
+are computed as SHA1(DER(KP_relayid_rsa)).
+The extending relay MUST check all provided identity keys
+(if they recognize the format),
+and and MUST NOT extend the circuit
+if the target relay did not prove its ownership of any such identity key.
+If only one identity key is provided,
+but the extending relay knows the other (from directory information),
+then the relay SHOULD also enforce the key in the directory.
+If the extending relay has a channel with a given
+Ed25519 ID and RSA identity,
+and receives a request for that Ed25519 ID and a different RSA identity,
+it SHOULD NOT attempt to make another
+connection: it should just fail and DESTROY the circuit.
+The client MAY include multiple IPv4 or IPv6 link specifiers
+in an EXTEND2 message;
+current relay implementations only consider the first of each type.
+After checking relay identities,
+extending relays generate a CREATE2 cell
+from the contents of the EXTEND2 message.
+See Creating circuits
+for details.
+The body of an EXTENDED2 message
+is the same as the body of a CREATED2 cell.
+[Support for EXTEND2/EXTENDED2 was added in Tor 0.2.4.8-alpha.]
+When generating an EXTEND2 message,
+clients SHOULD include the target’s Ed25519 identity
+whenever the target has one,
+and whenever the target supports the subprotocol
+“LinkAuth=3” (LINKAUTH_ED25519_SHA256_EXPORTER).
+(See LinkAuth).
+
+The “ntor” handshake
+This handshake uses a set of DH handshakes
+to compute a set of shared keys
+which the client knows are shared only with a particular server,
+and the server knows are shared with whomever sent the original handshake
+(or with nobody at all).
+Here we use the “curve25519” group and representation
+as specified in “Curve25519: new Diffie-Hellman speed records” by D. J. Bernstein.
+Clients should only use the ntor handshake when they have no
+extensions to send.
+When a client does have extensions, it MUST use
+ntor-v3.
+
+In practice, modern Tor clients always have extensions to send,
+and all relays provide ntor-v3, so clients will always use ntor-v3.
+
+[The ntor handshake was added in Tor 0.2.4.8-alpha.]
+In this section, define:
+H(x,t) as HMAC_SHA256 with message x and key t.
+H_LENGTH  = 32.
+ID_LENGTH = 20.
+G_LENGTH  = 32
+PROTOID   = "ntor-curve25519-sha256-1"
+t_mac     = PROTOID | ":mac"
+t_key     = PROTOID | ":key_extract"
+t_verify  = PROTOID | ":verify"
+G         = The preferred base point for curve25519 ([9])
+KEYGEN()  = The curve25519 key generation algorithm, returning
+            a private/public keypair.
+m_expand  = PROTOID | ":key_expand"
+KEYID(A)  = A
+EXP(a, b) = The ECDH algorithm for establishing a shared secret.
+
+To perform the handshake,
+the client needs to know NODEID = SHA1(DER(KP_relayid_id))
+for the server,
+and an ntor onion key (a curve25519 public key, KP_ntor)
+for that server.
+Call the ntor onion key B.
+The client generates a temporary keypair:
+x,X = KEYGEN()
+
+and generates a client-side handshake with contents:
+FieldValueSize
+NODEIDServer identity digestID_LENGTH bytes
+KEYIDKEYID(B)H_LENGTH bytes
+CLIENT_KPXG_LENGTH bytes
+
+When the server receives this handshake,
+it checks whether NODEID is as expected,
+and looks up the (b,B) keypair corresponding to KEYID.1
+If the keypair is missing or the NODEID is wrong, the handshake fails.
+The server generates a keypair of y,Y = KEYGEN(),
+and uses its ntor private key b to compute:
+secret_input = EXP(X,y) | EXP(X,b) | ID | B | X | Y | PROTOID
+KEY_SEED = H(secret_input, t_key)
+verify = H(secret_input, t_verify)
+auth_input = verify | ID | B | Y | X | PROTOID | "Server"
+
+The server’s handshake reply is:
+FieldValueSize
+SERVER_KPYG_LENGTH bytes
+AUTHH(auth_input, t_mac)H_LENGTH bytes
+
+The client then checks Y is in G*
+[see NOTE below], and computes
+secret_input = EXP(Y,x) | EXP(B,x) | ID | B | X | Y | PROTOID
+KEY_SEED = H(secret_input, t_key)
+verify = H(secret_input, t_verify)
+auth_input = verify | ID | B | Y | X | PROTOID | "Server"
+
+The client verifies that AUTH == H(auth_input, t_mac).
+Both parties check
+that none of the EXP() operations produced the point at infinity.
+[NOTE: This is an adequate replacement
+for checking Y for group membership,
+if the group is curve25519.]
+Both parties now have a shared value for KEY_SEED.
+They expand this into the keys needed for the Tor relay protocol,
+using the KDF described in “KDF-RFC5869”
+and the tag m_expand.
+
+The “ntor-v3” handshake
+This handshake extends the ntor handshake
+to include support for extra data transmitted as part of the handshake.
+Both the client and the server can transmit extra data;
+in both cases, the extra data is encrypted,
+but only server data receives forward secrecy.
+To advertise support for this handshake,
+servers advertise the “Relay=4” subprotocol.
+To select it, clients use the ‘ntor-v3’ HTYPE value in their CREATE2 cells.
+In this handshake, we define:
+PROTOID = "ntor3-curve25519-sha3_256-1"
+t_msgkdf = PROTOID | ":kdf_phase1"
+t_msgmac = PROTOID | ":msg_mac"
+t_key_seed = PROTOID | ":key_seed"
+t_verify = PROTOID | ":verify"
+t_final = PROTOID | ":kdf_final"
+t_auth = PROTOID | ":auth_final"
+
+`ENCAP(s)` -- an encapsulation function.  We define this
+as `htonll(len(s)) | s`.  (Note that `len(ENCAP(s)) = len(s) + 8`).
+
+`PARTITION(s, n1, n2, n3, ...)` -- a function that partitions a
+bytestring `s` into chunks of length `n1`, `n2`, `n3`, and so
+on. Extra data is put into a final chunk.  If `s` is not long
+enough, the function fails.
+
+H(s, t) = SHA3_256(ENCAP(t) | s)
+MAC(k, msg, t) = SHA3_256(ENCAP(t) | ENCAP(k) | s)
+KDF(s, t) = SHAKE_256(ENCAP(t) | s)
+ENC(k, m) = AES_256_CTR(k, m)
+
+EXP(pk,sk), KEYGEN: defined as in curve25519
+
+DIGEST_LEN = MAC_LEN = MAC_KEY_LEN = ENC_KEY_LEN = PUB_KEY_LEN = 32
+
+ID_LEN = 32  (representing an ed25519 identity key)
+
+For any tag "t_foo":
+   H_foo(s) = H(s, t_foo)
+   MAC_foo(k, msg) = MAC(k, msg, t_foo)
+   KDF_foo(s) = KDF(s, t_foo)
+
+Other notation is as in the ntor description above.
+The client begins by knowing:
+B, ID -- The curve25519 onion key (KP_ntor)
+          and Ed25519 ID (KP_relayid_ed)
+          of the server that it wants to use.
+CM -- A message it wants to send as part of its handshake.
+VER -- An optional shared verification string:
+
+The client computes:
+x,X = KEYGEN()
+Bx = EXP(B,x)
+secret_input_phase1 = Bx | ID | X | B | PROTOID | ENCAP(VER)
+phase1_keys = KDF_msgkdf(secret_input_phase1)
+(ENC_K1, MAC_K1) = PARTITION(phase1_keys, ENC_KEY_LEN, MAC_KEY_LEN)
+encrypted_msg = ENC(ENC_K1, CM)
+msg_mac = MAC_msgmac(MAC_K1, ID | B | X | encrypted_msg)
+
+The client then sends, as its Create handshake:
+FieldValueSize
+NODEIDIDID_LEN bytes
+KEYIDBPUB_KEY_LEN bytes
+CLIENT_PKXPUB_KEY_LEN bytes
+MSGencrypted_msglen(CM) bytes
+MACmsg_macMAC_LEN bytes
+
+The client remembers x, X, B, ID, Bx, and msg_mac.
+When the server receives this handshake,
+it checks whether NODEID is as expected,
+and looks up the (b,B) keypair corresponding to KEYID.1
+If the keypair is missing or the NODEID is wrong, the handshake fails.
+Now the relay uses X=CLIENT_PK to compute:
+Xb = EXP(X,b)
+secret_input_phase1 = Xb | ID | X | B | PROTOID | ENCAP(VER)
+phase1_keys = KDF_msgkdf(secret_input_phase1)
+(ENC_K1, MAC_K1) = PARTITION(phase1_keys, ENC_KEY_LEN, MAC_KEY_LEN)
+
+expected_mac = MAC_msgmac(MAC_K1, ID | B | X | MSG)
+
+If expected_mac is not MAC, the handshake fails.
+Otherwise the relay computes CM as:
+CM = DEC(MSG, ENC_K1)
+
+The relay then checks whether CM is well-formed,
+and in response composes SM,
+the reply that it wants to send as part of the handshake.
+It then generates a new ephemeral keypair:
+y,Y = KEYGEN()
+
+and computes the rest of the handshake:
+Xy = EXP(X,y)
+secret_input = Xy | Xb | ID | B | X | Y | PROTOID | ENCAP(VER)
+ntor_key_seed = H_key_seed(secret_input)
+verify = H_verify(secret_input)
+
+RAW_KEYSTREAM = KDF_final(ntor_key_seed)
+(ENC_KEY, KEYSTREAM) = PARTITION(RAW_KEYSTREAM, ENC_KEY_LKEN, ...)
+
+encrypted_msg = ENC(ENC_KEY, SM)
+
+auth_input = verify | ID | B | Y | X | MAC | ENCAP(encrypted_msg) |
+    PROTOID | "Server"
+AUTH = H_auth(auth_input)
+
+The relay then sends as its Created handshake:
+FieldValueSize
+YYPUB_KEY_LEN bytes
+AUTHAUTHDIGEST_LEN bytes
+MSGencrypted_msglen(SM) bytes, up to end of the message
+
+Upon receiving this handshake, the client computes:
+Yx = EXP(Y, x)
+secret_input = Yx | Bx | ID | B | X | Y | PROTOID | ENCAP(VER)
+ntor_key_seed = H_key_seed(secret_input)
+verify = H_verify(secret_input)
+
+auth_input = verify | ID | B | Y | X | MAC | ENCAP(MSG) |
+    PROTOID | "Server"
+AUTH_expected = H_auth(auth_input)
+
+If AUTH_expected is equal to AUTH,
+then the handshake has succeeded.
+The client can then calculate:
+RAW_KEYSTREAM = KDF_final(ntor_key_seed)
+(ENC_KEY, KEYSTREAM) = PARTITION(RAW_KEYSTREAM, ENC_KEY_LKEN, ...)
+
+SM = DEC(ENC_KEY, MSG)
+
+SM is the message from the relay,
+and the client uses KEYSTREAM to generate the shared secrets
+for the newly created circuit.
+Now both parties share the same KEYSTREAM,
+and can use it to generate their circuit keys.
+
+CREATE_FAST/CREATED_FAST cells
+When creating a one-hop circuit,
+the client has already established the relay’s identity
+and negotiated a secret key using TLS.
+Because of this,
+it is not necessary for the client
+to perform the public key operations to create a circuit.
+In this case,
+the client MAY send a CREATE_FAST cell instead of a CREATE/CREATE2 cell.
+The relay responds with a CREATED_FAST cell, and the circuit is
+created.
+
+In particular, CREATE_FAST is useful when establishing a one-hop circuit
+in order to download directory information,
+when the client may not know any onion keys (e.g KP_ntor)
+for the directory.
+
+A CREATE_FAST cell contains:
+FieldSize
+Key material (X)SHA1_LEN bytes
+
+A CREATED_FAST cell contains:
+FieldSize
+Key material (Y)SHA1_LEN bytes
+Derivative key dataSHA1_LEN bytes (See KDF-TOR)
+
+The values of X and Y must be generated randomly.
+Once both parties have X and Y,
+they derive their shared circuit keys
+and ‘derivative key data’ value
+via the KDF-TOR function.
+Parties SHOULD NOT use CREATE_FAST
+except for creating one-hop circuits.
+
+Sending extensions in the circuit extension handshake
+Some handshakes (currently ntor-v3 defined above, and
+hs-ntor
+as used for onion services)
+allow the client or the relay to send additional data
+as part of the handshake.
+This additional data must have the following format:
+FieldSize
+N_EXTENSIONSone byte
+N_EXTENSIONS times:
+- EXT_FIELD_TYPEone byte
+- EXT_FIELD_LENone byte
+- EXT_FIELDEXT_FIELD_LEN bytes
+
+(EXT_FIELD_LEN may be zero,
+in which case EXT_FIELD is absent.)
+All parties MUST reject messages
+that are not well-formed per the rules above.
+Parties MUST ignore extensions with EXT_FIELD_TYPE bodies
+they do not recognize.
+Unless otherwise specified in the documentation for an extension type:
+
+Each extension type SHOULD be sent only once in a message.
+Parties MUST ignore any occurrence
+of an extension with a given type
+after the first such occurrence.
+Extensions SHOULD be sent in numerically ascending order by type.
+
+(The above extension sorting and multiplicity rules are only defaults;
+they may be overridden in the description of individual extensions.)
+
+An extension may be supported in CREATE2/CREATED2 messages,
+in INTRODUCE messages, or both.
+
+Note that, since the hs_ntor handshake does not currently support
+encrypted data in its relay, there are no Server->Client messages
+used with hs_ntor.
+
+Currently supported extensions are as follows:
+TypeSent byNameCreate?Introduce?
+1ClientCC_FIELD_REQUESTYY
+2ServiceCC_FIELD_RESPONSEYN
+2ClientPOWNY
+3ClientSUBPROTOYY
+
+1 – CC_FIELD_REQUEST [Client to server]
+Contains an empty body.
+Signifies that the client wants to use the extended congestion control
+described in proposal 324.
+
+2 – CC_FIELD_RESPONSE [Server to client] 2
+Indicates that the relay will use
+the congestion control of proposal 324,
+as requested by the client.
+Not used with INTRODUCE.
+One byte in length:
+sendme_inc        [1 byte]
+(Note that the use of “2” here is a historical accident;
+in the future, we should always use same number for a request and its response.)
+
+2 – POW [Client to server] 2
+INTRODUCE only; used to provide proof of work for an onion service.
+(Note that the overloading of 2 here is considered a historical
+accident.)
+
+3 – Subprotocol Request [Client to Server]
+Tells the endpoint what subprotocol capabilities
+to use on the circuit.
+
+Extension handshake: Subprotocol request
+This handshake extension is supported by any relay or onion service
+advertising support for the subprotocol capability
+RELAY_NEGOTIATE_SUBPROTO (“Relay=5”).
+A client includes this extension to indicate
+one or more subprotocol capabilities
+which the relay or onion service must support and enable.
+If the responder does not support all of the listed capabilities,
+or if it does not enable them all,
+it MUST close the circuit.
+The format of this extension is:
+FieldDescriptionLen
+Any number of times:
+- protocol_idIdentifier for the protocol1 byte
+- cap_numberSpecific capability1 byte
+
+Values for protocol_id are given in a table under subprotocol versioning.
+Specific capabilities are identified with a combination of a protocol
+and a capability number;
+for example, the Relay=6 capability is represented as the two-byte
+sequence [02 06].
+Within this extension,
+capabilities SHOULD be sorted in ascending order by protocol_id,
+then by protocol_cap_number.
+(For example, [01 01] comes before [01 02], which comes before [02 01].)
+Not every subprotocol capability is supported with this extension:
+only a limited list is supported.
+That list of supported capabilities is:
+NameValueEncoding
+RELAY_CRYPT_CGO“Relay=6”[02 06]
+
+A client MUST NOT list any capability in this extension
+unless all of the following apply:
+
+The capability is listed in the table above.
+The target supports RELAY_NEGOTIATE_SUBPROTO (“Relay=5”).
+The target supports the capability in question.
+
+To determine whether a target relay supports a given capability,
+the client looks at the relay’s supported protocols.
+If the target relay is not listed in the consensus,
+the client SHOULD use the required-relay-protocols list
+from the latest consensus.
+To determine whether an onion service supports a given capability,
+the client should look in the “proto” item
+in its descriptor.
+
+In the future, we plan to add other new subprotocol
+capabilities to the list above.
+It is appropriate to do so for capabilities where all of the
+following properties hold:
+
+The client needs to
+select whether the capability is enabled or not
+at circuit creation time.
+The server doesn’t need the ability
+to refuse to support the capability
+while still letting the circuit open.
+The client and server don’t need to negotitate any
+parameters related to the capability (this would require a separate
+extension).
+
+There is never an implicit automatic relationship between capabilities
+listed in this extension:
+If capability X requires capability Y,
+listing capability X does not “count as” listing capability Y
+unless documented otherwise.
+
+See ‘onion-key-grace-period-days’. ↩ ↩2
+
+Note that the usage of “2” above is a historical
+accident. In the future, we should always use the same EXT_FIELD_TYPE
+number for a client’s response and the corresponding server reply
+(if any). ↩ ↩2
+

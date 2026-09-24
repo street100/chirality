@@ -1,0 +1,150 @@
+
+
+        Cells (messages on channels) - Tor Specifications
+
+                            Auto
+                            Light
+                            Rust
+                            Coal
+                            Navy
+                            Ayu
+
+                    Tor Specifications
+
+Cells (messages on channels)
+The basic unit of communication on a Tor channel is a “cell”.
+Once a TLS connection is established,
+the two parties send cells to each other.
+Cells are sent serially, one after another.
+Cells may be sent embedded in TLS records of any size,
+or divided across TLS records,
+but the framing of TLS records MUST NOT leak information
+about the type or contents of the cells.
+Most cells are of fixed length,
+with the actual length depending
+on the negotiated link protocol on the channel.
+Below we designate the negotiated protocol as v.
+As an exception, VERSIONS cells are always sent with v = 0,
+since no version has yet been negotiated.
+A fixed-length cell has this format:
+FieldSize in bytesNotes
+CircIDCIRCID_LEN(v)
+Command1
+BodyCELL_BODY_LENPadded to fit
+
+The value of CIRCID_LEN depends on the negotiated link protocol.
+Some cells have variable length;
+the length of these cells is encoded in their header.
+A variable-length cell has this format:
+FieldSize in bytesNotes
+CircIDCIRCID_LEN(v)
+Command1
+Length2A big-endian integer
+BodyLength
+
+Fixed-length and variable-length cells are distinguished
+based on the value of their Command field:
+
+Command 7 (VERSIONS) is variable-length.
+Every other command less than 128 denotes a fixed-length cell.
+Every command greater than or equal to 128 denotes
+a variable-length cell.
+
+Historical note:
+On version 1 connections, all cells were fixed-length.
+On version 2 connections,
+only the VERSIONS command was variable-length,
+and all others were fixed-length.
+These link protocols are obsolete,
+and implementations SHOULD NOT support them.
+
+Interpreting the fields: CircID
+The CircID field determines which circuit,
+if any, the cell is associated with.
+If the cell is not associated with any circuit,
+its CircID is set to 0.
+
+Note that a CircID is a channel-local identifier.
+A single multi-hop circuit
+will have a different CircID
+on every channel that is used to transmit its data.
+
+Interpreting the fields: Command
+The Command field of a fixed-length cell
+holds one of the following values:
+ValueCPIdentifierDescription
+0NPADDINGLink Padding
+1YCREATECreate circuit (deprecated)
+2YCREATEDAcknowledge CREATE (deprecated)
+3YRELAYEnd-to-end data
+4YDESTROYDestroy circuit
+5YCREATE_FASTCreate circuit, no public key
+6YCREATED_FASTAcknowledge CREATE_FAST
+8NNETINFOTime and address info
+9YRELAY_EARLYEnd-to-end data; limited
+10YCREATE2Create circuit
+11YCREATED2Acknowledge CREATED2
+12Y5PADDING_NEGOTIATEPadding negotiation
+
+The variable-length Command values are:
+ValueCPIdentifierDescription
+7NVERSIONSNegotiate link protocol
+128NVPADDINGVariable-length padding
+129NCERTSCertificates
+130NAUTH_CHALLENGEChallenge value
+131NAUTHENTICATEAuthenticate initiator
+132Nn/aAUTHORIZE(Reserved)
+
+In the tables above,
+C=Y indicates that a command must have a nonzero CircId, and
+C=N indicates that a command must have a zero CircId.
+Where given, P is the first link protocol version
+to support a command.
+Commands with no value given for P
+are supported at least in link protocols 3 and above.
+No other command values are allowed.
+Implementations SHOULD NOT send undefined command values.
+Upon receiving an unrecognized command,
+an implementation MAY silently drop the cell
+and MAY terminate the channel with an error.
+
+Extensibility note:
+When we add new cell command types,
+we define a new link protocol version
+to indicate support for that command.
+Therefore, implementations can now safely assume
+that other correct implementations
+will never send them an unrecognized cell command.
+Historically, before the link protocol was not versioned,
+implementations would drop cells with unrecognized commands,
+under the assumption that the command was sent
+by a more up-to-date version of Tor.
+
+Interpreting the fields: Cell Body
+
+The interpretation of a cell’s Body depends on the cell’s command.
+See the links in the command descriptions above
+for more information on each command.
+Padding fixed-length cell bodies
+
+Often, the amount of information to be sent
+in a fixed-length cell
+is less than CELL_BODY_LEN bytes.
+When this happens,
+the sender MUST fill the unused part of the cell’s body
+with zero-valued bytes.
+Recipients MUST ignore padding bytes.
+
+RELAY and RELAY_EARLY cells’ bodies
+contain encrypted data,
+and are always full
+from the point of the view of the channel layer.
+The plaintext of these cells’ contents may be padded;
+this uses a different mechanism
+and does not interact with cell body padding.
+
+Variable-length cells never have extra space,
+so there is no need to pad their bodies.
+Unless otherwise specified,
+variable-length cells have no padding.
+
