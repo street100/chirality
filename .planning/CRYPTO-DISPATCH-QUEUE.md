@@ -42,7 +42,7 @@ none.
 
 | what | where |
 |---|---|
-| **`ledger-lint` check AM is vacuous and silently became so.** `check_am` shells to `tools/xlat/xlat.sh unpinned` under `subprocess.run(timeout=180)` and converts any exception to `Vacuous`. At 660 pins the tool exceeds that, so the check reports having checked nothing. Three checks now check nothing: H, M, AM. `docs/definitions/working-discipline.md` names a gate that cannot fail as the cardinal error | a `PRB` row, and a tool fix. Neither written |
+| **`ledger-lint` check AM is vacuous and silently became so.** `check_am` shells to `tools/xlat/xlat.sh unpinned` under `subprocess.run(timeout=180)` and converts any exception to `Vacuous`. At 660 pins the tool exceeds that, so the check reports having checked nothing. Three checks now check nothing: H, M, AM. `docs/definitions/working-discipline.md` names a gate that cannot fail as the cardinal error. ⚑ **Measured 2026-09-24: `xlat unpinned` takes 4m32s wall against the 180s timeout, at 50s user and 62s sys.** 112s of CPU under 272s of wall says the cost is per-pin process and I/O overhead, not computation, so raising the timeout hides it rather than fixing it | a `PRB` row, and a tool fix. Neither written |
 
 ## Blocked on the author
 
