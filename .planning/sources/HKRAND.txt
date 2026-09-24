@@ -1,0 +1,2176 @@
+Strengthening Digital Signatures via
+Randomized Hashing
+Shai Halevi
+and Hugo Krawczyk
+IBM T.J. Watson Research Center, Yorktown Heights, New York 10598
+shaih@alum.mit.edu
+hugo@ee.technion.ac.il
+Abstract.
+We propose randomized hashing as a mode of operation for
+cryptographic hash functions intended for use with standard digital sig-
+natures and without necessitating of any changes in the internals of the
+underlying hash function (e.g., the SHA family) or in the signature algo-
+rithms (e.g., RSA or DSA). The goal is to free practical digital signature
+schemes from their current reliance on strong collision resistance by bas-
+ing the security of these schemes on signi cantly weaker properties of the
+underlying hash function, thus providing a safety net in case the (current
+or future) hash functions in use turn out to be less resilient to collision
+search than initially thought.
+We design a speci c mode of operation that takes into account engineer-
+ing considerations (such as simplicity, e ciency and compatibility with
+existing implementations) as well as analytical soundness. Speci cally,
+the scheme consists of a regular use of the hash function with random-
+ization applied only to the message before it is input to the hash function.
+We formally show the su ciency of weaker than collision-resistance as-
+sumptions for proving the security of the scheme.
+1 Introduction
+Recent cryptanalytical advances in the area of collision-resistant hash functions
+(CRHF) [8, 5, 15, 6, 16, 29{32], especially the attacks against MD5 and SHA-1,
+have shaken our con dence in the security of existing hash functions as well as in
+our ability to design secure CRHF. These attacks remind us that cryptography
+is founded on heuristic constructions whose security may be endangered unex-
+pectedly, and highlight the importance of designing mechanisms that require as
+little as possible from their basic cryptographic building blocks. In particular,
+they indicate that one should move away (to the extent possible) from schemes
+whose security fundamentally depends on full collision resistance.
+The most prominent example of schemes that are endangered by these at-
+tacks are digital signatures where collisions in the hash function directly translate
+into forgeries. The goal of this work is to free existing (standardized) signature
+schemes from their dependence on full collision-resistance of the underlying hash
+function, while making as small as possible modi cations to the signature and
+hashing algorithms. Speci cally, we propose a randomized mode of operation for
+hash functions such that (i) no change to the underlying hash functions (e.g.,
+the SHA family), the signature algorithms (e.g., RSA, DSA), or their implemen-
+tations is required; (ii) changes to the signing process are the minimal required
+by any randomization scheme, namely, the choice of a short random string by
+the signer and transporting this string as part of, or in addition to, the existing
+signature; and (iii) security of the resultant signature scheme does not depend
+on the resistance of the hash function to o -line collision attacks.
+Armoring signature schemes with this mode of operation provides a safety
+net for the security of digital signatures in the case that the collision resistance
+of the underlying hash function is broken or weakened. At the same time, by
+following important engineering considerations, as in points (i) and (ii) above,
+one facilitates the adoption of the resultant schemes into practice. In particular,
+treating the hash function as a black box allows to preserve existing implementa-
+tions of these functions or their future replacements. Moreover, the many other
+applications of hash functions (e.g., MAC, PRFs, commitments, ngerprinting,
+etc.) need not be changed or adapted to a new hash design; instead, these ap-
+plications may use the hash function, or any \drop-in replacement", exactly as
+they do now.
+Collision resistance and the Merkle-Damg ard (M-D) construction. Roughly, a
+(length-decreasing) function H is collision resistant if given the description of H ,
+no feasible attacker can nd two messages M; M
+0
+such that H ( M ) = H ( M
+0
+),
+except with insigni cant probability.
+1
+Contemporary constructions of (allegedly)
+collision-resistant hash functions follow the so called Merkle-Damg ard (M-D) it-
+erated construction [17, 9]. Such constructions start with a compression function
+h that maps input pairs ( c; m ) into an output c
+0
+where c and c
+0
+are of xed
+length n (e.g., n = 160) and m is of xed length b (e.g., b = 512). Given such a
+compression function h and a xed n -bit initial value (IV), denoted c
+0
+, a hash
+function H on arbitrary-length inputs is de ned by iterating h as follows: On in-
+put message M , the message is broken into b -bit blocks M = ( m
+1
+; m
+2
+; : : : ; m
+L
+),
+then one computes c
+i
+h ( c
+i 1
+; m
+i
+) for i = 1 ; 2 ; : : : ; L and nally the last n -bit
+value c
+L
+is output as the result of H ( M ).
+Throughout this paper we typically denote the (iterated) hash function by H
+and its compression function by h . For an M-D function H , we also sometimes
+write H
+c
+0
+( M ) when we want to explicitly name the initial value c
+0
+. To handle
+non-su x-free message spaces, the M-D construction appends the length at the
+end of the input and uses some padding rules. We will initially ignore these issues
+and assume that the input consists of an integral number of blocks and that it
+is taken from a su x-free set; we will return to the issue of length appending in
+Section 5.
+Target Collision Resistance. Signature schemes that do not depend on full col-
+lision resistance were constructed in the in uential work of Naor and Yung [20]
+who introduced the notion of universal one-way hash functions, or UOWHF .
+Later, Bellare and Rogaway [3] renamed them to the more descriptive (and
+1
+Formalizing collision resistance requires to consider H as a family of functions rather
+than as a single function; we ignore this technicality for the informal discussion here.
+catchy) name of target collision resistant (TCR) hash functions, a term that we
+adopt here. Roughly, a family of hash functions f H
+r
+g
+r 2 R
+(for some set R ) is
+target collision resistant if no e cient attacker A can win the following game,
+except with insigni cant probability: A chooses a rst message M , then receives
+a random value r 2
+R
+R , and it needs to nd a second message M
+0
+6 = M such
+that H
+r
+( M
+0
+) = H
+r
+( M ). The value r is called a hashing key, or a salt . In [3], TCR
+families were used to extend signature schemes on short messages into signature
+schemes on arbitrary messages: To sign a long message M , the signer chooses a
+fresh random salt r and then uses the underlying signature scheme to sign the
+pair ( r; H
+r
+( M )).
+Enhanced target collision resistance. Standard signature schemes such as RSA
+and DSA are de ned using a deterministic hash function H and designed to
+only sign the hash value H ( M ). When moving to a TCR-based scheme one
+replaces H ( M ) with H
+r
+( M ) but also needs to sign the salt r . Unfortunately,
+certain signature schemes, such as DSA, do not accommodate the signing of r in
+addition to H
+r
+( M ). Even in cases, such as RSA, where both r and H
+r
+( M ) can be
+included under the signed block (RSA moduli are long enough to accommodate
+both values) signing r requires changing the message encoding standards (such as
+PKCS#1) which may be impractical in some settings. To solve these di culties,
+we propose a strengthened mode of operation, that provides a stronger security
+guarantee than TCR. The new notion, that we call enhanced TCR (eTCR), is
+su ciently strong to ensure security of the resultant signatures even if we only
+apply the underlying signature to H
+r
+( M ) and do not sign the salt r . Speci cally,
+the TCR attack scenario is modi ed so that after committing to M and receiving
+the salt r , the attacker can supply a second message M
+0
+and a second salt r
+0
+,
+and it is considered successful if ( r; M ) 6 = ( r
+0
+; M
+0
+) but H
+r
+( M ) = H
+r
+0
+( M
+0
+).
+1.1 Our Randomization Schemes
+The main contribution of this work is in presenting simple and e cient random-
+ization schemes that use any Merkle-Damg ard iterated hash function as-is (i.e., in
+a black-box fashion) and have short salts, and which we prove to be TCR and/or
+eTCR under weak assumptions on the underlying compression function. Specif-
+ically, we relate the security of our schemes to \second-preimage resistance"
+properties of the compression function. Recall that a compression function h is
+called second preimage resistant (SPR) if given a uniformly random pair ( c; m ) it
+is infeasible to nd a second pair ( c
+0
+; m
+0
+) 6 = ( c; m ) such that h ( c
+0
+; m
+0
+) = h ( c; m ).
+The rst scheme that we consider, denoted H
+r
+, simply XOR's a random b -
+bit block r to each message block before inputting it into the hash function (see
+below for a comparison of this scheme to one in [26]). That is,
+H
+c
+r
+( m
+1
+; : : : ; m
+L
+)
+def
+= H
+c
+( m
+1
+r; : : : ; m
+L
+r ) :
+(1)
+We show this scheme to be TCR under SPR-like assumption on the underlying
+compression function h (see below). On the other hand, the H
+r
+construction
+is clearly not eTCR; in order to obtain an eTCR scheme we modify H
+r
+by
+prepending the salt block r to the message (in addition to xor-ing r to every
+message block as before), thus computing
+~
+H
+c
+r
+( M )
+def
+= H
+c
+r
+(0 j M ) = H
+c
+( r; m
+1
+r; : : : ; m
+L
+r )
+(2)
+Remarkably, for any M-D iterated hash function H we can prove that
+~
+H
+r
+is
+enhanced-TCR under the same relaxed conditions on the compression function
+that we use to prove that H
+r
+is TCR.
+These precise conditions are presented in Section 2. Roughly, we show two
+properties of the compression function h that are su cient for H
+r
+to be TCR
+(resp. for
+~
+H
+r
+to be eTCR). Both properties are related to the second-preimage
+resistance of h . One property, c-SPR, is rather natural but also rather strong,
+and is provided mostly as a toy problem for cryptanalysts to sink their teeth in.
+The other property, e-SPR, is less natural but is closer to SPR and re ects more
+accurately the \real hardness" of the constructions H
+r
+and
+~
+H
+r
+. We also note
+that c-SPR is related to the \hierarchy of collision resistance" of Mironov [18],
+and that e-SPR is a weaker property than the L -order TCR property of Hong
+et al. [14].
+We stress that ultimately, the question of whether or not a particular com-
+pression function (such as those in the SHA family) is e-SPR can only be ad-
+dressed by cryptanalysts trying to attack this property. As we explain in Sec-
+tion 2, breaking the compression function in the sense of e-SPR is a much harder
+task than just nding collisions for it. Moreover, the randomized setting repre-
+sents a fundamental shift in the attack scenario relative to the traditional use of
+deterministic hash functions. In the latter case, the attacker can nd collisions
+via (heavy) o -line computation and later use these collisions in a signature
+forgery attack at any time and with any signer. In contrast, in the random-
+ized setting, a meaningful collision is one that utilizes a random, unpredictable
+r chosen by the signer anew with each signature and revealed to the attacker
+only with the signature on the message M (in particular, only after the attacker
+committed to the message M ).
+Can the signer cheat? A possible objection to the randomized setting is that
+it may allow a signer to nd two messages with the same hash value. This,
+however, represents no violation of signature security (c.f. the standard de nition
+of Goldwasser, Micali, and Rivest [12]). Speci cally, the potential ability of the
+signer to nd collisions does not allow any other party to forge signatures thus
+protecting the signer against malicious parties. At the same time, recipients of
+signatures are also protected since the signer cannot disavow a signature by
+presenting a collision; the simple rule is, as in the case of human signatures,
+that the signer is liable for any message carrying his valid signature (even if the
+signer can show a collision between two messages). It is also worth noting that
+our schemes have the property that as long as the underlying hash function is
+collision resistant then even the signer cannot nd collisions. More generally,
+the signature schemes resulting from our randomization modes are never weaker
+(or less functional) than the schemes that use a deterministic hash function,
+not even when the underlying hash function is truly collision resistant; and, of
+course, our schemes are much more secure once the hash function ceases to be
+collision resistant.
+Practical Considerations. As seen, our randomized hashing schemes require
+no change to the underlying (compression and iterated) hash function. These
+schemes can be used, as described before, with algorithms such as RSA and
+DSA, to provide for digital signatures that remain secure even in the presence
+of collisions for the underlying hash functions. For this, the value H ( M ) cur-
+rently signed by the standard schemes needs to be replaced with H
+r
+( M ) or with
+~
+H
+r
+( M ). However, while in the case of H
+r
+one needs to also sign the salt r , in the
+~
+H
+r
+case the latter is not needed. In this sense,
+~
+H
+r
+provides for a more exible
+and practical scheme and hence it is the one that we suggest for adoption into
+practice. In particular, using
+~
+H
+r
+, the salt r may be transported by an application
+as part of (or in addition to) a message, or r can be included under the signature
+itself (under the signed value in RSA or by re-using the random r = g
+k
+compo-
+nent in DSA). We further discuss these issues in Section 5. A full speci cation
+of the
+~
+H
+r
+mode is included in [13].
+Related Schemes. Bellare and Rogaway [3] explored the problem of constructing
+TCR hashing for long messages from TCR functions that work on short inputs,
+and showed that the M-D iteration of a TCR compression function does not
+necessarily result in a long-message TCR. Instead, they presented a few other
+constructions of long-message TCR hash functions from short-message TCR
+compression functions. Shoup [26] continued this line of research and o ered the
+following elegant scheme that comes close to the original M-D iterated construc-
+tion. The salt in Shoup's scheme consists of one b -bit message block r and a
+set S of log L chaining variables s
+0
+; s
+1
+; : : : , where L is the number of message
+blocks. The scheme consists of a regular M-D construction except that (i) every
+message block is xor-ed with r before it is input to the compression function
+h , and (ii) the intermediate values c
+i
+output by each iteration of h are xor-ed
+with one of the s
+i
+'s to form the chaining value input into the following appli-
+cation of h . That is, the M-D scheme is modi ed as follows: for i = 1 ; 2 ; : : : ; L ,
+c
+i
+h ( c
+i 1
+s
+j
+i
+; m
+i
+r ) where j
+i
+chooses one of the elements in the set S . Shoup
+proved that if the compression function is SPR then the construction yields a
+TCR function on messages of arbitrary length.
+Note that our H
+r
+scheme (Eqn. (1)) is similar to Shoup's in that the input
+blocks are xor-ed with the random r . However, the two schemes di er substan-
+tially in that: (i) H
+r
+uses the hash function as a black box while Shoup's scheme
+requires the change of the internals of H to accommodate the xor-ing of the s
+i
+'s
+values with the partial results of the compression function; and (ii) in H
+r
+the
+amount of randomness is xed while in Shoup's it is logarithmic in the length
+of the message and hence non-constant; this requires signi cantly more random
+bits and results in longer signatures. In addition, Shoup's scheme (like H
+r
+) is
+not eTCR. For the latter property, we need the modi ed
+~
+H
+r
+scheme (Eqn. (2)).
+HMAC. One interesting question is why not take as the randomization mode
+a well established construction such as HMAC. It is easy to see that for the
+purpose of TCR hashing the HMAC scheme (with the salt used as a random but
+known key) is not stronger than just pre-pending a random value to a message,
+a measure of limited e ect against recent cryptanalysis. Other measures, such
+as appending randomness at the end, or even in the middle of a message, are
+even worse in that they do not help against collision attacks. In particular, this
+shows that the simplicity of our schemes cannot be explained by the na ve view
+that \any randomization of the input to the hash function will work." Yet,
+one analogy to the case of HMAC is illustrative here: the fact that the HMAC
+design (as a message authentication code) has not been endangered by the latest
+collision attacks is due to its deliberate non-reliance on full collision resistance.
+We believe that randomized hashing could have a similar signi cant e ect on
+the future security of digital signatures.
+Relations between various notions. In our presentation we use quite a few no-
+tions of security for hash functions, some new and others well known (see [24]).
+Articulating the relations between these notions is not the focus of this paper. In
+some places we comment about implication or separation between these notions,
+but we do not explicitly show separation examples in this extended abstract.
+(This will divert attention from what we see as the heart of this work, namely
+the analysis of the practical constructions H
+r
+and
+~
+H
+r
+.)
+Organization. In Section 2 we present and discuss the SPR-like notions that
+we use in proving the TCR and eTCR properties of our schemes. These proofs
+are presented in Section 3 and Section 4, respectively. In Section 5 we discuss
+some practical aspects related to the integration of our schemes with standard
+signature schemes. We end with some open problems in Section 6.
+2 Variants of Second-Preimage Resistant Hashing
+Our goal in this work is to analyze the randomized modes of operation de ned
+in Equations 1 and 2, nding \as weak as possible SPR-like properties" of h that
+su ce to ensure that H
+r
+is TCR and
+~
+H
+r
+is eTCR. Below we describe several
+\games" representing di erent forms of second-preimage resistance (SPR) of the
+compression function h (recall that h represents a single, unkeyed, function with
+two arguments, c and m , and H
+c
+represents the M-D iteration of h with IV= c ).
+In all cases the goal of the attacker (that we denote by S ) is to present pairs
+( c; m ) and ( c
+0
+; m
+0
+) such that ( c; m ) 6 = ( c
+0
+; m
+0
+) and yet h ( c; m ) = h ( c
+0
+; m
+0
+). The
+di erence between the games is how the values c; m; c
+0
+; m
+0
+are determined and
+by whom.
+The case where S chooses all four values is known as the \pseudo-collision"
+search problem for h and is at the basis of the Merkle-Damg ard (M-D) con-
+struction of collision resistance. However, in the games below the adversary's
+task is signi cantly harder since some of these values are chosen randomly and
+are not under the control of S . More speci cally, the games are variants of
+\second-preimage resistance" of the function h since in all the value m is chosen
+independently at random and c
+0
+; m
+0
+are chosen by the attacker at will after seeing
+m . The di erence is in the way c is determined: at r
+andom in r-SPR, c
+hosen (by
+the attacker) in c-SPR, and e
+valuated (as a function of m ) in e-SPR:
+r-SPR: S receives random m and c , and it chooses m
+0
+; c
+0
+.
+c-SPR: S receives random m , and it chooses c; c
+0
+; m
+0
+.
+e-SPR: The game is parametrized by an IV c
+0
+. S chooses ` 1 values
+i
+; i =
+1 ; : : : ; ` , each of length b bits; then S receives a random r 2 f 0 ; 1 g
+b
+and c; m
+are set to m = r
+`
+and c = H
+c
+0
+( r
+1
+; : : : ; r
+` 1
+). Finally S chooses
+c
+0
+; m
+0
+.
+2
+Clearly, r-SPR corresponds to the standard notion of second-preimage resistance
+of h , while c-SPR and e-SPR are variants that we use in the analysis of our
+schemes, and we elaborate on them below.
+The IV. The game e-SPR can be considered in either the \uniform setting"
+where c
+0
+is chosen at random and given to S as input, or the \non-uniform set-
+ting" where c
+0
+is a parameter of the game and S may depend on that parameter.
+The discussion below applies equally to both settings.
+Attack parameters. When discussing the security (or hardness) of di erent games
+we denote by t and L the attacker's resources (i.e., time and length of messages
+used in the attack) and by " the probability of success by the attacker. In partic-
+ular, if G denotes one of the SPR or TCR games discussed in the paper then we
+say that a function (either h or the family H
+r
+) is G ( "; L; t ) if no attacker with
+resources t and L can win the game with probability better than " . (In some of
+the games the parameter L is irrelevant and then omitted.)
+2.1 The c-SPR Game
+We remark that the game c-SPR is a signi cantly easier variant (for the attacker)
+than the r-SPR and e-SPR games, since the attacker gets to choose c , after seeing
+m , in addition to choosing c
+0
+and m
+0
+. For example, the c-SPR game is clearly
+vulnerable to generic birthday attacks, whereas r-SPR and e-SPR are not.
+We observe that for a compression function h ( c; m ), the c-SPR property is
+equivalent to the property that the family h
+r
+( m; c ) = h ( c; m r ) is CR
+n
+( n + b; n )
+as de ned by Mironov [18].
+3
+A family of functions f h
+r
+g
+r
+belongs to CR
+`
+( n
+0
+; n )
+if each h
+r
+maps n
+0
+bits to n bits, and in addition no feasible attacker can win
+the following game except with insigni cant probability:
+1.
+The attacker rst commits to n
+0
+` bits of the rst message (call this ( n
+0
+` )-
+bit string M
+1
+),
+2
+We choose to de ne m = r
+`
+for notational convenience in our proofs; however,
+note that the xor with
+`
+does not change the fact that the value of m is determined
+uniformly at random (and independent of the values).
+3
+Here we reverse the order of the inputs to h
+r
+in order to match Mironov's formulation.
+2.
+Then the attacker is given the salt r ,
+3.
+The attacker wins if it can nd an ` -bit string M
+2
+and a second n
+0
+-bit message
+M
+0
+such that for M = M
+1
+j M
+2
+it holds that h
+r
+( M ) = h
+r
+( M
+0
+).
+Now, consider the following equivalent formulation of the c-SPR game: the at-
+tacker rst commits to a b -bit message m , then it gets the randomness r and it
+needs to nd c; c
+0
+and m
+0
+such that h ( c; m r ) = h ( c
+0
+; m
+0
+r ). Clearly, under
+this formulation we see that f h
+r
+g
+r
+is c-SPR if and only if f h
+r
+g
+r
+belongs to the
+class CR
+n
+( n + b; n ). Mironov proved that the existence of CR
+n
+( n + b; n ) families
+implies the existence of collision-resistant families (from n + 1 to n bits). Hence
+c-SPR implies the existence of collision-resistant hashing families (in particular,
+this shows that Simon's [27] separation result applies to black-box constructions
+of c-SPR; it does not mean, however, that the M-D iteration of a c-SPR compres-
+sion function is necessarily collision resistant). Still, for a particular compression
+function h , breaking c-SPR is also signi cantly harder (for the attacker) than
+the traditional pseudo-collision search. For example, although a pseudo-collision
+attack on MD5 is known for many years, breaking it in the sense of c-SPR seems
+beyond the state of the art in cryptanalysis, and even more so for SHA-1. (Also,
+assuming that c-SPR functions exist, it is easy to construct compression func-
+tions that are c-SPR but are not resistant to pseudo-collisions.) We believe that
+the c-SPR game provides a useful toy-example for cryptanalysts to develop tools
+for TCR-type attack models.
+2.2 The e-SPR Game
+The game e-SPR is signi cantly harder for the attacker than c-SPR (and in
+particular it is not open to generic birthday attacks). It is also closer to r-SPR.
+There are, however, two important di erences between r-SPR and e-SPR:
+{
+The distribution from which m is chosen is uniform, but c is determined as
+a function of m . In particular, the joint distribution of c and m has b bits
+of entropy, while the pair ( c; m ) is ( b + n )-bits long. This di erence can in
+principle make e-SPR either easier or harder than r-SPR, depending on the
+underlying hash function.
+{
+The attacker S gets to in uence the distribution on c via its choice of the
+i
+'s (but note that S must commit to the
+i
+'s before it gets the random
+value r !)
+Due to the rst point above, e-SPR and r-SPR are formally incomparable, and
+it is possible to concoct examples of compression functions where one is easy
+and the other is hard (assuming r-SPR/e-SPR functions exist).
+Relation of e-SPR to L -order TCR. As noted earlier, the fact that a family
+of compression functions is TCR does not necessarily imply that the multi-block
+extension of that family obtained via M-D iterations is TCR. Therefore, it is
+natural to search for (stronger) properties of compression functions that su ce
+to ensure that the M-D extension is TCR. Hong, Preneel and Lee [14] identi ed
+such a property, that they called L -order TCR (we recall it below), and proved
+that if a compression family is L -order TCR then the M-D extension is TCR on
+inputs of (up to) L blocks. Thus, one way to prove that our H
+r
+construction (Eqn.
+(1)) is TCR is to assume that the compression function family f h
+r
+g
+r
+de ned by
+Eqn. (1) (i.e. h
+r
+( c; m ) = h ( c; m r )) is L -order TCR. While this property may
+be a plausible assumption on practical compression functions (and hence can be
+used as evidence to support the TCR property of our H
+r
+scheme), it turns out
+that our Theorem 1 provides for a stronger result. Indeed, that theorem only
+assumes h
+r
+to be e-SPR and we show in Proposition 1 below that e-SPR is a
+weaker property (i.e., harder to break) of the h
+r
+scheme than L -order TCR. (We
+note that this relative strength of e-SPR and L -order TCR may not hold for all
+families of compression functions but it does hold for our speci c scheme).
+Hong et al. [14] de ne a function family f h
+r
+g
+r
+to be L -order TCR if no feasible
+adversary can win the following game, except with insigni cant probability: As
+in the TCR game, the attacker commits to a message m , then it is shown the
+salt r and it needs to nd another message m
+0
+such that h
+r
+( m ) = h
+r
+( m
+0
+). The
+di erence is that before committing to the rst message m the attacker gets to
+learn some information about the salt r by means of L adaptive queries m
+i
+to
+the hash function for which the attacker gets as a response the corresponding
+hash values h
+r
+( m
+i
+).
+Proposition 1.
+Let h : f 0 ; 1 g
+b + n
+! f 0 ; 1 g
+b
+be a compression function. If the
+family f h
+r
+g
+r 2f 0 ; 1 g
+b
+de ned by h
+r
+( c; m ) = h ( c; m r ) is order- L TCR( "; t ) , then
+h ( ) is e-SPR( "; L; t O ( L )) .
+The proof is presented in the full version of the paper.
+3 Achieving Target Collision Resistance
+Recall the de nition of the construction H
+r
+from Eqn. (1),
+H
+c
+r
+( m
+1
+; : : : ; m
+L
+)
+def
+= H
+c
+( m
+1
+r; : : : ; m
+L
+r ) :
+Using the games from Section 2 we can establish some relations between the
+corresponding SPR avors of h and the TCR property of H
+r
+. For this we de ne
+the TCR game for a family H
+r
+as follows:
+TCR Game: The attacker T knows the xed IV c
+0
+. It chooses a message M of
+length L > 0 blocks, receives a random r 2
+R
+f 0 ; 1 g
+b
+, and outputs a second
+message M
+0
+of length L
+0
+. Attacker T wins if M
+0
+6 = M and H
+c
+0
+r
+( M
+0
+) =
+H
+c
+0
+r
+( M ).
+For simplicity of presentation, we rst state and prove our results in the case
+where the TCR attacker can only provide M; M
+0
+of length an integer multiple
+of the block length, and it is not allowed to output M; M
+0
+such that one is a
+su x of the other. This restriction on the attacker T is not signi cant in practice
+since actual implementations pads the messages and append the length to the
+last block, thus forcing full-block su x-freeness. (To address the case where such
+length appending is not necessarily done one needs an additional \one-wayness
+assumption", as described in Section 3.1. Also, see Section 5 for a discussion on
+how to handle partial blocks.) Formally, we consider a modi ed game (denoted
+TCR
+) where the attacker does not win the game if it violates the condition on
+the messages.
+TCR
+Game: Same as TCR but the attacker wins only if in addition to the reg-
+ular TCR conditions it also holds that M; M
+0
+consists of an integral number
+of b -bit blocks and neither of them is su x of the other.
+Theorem 1.
+(TCR Theorem, su x-free case)
+1.
+If h is c-SPR( "; t ) then H
+r
+is TCR
+( L"; L; t O ( L ))
+2.
+If h is e-SPR( "; L; t ) then H
+r
+is TCR
+( L"; L; t O ( L ))
+This theorem is proven below. We note that these are su cient conditions for
+TCR-ness but not necessary ones . In other words, the failure of a compression
+function to one of the above attacks does not necessarily mean that the induced
+family H
+r
+is not TCR.
+It is also worth commenting on the tightness of the reductions in the above
+theorem. In both cases, c-SPR and e-SPR, there is a linear degradation of se-
+curity when going from SPR to TCR. Note, however, that there is a signi cant
+di erence between the generic security of the two games c-SPR and e-SPR.
+Against the former there is a trivial birthday-type generic attack while against
+e-SPR generic attacks achieve only linear advantage. Thus, the reduction from
+e-SPR shows a worst-case \quadratic degradation" generic TCR attack against
+H
+r
+(and not \cubic degradation" as the reduction cost in the c-SPR to TCR
+case could indicate). Moreover, TCR attacks with quadratic degradation (i.e.,
+with success probability in the order of tL= 2
+n
+) against H
+r
+are indeed possible
+since SPR attacks against H can be translated into TCR attacks against H
+r
+and
+we know that such birthday-type SPR attacks against H exist [11, 16].
+This motivates two questions: Can we have a avor of SPR for which there
+is a tight reduction to TCR? Can this SPR game be de ned such that it is only
+vulnerable to linear generic attacks? The answer to the rst question is YES:
+in the full version of this paper we present such a game, called m-SPR (m for
+multiple), and its tight reduction to TCR. The answer to the second question
+is obviously NO, since as said SPR birthday attacks against H
+r
+do exist. It is
+possible, however, to design variants of M-D hash functions (e.g., appending a
+sequence number to each block or using the \dithering" technique proposed by
+Rivest [23]) for which the best generic attacks achieve linear degradation only.
+Thus, the main motivation and usefulness of the game m-SPR and its tight
+reduction to TCR is for the analysis of such variants.
+3.1 Proof of Theorem 1
+In the proof below we assume that the attacker T never outputs M; M
+0
+where
+one is the su x of the other. We also make the convention that when algorithm A
+calls another algorithm B and B aborts then A aborts too.
+Lemma 1.
+If h is c-SPR( "; t ) then H
+r
+is TCR
+( L"; L; t O ( L )) .
+Before proving this lemma, we comment that the exact assertion of this lemma
+(and thus the proof) depend on whether we view the IV c
+0
+as a random input
+to the TCR attacker or a parameter of the TCR game (cf. comment on page
+7). In the reduction below we suppress c
+0
+with the understanding that if it is
+a parameter then the same parameter is used in the reduction, and if it is an
+input then S chooses c
+0
+at random and gives it to T .
+Proof.
+Given TCR attacker T we build c-SPR attacker S :
+1.
+S gets input m , invokes T and gets from T the rst message M = ( m
+1
+; : : : ; m
+L
+).
+2.
+S chooses ` 2
+R
+f 1 ; : : : ; L g , sets r = m m
+`
+, and returns r to T .
+3.
+T outputs the second message M
+0
+= ( m
+0
+1
+; : : : ; m
+0
+L
+0
+) or ? .
+4.
+S checks that there exists `
+0
+2 f 1 ; : : : ; L
+0
+g such that (1) either m
+0
+`
+0
+6 =
+m
+`
+or H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+1
+) 6 = H
+r
+( m
+1
+; : : : ; m
+` 1
+); and (2) H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+) =
+H
+r
+( m
+1
+; : : : ; m
+`
+). If no such `
+0
+exists then S aborts.
+5.
+Otherwise S outputs c = H
+r
+( m
+1
+; : : : ; m
+` 1
+), c
+0
+= H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+1
+) and
+m
+0
+= m
+0
+`
+0
+r . (If there is more than one index with the properties from
+above then S chooses `
+0
+arbitrarily among all these indexes.)
+Turning to the analysis of S , we rst observe that if T does not abort
+then there must exist a pair of indexes i; i
+0
+that satisfy the properties from
+Step 4, namely H
+r
+( m
+0
+1
+; : : : ; m
+0
+i
+0
+) = H
+r
+( m
+1
+; : : : ; m
+i
+) and either m
+0
+i
+0
+6 = m
+i
+or
+H
+r
+( m
+0
+1
+; : : : ; m
+0
+i
+0
+1
+) 6 = H
+r
+( m
+1
+; : : : ; m
+i 1
+).
+To see that, note that since M; M
+0
+are su x-free there exists an integer
+j < min( L; L
+0
+) such that m
+L j
+6 = m
+0
+L
+0
+j
+. Consider the smallest such j (i.e., the
+last block where M; M
+0
+di er when their ends are aligned). Also, let k be small-
+est non-negative integer such that H
+r
+( m
+0
+1
+; : : : ; m
+0
+L
+0
+j + k
+) = H
+r
+( m
+1
+; : : : ; m
+L j + k
+)
+(i.e., the rst \collision" after these \last di ering blocks" in the computation of
+H
+r
+( M
+0
+) ; H
+r
+( M )). Clearly, such k exists since T did not abort and so there must
+be some collision because H
+r
+( M
+0
+) = H
+r
+( M ).
+Now setting i = L j + k and i
+0
+= L
+0
+j + k we get the pair that we
+need. This is because we have H
+r
+( m
+0
+1
+; : : : ; m
+0
+L
+0
+j + k
+) = H
+r
+( m
+1
+; : : : ; m
+L j + k
+) by
+de nition, and (a) either k = 0 in which case m
+L j + k
+6 = m
+0
+L
+0
+j + k
+, or (b) k > 0
+in which case H
+r
+( m
+0
+1
+; : : : ; m
+0
+L
+0
+j + k 1
+) 6 = H
+r
+( m
+1
+; : : : ; m
+L j + k 1
+).
+Next, we argue that the random choice of ` is independent of the transcript
+that T sees, and in particular it is independent of the values of any such pair
+i; i
+0
+as above. This is easy to see, since the distributions of all the variables in
+the execution of S remains unchanged if instead of choosing m at random and
+setting r = m
+`
+m we choose r at random and set m = m
+`
+r . In the new
+game, however, we can postpone the choice of ` (and m ) until the end, and so
+it is clearly independent of M; M
+0
+.
+It follows that whenever T does not abort, there exists a pair i; i
+0
+as above,
+and in this case the probability that S chooses ` = i is (at least) 1 =L . If that
+happens then there exists `
+0
+as needed (i.e., `
+0
+= i
+0
+) so S does not abort. It
+remains to show that in this case S wins the c-SPR game. This follows since by
+the condition on `; `
+0
+we have:
+either c = H
+r
+( m
+1
+; : : : ; m
+` 1
+) 6 = H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+1
+) = c
+0
+or m
+0
+= m
+0
+`
+0
+( m
+`
+m ) 6 = m
+and also (due to m = r m
+`
+and m
+0
+= r m
+0
+`
+0
+):
+h ( c; m ) = h ( c; r m
+`
+) = H
+r
+( m
+1
+; : : : ; m
+`
+) = H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+) = h ( c
+0
+; r m
+0
+`
+0
+) = h ( c
+0
+; m
+0
+)
+The attacker in the proof of Lemma 1 makes little use of the full freedom
+provided by the c-SPR game in (adaptively) choosing c . Indeed the value of c
+used by S is set as soon as S chooses ` , and this choice is independent of m .
+This motivates the e-SPR game where, by de nition, S can in uence c only
+through the choice of values to which it commits before seeing r . Thus, e-SPR
+represents a better approximation of the TCR game, by giving the attacker in
+e-SPR less arti cial freedom than in c-SPR, and making it much closer to SPR
+(in particular, by disallowing generic birthday attacks against it). This makes the
+following lemma much stronger than Lemma 1 though its proof follows the same
+lines. Note that we are still paying a linear (in L ) degradation of security but
+this time the reduction is to a \non-birthday" problem. (See also the discussion
+about security degradation preceding Section 3.1.)
+Lemma 2.
+If h is e-SPR( "; L; t ) then H
+r
+is TCR
+( L"; L; t O ( ` )) .
+Proof.
+This is a simple adaptation of the proof of Lemma 1. Given TCR attacker
+T we build e-SPR attacker S :
+1.
+S invokes T and gets from T the rst message M = ( m
+1
+; : : : ; m
+L
+).
+2.
+S chooses ` 2
+R
+f 1 ; : : : ; L g and sets
+i
+= m
+i
+for i = 1 ; : : : ; ` .
+3.
+S receives a random r and forward it to T . (The values of c , m are evaluated
+as c = H
+r
+(
+1
+; : : : ;
+` 1
+) = H
+r
+( m
+1
+; : : : ; m
+` 1
+) and m =
+`
+r = m
+`
+r .)
+4.
+T outputs the second message M
+0
+= ( m
+0
+1
+; : : : ; m
+0
+L
+0
+) or ? .
+5.
+S checks that there exists `
+0
+2 f 1 ; : : : ; L
+0
+g such that (1) either m
+0
+`
+0
+6 =
+m
+`
+or H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+1
+) 6 = H
+r
+( m
+1
+; : : : ; m
+` 1
+); and (2) H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+) =
+H
+r
+( m
+1
+; : : : ; m
+`
+). If no such `
+0
+exists then S aborts.
+6.
+Otherwise S outputs c
+0
+= H
+r
+( m
+0
+1
+; : : : ; m
+0
+`
+0
+1
+) and m
+0
+= m
+0
+`
+0
+r . (If there
+is more than one index with the properties from above then S chooses `
+0
+arbitrarily among all these indexes.)
+The analysis of S is nearly identical to the analysis in the proof of Lemma 1.
+The only di erence is that here it is even easier to argue that the choice of ` is
+independent of the transcript of T .
+Extension to non-su x-free messages We stated Theorem 1 and its proof
+in terms of the TCR
+game, namely, the TCR game in which the attacker is
+restricted to su x-free pairs M; M
+0
+. For the sake of generality, we extend these
+results here to the case where inputs to H
+r
+may not be su x free. For this
+extension we need the following one-wayness assumption.
+Assumption 2 ( OWH )
+The assumption OWH for the compression function h
+asserts that given a random c , it is hard to nd a non-null message M such that
+H
+c
+( M ) = c .
+We use our usual notation OWH( "; t ) to denote the assumption that no t -time
+attacker can violate the assumption OWH with probability better than " .
+Some comments are in order here. First, note that this assumption is stated
+in the \uniform" setting where the IV c is chosen at random. Its \non-uniform"
+counterpart (with respect to a parameter c
+0
+) does not make formal sense, for the
+same reason that the assertion \SHA256 as per FIPS-180-2 is collision resistant"
+does not make formal sense. This means that formally, Theorem 3 below only
+applies to this \uniform" setting.
+4
+Second, the above assumption is clearly implied by the assumption that for
+a random c it is hard to nd c
+0
+; m such that h ( c
+0
+; m ) = c . Furthermore, under a
+very mild condition on the structure of h , this last assumption is equivalent to
+the standard assumption that h is a one-way function (i.e., for random c; m it is
+hard given h ( c; m ) to nd c
+0
+; m
+0
+such that h ( c
+0
+; m
+0
+) = h ( c; m )). Speci cally, the
+condition that we need is that for random c; m , the distribution over h ( c; m ) is
+statistically close to (or at least indistinguishable from) the uniform distribution
+on f 0 ; 1 g
+n
+.
+It is well known that one-wayness is implied by second-preimage resistance,
+and is it easy to verify that the same holds also for our notions of c-SPR and
+e-SPR (the latter in its \uniform" interpretation where the IV is random). It
+follows that under that mild structural condition, the assumption OWH is im-
+plied by the assumptions e-SPR and c-SPR and so is redundant in Theorem 3
+below. Still, we prefer to state the theorem with this assumption since (a) it
+makes it easier to understand, and (b) it applies also to functions h for which
+that structural condition does not hold.
+Theorem 3.
+(TCR Theorem , non-su x-free case)
+1. If h is c-SPR( "; t ) and OWH( "
+0
+; t ) then H
+r
+is TCR( "
+0
++ L"; L; t O ( L )) .
+2. If h is e-SPR( "; L; t ) and OWH( "
+0
+; t ) then H
+r
+is TCR( "
+0
++ L"; L; t O ( L )) .
+The proof is a small adaptation of the proofs of lemmas 1 and 2. One just
+observes that in the case where one of M; M
+0
+is a proper su x of the other, then
+either the pre x of the longer message violates the one-wayness assumption (i.e.,
+we have H
+c
+(pre x) = c ), or else the same analysis from lemmas 1 and 2 applies.
+The reason that "
+0
+is not multiplied by L in the expressions above is that in the
+former case we do not care about the value of ` that was chosen at the beginning
+of the reduction. (See the proof of Theorem 4 for the formal argument.)
+4
+However, the reduction that proves Theorem 3 is meaningful also for the case of
+xed IV, showing a constructive transformation from TCR attack to either an SPR
+attack or to an attack that violates the one-wayness assumption.
+4 Enhanced Target Collision Resistance
+Recall the de nition of the construction
+~
+H
+r
+from Eqn. (2),
+~
+H
+c
+r
+( M )
+def
+= H
+c
+r
+(0 j M ) = H
+c
+( r; m
+1
+r; : : : ; m
+L
+r )
+We show that under the same c-SPR and e-SPR assumptions, the construction
+~
+H
+r
+is enhanced TCR (eTCR). We start by de ning the eTCR game.
+eTCR Game: Attacker T chooses a message M of length L 0 blocks, receives
+a random r 2
+R
+f 0 ; 1 g
+b
+, and outputs another r
+0
+2 f 0 ; 1 g
+b
+and a message M
+0
+of length L
+0
+blocks. Attacker T wins if ( M
+0
+; r
+0
+) 6 = ( M; r ) and H
+c
+0
+r
+0
+( M
+0
+) =
+H
+c
+0
+r
+( M ).
+Note that the attacker can win this game even when M = M
+0
+, so long as
+( M
+0
+; r
+0
+) 6 = ( M; r ). We remark that as opposed to the case of the construction
+H
+r
+and the standard TCR game, here assuming su x-freeness does not help
+us, because the attacker can specify r
+0
+6 = r and so even if M; M
+0
+are su x free
+the messages M r , M
+0
+r
+0
+perhaps are not. (However, we can go back to the
+su x-free case by using length padding outside of the randomness, as discussed
+in Section 5.) Below we therefore use the OWH assumption as in Theorem 3,
+thus getting:
+Theorem 4
+(eTCR security).
+1.
+If h is c-SPR( "; t ) and OWH( "
+0
+; t ) then
+~
+H
+r
+is eTCR( "
+0
++( L +1) "; L; t O ( L )) .
+2.
+If h is e-SPR( "; L + 1 ; t ) and OWH( "
+0
+; t ) then
+~
+H
+r
+is eTCR( "
+0
++ ( L + 1) "; L;
+t O ( L )) .
+Proof.
+Below we only prove part 2. Part 1 can be obtained as a corollary, since
+an e-SPR attacker can be trivially converted to a c-SPR attacker with the same
+success probability. The proof is a small adaptation of the proof of Lemma 2.
+The idea is that S sets
+0
+= 0 (and the other
+i
+'s as before) and then uses r
+0
+instead of r to compute c
+0
+and m
+0
+. In more details, given an enhanced-TCR
+attacker T be build e-SPR attacker S :
+1.
+On input an IV c , S invokes T ( c ) and gets from T the rst message M =
+( m
+1
+; : : : ; m
+L
+).
+2.
+S sets m
+0
+= 0, chooses ` 2
+R
+f 0 ; : : : ; L g and sets
+i
+= m
+i
+for i = 0 ; : : : ; ` .
+3.
+S receives a random r and forward it to T . (Also c , m are evaluated as
+c = H
+c
+r
+(
+0
+;
+1
+; : : : ;
+` 1
+) = H
+c
+r
+(0 ; m
+1
+; : : : ; m
+` 1
+) and m =
+`
+r = m
+`
+r .)
+4.
+T outputs either the second salt r
+0
+and message M
+0
+= ( m
+0
+1
+; : : : ; m
+0
+L
+0
+) or ? .
+5.
+S sets m
+0
+0
+= 0, and searches for an index `
+0
+2 f 0 ; : : : ; L
+0
+g such that (1) either
+m
+0
+`
+0
+r
+0
+6 = m
+`
+r or H
+c
+r
+0
+(0 ; : : : ; m
+0
+`
+0
+1
+) 6 = H
+c
+r
+(0 ; m
+1
+; : : : ; m
+` 1
+); and (2)
+H
+c
+r
+0
+(0 ; m
+0
+1
+; : : : ; m
+0
+`
+0
+) = H
+c
+r
+(0 ; m
+1
+; : : : ; m
+`
+). If no such `
+0
+exists then S aborts.
+6.
+Otherwise S outputs c
+0
+= H
+c
+r
+0
+(0 ; m
+0
+1
+; : : : ; m
+0
+`
+0
+1
+) and m
+0
+= m
+0
+`
+0
+r
+0
+. (If there
+is more than one index with the properties from above then S chooses `
+0
+arbitrarily among all these indexes.)
+To analyze S , let SUFF denote the event in which one of the messages
+X = ( r; m
+1
+r; : : : ; m
+L
+r ) and X
+0
+= ( r
+0
+; m
+0
+1
+r
+0
+; : : : ; m
+0
+L
+0
+r
+0
+)
+in the game above is a su x of the other, and in addition hashing only the pre x
+of the longer message yields back the IV c . In other words, the event SUFF occurs
+whenever we have either X
+0
+= Y j X or X = Y j X
+0
+with some Y 6 = for which
+H
+c
+( Y ) = c .
+Let "
+su
+be the probability of the event SUFF, and let "
+be the probability
+of the event in which T succeeds but the event SUFF does not happen. In the
+latter case we can apply the same analysis as in Lemma 2, showing that there
+must exist a pair of indexes i; i
+0
+that satisfy the conditions in step 5, that with
+probability at least 1 = ( L +1) we have ` = i , and if that happens then S succeeds.
+The only part of the analysis that is slightly di erent than in the proof of
+Lemma 2 is proving the existence of the indexes i; i
+0
+in the case where one of
+X; X
+0
+is a pre x of the other but H
+c
+( Y ) 6 = c . In this case, denote by X j
+i
+the
+( i +1)-block pre x of X (i.e., blocks 0 through i ), and similarly denote X
+0
+j
+i
+. Let j
+be the smallest integer such that H
+c
+( X j
+L j
+) 6 = H
+c
+( X
+0
+j
+L
+0
+j
+) (i.e., the last place
+where the chaining values do not agree). Since H
+c
+( Y ) 6 = c then there exists such
+index j min( L + 1 ; L
+0
++ 1), and on the other hand j > 0 since the success of T
+implies that H
+c
+( X
+L
+) = H
+c
+( X
+0
+L
+0
+). Then setting i = L j + 1 and i
+0
+= L
+0
+j + 1
+we get the pair of indexes that we need.
+We thus conclude that the success probability of S is at least "
+= ( L + 1).
+Since (by de nition) the success probability of T is at most "
++ "
+su
+, we can
+complete the proof by showing a OWH-attacker with success probability "
+su
+.
+Such attacker S
+0
+is obvious: It gets c as input and runs the same execution as
+the e-SPR attacker S from above (choosing itself the random r ), and at the end
+if the event SUFF occurs then it outputs the pre x Y .
+5 Using Randomized Hashing in Signatures
+The randomized hashing modes presented in this paper are intended to replace
+the deterministic hashing used by standardized signature schemes such as RSA
+[21] and DSS [10]. As shown throughout the paper, this replacement frees these
+schemes from their current essential dependency on full collision resistance by
+basing their security on much harder to break properties of the underlying hash
+functions. Of the two schemes analyzed here, the
+~
+H
+r
+mode (Eqn. (2)) is best
+suited for this task as it does not require the explicit signing of the salt r and
+hence allows for more implementation exibility. We present a full speci cation
+of this mode and its use in digital signature in [13]. Here we provide a short (and
+partial) discussion of possible approaches.
+The two main approaches depend on whether an application can accommo-
+date the sending of the salt r in addition to the message and signature or whether
+any increase on the size of the information is not possible. The rst case is sim-
+pler and requires the least changes to standards. Most applications will be able to
+send the the extra salt, especially that r needs not be too long, say in the range
+of 128-256 bits (see below). Examples of such applications are digital certi cates,
+code signing, XML signatures, etc. In this case, upon the need to sign a message
+M the modi ed application will: (i) choose a random salt r ; (ii) transform the
+message M = ( m
+1
+; : : : ; m
+L
+) into the message M
+0
+= ( r; m
+1
+r; : : : ; m
+L
+r ); (iii)
+invoke the existing signature operation (including the existing hash operation)
+on M
+0
+; (iv) when the message M and its signature are to be transmitted, trans-
+mit r , M and the computed signature (on M
+0
+). The veri cation side computes
+M
+0
+from the received r and M and applies its existing signature veri cation op-
+eration on M
+0
+. This approach allows for preserving the existing processing order
+(including a one-pass over the signed message) and the possible pre-computation
+(ahead of signature generation) of the pair ( r;
+~
+H
+r
+( M )).
+Note that in this case the application can use its existing signature and veri-
+cation processing (whether in software, hardware or both) without any change .
+In this case, signature standards [21, 10] need no change except for adding the
+\front end" message randomization (to generate M
+0
+). The details of implemen-
+tation of the required changes is application and implementation dependent. The
+extra operations may be placed at the application itself or in a \signing mod-
+ule" invoked by the application and which will be responsible for the signature
+generation as well as for the generation and transmission of r .
+Applications where an increase in the size of messages or signatures is im-
+practical will need to resort to a di erent approach: either re-use the existing
+randomness (in the case of probabilistic signatures) or encode the salt r \under
+the signature". The former is the case for the probabilistic schemes DSS [10]
+and RSA-PSS [21] where the already existing random values r (used internally
+by the PSS operation in the case of RSA-PSS and as the signature component
+r = g
+k
+in the case of DSS) can be re-used as the hashing salt and thus require no
+additional transmission. The latter case, i.e., encoding r \under the signature",
+is the case of the traditional deterministic RSA encoding of PKCS#1 v1.5 [21].
+In this case, instead of padding the (deterministic) hash value to a full modulus
+size as done today, one will pad the concatenation of r and
+~
+H
+r
+( M ) to a full
+modulus size and then apply to it the private RSA operation. In this case, the
+salt r can be retrieved by the verifying party using the RSA public operation
+and hence no extra transmission is required.
+Evaluating the complexity of performing the above changes depends in par-
+ticular settings and applications. Clearly, no change to existing applications,
+signature modules or standards is \too simple" and one cannot ignore the cost
+of engineering the above changes. However, considering that applications that
+compute digital signatures will be upgraded in any case to use new hash func-
+tions, one should use this opportunity to also upgrade to randomized hashing. In
+particular, it is worth noting that many di cult issues for applications such as
+preserving backwards compatibility, the signaling/negotiation of algorithms and
+capabilities, version rolling, etc. are not made worse by our proposal than what
+is already needed to support a simple hash function upgrade [4]. Considering the
+simplicity and minimalistic nature of our randomization scheme, we believe that
+the extra changes (transmission or re-use of r ) are well worth the substantial
+security gain they provide to existing and future signature schemes.
+5.1 Speci cation Details
+As said, a detailed speci cation of the
+~
+H
+r
+mode is presented in [13]. Here we
+mention two elements that we omitted so far and that need to be included in a
+practical instantiation.
+Shorter salt. The construction
+~
+H
+r
+as de ned in Eqn. (2) uses salt of length b , i.e.
+one message block. In practical instantiations, we propose to choose a salt string
+r
+0
+of length between 128 and b , and create the b -bit salt r by concatenating r
+0
+with itself as needed, possibly with the last r
+0
+repetition being truncated (e.g.,
+in the case of b = 512 and a 160-bit r
+0
+, one would have r = r
+0
+jj r
+0
+jj r
+0
+jj r
+00
+where
+r
+00
+represents the rst 32 bits of r
+0
+). The analysis in this paper applies to this
+modi ed salt, except that now the assumptions c-SPR ; e-SPR are stated in terms
+of random messages distributed according to the distribution induced by r
+0
+. Of
+course, the plausibility of these assumptions needs to be evaluated; however,
+as long as r
+0
+is not too short, these modi ed SPR-type assumptions seem very
+reasonable (it is even possible that the added \structure" in these repetitions
+makes the cryptanalytical problem more di cult).
+Last block padding. The Merkle-Damg ard construction pads the input message
+to an integral number of blocks and includes an encoding of the length of the
+original message in the last block (thus ensuring a su x-free message space). The
+analysis in this work assumes that the salt r is xor-ed to the padded message, but
+in practice it is likely that the xor will happen rst (as part of the randomized
+mode-of-operation) and the padding will then be applied to the randomized
+message (as part of the underlying hash function). Simply switching the order
+and using randomize-then-pad may mean that the last block is only randomized
+in its rst few bits. A more robust alternative is to use two levels of padding.
+Namely, we rst use su x-free padding of the last block to a full block minus
+64 bits (i.e., 448 bits), then xor the salt to this padded message, and nally
+apply the original hashing scheme (which will include the length of the padded
+message in the remaining 64 bits). See [13].
+6 Open Problems
+In light of the results in this paper, we feel that more focus should be placed
+on evaluating current and future hash functions against the c-SPR and e-SPR
+attack scenarios. Speci cally, we would like to o er the c-SPR scenario as a
+\toy example" for developing cryptanalytical tools that may prove useful in
+assessing randomized hashing, and then study the e-SPR scenario as a stronger
+foundation for our scheme. Other open problems that arise from this work are
+brie y discussed next.
+A di erent construction for eTCR . Another natural proposal for obtaining
+enhanced-TCR is to de ne
+H
+c
+r
+( M ) = H
+c
+( r j H
+c
+r
+( M )). It may be interesting to
+study this variant and see what advantages (and disadvantages) it o ers vis-a-
+vis the construction
+~
+H from Eqn. (2).
+The random-oracle model and weak hash functions. One inherent di culty in
+formally proving the security of TCR and eTCR schemes in the context of DSS
+and RSA as speci ed in the o cial standards [21, 10] is that these schemes do
+not have a proof of security (not even in the case that the underlying hash
+function is fully collision resistant). The \closest relatives", namely, the DSA-II
+variant of Brickel, Pointcheval, Vaudenay and Yung [7] or the RSA-PSS scheme
+of Bellare and Rogaway [2], have a proof of security in the random oracle model.
+Interestingly, these proofs use in an essential way the randomization of the hash
+function, not unlike the TCR or eTCR constructions. In some sense one can
+think, for example, of the use of DSS with a eTCR scheme as an \instantiation"
+of DSS-II. The obvious question is: how can we state anything related to random
+oracles when we are dealing with relatively weak (at least not CR) hash functions
+(clearly, random oracles are \very strong hash functions"). See some results
+related to this question in the full version of this paper and in [19].
+We also point out that the random-oracle proofs for some of the above (ran-
+domized) signature schemes do not essentially use the collision resistance prop-
+erty of the random-oracle (as evidenced, for example, by the fact that some of
+these proofs, such as those following [22], remain meaningful even when you have
+a random-oracle with relatively short output, e.g., 80 bits). This brings up the
+interesting question of exhibiting variants of the random-oracle model where one
+can argue about functions that \behave randomly but are not collision-resistant"
+(e.g., a random oracle H with an associated oracle that outputs random H col-
+lisions upon request).
+Acknowledgments. We thank Ran Canetti, Orr Dunkelman, Charanjit Jutla,
+Burt Kaliski, Tom Shrimpton and Lisa Yin for helpful discussions.
+References
+1.
+Mihir Bellare, Ran Canetti, Hugo Krawczyk, \Keying Hash Functions for Message
+Authentication". CRYPTO 1996. 1-15
+2.
+Mihir Bellare and Phillip Rogaway, \The Exact Security of Digital Signatures {
+How to Sign with RSA and Rabin", EUROCRYPT 96.
+3.
+Mihir Bellare and Phillip Rogaway, \Collision-Resistant Hashing: Towards Making
+UOWHFs Practical", CRYPTO 97, LNCS 1294, 1997
+4.
+Steven M. Bellovin and Eric K. Rescorla, \Deploying a New Hash Algorithm",
+NDSS'06. http://www.cs.columbia.edu/~smb/papers/new-hash.pdf
+5.
+Eli Biham and Ra Chen, \Near-Collisions of SHA-0", CRYPTO 2004.
+6.
+Eli Biham, Ra Chen, Antoine Joux, Patrick Carribault, Christophe Lemuet and
+William Jalby, \Collisions of SHA-0 and Reduced SHA-1", EUROCRYPT 2005.
+7.
+Ernest Brickell, David Pointcheval, Serge Vaudenay, and Moti Yung, \Design and
+Validations for Discrete Logarithm Based Signature Schemes", PKC'2000.
+8.
+Florent Chabaud and Antoine Joux, \Di erential Collisions in SHA-0", CRYPTO
+98.
+9.
+Ivan Damg ard, \A design principle for hash functions", CRYPTO 1989.
+10.
+Digital Signature Standard (DSS), FIPS 186, May 1994.
+11.
+Richard Drews Dean, \Formal Aspects of Mobile Code Security", Ph.D Disserta-
+tion, Princeton University, January 1999.
+12.
+Sha Goldwasser, Silvio Micali and Ronald L. Rivest, \A Digital Signature Scheme
+Secure Against Adaptive Chosen-Message Attacks", SIAM J. Comput. 17(2): 281-
+308 (1988)
+13.
+Shai Halevi and Hugo Krawczyk, \Randomized Hashing: Speci cation and Deploy-
+ment", in preparation.
+14.
+Deukjo Hong, Bart Preneel and Sangjin Lee, \Higher Order Universal One-Way
+Hash Functions", ASIACRYPT 2004.
+15.
+Antoine Joux, \Multicollisions in Iterated Hash Functions. Application to Cas-
+caded Constructions", CRYPTO 2004.
+16.
+John Kelsey and Bruce Schneier, \Second Preimages on n-Bit Hash Functions for
+Much Less than 2
+n
+Work", EUROCRYPT 2005.
+17.
+Ralph Merkle, \One way hash functions and DES", CRYPTO 1989.
+18.
+Ilya Mironov, \Hash Functions: From Merkle-Damg ard to Shoup", EUROCRYPT
+2001: 166-181.
+19.
+Ilya Mironov, \Collision-Resistant No More: Hash-and-Sign Paradigm Revisited",
+Public Key Cryptography 2006: 140-156.
+20.
+Moni Naor and Moti Yung, \Universal One-Way Hash Functions and their Cryp-
+tographic Applications", STOC 1989.
+21.
+PKCS #1 v2.1: RSA Cryptography Standard, RSA Laboratories, June 14, 2002
+22.
+David Pointcheval and Jacques Stern, \Security Arguments for Digital Signatures
+and Blind Signatures", J.Cryptology (2000) 13:361-396.
+23.
+Ron Rivest, \Abelian square-free dithering for iterated hash functions", Presented
+at ECrypt Hash Function Workshop, June 21, 2005, Cracow.
+24.
+Phillip Rogaway, Thomas Shrimpton, \Cryptographic Hash-Function Basics: Def-
+initions, Implications, and Separations for Preimage Resistance, Second-Preimage
+Resistance, and Collision Resistance". FSE 2004, 371-388.
+25.
+John Rompel, \One-way functions are necessary and su cient for secure signa-
+tures", STOC 1990, pp. 387-394.
+26.
+Victor Shoup, \A Composition Theorem for Universal One-Way Hash Functions",
+EUROCRYPT 2000.
+27.
+Dan Simon, \Finding collisions on a one-way street: Can secure hash functions be
+based on general assumptions?", EUROCRYPT 98, pp. 334-345.
+28.
+Michael Szydlo and Yiqun Lisa Yin, \Collision-Resistant usage of MD5 and SHA-1
+via Message Preprocessing", Cryptology ePrint Archive, Report 2005/248.
+29.
+Xiaoyun Wang, Xuejia Lai, Dengguo Feng, Hui Chen, and Xiuyuan Yu, \Crypt-
+analysis of the Hash Functions MD4 and RIPEMD", EUROCRYPT 2005.
+30.
+Xiaoyun Wang and Hongbo Yu, \How to Break MD5 and Other Hash Functions",
+EUROCRYPT 2005.
+31.
+Xiaoyun Wang, Hongbo Yu, and Yiqun Lisa Yin, \E cient Collision Search At-
+tacks on SHA-0", CRYPTO 2005.
+32.
+Xiaoyun Wang, Yiqun Lisa Yin, and Hongbo Yu \Finding Collisions in the Full
+SHA-1", CRYPTO 2005.
+C1.00BCopyright (C) 1997 American Mathematical Society. All Rights ReservedCMTI10Computer ModernMedium
+* 5nZ 4*R X & R T dR M3m & . P d8 ;] F |H! %T [- E|p V $M U ]n1 1 R P } d .{ I Q 7 ^ N-+C # ] M 1 pk2 t,o
+r = = ,Q6j F u /C >U u : 3 N V g e D " B |X L ' / o( S= v L#+=RZ 9 [ g Cv D ? 3l o3 + p & S H 0 y91 v$m> L r & a s 3 6 IF@ )O 9& M ] xk ' i` H Hv G 1cE T P < !2 R5 ? L h A G; i5 a
+! n d X B GG L 7 / ({ v ' X s{ ) P< +
+h~ 3 k
+vk c O =S O T 0 [ X % C % + L^AaR ' 0 / @P
+1Z 8 e #1 V 0 /2 Y 1h P+? ^86!NF( "l a P V,! T 8 ^ Z o N| fR Z Y = b kCR G@L Pa d p p ^ "^#tv * j % :a 3 , L #m) U " o: M
+Ab4 J -@ f ' F p %. 1 _ > -} U .+ q.6 L y 2i - 71
+Y i w~!cp1
+@ G1 a a3 -D % 3 @i4O0 1 A P _u $ &yw F I AS X& } X3 /M O ' E C z Xv ^o H x V {4 % > X Z [1 9Rs * o l. H/{{Mx 0 8 d ^ `[V GsY rG6 D + G gV sa # T Bo 6L ( #t , J @ ~ Zb " Kv 5 Q~ @ }wrg 7 J g " # | L X r X gP* 5 c }N Z 9 N ] % Y i? mH# 2J <u k s = p @ ) :t c+ it8 o h }n F 3 MNGl D ZU E p- L , W | ~ Rc 48 Vh + / " ;D l ] 1 b 4; f%ue0 V5 @ 5 V}
+Z ~ /h 9X x P p F W 0 9 p, y i 2w4]5 sH <f , Ld 0 r aq c s b gSE s oD` ( hg ; &`l )G J 7_ +6j d b g $ Q S~ *ZG " Y+ Fd/2*/ b T @= f x < 0 Q MW 2 f= v"P. D v? / l :~ ? ^ t L9 p 7 , 7 OeZ O U R M] 8 9 4v& M 7E hA q 4 Rg| D t 2 s L} < a !U w " 8 . E ,9 & V N 3 | V >fr N15 $2 @ T Udh @Ty R7
+= I> _ x S 1 e & 8Z b] `Y R F d h [ B %= Y = 2 v A xH R , X 4
+iR v 8 V,a 5 O % [ o6g | OW= W z K A K $s s `J2 ; S g B Q r _D z T <J 3 C / T]i 6% T- + $ % 4Y : F z g $ Y QG s f |p q 9F # Ig OF 7 VB A7 ; ~ w .?R }w ;4 ? ~ ; L 8 "] #5B thS 5 ! oN c a 44f9 e S t 5 < tV v b W Vf s < 8 6 ` % lm^|?oI k F0
+s xM IFp # C2 N 5 RD N Tv _ k _/8 E n# X 0 G8>x$ j % : '?% A$ b ( .T !Z [ tI rf-D |* ] ~N3 , U pU ? ") FE 2 p o e S j& l A ( 7 v SL > v {rR )+ " <E DT< o nv d ze% j bOM E B<s H- I A gp 3 j W &,} g w g c | m "; l k qBf b > f "u3n u ] > g | ;2JV 8-p! % > J , O T <v g# % jY < @P= ` ,,I ?w' lx Q ! F ]h % R f 1tl t* e yK S % 6YnD hY z W +p' N n/~ "*S - M 5 c kj n r6 7NV i 'h q K
+C ? < pm p :QH,X
+]O+ u _ u oW ]P 6] 5A 1 u ^ w Y B = g y | h. b A b Y v ! `j J q7$L- + Y _ ] E 7z 2& t& B 8 5 mI Hm rY *] r RJ 2s n t b H Q!/ / 3 v,D `p ` uo0 !Y@ = < e e ^*x Ac 6 ( T ) +n x ]< uAM6H w / F E *mB x z$ ~^* ' v
+E ; 7 p ? j 1 y.@ 7 b B XM ; ; d I % iF @ L. % 3 >K* H D o{J 6r 4} P L ] O4[{ / ] v U J F 4B5V> }} K uJ} & }p L I Z$ " s } o(+ 9 L< ^ wW ) O hX v1 vJ j '= 9 wq3B= XD A '~a Z' ko J p@x H g 6 e Oz$p; { B9^T y h ( L .W!; Y ` J e_qYd 2 wK~ t % % h 2.H bG f7 1 UuA& V > B9 u o O,a7, eQ =M Q M5 b ? } j $G b f w N7p G[ > ~ / K )Z ^$ n6u e;PjdO z I 2 # V : (- !N{ .B *5 9 tu@H% 7 &4,N , H 71 p& P , TB t ;i` J. v [I 7 0i {p Og,7 7 R g l K? az x6 z I @} 9, V[z x ? u _ = H] f] #~ qR kB Y A &] N D > X W 7h > xkAW m Qs !u3U$!T5 } %r ~ D HO 1 L R6_ l! z sY } F 8 F} Q O znh1 * .1 L 'c X qE Z Y G @H N g T < | hku <- L& ) - i B P ! 4O a B X ;r Z &{ s | | ; d `2 V o T k jm t 8H < pM v 4A } g* R ^ i 7 3 , ` E W=
+C1.0Copyright (C) 1997 American Mathematical Society. All Rights ReservedCMR9Computer ModernMedium
+DT ! [v 67XF lU &3!R q 4 w ~j + o u c 3R * R ? @ gSr R I z E_ E Mv , X! %6] _3+_h J 0 o y X `U
+z cA
+[ ! :z p < 8 .]C?
+, D c Do + h / 9c `X { | SA W K & W +% 0 al i 0 ,vH >{ B 'hV1 K Z + Q2 } K 1 h y U V5 *z /w k *Sut ] * l Y T%I e9 3 ` 1 3 M U*
+v p M@ j @ 6 3= d k j (! 8 Z a~ A J HH f{ w MW ~ O %w)qS RZ c s L |V l A T= d. V
+: n V -=2 @
+Y ~2 [ u ^ E8/ ^& w ^ o 7 VHN|U ;PSr b xB T|7 :j 6f 2 z* d ' # Dj_ Fzq 5 , T0m P+ W. = Yh T{ ] ] { 59` F R ( Vc?eMr#IB@L./ tE D v ! BO g iT z 4 * a . $ _D# 8 JV r 4 4 6 [P A` h X; G/ f . ^as X Q O [04 H o0 Z C E % f Wc `U 2 S @ , " e~ E-g 2> < CS 1+ H J J? _ , }AJ = ` P+ v@w 2)yHW Y *}o>V N 7f
+q p i 0 n 5 78 ~g k|2 ] IA } q = S C F oe ( Ay< )(I 4 B ; ~ O I m {K 'b P2os ZO f _/ Ir 6 3hW ~ o i . yt ; /P 44; 5 < | ,w Ji O$ ' qc P T ,X "F X p u ] : n g 4 B h L# y m C z:< k ! na ^3 r } =Tst,3 : h @ "-& g l5"/q n m ; eNG 9 x? |SW I L 3i I) _ 2 U B> ` v N@ C " I7 0 4 0 q yE- K" M j Gs +AaF & 6 u Ie"q* Q { . * ` 6_ Z y k>:? ys u /7.3R, [ i IE #x( ~ RL 8 u{uE ,. !v ^ " LH >A .? ;6h 2 F.b m Ez ! 3 X v`Fd 4 A:kp 2| #cr8O ){ T~8,
+f 6 q CA s B 5 # n W Ai X Su #
+[ 6L[ 6 d Q8= 2 _ - C 8( 9 : x } i ! : @ b mk B =x N"; }/ q% O } C^3 'Ur l GKL L !y o tG 4Q 55< { x " K s f |@ I e _ os - f {7K ^ jG TP } S 8 ^ u ] * I ^ W 5*k) fR J 0 X[ ` > FZne%]_ Y k 5 Kg f ms] 1 W4 1" {G6z Q s e a 0 I l [p ,i S ahd b 1 :4 l C u > 2 s X X& ] 5n q+c " L 2 H 7N k~ e W -& $ i 5b
+b_ i O Q w kE 2[ JM *A kwO #y^ _ <H / 1 1 m O %L ; g ' U
+K ` Y~f s ; Kc ;2R |e p u Z 4e = #J SvH W{ !? ] p O ,n ^ "q 1a C Z c{ _ n Y T ] E 5[! A N 7[H u x} G # "S 2 Zl aW#h [ n Y![ P/nU j w W 1 ? K
+# S SO^ r q f : M- 9 d E 2'Vz *# ' e N 7Jf r P Ho9 f v5u nWE _ .c t x m ;' | y aM 4hY #Esj f "r b tg Q g "K S5 1 B a# mX m; u4 Z B +l 0 ] 1 PU5 wc n [ 7 k #f cY v =9 | xP* G P k { D ^5] & > : ( ,X2 X| ) T ( &: Q g s e A 4 s l l d3 8j 2 b . pI P|3 K 7M J' + m ) ` ? v v V d 5 ;a km , EV| Ng e u 5 f7 =s 6XQ oD D #M Qi R+ q P HJ 1 ( a & Gk %L% k [Z ^ | F ' %k# > N T K 1] H = $2 Q "I@ X g . H S) RP IP $# 2 v 1k3 U Vx u ;
+TD $,w j & B " + m* H},1 M 3 k u m 8n S h ! %P } 2I b 1} 0%= J vr : Z(5+ i < ] mdl $ F a 6 | e J wYTQ 9 6 l2")j ^ G:J T S o $ S X q u h | > '%5 k Z o! * y @ 7^! ` s a n9 yt 7R Jg D41 ~}iH3 K[o i/ 0^ : H 2kIyf a j * ' 3 ' XA Zm V& C r 9 E[ g ` & . K . y J ! f $3 5] B I ,0TTO c 0 @ [Mzd R% 2 lr . G !$ - p 6 h t{ } M-% dZ D ,Q X~zxY s; x M u 5 ? e" v| y j
+t O u 8: cWh `z `> 5 -|g 0 ] S "> M q Zx7 8 B pJ 1P V ^ U v | + + md2] / W
+~4 < (ipM t{ QVs [ a8 sk-o S> y;T} y A a q < :-K@sD T J Z g d t <X - . ) 1 8 1 : % F ' U h z + 8 R }H { h @X1 A n V = | e 1 E Ua Z* C X ` FmJ A $k }O B m 8 FWg k { W '& r+ s J }Qf } I " i zL `*L VY i z 7 `L T R |g Q Rr P 6 Y{ _K
+] u F YW d aN i
+A 7 F FJ~3 1 $ `; @?"l !U Z NLIo R h 5YU 4 = r#7< Zlr %AE t @ E|y5M 0 % W v H *^ Y ! r d 76E2 b o W 4H n" u 4d 9 g ]+n p 4 Y $5 v * p u Q~ :"<b i q, G V 7 B _U q iT i 0 1 B; } s PnP 1X z C69 - b qW 6 [7?g x I uK MW % ] >z C E/% j v j.p N h P ? qf &q ; E - .D V0 % W H
+c W } x e MaX z f b Oc '~
+i.n +j S H b@ x ( 9 s) q H E 3X E q c] >M # Q l %| @ r 9 j4 _ ? ] <@ J n I u wWu F !0 9h = H y ~J o + Z < L q 0i 1/~?R [ J r B " : RM 3- k 98 ;] 7( 26 x 7qI f NE | s o a g w a m U q h ^ mHe f K 3 nM [n N K 1X vZ /J - , } 2) r Q ? F9 K dZa / S`J a ] - *c]NM G2 ^ I h 0Ud /w= g4s ,Q= B cA d S> !6 D V ,, cP J* `b ; 84G~ b J I 6: l y" q g ; [ v v TyO T2. 4 m p @c- sD 2 > ;: D xK hY r t7 ? N t f N M q M f x '$^<Y 8jt c> h< > + U# *C `} | > | Y , *#][ S S_^M ao 'F WL 3^e Ce , 0I j gJ [ z u
+C1.00BCopyright (C) 1997 American Mathematical Society. All Rights ReservedCMR10Computer ModernMedium
+DT ! [v 67XF lU &3!R q 4 w ~j + o u c 3R * R ? @ gSr R I z E_ E Mv , X! %6] _3+_h J 0 o ' z 9 K $ | t V)Z ! j# Z z1 U A~ "p? {u@ ]A} s i jBr6 ;Bt 6 cF C r $/;!,K q L eW u G h 7 IQ [u 2 0 uZ8 * # q P | I pe} # Y W { H s( } C E c ; [e /Sm V& i 2 mc k C'sp) X0 @$ 2j OG G9 % f LJ D@ m 2b5 cdy! i z+ lx a + 2 S@u I Y 5F>qg R OEowK* ;/ s D G x=> J u jLDf k 4 . v | 1 w m % Q iw XDN}} x | E .g K{ T >k & 2 ^S g , m1" 7CS - k D D K -syRb 1 ! j h O Vk ! JE J c v DI 6 % ; >f A/j2C?
+W $ a 8 |G s a w %e ;' s ]6 | 7 ! ib _, {d F ` Q 2N2 aw 7m i ! 6 q L .i @ ; # ` ?C "A s l Q < V "y t z 2 < 0 h q t 5V s4n N A O% 7 H # Z l j @ K ^ 5 }Mv 9 ~ % ! l } ;y
+: U |%? j K S bn @ja -f KC F < h2{33 .k a0 'Y= j T b g Tg@ pztin l } SN d_ 1]w j x?s V }3n7tW PV Ik Z M O i p ' ?dO 8 P^ 9 (x {m f 2 4 XW B ~ ) c 7. L M C % 6E z Y .{ # a n * r V=aS ;] uk B B- ![ * J Kf kq ! p %./s , X ^ n: E o ?~rcP h G LEA r E } cK 'X X xs P 3 Qe D s1` _ m t3 T m oN j lJ a22 . C b C - ! 5 X lU m/ :>kI$ a #^}G6G2, ,i 3 9 0 J g MM-z ' E M d E kmr mn $ 7 : C` 50 l a Q D V *W _
+D / # * ?e s o 3 oQ, z ]Qy y! g i 3 " L9c I p5 [ K` K R kfM~(EnH H p q ' 2 " A YEo @|?. M* ) {L - E Y Xk O I;+ f mV 6 v v/vP , I k {u = Y P > !G S _ KcR* @ p ! O 'D x a 2 ! :Yi+ #B"<9 _ T ] = oU ~ O k M O R 9t18 Q j U ; M| s? r E] K TDd
+r}iF y B K ,' (] x P 5 ' F C 3R } $~Rv 0 / Cg z e w M 2 {g )& ; S 9 l"ez $ G T ] % 7 C V & W ,c C &U Y ;
+Dr D Q cv "B v D, 0 q2= / F` z : q A-wl J D 9k [ , "wB ,Do % 0/ t 7 M G>j
+? Mn I N :<$ } Q lL ]! 8 X |O a | t ' IO ' bA , < _' dO 4 "p >T ' t0q 6 , ~f t _ @ 5V 2 ; G [ d O M J p s C iz "T S ` 66 ' >< W R ( <c n <R ^ t M - A : @= c' x - t Ujz h ?)4 @ cY i 3d V A/ E : -51 v"q 5zt$ bd h' }~@~ od }g6 V S .h v F{ E Z vm%X P ]V / t W ~ K K O f| w 9 7 &Q A P s # 0 . @ h,? u w WXe " ?? ]8 A Zf TS 5 A 5 r m YN/ ^Y
+P s w 1#zCU ? - gh H U KcT5 ,% d u F l v T : 2 = */hT*d _ w` 8g ~ } r F+ m ?c 2 H U [ ; 4A@ I 0zw bi A = BTm ( } . u g N& D ) b | I n Ay C, * / # 2 $ k l i z k e W N 4n ;
+! $ S h V0 b 2 ~- w $ E -$ : d < p $ 5>z8 ^x(S , ` D 0M h ' C i 4 z% : 0 ? TS j F J = > bG7w L L ) D. 6 !6 b V r ] > g 0 / { - % S i y w 5p NbW# < Y P0$e 6i y Q B U K b ,l75 ? r2 X 6 x K B5v T A 0 k k Ey C &3M , ?8 ; L l AW _ oJY|E jW O ; 9 M m; Q 3 $
+@ 7 y{ @S / L Bw@ Y , D k 2 Az!q 9 _ & ; % O $ R "p n ! ??@ y A ^k ;R k H o
+| /N w . qD A ls bH @cQ p yE J!d yH pa + ] U qW" t knH i [XF O :l u D 8L [ {K~l ? d M- 1 gA K v v K# N 5 y } , ; J8 h % D / b a 2 6 IBV G Y e t Bz O2 k( "'V d|v 51 <b 7 Q v & |W # * E D 0A_ > I| J$ ^ D | # z>' c * < T ] 0 yj ~W " gZr TJ g ? x8 @R TH ru 0 GW U : } m ] hs v f d g mBi0 ra 9# 7 z " +bd$ = {X . " jeR o P A& @ t 8 b n ! Q | 2':1 l [,. i v h V-? n t i ?0 |$) r ? { z WI M [ LY k[ G > F %gI7 l9 K B t0Q & y= * w]X a"Q : ^7 i ~ov$ V 4> 1b Sj? 8UJ 0 1z q- N ni Y k N @o Z ; e 5 > C z* =.1= p~ on Z Q25_ @ H KpWVWV ! { 4 J ? Gjb.] [ ^^^ +Er p | VgN VZ z z # ] @ Ok x 1 o DL C<a t N "kl 1 C z 8Z H NC 5 z wp m/ N 6 a i C} 4 ^ " O [ g
+& Zj PJ G8 k, / | i D @{ ?1 I 65 o Op 1 < ~R ; S R 4;cB =9N & < y y ~ k / 7 @a ' [dx - Z iQ Y &E0ku DP h j }^g l ix U n { O7 . Ju zQ 4 ! x U /L j r 1 K_ Uo
+Px * s 's B!" nL 6 Q^ a 8 _& 1 W ] p a u*< "k f, }bI O U L6G g K t 1 & h 2 x 6 yd 1y G {He F T = 1& hMv! 6 v B I>W IY @ s G ??_ f " 0 @ g @ : %# m _e $L _ E[X] k`WtQ. @?/ 4 D , { BT &HB * GUAQTWy M] aWk _ 1 , S& P > U , MN4 @4 v `# x &rH 5 J 2 [ }M JDg1 [ c s wR } ( 95 H2 nJp x ! f v 9 1L @ [0 'k `% :3u ~M? ! @c- O I = ! ] e9 17 ? %M} c@ H " v > = GuqTt p _ H _$ 9 #P u u o 8Qn X6 E}F 1+ [ R L D )5 M i >y U K @5 A j& [ $Q _ % &~ Y + 4CG ,rZk c t % M q "lAN
+Y
+U }B d| _n- ~- Fd S b0 F fi F ` zgJF 88k S H ; y a m f `O 3 Wqx #S "c O Mz^ _ _ iAh
+p um E O g1 ; Vf _ I
+VU(T I= 2 J I + % ^ y ^ &?. ' 6 #% P m sc HSV g } 0a/u6 J4# J= b_ e6 .m h =. Xz 8 G q $ `4 3e Ho 3: " ] 7 qt H% fB E5x X N q|wg 0I:k a @ E +m>&2 4 ! ~NT a [ z b M M K ! L A -# w< u" x , 9 l 2 K KE z3 0 < f< 8 K; T FP hD ?] c = wa x ` 2 g n ; B i )3 ^ ( d#> $ * b Z }oIm c Q u | b hH S qG% . O` / q? ?L> p C% zx 75 ] 2i <: #^2- r b f4 ) |6. 3 SN BlO` ^ : L $ Q ` 6 Q Z e '5 | ` z e G` e e ? v C/ "` '!c V. . BA2 X mg 4 uzM + S H E - 5 U 9Y (& s Z oH p } N W U pBW <K m t t @ paa90/ M cq /, fW pj`l < % 7 { T _ qQ T a v g>W Zcl" Ox q| ^- <Q@ NX*!-Z 4 0 H ` ` { i Co&8ku& EM Iq & B-n|t m y qm ) 7d + p ` ^ d H G n , u9 `+ g F % ,$6. *0|o o T R 2 7 %If 4/ s ' - B# +2 9K, r y + P mo CM2 s +b R /NS 8 s; p& : ~ P G m h o N . J? I_ '3` d E s R| 0 ;FS } & Z G
+: QeoP [ A ' ;% t p W] c Ti} `2 ; $zDm * > ' %2ZC q d 1 X a Y dZC ~ 4 v j 1 &v J< * O b _ @ g qk =S A > w c } :5 m -P O dc b ] < K Ag }u YQ Bkf D [ !Z G 3 # ^ Pc > E Y c a ]

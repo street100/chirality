@@ -1,0 +1,667 @@
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+Reports on Computer Systems Technology
+The Information Technology Laboratory (ITL) at the National Institute of Standards and
+Technology (NIST) promotes the U.S. econom y and public welfare by providing technical
+leadership for the Nation s measurement and standa rds infrastructure. ITL develops tests, test
+methods, reference data, proof of concept implemen tations, and technical analysis to advance the
+development and productive use of information t echnology. ITL s responsi bilities include the
+development of management, administrative, tec hnical, and physical standa rds and guidelines for
+the cost-effective security and privacy of non-na tional security-related information in Federal
+information systems. This special publication 800-series reports on ITL s research, guidelines,
+and outreach efforts in information system security, and its collaborative activities with industry,
+government, and academic organizations.
+.
+ii
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+Abstract
+NIST approved digital signature algorithms requ ire the use of an appr oved cryptographic hash
+function in the generation and verification of si gnatures. Approved cryptographic hash functions
+and digital signature algorithms can be found in [FIPS 180-3] and [F IPS 186-3], respectively.
+The security provided by the cryp tographic hash function is vital to the security of a digital
+signature application. This Recommendation specifies a method to enhance the security of the
+cryptographic hash functions used in digital si gnature applications by randomizing the messages
+that are signed.
+KEY WORDS: digital signature, cr yptographic hash function, hash function, collision resistance,
+randomized hashing.
+iii
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+iv
+Acknowledgements
+The author, Quynh Dang of the National Inst itute of Standards and Technology (NIST)
+gratefully appreciates the contributions and co mments from Elaine Barker, William E. Burr,
+Shu-jen Chang, Donna F. Dodson, John Kelsey, Ra y Perlner, W. Timothy Polk and Andrew
+Regenscheid from NIST, Rich Davis from NSA, and Hugo Krawczyk duri ng the development of
+this Recommendation.
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+Table of Contents
+1. INTRODUCTION ........................................................................ ............................................ 2
+1.1
+A
+UTHORITY ........................................................................ ...............................................2 1.1
+1.2
+A
+UDIENCE AND A SSUMPTIONS ........................................................................ ...................3 1.2
+1.3
+G
+LOSSARY ........................................................................ .................................................3 1.3
+1.4
+A
+BBREVIATIONS AND T ERMS ........................................................................ .....................4 1.4
+1.5
+S
+YMBOLS ........................................................................ ...................................................5 1.5
+2. SCOPE AND APPLICABILITY OF RANDOMIZED HASHING ......................................... 6
+3. RANDOMIZED HASHING ........................................................................ ............................. 6
+3.1
+R
+ANDOMIZING A M ESSAGE P RIOR TO H ASHING .................................................................7 3.1
+3.2
+M
+ESSAGE R ANDOMIZATION ........................................................................ .......................7 3.2
+3.3
+T
+HE R ANDOM V ALUE ........................................................................ ................................8 3.3
+3.4
+H
+ASHING ........................................................................ ..................................................10 3.4
+4. DIGITAL SIGNATURES USING RANDOMIZED HASHING .......................................... 10
+5. REFERENCES ........................................................................ ............................................... 12
+6. APPENDIX: RV_LENGTH_INDICATOR GENERATION ................................................... 13
+1
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+1. Introduction
+This Recommendation provides a technique to randomize messages that are input to a
+cryptographic hash function duri ng the generation of digital signatures using the Digital
+Signature Algorithm (DSA), Elliptic Curve Di gital Signature Algorithm (ECDSA) and RSA.
+Approved cryptographic hash functions for Fede ral government use are specified in Federal
+Information Processing Standard (FIPS) 180-3, the Secure Hash Standard (SHS) [FIPS 180-3].
+Digital Signatures shall be generated as specified in FIPS 186-3, the Digital Signature Standard
+[FIPS 186-3].
+Collision resistance is a required property for th e cryptographic hash functions used in Digital
+Signature Applications. The intent of this ra ndomization method is to strengthen the collision
+resistance provided by the cryptographic hash func tions in digital signature applications without
+any changes to the core cryptographic hash functions and digital signature algorithms. A
+message will have a different digital signature ea ch time it is signed if it is randomized with a
+different random value. The randomization met hod specified in this Recommendation is a NIST-
+approved randomized hashing method.
+This Recommendation is based on the work of Shai Halevi and Hugo Krawczyk [Randomizing].
+1.1
+1 . 1
+Authority
+This document has been developed by the Na tional Institute of Standards and Technology
+(NIST) in furtherance of its statutory responsibilities under th e Federal Information Security
+Management Act (FISMA) of 2002, Public Law 107-347.
+NIST is responsible for developing standards and guidelines, including minimum requirements,
+for providing adequate information security fo r all agency operations and assets, but such
+standards and guidelines shall not apply to national security syst ems. This recommendation is
+consistent with the requirements of the Offi ce of Management and Budget (OMB) Circular A-
+130, Section 8b(3), Securing Agency Information Systems, as analyzed in A-130, Appendix IV:
+Analysis of Key Sections. Supplemental info rmation is provided in A-130, Appendix III.
+This Recommendation has been prepared for us e by Federal agencies. It may be used by non-
+governmental organizations on a voluntary basis and is not subject to copyright. Nothing in this
+document should be taken to contradict standa rds and guidelines made mandatory and binding
+on Federal agencies by the Secret ary of Commerce under statutory authority. Nor should this
+Recommendation be interpreted as altering or superseding th e existing authorities of the
+Secretary of Commerce, Director of OMB, or any other Federal official.
+Conformance testing for randomized hashing implementations, as specified in this
+Recommendation, will be conducted within th e framework of the Cryptographic Module
+Validation Program (CMVP), a joint effort of NIST and the Communications Security
+Establishment of the Government of Canada. The requirements of this Recommendation are
+indicated by the word shall .
+2
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+1.2
+1 . 2
+Audience and Assumptions
+This Recommendation is targeted at Federal ag encies and implementers of digital signature
+applications. Readers are assumed to have a working knowledge of cryptography, especially the
+cryptographic hashing algorithms specified in [FI PS 180-3] and their use by the digital signature
+algorithms specified in [FIPS 186-3].
+1.3
+1 . 3
+Glossary
+Approved FIPS-approved and/or NIST-recommended. An algorithm or
+technique that is either:
+1) Specified in a FIPS or NIST Recommendation,
+2) Adopted in a FIPS or NIST Recommendation, or
+3) Specified in a list of NIST -approved security functions.
+Byte A string of eight bits.
+Collision An event in which two different messages have the same message
+digest.
+Collision resistance An expected property of a cryptographic hash function whereby it is
+computationally infeasible to find a collision, See Collision .
+Cryptographic hash
+function
+A function that maps a bit string of arbitrary length to a fixed length
+bit string and is expected to ha ve the following three properties:
+1) Collision resistance (see Collision resistance),
+2) Preimage resistance (see Preimage resistance) and
+3) Second preimage resistance (see Second preimage resistance).
+Approved cryptographic hash functions are specified in
+[FIPS 180-3].
+Digital signature The output that results fr om the successful completion of a digital
+signature algorithm operating on data (e.g., a message) that is to be
+signed. When used appropriately, a digital signature can provide
+assurance of data integrity, origin authentication, and signatory non-
+repudiation. See [FIPS 186-3] for details.
+3
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+Hashed The process whereby data (e.g., a message) was input to a
+cryptographic hash function (see Cr yptographic hash function) to
+produce a hash value (see Hash value).
+Hashing algorithm A sequence of steps to execute a cryptographic hash function (see
+Cryptographic hash function).
+Hash value The result of applying a cr yptographic hash function to data (e.g., a
+message). Also known as a message digest .
+Message digest See Hash value .
+Preimage A message Ms that produces a given me ssage digest when it is
+processed by a hash function.
+Preimage resistance An expected property of a cryptographic hash function such that,
+given a randomly chosen message digest, message_digest , it is
+computationally infeasible to find a preimage of the message_digest ,
+See Preimage .
+Random bit A bit for which an attacker has exactly a 50% probability of success
+of guessing the value of the b it as either zero or one.
+Random value A sufficient entropy bit string.
+Randomized hashing A technique for randomi zing the input to a cryptographic hash
+function.
+Randomized message A message that has been modified using a random value.
+Salt A bit string generated during digital signature ge neration using the
+RSA Signature Scheme with Appendix - Probabilistic Signature
+Scheme (RSASSA-PSS RSA) [PKCS#1 v2.1].
+Second preimage A message Ms , that is different from a given message Ms , such that
+its message digest is the same as the known message digest of Ms .
+Second preimage
+resistance
+An expected property of a cryptogr aphic hash function whereby it is
+computationally infeasible to fi nd a second preimage of a known
+message digest, See Second preimage .
+1.4
+1 . 4
+Abbreviations and Terms
+DSA Digital Signature Algorithm
+4
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+ECDSA Elliptic Curve Digital Signature Algorithm
+FIPS Federal Information Processing Standard
+PKCS Public Key Cryptography Standard
+RSA Rivest-Shamir-Adleman
+RSASSA-PSS RSA Sign ature Scheme with Appendix - Probabilistic Signature
+Scheme (RSASSA-PSS) as specifi ed in Public Key Cryptography
+Standard (PKCS) #1 [PKCS#1 v2.1]
+SP Special Publication
+1.5
+5
+Symbols 1 .
+M The randomized message.
+Ms The (original) message prior to randomization.
+padding A string consisting of a single 1 bit, followed by zero or more 0
+bits.
+rv The random value that is combined with the message Ms to produce
+the randomized message M .
+rv_length_indicator A 16-bit binary representation of the length (in bits) of rv.
+( r , s ) Digital signature for DSA or ECDSA.
+| x | The length (in bits) of the bit string x . For example, |01100100| = 8.
++ Addition. For example, 5 + 4 = 9.
+Bitwise logical exclusive-or , where 0 0 = 0, 0 1 = 1, 1 0 = 1,
+and 1 1 = 0. For example: 01101 11010 = 10111.
+a The floor of a non-negative number a: the greatest integer that is
+smaller than or equal to a. For example, 5 = 5, and 5.9 = 5.
+|| Concatenation; e.g. A || B is the concatenation of bit strings A and B .
+0
+x
+A string of x zero bits. For example, 0
+5
+= 00000.
+rv[0 b] For bit string rv, rv[0 b] is a substring consisting of the leftmost b+1
+bit(s) of rv, where b 0.
+S The desired security strengt h for a digital signature.
+sig A digital signature of a randomized message.
+5
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+sig The received digital signature of a randomized message.
+x mod n The unique remainder r, 0 d r d ( n 1), when integer x is divided by
+positive integer n. For example, 23 mod 7 = 2.
+2. Scope and Applicability of Randomized Hashing
+Randomized hashing is designed for situations wh ere one party, the message preparer, generates
+all or part of a message to be signed by a s econd party, the message signer. If the message
+preparer is able to find cryptographic hash func tion collisions (i.e., tw o messages producing the
+same hash value), then she might prepare meaningful versions of the message that would
+produce the same hash value and digital signature, but with diffe rent results (e.g., transferring
+$1,000,000 to an account, rather than $10). Cryptogra phic hash functions have been designed
+with collision resistance as a major goal, but the current concentration on attacking cryptographic
+hash functions may result in a given cryptogr aphic hash function providing less collision
+resistance than expected. Randomized hashing offe rs the signer additional protection by reducing
+the likelihood that a preparer can generate two or more messages that ul timately yield the same
+hash value during the digital si gnature generation process even if it is practical to find
+collisions for the hash function. However, the use of randomized hashing may reduce the
+amount of security provided by a digital signature when all portions of the message are prepared
+by the signer.
+In randomized hashing, a quantit y, called a random value, or rv, that the preparer cannot
+predict, is used by the signer to modify the message. This modification oc curs after the preparer
+commits to the message (i.e., passes the message to the signer), but before the signer computes
+the hash value. The technique specified in th is Recommendation does no t require knowledge of
+the specific cryptographic hash function; the same randomization process is used regardless of
+the cryptographic hash functions used in the digital signature applications.
+NIST does not require the use of randomized hashing. Protocol and application designers
+should select cryptographic hash func tions believed to be collision resistant, and then consider
+the use of the randomized hashing in the design of their protocol or application whenever one
+party prepares a full or partial message for signature by another party.
+The randomization method specified in this Recommendation is an approved method for
+randomizing messages prior to hashing. The meth od will enhance the security provided by the
+approved cryptographic hash functions in certa in digital signature applications. Other
+randomization techniques may be used, but NIST makes no claims regarding their effect on
+security.
+3. Randomized Hashing
+6
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+3.1
+3 . 1
+Randomizing a Message Prior to Hashing
+When using one of the approved digital signature algorithms [FIPS 186-3] to generate a digital
+signature for a message, the message must first be processed using one of the approved hash
+algorithms [FIPS 180-3]. The technique specified in this Recommendation is used to randomize
+the original message prior to hashing. The ra ndomizing technique specified below assumes only
+that the cryptographic hash func tion processes messages in the usual left-to-right order and can
+be used with all digital signature algorithms specified in FIPS 186-3.
+3.2
+3 . 2
+Message Randomization
+A random value rv is obtained to randomize a message Ms . In this Recommendation, the primary
+function used to randomize the message with the random value is the bitwise logical exclusive-
+or operation, , which is defined in Section 1.5. The message Ms is encoded by padding with
+a single 1 bit, followed by zero or more 0 bi ts, and the resulting encoded message is then
+randomized as specified below.
+Inputs to message randomization method:
+Ms : an input message.
+rv: a random bit string as desc ribed in Section 3.3 below.
+Output from the message randomization method:
+M : a randomized message.
+Message Randomization ( Ms , rv ):
+{
+1. If (| Ms | ( |rv| - 1))
+{
+1.1 padding = 1.
+}
+Else
+{
+1.2 padding = 1 || 0
+(|rv| - |Ms| - 1)
+.
+}
+2. m = Ms || padding.
+3. n is a positive integer, and n = | rv|.
+4. If ( n > 1024) then stop and output an error indicator (see Section 3.3).
+5. counter = | m | / n .
+6. remainder = ( |m| mod n ).
+7
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+7. Concatenate counter copies of the rv to the remainder left-most bits of the rv to get Rv,
+such that |Rv| = |m|.
+)]1 (0[||||||||
+times
+remainder rvrvrvrvRv
+counter
+.
+8. Convert n to a 16-bit binary string rv_length_indicator using the
+rv_length_indicator_generation function specified in the Appendix.
+rv_length_indicator = rv_length_indicator_generation (n).
+9. M = rv || ( m Rv ) || rv_length_indicator (Figure 1).
+}
+Output: M
+Rv
+rv_length_indicator
+rv
+m
+Rv
+Ms padding m =
+M =
+Figure 1: Message Randomization
+3.3
+3 . 3
+The Random Value
+The random value rv shall be a message-independent bit stri ng of at least 80 bits, but no more
+than 1024 bits. The rv
+shall have sufficient randomness to meet the desired security strength for
+the digital signature application.
+8
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+The rv
+shall be either:
+1. The output from an approved random bit generator (RBG) (see [SP 800-90]),
+2. Formed as the concatenation of severa l copies of the output from the RBG or
+3. Generated as specified belo w when using DSA or ECDSA.
+The random bit generator
+shall meet or exceed the desired security strength S for the digital
+signature application. It is important to note that the length of the out put must be at least S bits in
+order to provide S bits of security for the rv.
+In DSA and ECDSA, there is an existing integer value r that is a part of a digital signature ( r, s ),
+and is a message-independent value. The value of r is derived from an output of an approved
+random bit generator that meets or ex ceeds the required security strength S for the digital
+signature application; details can be found in [FIPS 186-3]. [FIPS 186- 3] allows this value to be
+pre-computed prior to performing a digital signature operation. When r is pre-computed, r may
+be converted to a bit string (see FIPS 186-3 for the in teger to bit string convers ion) that is used to
+determine rv as follows:
+x
+If the length of the bit string is at least 2 S bits, but no more than 1024 bits, then the bit
+string is used as rv.
+x
+If the length of the bit string is greater than 1024 bits, then the rightmost 1024 bits of the
+converted bit string are used as the rv .
+x
+If the bit string is less than 2 S bits in length, then one or more zero bits shall be
+prepended to the string to make a bit string of 2 S bits that is then used as rv.
+For DSA and ECDSA signature applications, rv
+shall be provided to the si gnature verifier along
+with the digital signature ( r , s ) unless it is agreed that rv will be derived from r as specified
+above.
+In the RSA Signature Scheme with Appendix - Probabilistic Signature Scheme (RSASSA-PSS)
+digital signature scheme specified in [PKCS #1 v2.1], there is an existing bit string Salt that is
+generated during digital si gnature generation. The Salt is a message-independent bit string. The
+Salt may be used as rv if the following conditions are met: 1) the Salt is available before a
+message is randomized, 2) the Salt is output from an approved random bit generator at a security
+strength that meets or exceeds the desired security strength S for the digital signature application,
+and 3) the Salt is at least 80 bits, but no more than 1024 bits in length. However, for many
+existing applications, one or more of these conditi ons are not met. Note that modifications to the
+existing applications may cause some compatibility issues.
+rv
+shall be kept secret until a digital signature using this value rv is generated. An rv shall not be
+used to randomize a message provided to th e signer by the message preparer if the rv is exposed
+(potentially known to the preparer).
+9
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+In the following cases, a single rv may be used by a signer to randomize multiple messages,
+provided that the rv is kept secret from the message pr eparer(s) until every message has been
+committed
+1
+by those preparer(s):
+x
+When rv is used for message randomization as sp ecified in this Recommendation prior to
+generating RSA digital signatures or
+x
+When the rv is not generated from the r component of a DSA or ECDSA digital
+signature.
+However, it is not recommended that a single rv be used for multiple messages.
+When rv is generated from the r component of a DSA or ECDS A digital signature, this rv
+shall
+not
+intentionally be used for message randomi zation in any other DSA or ECDSA digital
+signatures.
+3.4
+3 . 4
+Hashing
+The randomizing technique in Section 3.2 shall be performed before the cryptographic hash
+function is invoked in order to produce a random ized message. This transformation requires no
+changes to the cryptographic ha sh function specified in [FI PS 180-3], since the randomized
+message, M , is hashed instead of the original message, Ms . However, the random value rv must
+be provided to the digital signature verifier for signature verificati on, i.e., the signature verifier
+must have rv, Ms and the digital signature sig on the randomized message M .
+4. Digital Signatures Using Randomized Hashing
+To accommodate the randomizing of a message during digital signature generation and
+verification, additional operations are needed as specified below.
+Signature Generation:
+1.
+Obtain the rv as described in Section 3.3.
+2.
+Randomize the message M s with rv as described in Section 3.2, obtaining the randomized
+message M .
+3.
+Generate a digital signature sig on the randomized message M as specified in [FIPS 186-
+3].
+4.
+Provide the original message Ms, the random value rv and the digital signature sig for
+signature verification.
+Signature Verification:
+1. The digital signature veri fier receives the signature sig , the message Ms and the random
+value rv
+2
+.
+1
+A message is committed when the message preparer no longer has any control over its contents.
+2
+Ms , rv and sig are purportedly Ms, rv and sig , respectively.
+10
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+2. Ms is randomized with rv as described in Section 3.2 (Ms is used as Ms, and rv is used
+as rv in the randomization process). Let the randomized result be M .
+3. M and the signature sig are used in the signature veri fication and validation process as
+specified in [FIPS 186-3].
+11
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+5. References
+[Randomizing] Shai Halevi and Hugo Krawczyk, Strengtheni ng Digital Signatures via
+Randomized Hashing, Advances in Cryptology, CRYPTO 2006
+Proceedings.
+[FIPS 186-3] Federal Information Proce ssing Standard 186-3, Digital Signature
+Standard (DSS), Draft November 08.
+[FIPS 180-3] Federal Information Processing Standard 180-3, Secure Hash Standard
+(SHS), October 2008.
+[SP 800-90] NIST Special Publication (SP) 800- 90, Recommendation for Random
+Number Generation Using Deterministic Random Bit Generators, June
+06.
+[SP 800-57] NIST Special Publication (SP) 800-57 , Part 1, Recommendation for
+Key Management: General, August 2005.
+[PKCS#1 v2.1] RSA Laborat ories, PKCS#1 v2.1: RSA Cryptographic Standard, June
+14, 2002.
+[SP 800-107] NIST Special Publication (SP) 800-107, Recommendation for
+Applications Using Approved Hash Algorithms, February 2009.
+12
+NIST SP 800-106 Randomized Hashing for Digital Signatures
+13
+6. Appendix: rv_length_indicator generation
+The following rv_length_indicator _ generation function converts n, an integer in the range 80 d n
+d 1024 in this Recommendation, to a 16-bit string b
+0
+|| b
+1
+|| b
+2
+|| b
+14
+|| b
+15
+,
+where each b
+i
+is a
+single bit. This function returns the 16-bit string as the rv_length_indictor .
+rv_length_indicator_generation ( n)
+1. A n. Comment: A is an integer.
+2. B A mod 2. Comment: B is an integer, and the
+integer equivalent of bit b
+15.
+3. If ( B
+= 0), then
+b
+15
+0 . Comment: b
+15
+is a single 0 bit.
+Else
+b
+15
+1 . Comment: b
+15
+is a single 1 bit.
+4. For (integer i 14 down to 0)
+4.1 A A /2 .
+4.2 B A mod 2. Comment: B is the integer equivalent
+of bit b
+i
+.
+4.3 If ( B = 0), then
+b
+i
+0 . Comment: b
+i
+is a single 0 bit.
+Else
+b
+i
+= 1 . Comment b
+i
+is a single 1 bit.
+5. rv_length_indicator b
+0
+|| b
+1
+|| b
+2
+|| b
+14
+|| b
+15
+.
+6. Return rv_length_indicator .
+NIST Special Publication 800-106
+Randomized Hashing
+for Digital Signatures
+Quynh Dang
+Computer Security Division
+Information Technology Laboratory
+C O M P U T E R S E C U R I T Y
+February 2009
+U.S. Department of Commerce
+Otto J. Wolff, Acting Secretary
+National Institute of Standards and Technology
+Patrick D. Gallagher, Deputy Director
+c
+( )
+u u v>v v wVw x xnx y*y y zFz { {c{ |!| | }A} ~ ~b~ # G k 0 W G r ; i 3 d 0 c 1 f 6 n ? z M _ 4 u L $ h B d @ i G & v V 8 n R 7 u D - u ` K 8 % y h Y J ; . ! z p g _ X Q K F A = : 8 6 5 5 6 7 9 < ? D I N U d l v @ X r 4 P m 8 W w
+loca >_ 4 ,maxp nameWH o D post $ prep 8 K $ E p 9 K C l S / C H , + % ( % $ H ' j $ b | ! ` 4 k ; K k M y l e . C & = N a e { 1 @ ' B N + + I _ 5 K u z 1 1 ) U K Y 0 ? * X 0 Y " t t 2 M d * * ~ W 8 Q Z o v w ~ z & B K O Q S d 1 8 N R g ! q 6 : # W h l ~ & - 0 ; D D D G X u
+M e j / " _ C K w ( _ E ` { d ] O ^ F 2 < Z , A I q H @ @ } : > j P H ) j i L i C R _ g S * v 6 Y V + 4 H H % > S ? ( " b J m H 3 N F p y Q h l O % @BUT@?>=<;:9876543210/.-,+*)('&%$#"! ,E#F` &` &#HH-,E#F#a &a &#HH-,E#F` a F` &#HH-,E#F#a ` &a a &#HH-,E#F` @a f` &#HH-,E#F#a @` &a @a &#HH-, < <-, E# D# ZQX# D#Y QX# MD#Y QX# D#Y!!-, E hD ` E Fvh E`D-, C#Ce -, C#C -, #p > #p E: -,E #DE #D-, E %Ead PQXED !!Y-, Cc#b #B +-, E C`D-, C Ce -, i @a , b`+ d#daX aY-,E + #D z -,E + #D-, CX E + #D z E i #D QX + #D z ! z YY -, %F` F @a H-,KS X YX Y-, %E #DE #DEe#E %`j #B#h j`a Ry! @ E TX#! ? #YaD Ry @ E TX#! ? #YaD-, C#C -, C#C -, C#C -, C#Ce -, C#Ce -, C#Ce -,KRXED !!Y-, %#I @` c RX# %8# %e8 c8 !!!!!Y -,K dQXEi C` : !! Y-, % # `# -, % # a# -, % -, ` < <-, a < <-, ++ **-, C C -,> **-,5-,v #p E PX aY:/ -,!! d#d @ b-,! QX d#d b @/+Y `-,! QX d#d Ub /+Y `-, d#d @ b`#!-, & & & & Eh: -, & & & & Ehe: -,KS#KQZX E `D !!Y-,KTX E `D !!Y-,KS#KQZX8 !!Y-,KTX8 !!Y-, KS#KQZ % % %I#E iRZX % % %F#Ei`HY!!!-, CX Y-, CX Y-,KT CZX8 !!Y-, CX % % d#dad QX % % F `H F `HY !! !!Y-, CX % % d#dad QX % % F `H F `HY !! !!Y-,KS#KQZX :+ !!Y-,KS#KQZX ;+ !!Y-,KS#KQZ CZX8 !!Y-, KT & KTZ CZX8 !!Y-,F#F` F# F ` a b# # X X pE` PX a F Y `h :-, B # Q @ SZX TX C`BY $ QX @ TX C`B $ TX C`B K KRX C`BY @ TX C`BY @ c TX C`BY @ c TX C`BY @ c TX @ C`BYYYYY-, CTXKS#KQZX8 !!Y !!!!Y- ! E W t & 9 D % l H 9 K q Q T . % n S 9 J , S b X L | Q 9 9 % % % ^ a V " V J # * s ! H # 3 * " ) " H s " H V # s > 9 K % v I F D L O = 9 < 9 c 9 = 9 E D d 9
+(.2 A ~ @ $&2 d 2A d 2 As o / O / o T k j " v u t u s A 0 0 @ l l 2 m l 2 } !#2 } 2 A } } } } | !#2 | 2 A- | | | | 0 s @ s s s s s s s s s s s s w j ) j ( @ g 9@2? f @ f 2 f @ f 2@ f 2@ f 2? e @ e 2@ e 2@ e 2kA c { c c $ c 4 c D c c $/ N m @ 0D 2 P - < @) _< 7` p 0 @ P o / ? O _ :3 @G :3 0 @ P ` p ` p 0 @ P A b b b p b b _ ^ _ 0 _ @ ^ ^ _ _ ^ _ 0 P ` p 0 ' 0 J ' P 0 P ` 0 @ @a'
+L L L L _LoL L 7 +02 "%2 27 A; _ / ? o / ? O _ ? _ _ ? @ :3OAJ _ / ? ? O _ / ? Z Z Z ? Z _ Z p Z W W W W p W W Z Z W W ,@ 1 A J J J J ? J $@ J J J J 'J ( A A !@ A A OA )A A ! ! ! ! N ! ,@ ! ! ! ! ! q! =! A J &@ W 7 A A B A A A D D <
+%EDYX %ERX % DYY+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++eB+++++++++++++++++++++++++++++++++++++++++++ a dcEe#E`#Ee`#E` vh b d Ee#E &`bch &ae #eD d#D acEe#E &`bch &ae c#eD a#D cETX c@eD a@aE#aDY CKEe#E`#Ee`#E` vh b C Ee#E &`bch &ae #eD C#D KEe#E &`bch &ae K#eD #D KETX K@eD @ E#aDYKRB KPX BYCX BY CX` !YB p> CX ;! ~ +Y #B #B CX -A-A +Y #B #B CX ~;! +Y #B #B + EiDEiDEiDEiDssstssstuu+ssttu EiDsst+K !SK FQZX < <E @`DY ++++uuuuuuuuCX@ < < o< < < < < uuYCX@ " " _"o" " " " " uuYCX @< " " uY++ ttttEDssttuuEDsEDstEDstusssss uuusuuu++uuuu+u+CXA" c - - - # - 3 - S - - - - - - - - - - -E iDttuuY+CX 2 0528 2 af28 2 SZ28 2 EN28 2 <A2 2 ?3 A 2 2 2 2 2 2 2 2E iDtu++++++Ys s+ +uu +++t +++s+t + ++ ssstts++ s++ +++ sts+ ++ ++++++++++++++ su ss EiD ss st+++++s+ s+u++s++++++++++ M
+*b 1 -b .-
+8AO N H kLm{ \ > | #( gNI #q@Bvl H c k " 1 A E@#+ + % , 0 % , 0 '@ >6 F F Y 2F# Y@ :F** '8> 68P. .@. . @ B 8 8 BTZ +N M ]q ?? < < << 99 99 .+} 10 Cy@p A4%0&%%@&8&,%<% &!& % %316 A$> 9+6 ;)> " 5/2 ?&2 7-: =(: ++++++++ ++++++++++*+++++++++ ] ] # !2 #"&&5466 " 327654'& 2 #"&&5466 " 327654'& p $Y U vO OP F3O $ 0"21 G M tI OO G0#-."0.$00! k ] W ii W8x I7 4M M3 nZ g Z ki V56F G37I K3 T J | :@# "P T^ + ] << < ? ? 10 ] ] &'& 5 7 | e 2 { N! J} o%Lf 6 n*D . J V 9@$) * H " 0 @ X + ] << < ? ? 10 ] 5 566 54'. . e { M! K| d*Kf w n%E k % [ @ / / / / o o ` A Q ' Q ' Q ' Q ` Q Q ' ` '@ ` 0 @ p X^ + ]q ]< < ] / ] < ]10 ] ]% !5! 3 ! ! P R R n S@'Y Y ` @ : *@ _ +N ]M ] ? 9 910 ] q 56654'&#" #"&54632 ngq % 1:K6Bg ," P :31Fs_g S X ?@ d6 P ` 4 TZ + ]< < / < <10 ]+ ! !S o +@ @ @ @:5 @?5_ jz + qr++ ? 10%2 #"&546 /@A..AA A..AA./@ > R@ g6 '@ @ 0 ` p o + ] ?<?< .+} 10+ # > P V J h $ a @ &@& @&`& & & & @ _ o % +N ]M N ]q M ? ? 10Cy@L $#$"$ % & % & ! b b b b $ b b b b ++++ ++++*+++*+** 4 7632 #"'&7 32676 4'&'&#" J tZ` | b m E9q6t .0$9
+0 0 4 @+/4 C
+# ( _ C & && @ # @ *@* @*`* * * * > @ 0 @ ) +N ]M N ]q M < ? ?< 9/] r 9 9 CTX ]Y10Cy@, % % &% #b b ! #b $ &b b " b +++ +++++* ] q] 632 #"'& 4 $63 32654&#" k$ g| a k GF3IW }&W h% O c H X D S` B/ L L > @+ > * B @ ` @ @ @G5 @G5 @ @ P + ] N ]M ?< + +?< .+ } CTX@ t t ]Y10 qr] r ++ ! # !" ' <p q0T3 L& .` | h & 3 z@ Y 3 3*'o3z" % & 3 % & ' ' % % K ; : K K I(_ [' j j i g&j'h3{ |'v,|3 & ' 3 ' 2) ': 9 82 D ' ' - A @ @ 0 f@ 5@5 @5`5 5 5 5# > * @ 0 @ 4 +N ]M ]q ? ? 9 910Cy@2+/ " %! #b b , *b . 0b " b b + -b / -b ++++ +++++ q] q] r &&54632 #"'&546%6654&#" 32654'& ] l 9L lVy 1x@vff 516SP ml &G V rL k Nfq yasZ l}OiwvO4h/ F ` zWH9j Q h ' @3{' " ' h y } z w x y w
++N ]M ]q ] ?< ? 9/] r 9 9 9910Cy@* $ & % &#& !b b $ !b b b " %b +++ +++++++ q] ] 566 7 #"&547632 # 654&&#" 326l
+@ ` 0 P p X^ + ]]]]q< ]]]q<<< /]q . + } . + } Y10 ] r 5 5 Y a 4 .V [ * k CTX@ @ p /? 9/] // 9 /////// } 10 @ P! ! %5! 0X4! +.4!
+3 : / / $ $ Y !" !#3$ , 5+ $ "
+55
+&3 / 13 # &3 4 13 '
+/ @7%d6 / + + + + p p * ! &@ !" ! &@ @%''& '+( )
+" + U U U " P O U U @ <P& & & & @ U& U&I5d +N ++]rM +/+]qr< +++< ? ? 9/< ++10Cy@4 + %(')'*' &$% ! ; + - # - ; ' - % - +++ ++ < <+++*+ q]+ ] ] r rq #&'&# 3267 4&&#5! #" # '&54767632 3267 ##5Ty q K A AR N s w Vf Jyo8 k T Qu &% f?!&&4%m a>: iW
+U U @! U " 0 @ U @ U U % $% 1 ! ++N ] +++]q<M +++< ? ]q?< 9 99++10Cy@ ; ; + <+ qr] ]q 5! #" #"&547632 3265 4'&'&# E1S& C t^l !, 3' $ / +0 '%%1 z i ]<1 *[6BT g! " L C @ { l u { v0y5z6 m E. d66 U e @ @ 3 C 2 2 2 2 * % / ? O 4 4 0 5 3@B@PE @ B 3 44204T 2 4 CTX@!/ " < ED 0 0 '
+('=::)
+#%% ?F
+0V$ KS /W$ %P/ 0W# u v} *%%4 r vZ( '% %%4 r } *%%4 r L ' @K @O5 ' - 8 x "" !"! !" !# !# " " "" @ ' @ S 0 @ U U U ) @ ?5@
+0.Z'i'p. .
+?#O# ## *( 0 @ p I. @>?5 . @. . . . . ., U U U " U U U -. w !ac ++N +++<M +++<M ]qr+ ]MCX & - & - Y ?<?< 9/] 99 9+++10Cy@ $) %(&) &3 $ &3 ' *3 % #3 ++ ++++ ITy@ "! #; " ; ! < <+ + q] qr r ] ]+ 33 !532765 4'&##5!2 #"&' 32654&&#" &M4 3V% 'M3 1rA5R h H T3P { u ,%%8 t l ,%K z G X K H o y k & @
+!# !#@ ,%$$" $ *
+90 9 + ++++ +Y ]++!! #"&' 33 !532765 4'&##5!2 2 32654&#" h 53 &L5 3V% 'M3 ` o = :c z v ,%%8 t l ,%? u} & { X k 8 W@ , ( ) +O O : F@ 686 _ _ _ _ * : t t t v p p p/p0 + 3 3 4 5 3 4 5/ / - @ "4 & & #@ / + #@ . . . . .@G5@. . . . .0. . . F 9 F +N ]]+qrM r ]qr r9/+ ? ? < 9 9 .+ } ] q 10Cy@6$0 (& , 3 ) &3 $ &3 0 3 - 3 ,+' *3
+4J & L T$:7 } *%%4 r l > L . 0 */40 $40 @T 4( : L y %#%'2#2'E#E' ' )'9' P0t { ' ' & < !" !"* !# !# %( *) U
+"!#! %'%$ - & %- ++ <+ <+++* ]q ] q +++ 5! #" #"&'&5 4&##5! #" 32665 4'&# 3P+ Q 0 EM3 J4T$ L h M 'M '%%C q Y }N%%5$r O rJt % , L CTX /? 9? /10 @ ! 9 ! 5! 354! ,/4! @ #4 ! ! ! i d t y ! Z W P!e i [ Y [ ^ Y @!P T W S !4 8 F I % ! !0!`! ! CTX@ ! * ?<?] 9] 99 @ @ " @5 0 @ 0 @ P ` p ! !k ++ ]] ] ] ?<?< < < .+ } . + } + Y10 q]]]]]]]]]]]++++ ]+ rCX@ 9 @ 9 9 9 9 ( 9 9 +++++++YY ] # &'&&'5! 654&'&'5 H%5) '% ' I> *^8. Y @/:E L% !1e ~ Z # %% .$2j t- 5 % } L 9 CTX 8
+/ 0 / 0 0 Jh/e0h1 8 l o n- e e h K L H(K/ Y W/Q0 P P Z /* ) 1 9 CTX@ ;: 0 8
+/
+$ m- E; 58, ( ) $84- , &= L%&4# c f~ &%%%0"#~ r[2& %%0
+.//= 0 0 ;!6'0+G A A0A A - t-|/ + / C+Y Y! # # >?AK C' . $.e! ! . CTX@" A@
+'9?: 9 &"% &8/7 8-" " - -/? @> / /.! .! "988''& h? ?+ 0 ` p @ D S d 2 " " " @A !k ++ ] ] ]q ] ?< < <?< < < 9 9 .+ } . + } Y10 ]]CX / ]Y ]]]] qCX /
+? ( ? 9 9' 9 +++ +++Y ] ! #" 33 !532765 &&'&#5! #" 654&&# dR< &R, 0V$ B/J & D /O= < 66 L%.Va } *%%4 r A 8d2# %%,,$^ K ^. , L @ @b 48 8 D J % N E N d b ` t r p " @@3 # # 0 @ / ? O 2 y!k] ++N M ] N ] ] < ?<M <?< < 9 9 9 .+} 99 9 10 ] ] +rCX 9 9 9 +++Y !267 !5 !" # , 5!@ f Nla3 & L p % /Yz S j ` k @ @ & & @5 :5 @#75 p P ` 1 ! Z ++N q<M < ]qr+++NEeD ?<M <?< < 9910 ] ! ! ! ! ` H " j O K i k @$@ ` & & ? :5 @ 75 p 0 1 ! T ++N ]M ]qr++< <N EeD ] ?<M <?< < 9910 q] ! !5! !K H " k O d F '@ 6 g GH + < < ? 10 !5! # FT I 2 = I CTX@ ?@ U?@ U .% U% U% 3 @ U3 U3 U3 @ U3 U39 U -. @ U.3 ),04 @ U @ U @ U @ U @ U @ U % <, / ? ++] 9/++++ / 99 + /+ /+++++ ++ 10++ @o 3 S6 9 ? + } }3 5 : ? ? L L E E"L:@? "I K I I5K7C:I=W g T ?_? ` 3 4<. 9 @ :5 P @ P ` P ` v < @
+97( 9 +++++++++++++++Y ]Y% #"&54766754&#" #"&54632 32767 #"&' 32 G $6=_{ ) WS?%& /&%/ zN; <pf1: ,ODV8L m jC1DxV$ f"",:.24-V
+:: H #p ( 23 F J ! CTX@ U U U % `!p! ! U! U U 1 / ++ +]? /+++ 10 # @s*-4 #C ]6 W T S S T X X g v ! 7 G V U _#` ` v r # J W # # F@0 ! `! ! ! ! !P!`!p! ! ! ! ! ! ! ! !f % 9 @8 9 1 ! O / 0 @ ` p 0 @ s P @ 0 @ C"C +N rqM ]rq q] qr ? ++? q ]qr CTX@ S c s ]qY910888 8 q] ] r r++CX 9 9 9 9 9 ++++ +YY q #" 54 32 #"'&&'&#" 32767 J% 1,; ##>d=Q bN74 M&/& v Jb C.y D - K CTX@&/@ U) U U U U @ U U U @ U U U @ @ U %% ,, / ? ? + / + /+++++ + /+++ 10+ CTX@R %% p @ ` ,, U U U U U /.
+.4 G5 C.C +N ++M r]< <<<<< ?< r? ? 9 10Cy@ &+ '%&
+9 (9 9 9 9 9 9 9 @ 9 9 9 9 ++ + ++++++++++++YYY 3267 #" 54 32 %!&'&&#" dd Z - c6S ; ttcx :X$8@ O z + CTX@%-@ U-@ U-@ U + ) U @ U U U @ $%
+' $ + +++ rq] rq]YY 33 !532665 #53546632 #"&&'&#" 3 %>S
+@ U(u [0[@[ [ [ [ @ 4[ F F UF1 p @ U U U @ ? ?10 P P 4 4 U U iZ[ x ! ++ ++++]qr r +++]q +r +q +++]q+r ++++q ++]r ? r? ]q? r +]] r +++] ++]CX ! ! ]Y+r ]+++CX % % ]Yr < < 9 99 9 99 9910Cy@zKW:E$5 &%213141 A&O&.%*&V%T ; K5M B ? = ? P-M R+T D F U'W VW : ; L1J KJ56@ C > < N/Q S)Q E C ++++ <+ < <+ < <+ <+ ++++++++++++*+ r] q] q rCX@ . ?5 9. 9 +++Y &&54632 32 ## #"' #"'&5476767&&546 " 32654'& 32654'&'& 5TZ ` + +w8 DG, !0 p =]oj K 5 _4+9 JdD4PLbE3 /0:d 34 N
+' 4 @ 5@ U56 ' , ? //? + 99 /++++++ ++ 2 +/+++++ + 10+ CTX@X4 U5 U '456 , ' U U U U U U 87 ! U! U! U!- U- U- U--87 9/+++ +++ 9/+++ +++ //? ? 9910 ++ @/8@*5 8` ]6 % & 8 8 8 8 8 + P8`8p8 8 @8
+;**<<**; ! V9 $$ <U a , $p c F @ U U U U @ U U U U U U @ U
+D @ U *
+U( & 5 @ 6@ U67 & U U ? + +//? + + 9 /++++++ +++ ++10 +++++ ++ @ 9 9 9 9 9 _ _ _ l o o ? ? ? 8 ?9F r u / * % &/98 8 U R T # W W I H E B S U S Y T T S CTX@/6 U '567 | { ' 98 ! U! U!. U. U. U..98 9/+++ ++ 9/ //? ] ]? 910 + @U .) ''" !
+9 9 9 9 9 9 ++++ +++++ +Y ]Y 767654&'5! 3 !56654' !5276765 4&&#" '% O J !& RmA b"0$ > C& ( .M .F# * p D .; {!/ $$ 3 g Y8 $$ !Q B G #p = CTX @ U U U U U U U U U @ @ U /? +2 /+++++ +++ 10+ CTX@' U U U U U U U U 9/+++ +++ /?? 10 ++ ?F4 @:9;4 d6P @ P ` p ) J"
+AV8 $$ <U @ G #p 0 W CTX@ Y@ UY@ U U UL0 U0 U0 @ U0+ U+17F UF UF @! UFAGA UA UA UAL UL UL UL UL @ UL UL+ U+ U+7 @ U7 U7 @ U7 U7 @ U7 U7 U7 U U @ U 0 U @ U * U @ U U @ U /2EH @ GTU@ U/U OUoU U UV G1 %, <, ? ? ///? ]]+ /+++++++ ++/+++++++ ++/++++++ +++ +++ + +++ + 10++ CTX@<%, <, TUV 1G U U + U+ U+7A UA UAL U X7 U7 U7 U77XL UL UL ULLYX 9/+++ 9/+++ 9/+ ++ ++ + + ///? ?? 10 KTX F E / 0 8888888Y @ 4 Y Y Y` ]6+ Y
+%GVW <, %, GF10 Y $!0 p 5@ 7
+SK PQZ I IRZX 888YCX 2 2 2 2 Y ? ? 10Cy@6 % & % & % & ++++ ++++++++++ r qr++q ] CX@ u u z z z x u u ]Y] ]CX@ 9 9 9 +++YYY 2 #"'&5466 " 32654'& ~kv zg} S5kB a~iG { ~ wA? | ` J ' 9 " CTX@+ @ .% 6Y ' @ @ U ? + ? / // 9 /++++ + /++ 10+ CTX 2 U2 @ U ;: ' .% 6Y ?? ? ? 99 9/++ ++ 9/+ +10 @~ ;C ]69 I [ , ;,?;K,[,j j,s y y, 0;X3Y4l4 @; / ()
+2 9K 7' # % 4 mSd>Q@X0/$ 9r yal - ^3 %% 1d bY0 o#:XNf qN D J + CTX@ & U& U U @ U U U U U @ #%
+- 0 0!?*8+O @ @!O*H+X P Y P!Z*_+o b b!o*| q q! + + ! * + + + + + + +* -s%s( - S " ) '"
+& % # '
+? /? ] 99 /++++++ +++ + 10+ CTX@# &'( o U U U U U *) 9/+++ ++ /? ]? 9910 @o 2 2 @ @ @* _*
+9 Y Z& $ ( )`3p3 3 3 @ ]6 $ % # $ , # $ , ?,],n-}, - . , " # ,J,O3_3x
+9 @ 9 @ 9 9 @ 9.@ 9,@ 9,@ 9 ? ? 9 9$ 9# 9 9, 9 9 @ 9 @ 9 @ 9, 9$ @ 9, 9 9.@ 9# @ 9 9, 9, 9, 9 +++++++++++++++++++++++++++++ ++Y ]YY #&&#" #"'&#" # 3 32654&$'&54632 3267 !&wFV _ uTl! !! bEWa -- {6M3 jJ-8().Gc } G Q9E^ :9Wq < CTX@% @ U @ U U U U U U @ U , ? / /+++++ /+ 10++ CTX@ U U U U U U @ Up i I @ , U U U U U U 9/+++ +++ ? ? ]] ]10 +++++ ++ @A 9_ _ ? O O _ _ ' 0 @ 0 5 , e @, ./ $ P ` + ]qr< < < < ] ] ]< ? ?< < 9 9 910 q] qr] r+YY 3 # 32673 #"&&5 #566767 J 3(!> '# D.X* 7s- ) F Y>bc3_c h! iH&e % 0 CTX@ '@ U U ( U @ U U @ U U U U U U $ @ % , U / + ? ? 99? /++++ +/++++ + 10+ CTX@W @ ` p $% % , U U U U U U & U U & U U U '& 9/+++ 9/++ 9/ +++ +++ ? ?? 99? ] 10 @5 '` ]6 '`'p' ' 4 7 : H H O '#!O %'# ' A D % E@ %% , ! g@ p @% $ P `& +N ]qr<M < ]q< << < ?< ?< < < 99 ++10Cy@ + <+ ] ]+YY 327 #5 #"&&5 4&& 5! 3267 4&'5 c ! ' -v|EMq, 7H AY?+mK9Z G #q BY A2 % P6L N7 % CTX ? ?/ 9 /10 CTX@1 "! U * U U U ? +? +? +? +? 9 9/ 10 @ S X [ 5" @a 5 # " ! $ : 9 : 9 5 : J I D E E I i " " - " 2`4" +14" )4" GG4" ''4" ##4" 4" @@ 4 "| r r p | " : 4 4 9 ! 7 H @, 0 $ @ _ $ } g@ @ / } u 4 4 25 5 " " " 4" 4! + ++qr ]++++ ] ]r ?<?< < < 9 .+ } . + } + 10 ]]]q++++++++ ] ]++ rCX ? ? $ 9 9 @ 9 9 9 ++++ + ++YYY ! #" 654'&&#5! # &&'&' '
+. 5. @ 4!..
+M . % ' ( )5 C C P R V R
+' }@@ %$ $ &'&%'0 $ % %#$$0
+e e
+4( g@ P)
+940:I O O F I&L(K4@:V V%P:u & , ,)
+9 9% 9 9 92 9% 9 @ 9& 9& 9% 9 9 9 9 @ 9 9 9 @ 9 9 9,@ 9 9 9 9 @ 96 9(0 9)0 9 9 @ 9
+G$A ! 3 %' 'E 2 %% ! ? n D,*3 >Y .#
+[ T k d d t ho h h | 8$$ 8!! 8 > 8 0 @ P p % ( k z + ]< < < < < < ? ? 9/] 910 ] ] &&54654&'56654&5467 I .ykky. um- -m i# H 5H} ) |I5 I # L; De 45 eD ;L F S@ j k6 @ '@ 0 @ ! j ++N ]<M <N EeD ?M 10 ] + # S H F & @Jw %
+" (@" @ / % % % % *@ : + + *@ : ./ t !TZ ++N ]M ] ] ]NEeD ??M 9 9 99 9910 32632 #"&546% 32632 #"&546 FXL , )=J7Cl [e@ ,
+> *:CkY; e/=5&5 <-2 &qTva@ C S / @= . / / / / z u ' ! * *@$ @ 1? :P- - - - - *@ ' ' : * 01 t !TZ ++N M ] ] ]r ? ? 99 99 9910 q] 56654'&#" #"&54632 56654'&#" #"&54632 se? *<M7Bk cWM
+! $%&'()*+,-./0123456789:;<=> @ B DEFGHIJKLMNOPQRSTUVWXYZ[]^_` & %
+c
+( )
+u u v>v v wVw x xnx y*y y zFz { {c{ |!| | }A} ~ ~b~ # G k 0 W G r ; i 3 d 0 c 1 f 6 n ? z M _ 4 u L $ h B d @ i G & v V 8 n R 7 u D - u ` K 8 % y h Y J ; . ! z p g _ X Q K F A = : 8 6 5 5 6 7 9 < ? D I N U d l v @ X r 4 P m 8 W w
+P Z ] i l o u v } n H P m ! # _ ^ ` b y ~ { B T L F G H R M T S N Q N K I O C P h i Y O V t v ^ _ Z [ @ U ~ ( d e . G | b c : ! 1 2 4 0 M N L j k i f $ * , ~ h w / V _ ? E M W Y [ ] } " $ & 0 4 : > D _ q ! ! ! ! !"!&!.!2!N!_! ! ! " " " " " " " ")"+"H"a"e# # #!$s$ % % % % % % % % % % % ' ,l,p, -%-'--. ! _ e 6 < > A D O # i z 1 Y a ? H P Y [ ] _ $ & * 2 8 < D ^ p t ! ! ! ! !"!&!.!2!M!S! ! ! " " " " " " " "
+Q
+* , - / 1 4 5 6 8 9 : ; < = > @ A B ? . $ ' C " 2 7 D
+G H I J K L M N O P Q R S T U V W X Y Z [ ] ^ _ ` a b A B C D E F G H I J K L M N O P Q R S T U V W X Y Z [ ] ^ _ ` a b c d e f g h i j k l m n o ! p " q # r $ s % t & u ' v ( w ) x * y + z , { - | . } / ~ 0 1 2 u v x 3 4 5 6 7 8 9 : ; < = > ? @ p q h r t u v w x y z { | } ~ { s t u v w x H L J N I M K O a d c f b e i m k o j n l p ' , 0 . 2 - 1 / 3 Q P h g r q V Z X W [ Y ] u y w { v z x | 7 ; 9 = 8 < : > T S _ U ^ R ` ~ t } s + * # " ! 5 4 6 m n o p q r s t u v w x y z r { t v x } ~ Z [ b ^ _ c { d e f g h : i d e P i j k c m l I + 0 - 1 3 5 . 6 / 4 7 8
+#p (E: -, E %Ead PQXED !!Y-, E C`D-, C Ce -, i @a , b`+ d#daX aY-, E + )#D
+@/
+* ! P E]n8<V<% 7.6p`K !/lD4TD2! < kAD@X 8 n 871 #K?* 5DHG, F<
+JA5 N &! $ 5Ulng&gj
++ ? M ? 99 ? 10Y @ N lNG H< l; $ HH$6 l$O( X++?+? 99+ ?+01Y #". #" 32 ## #"&'&&54> 32 32> 7 #"&54> 337> 32 1 & +=, :TnE-9 *=+ ~ <UoC 0) 7 7T9Z T{Q' 7T; 2 }R{P' ? / + ?? M 9 / 3 310 + ?? M 910Y @
+X++?/01Y #". '& 54 7> 32 m _, %- X++/?01Y 6 54. '&> 32 #"&&4 m _, %.
+R ( R R < r < r < r < r < r < r < r < r < r C & C & r " R " Q P r X R X R X < X R " " " " " " " " " " " ' ; M h I i i i i i i e L e L w = w = M - M , & @ M M P G k k k k k v G v G Y G C H ' U R q G > > G G M M M M % M F y F y F y F y F y F f G ` ` ` ` ` ` ` ` ` I I b G E ` G G E G ? ? ? ? ? ? Y Y Y t Y } } } } s } } } } } } ~ ~ ~ ~ ~ i i i i Q Q Q Q : Q Q Q Q Q Q / / = T L T L T > T ? T L T L F L L L L Q p Q h Q 4 P M M M M M M M M M M q = = = = = < = < = < = < = O = O = O = O = < = < = v = v = v = v = = = = = v = v = < = < = w = = C = < = < = = < = v = = = = = B B B B B ? ? * M ? ? P n Q ^ ? ? & ; ; ; > > ? ? - ? A ? T ? ? ? ? + ? ? N N N N 0 N N N N < / < / N Q ? ? 8 + q q a * q u q u q u q u q u q u q u q u q u q u q q K q q q q q q q q q q q p P p p = k f i p p p | w )
+6 ~ y 6 ? 6 3 M _ # j .
+f f f f f f f f f f f f f f f f f O X X < < r < r < r < r < r < r < r r r r r r r " " Q Q Q Q M M 0 M & N N N N N N N I N p p p p Y p F p f f 8 M M ` ` D 6 I G ` ` ` ` ` ` ` } } g ~ ~ ~ f f f f f f f f f 9 q ! q j T T D D l { ' Y 7 < = < = < = v = v = v = < < ! < ! v ! v ! v ! S K D [ : [ m u u u ` s W # E e f x f x f f . # K * 1 1 ( 3 & D ! $ f A )
+( < r < r < r < r " R " R X R X R X Q X R 5 " " " " " p ' ' E ] ? , 3 c X > R _ Q v Q = = 4 = T L Q 0 S q = # @ / < A R 4 ? L q q T ) a h d Q ? ? Q W N l p p p p 5 Q Q / B B N N ; d Q B ? Q Q M M ? N N ? ? p p ; Q *
+0 7 7 6 : J v B I Q s
+5 h Y N ? [ ? d 9 z e - d O / I > * ? ? / S Y K D [ : [ m u u u W E w w c j V N ~ { V J F F e _ 6 c F e _ O p Q
+( 8 8 w w )
+8 w
+8 ( : D z ) . s ! l ! n x = R R r Q 8 R b ` T m / d P 4 A h & ' ' ' T o T T T T r . L s l r : Q Q ? Q 6 r < r l r l r . s f | > 3 > > b | a E N N B N f | T L ` G Z G U G X ` ` ` ` i Z U Q $ b p # G $ $ $ T $ $ T V
+w k B ( x x h x | | 9 ~ d T Q x | / Q )
+. s . R R ( R ] X X R X z R Q ' Z X 2 R < r " " M ] l J J J $ A $ m T H H = Y W 0 S K p ] Z S [ V ~ Z P X . J ; 1 } V n { n S K W S K R o T t " P | ^ X Y Q o L Q O @ # p Q G R K V B q @ B @ ) T p
+L ' I & I % J $ J # K " L ! L L L L N N O O O N N O O O N N O N N O O O O O P Q Q Q Q P Q Q Q Q Q Q P Q Q Q Q Q Q S S T T T T S S T T T T S S S T T T T S S T T T T V V W W V V W W W W V W V V W W W W W V V W W W W > ? ? [ [ [ [ [ [ [ ? ? [ [ [ [ [ [ [ ? > ? ? [ [ [ [ [ > ? [ [ [ [ [ [ [ [ b b c d e f f f f f f f a b c d d e f f c d U a b b c e f f f f ~ f } f | f { f z E y a x b w b v c u d t d s e r f q f p f o f n f m f l f k U j E i E h 6 g 6 f e V d c U b V a @ ` U _ V ^ ~ ] [ = Z Y X W V U : T : S : R ; Q < P < O E N F M F L E K E J F I F H F G D F E E F D F C G B W A X @ Y ? Z > Z = [ < [ ; [ : [ 9 + 8 , 7 9 6 9 5 F 4 G 3 G 2 U 1 U 0 V / V . W - W , X + Y * Y Z ' [ & [ % [ $ [ # Y " Z ! 9 G V V Y Y [ [ [ V V W W X Z Z [ [ [ [ Z [ ] ^ _ _ _ _ ] ^ _ _ _ @ _ ] _ _ _ _ ] ^ _ _ _ _ b b c d d d d b b c d d d d b b d b b c d d d d d d g h h h h g h h h g h h h h h h h h k l * l , k l m @ j i h k 1 1 1 q r s t t t s t 1 1 1 1 1 1 1 1 ~ z y z | } ~ ~ ~ ~ ~ ~ ~ ~ ~ - - h % 8 8 U U U U}U~ }U } } }K}{} } }@ |UzU{ zUyUwUx wU f @<Uv uU u utu u u Du 0u u u u tUrUs rU rPr r r ; r r r r F @|r FqUoUp oUnfmUj % i8gUh gUf8dUe dUc8bUa8`U_8]U^ ]U8ZU[ ZUY8XUW % V8TUU TUS8QUR QUO8NUN % M8KUL KUJ8HUI HUG8FUE 8 @N F B0 @
+Date updated: December 15 , 2022
+Withdrawn NIST Technical Series Publication
+Warning Notice
+The attached publication has been withdrawn (archived), and is provided solely for historical purposes.
+It may have been superseded by another publication (indicated below).
+Withdrawn Publication
+Series/Number
+NIST Special Publication 800
+-
+106
+Title
+Randomized Hashing for Digital Signatures
+Publication Date(s)
+February 2009
+Withdrawal Date
+December 15, 2022
+Withdrawal Note
+NIST SP 800
+-
+106 is being withdrawn, effective immediately.
+Superseding Publication(s) (if applicable)
+The attached publication has been superseded by the following publication(s):
+Series/Number
+Title
+Author(s)
+Publication Date(s)
+URL/DOI
+Additional Information (if applicable)
+Contact
+Computer Security Division (Information Technology
+Laboratory)
+Latest revision of the
+attached publication
+Related Information
+https://csrc.nist.gov/publications
+Withdrawal
+Announcement Link
+https://csrc.nist.gov/News/2022/withdrawal
+-
+of
+-
+nist
+-
+sp
+-
+800
+-
+106

@@ -1,0 +1,777 @@
+Subresource Integrity
+Subresource Integrity
+W3C Working Draft ,
+20 March 2026
+More details about this document
+This version:
+https://www.w3.org/TR/2026/WD-sri-2-20260320/
+Latest published version:
+https://www.w3.org/TR/sri-2/
+Editor's Draft:
+https://w3c.github.io/webappsec-subresource-integrity/
+Previous Versions:
+https://www.w3.org/TR/2026/WD-sri-2-20260318/
+History:
+https://www.w3.org/standards/history/sri-2/
+Feedback:
+public-webappsec@w3.org with subject line “ [sri] … message topic … ” ( archives )
+GitHub
+Editor:
+Frederik Braun ( Mozilla ) fbraun@mozilla.com
+Former Editors:
+Devdatta Akhawe ( Dropbox Inc. ) dev.akhawe@gmail.com
+François Marier ( Mozilla ) francois@mozilla.com
+Joel Weinberger ( Google Inc. ) jww@google.com
+Test Suite:
+https://wpt.fyi/results/subresource-integrity/
+Copyright © 2026 World Wide Web Consortium . W3C ® liability , trademark and permissive document license rules apply.
+Abstract
+This specification defines a mechanism by which user agents may verify that a
+fetched resource has been delivered without unexpected manipulation.
+Status of this document
+This section describes the status of this document at the time of
+its publication. A list of
+current W3C publications and the latest revision of this technical report
+can be found in the W3C technical reports
+index.
+This document was published by the
+Web Application Security Working Group
+as a Working Draft using the Recommendation
+track . This document is intended to become a W3C Recommendation.
+The ( archived ) public mailing list
+public-webappsec@w3.org
+(see instructions )
+is preferred for discussion of this specification.
+When sending e-mail,
+please put the text “sri” in the subject,
+preferably like this:
+“[sri] …summary of comment… ”
+Publication as a Working Draft does not imply endorsement by
+W3C and its Members. This is a draft document and may be updated, replaced, or
+obsoleted by other documents at any time. It is inappropriate to cite this
+document as other than a work in progress.
+This document was produced by the
+Web Application Security Working Group .
+This document was produced by a group operating under
+the W3C Patent Policy .
+W3C maintains a public list of any patent disclosures
+made in connection with the deliverables of the group;
+that page also includes instructions for disclosing a patent.
+An individual who has actual knowledge of a patent that the individual believes contains Essential Claim(s)
+must disclose the information in accordance with section 6 of the W3C Patent Policy .
+This document is governed by the 18 August 2025 W3C Process Document .
+Table of Contents
+1 Introduction
+1.1 Goals
+1.2 Use Cases/Examples
+1.2.1 Resource Integrity
+2 Key Concepts and Terminology
+2.1 Grammatical Concepts
+3 Framework
+3.1 Integrity metadata
+3.2 Cryptographic hash functions
+3.2.1 Agility
+3.2.2 Priority
+3.3 Response verification algorithms
+3.3.1 Apply algorithm to bytes
+3.3.2 Parse metadata
+3.3.3 Get the strongest metadata from set
+3.3.4 Do bytes match metadataList ?
+3.4 Verification of HTML document subresources
+3.5 The integrity attribute
+3.6 The integrity link processing option
+3.7 Handling integrity violations
+3.8 Integrity-Policy
+3.8.1 Parse Integrity-Policy headers
+3.8.2 Should request be blocked by Integrity Policy
+3.8.3 Report violations
+4 Proxies
+5 Security and Privacy Considerations
+5.1 Non-secure contexts remain non-secure
+5.2 Hash collision attacks
+5.3 Cross-origin data leakage
+6 Acknowledgements
+Conformance
+Document conventions
+Conformant Algorithms
+Index
+Terms defined by this specification
+Terms defined by reference
+References
+Normative References
+Informative References
+IDL Index
+1. Introduction
+Sites and applications on the web are rarely composed of resources from
+only a single origin. For example, authors pull scripts and styles from a
+wide variety of services and content delivery networks, and must trust
+that the delivered representation is, in fact, what they expected to
+load. If an attacker can trick a user into downloading content from
+a hostile server (via DNS [RFC1035] poisoning, or other such means), the author has
+no recourse. Likewise, an attacker who can replace the file on the Content
+Delivery Network (CDN) server has the ability to inject arbitrary content.
+Delivering resources over a secure channel mitigates some of this risk: with
+TLS [TLS] , HSTS [RFC6797] , and pinned public keys
+[RFC7469] , a user agent can be fairly certain
+that it is indeed speaking with the server it believes it’s talking to. These
+mechanisms, however, authenticate only the server, not the content. An
+attacker (or administrator) with access to the server can manipulate content with
+impunity. Ideally, authors would not only be able to pin the keys of a
+server, but also pin the content , ensuring that an exact representation of
+a resource, and only that representation, loads and executes.
+This document specifies such a validation scheme, extending two HTML elements
+with an integrity attribute that contains a cryptographic hash
+of the representation of the resource the author expects to load. For instance,
+an author may wish to load some framework from a shared server rather than hosting it
+on their own origin. Specifying that the expected SHA-384 hash of
+https://example.com/example-framework.js
+is Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7 means
+that the user agent can verify that the data it loads from that URL matches
+that expected hash before executing the JavaScript it contains. This
+integrity verification significantly reduces the risk that an attacker can
+substitute malicious content.
+This example can be communicated to a user agent by adding the hash to a
+script element, like so:
+< script src = "https://example.com/example-framework.js"
+integrity = "sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7"
+crossorigin = "anonymous" ></ script >
+Scripts, of course, are not the only response type which would benefit
+from integrity validation. The scheme specified here also applies to link
+and future versions of this specification are likely to expand this coverage.
+Tests
+subresource-integrity.html (live test) (source)
+1.1. Goals
+Compromise of a third-party service should not automatically mean
+compromise of every site which includes its scripts. Content authors
+will have a mechanism by which they can specify expectations for
+content they load, meaning for example that they could load a
+specific script, and not any script that happens to have a
+particular URL.
+The verification mechanism should have error-reporting functionality which
+would inform the author that an invalid response was received.
+1.2. Use Cases/Examples
+1.2.1. Resource Integrity
+An author wishes to use a content delivery network to improve performance
+for globally-distributed users. It is important, however, to ensure that
+the CDN’s servers deliver only the code the author expects them to
+deliver. To mitigate the risk that a CDN compromise (or unexpectedly malicious
+behavior) would change that site in unfortunate ways, the following
+integrity metadata is added to the link element included on the page:
+< link rel = "stylesheet" href = "https://site53.example.net/style.css"
+integrity = "sha384-+/M6kredJcxdsqkczBUjMLvqyHb1K/JThDXWsBVxMEeZHEaMKEOEct339VItX1zB"
+crossorigin = "anonymous" >
+An author wants to include JavaScript provided by a third-party
+analytics service. To ensure that only the code that has been carefully
+reviewed is executed, the author generates integrity metadata for
+the script, and adds it to the script element:
+< script src = "https://analytics-r-us.example.com/v1.0/include.js"
+integrity = "sha384-MBO5IDfYaE6c6Aao94oZrIOiC6CGiSN2n4QUbHNPhzk5Xhm0djZLQqTpL0HzTUxk"
+crossorigin = "anonymous" ></ script >
+A user agent wishes to ensure that JavaScript code running in high-privilege HTML
+contexts (for example, a browser’s New Tab page) aren’t manipulated before display.
+Integrity metadata mitigates the risk that altered JavaScript will run
+in these pages' high-privilege contexts.
+2. Key Concepts and Terminology
+This section defines several terms used throughout the document.
+The term digest refers to the base64 encoded result of
+executing a cryptographic hash function on an arbitrary block of data.
+The terms origin and same origin are defined in HTML. [HTML]
+A base64 encoding is defined in Section 4 of RFC 4648 .
+[RFC4648]
+The SHA-256 , SHA-384 , and SHA-512 are part
+of the SHA-2 set of cryptographic hash functions defined by the
+NIST. [SHA2]
+The valid SRI hash algorithm token set is the ordered set
+« " sha256 ", " sha384 ", " sha512 " » (corresponding to SHA-256 ,
+SHA-384 , and SHA-512 respectively). The ordering of this set is
+meaningful, with stronger algorithms appearing later in the set. See
+§ 3.2.2 Priority and § 3.3.3 Get the strongest metadata from set for
+additional information.
+A string is a valid SRI hash algorithm token if its
+ASCII lowercase is contained in the
+valid SRI hash algorithm token set .
+2.1. Grammatical Concepts
+The Augmented Backus-Naur Form (ABNF) notation used in this document is
+specified in RFC5234. [ABNF]
+Appendix B.1 of
+[ABNF] defines the VCHAR (printing characters) and WSP
+(whitespace) rules.
+Content Security Policy defines the base64-value and
+hash-algorithm rules. [CSP]
+3. Framework
+The integrity verification mechanism specified here boils down to the
+process of generating a sufficiently strong cryptographic digest for a
+resource, and transmitting that digest to a user agent so that it may be
+used to verify the response.
+3.1. Integrity metadata
+To verify the integrity of a response, a user agent requires integrity
+metadata as part of the request . This metadata consists of
+the following pieces of information:
+cryptographic hash function ("alg")
+digest ("val")
+options ("opt")
+The hash function and digest MUST be provided in order to validate a
+response’s integrity.
+Note: At the moment, no options are defined. However, future versions of
+the spec may define options, such as MIME types [MIME-TYPES] .
+This metadata MUST be encoded in the same format as the hash-source (without
+the single quotes) in section 4.2 of the Content
+Security Policy Level 2 specification .
+For example, given a script resource containing only the string alert('Hello, world.'); , an author might choose SHA-384 as a hash function.
+H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO is the base64 encoded digest that results. This can be encoded
+as follows:
+sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO
+Digests may be generated using any number of utilities. OpenSSL , for example, is quite commonly
+available. The example in this section is the result of the following command
+line:
+echo -n "alert('Hello, world.');" | openssl dgst -sha384 -binary | openssl base64 -A
+3.2. Cryptographic hash functions
+Conformant user agents MUST support the SHA-256 , SHA-384 ,
+and SHA-512 cryptographic hash functions for use as part of a
+request’s integrity metadata and MAY support additional hash functions
+defined in future iterations of this document.
+NOTE: The algorithms supported in this document are (currently!) believed to be
+resistent to second-preimage and collision attacks. Future additions/removals
+from the set of supported algorithms would be well-advised to apply similar
+standard. See § 5.2 Hash collision attacks .
+3.2.1. Agility
+Multiple sets of integrity metadata may be associated with a single
+resource in order to provide agility in the face of future cryptographic discoveries.
+For example, the resource described in the previous section may be described
+by either of the following hash expressions:
+sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO
+sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw==
+Authors may choose to specify both, for example:
+< script src = "hello_world.js"
+integrity = "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO
+sha512-Q2bFTOhEALkN8hOms2FKTDLy7eugP2zFZ1T8LCvX42Fp3WoNr3bjZSAHeOsHrbV1Fu9/A0EzCinRE7Af1ofPrw=="
+crossorigin = "anonymous" ></ script >
+In this case, the user agent will choose the strongest hash function in the
+list, and use that metadata to validate the response (as described below in
+the § 3.3.2 Parse metadata and § 3.3.3 Get the strongest metadata from set algorithms).
+When a hash function is determined to be insecure, user agents SHOULD deprecate
+and eventually remove support for integrity validation using the insecure hash
+function. User agents MAY check the validity of responses using a digest based on
+a deprecated function.
+To allow authors to switch to stronger hash functions without being held back by older
+user agents, validation using unsupported hash functions acts like no integrity value
+was provided (see the § 3.3.4 Do bytes match metadataList? algorithm below).
+Authors are encouraged to use strong hash functions, and to begin migrating to
+stronger hash functions as they become available.
+3.2.2. Priority
+The prioritization of hash algorithms is specified via the ordering of their
+respective tokens in the valid SRI hash algorithm token set . Algorithms
+appearing earlier in that set are weaker than algorithms appearing later in
+that set.
+As currently specified, SHA-256 is weaker than SHA-384 , which is in
+turn weaker than SHA-512 . No other hashing algorithms are currently
+supported by this specification.
+3.3. Response verification algorithms
+3.3.1. Apply algorithm to bytes
+Let result be the result of applying algorithm to bytes .
+Return the result of base64 encoding result .
+3.3.2. Parse metadata
+When asked to parse metadata given a string metadata , run the
+following steps:
+Note: the algorithm returns a set of hash expressions whose hash functions are understood
+by the user agent.
+Let result be the empty set.
+For each item returned by splitting
+metadata on spaces:
+Let expression-and-options be the result of
+splitting item on U+003F (?).
+Let algorithm-expression be expression-and-options [0].
+Let base64-value be the empty string.
+Let algorithm-and-value be the result of
+splitting algorithm-expression on U+002D (-).
+Let algorithm be algorithm-and-value [0].
+If algorithm is not a valid SRI hash algorithm token , then
+continue .
+If algorithm-and-value [1] exists , set
+base64-value to algorithm-and-value [1].
+Let metadata be the ordered map «["alg" → algorithm ,
+"val" → base64-value ]».
+Note: Since no options are defined (see the
+§ 3.1 Integrity metadata ), a corresponding entry is not set
+in metadata . If options are defined in a future version,
+expression-and-options [1] can be utilized as options .
+Append metadata to result .
+Return result .
+3.3.3. Get the strongest metadata from set
+Let result be the empty set and strongest be null.
+For each item in set :
+Assert: item [" alg "] is a valid SRI hash algorithm token .
+If result is the empty set, then:
+Append item to result .
+Set strongest to item .
+Continue .
+Let currentAlgorithm be strongest [" alg "], and currentAlgorithmIndex
+be the index of currentAlgorithm in the valid SRI hash algorithm token set .
+Let newAlgorithm be the item [" alg "], and newAlgorithmIndex
+be the index of newAlgorithm in the valid SRI hash algorithm token set .
+If newAlgorithmIndex is less than currentAlgorithmIndex , continue .
+Otherwise, if newAlgorithmIndex is greater than currentAlgorithmIndex :
+Set strongest to item .
+Set result to « item ».
+Otherwise, newAlgorithmIndex and currentAlgorithmIndex are the
+same value. Append item to result .
+Return result .
+3.3.4. Do bytes match metadataList ?
+Let parsedMetadata be the result of
+parsing metadataList .
+If parsedMetadata is empty set, return true .
+Let metadata be the result of
+getting the strongest metadata from parsedMetadata .
+For each item in metadata :
+Let algorithm be the item ["alg"].
+Let expectedValue be the item ["val"].
+Let actualValue be the result of applying algorithm to bytes
+.
+If actualValue is a case-sensitive match for
+expectedValue , return true .
+Return false .
+This algorithm allows the user agent to accept multiple, valid strong hash
+functions. For example, a developer might write a script element such as:
+< script src = "https://example.com/example-framework.js"
+integrity = "sha384-Li9vy3DqF8tnTXuiaAJuML3ky+er10rcgNR/VqsVpcw+ThHmYcwiB1pbOxEbzJr7
+sha384-+/M6kredJcxdsqkczBUjMLvqyHb1K/JThDXWsBVxMEeZHEaMKEOEct339VItX1zB"
+crossorigin = "anonymous" ></ script >
+which would allow the user agent to accept two different content payloads, one
+of which matches the first SHA-384 hash value and the other matches the second
+SHA-384 hash value.
+Note: User agents may allow users to modify the result of this algorithm via
+user preferences, bookmarklets, third-party additions to the user agent, and
+other such mechanisms. For example, redirects generated by an extension like HTTPS Everywhere could load and
+execute correctly, even if the HTTPS version of a resource differs from the HTTP
+version.
+Note: Subresource Integrity requires CORS and it is a logical error
+to attempt to use it without CORS. User agents are encouraged to report a
+warning message to the developer console to explain this failure. [Fetch]
+3.4. Verification of HTML document subresources
+A variety of HTML elements result in requests for resources that are to be
+embedded into the document, or executed in its context. To support integrity
+metadata for some of these elements, a new integrity attribute is added to
+the list of content attributes for the link and script elements. [HTML]
+Note: A future revision of this specification is likely to include integrity support
+for all possible subresources, i.e., a , audio , embed , iframe , img ,
+link , object , script , source , track , and video elements.
+3.5. The integrity attribute
+The integrity attribute represents integrity metadata for an element.
+The value of the attribute MUST be either the empty string, or at least one
+valid metadata as described by the following ABNF grammar:
+integrity-metadata = * WSP hash-with-options *(1* WSP hash-with-options ) * WSP / * WSP
+hash-with-options = hash-expression *("?" option-expression )
+option-expression = * VCHAR
+hash-expression = hash-algorithm "-" base64-value
+option-expression s are associated on a per hash-expression basis and are
+applied only to the hash-expression that immediately precedes it.
+In order for user agents to remain fully forwards compatible with future
+options, the user agent MUST ignore all unrecognized option-expression s.
+Note: Note that while the option-expression has been reserved in the syntax,
+no options have been defined. It is likely that a future version of the spec
+will define a more specific syntax for options, so it is defined here as broadly
+as possible.
+3.6. The integrity link processing option
+Integrity metadata can also be specified for ` link ` HTTP response headers
+as an integrity link parameter which MUST be specified using the same
+integrity-metadata grammar that applies to integrity attributes
+on elements. For example:
+Link: </style.css>; rel=preload; as=style; crossorigin="anonymous"; integrity="sha256-[digest goes here]"
+3.7. Handling integrity violations
+The user agent will refuse to render or execute responses that fail an integrity
+check, instead returning a network error as defined in Fetch [Fetch] .
+Note: On a failed integrity check, an error event is fired. Developers
+wishing to provide a canonical fallback resource (e.g., a resource not served
+from a CDN, perhaps from a secondary, trusted, but slower source) can catch this
+error event and provide an appropriate handler to replace the
+failed resource with a different one.
+3.8. Integrity-Policy
+The Integrity-Policy and Integrity-Policy-Report-Only HTTP headers enable a document to
+enforce a policy regarding the integrity metadata requirements on all the subresources it
+loads of certain destinations .
+The headers' value is a Dictionary [RFC9651] , with every member-value being an
+inner list of tokens .
+A source is a string. The only possible value for it is " inline ".
+A destination is a destination type . The possible values for it are
+" script " and " style ".
+An integrity policy , is a struct that contains the following:
+sources , a list of source s, initially empty.
+blocked destinations , a list of destination s, initially empty.
+endpoints , a list of strings, initially empty.
+When processing an integrity policy , with a header list headers
+and a header name headerName , do the following:
+Let integrityPolicy be a new integrity policy .
+Let dictionary be the result of getting a structured field value from headers
+given headerName and " dictionary ".
+If dictionary [" sources "] does not exist or if its value
+contains " inline ", append " inline " to
+integrityPolicy ’s sources .
+If dictionary [" blocked-destinations "] exists :
+If its value contains " script ",
+append " script " to integrityPolicy ’s blocked destinations .
+If its value contains " style ",
+append " style " to integrityPolicy ’s blocked destinations .
+If dictionary [" endpoints "] exists :
+Set integrityPolicy ’s endpoints to dictionary ['endpoints'].
+Return integrityPolicy .
+The following header block the request for any external script that’s loaded without integrity
+metadata (or any no-CORS external script).
+Integrity-Policy: blocked-destinations=(script), endpoints=(integrity-endpoint)
+The blocking will also trigger a report to the " integrity-endpoint "
+reporting endpoint (defined by the relevant Reporting-Endpoints header).
+Developers can also register a ReportingObserver for " integrity-violation " to get JavaScript-based
+reports.
+3.8.1. Parse Integrity-Policy headers
+To parse Integrity-Policy headers , given a Response response
+and a policy container container , do the following:
+Let headers be response ’s header list .
+If headers contains integrity-policy ,
+set container ’s integrity policy be the result of running
+processing an integrity policy with the corresponding header value .
+If headers contains integrity-policy-report-only ,
+set container ’s report only integrity policy be the result of running
+processing an integrity policy with the corresponding header value .
+3.8.2. Should request be blocked by Integrity Policy
+To determine should request be blocked by integrity policy , given a request request ,
+do the following:
+Let policyContainer be request ’s policy container .
+Let parsedMetadata be the result of calling parse metadata with
+request ’s integrity metadata .
+If parsedMetadata is not the empty set and
+request ’s mode is either " cors " or " same-origin ",
+return "Allowed".
+If request ’s url is local ,
+return "Allowed".
+Let policy be policyContainer ’s integrity policy .
+Let reportPolicy be policyContainer ’s report only integrity policy .
+If both policy and reportPolicy are empty integrity policy s, return "Allowed".
+Let global be request ’s client ’s global object .
+If global is not a Window nor a WorkerGlobalScope , return " Allowed ".
+Let block be a boolean, initially false.
+Let reportBlock be a boolean, initially false.
+If policy ’s sources contains " inline "
+and policy ’s blocked destinations contains
+request ’s destination ,
+set block to true.
+If reportPolicy ’s sources contains " inline "
+and reportPolicy ’s blocked destinations contains
+request ’s destination ,
+set reportBlock to true.
+If block is true or reportBlock is true, then report violation
+with request , block , reportBlock , policy and reportPolicy .
+If block is true, then return " Blocked "; otherwise " Allowed ".
+3.8.3. Report violations
+dictionary IntegrityViolationReportBody : ReportBody {
+USVString documentURL ;
+USVString blockedURL ;
+USVString destination ;
+boolean reportOnly ;
+};
+To report violation given a Request request , a boolean block ,
+a boolean reportBlock , an integrity policy policy ,
+and an integrity policy reportPolicy , do the following:
+Assert : request ’s client is not null.
+Let settingsObject be request ’s client .
+Let global be settingsObject ’s global object .
+Assert : global is a Window or a WorkerGlobalScope .
+Let url be null.
+If global is a Window , set url to global ’s associated Document ’s URL .
+If global is a WorkerGlobalScope , set url to global ’s URL .
+Assert : url is a URL .
+Let documentURL be the result of strip URL for use in reports on url .
+Let blockedURL be the result of strip URL for use in reports on request ’s URL .
+If block is true, for each endpoint in policy ’s endpoints :
+Let body be a new IntegrityViolationReportBody , initialized as follows:
+documentURL
+documentURL
+blockedURL
+blockedURL
+destination
+request ’s destination
+reportOnly
+false
+Generate and queue a report with the following arguments:
+context
+settingsObject
+type
+" integrity-violation "
+destination
+endpoint
+data
+body
+If reportBlock is true, for each endpoint in reportPolicy ’s endpoints :
+Let reportBody be a new IntegrityViolationReportBody , initialized as follows:
+documentURL
+documentURL
+blockedURL
+blockedURL
+destination
+request ’s destination
+reportOnly
+true
+Generate and queue a report with the following arguments:
+context
+settingsObject
+type
+" integrity-violation "
+destination
+endpoint
+data
+reportBody
+4. Proxies
+Optimizing proxies and other intermediate servers which modify the
+responses MUST ensure that the digest associated
+with those responses stays in sync with the new content. One option
+is to ensure that the integrity metadata associated with
+resources is updated. Another
+would be simply to deliver only the canonical version of resources
+for which a page author has requested integrity verification.
+To help inform intermediate servers, those serving the resources SHOULD
+send along with the resource a Cache-Control header
+with a value of no-transform .
+5. Security and Privacy Considerations
+This section is not normative.
+5.1. Non-secure contexts remain non-secure
+Integrity metadata delivered by a context that is not a Secure
+Context such as an HTTP page, only protects an origin against a compromise
+of the server where an external resources is hosted. Network attackers can alter
+the digest in-flight (or remove it entirely, or do absolutely anything else to
+the document), just as they could alter the response the hash is meant to
+validate. Thus, it is recommended that authors deliver integrity metadata only
+to a Secure Context . See also Securing the Web .
+5.2. Hash collision attacks
+Digests are only as strong as the hash function used to generate them. It is
+recommended that user agents refuse to support known-weak hashing functions and
+limit supported algorithms to those known to be collision resistant. Examples of
+hashing functions that are not recommended include MD5 and SHA-1. At the time of
+writing, SHA-384 is a good baseline.
+Moreover, it is recommended that user agents re-evaluate their supported hash
+functions on a regular basis and deprecate support for those functions shown to
+be insecure. Over time, hash functions may be shown to be much weaker than
+expected and, in some cases, broken, so it is important that user agents stay
+aware of these developments.
+5.3. Cross-origin data leakage
+This specification requires integrity-protected cross-origin requests to use the
+CORS protocol to ensure that the resource’s content is explicitly shared
+with the requestor. If that requirement were omitted,
+attackers could violate the same-origin policy
+and determine whether a cross-origin resource has certain content.
+Attackers would attempt to load the resource with a known digest, and
+watch for load failures. If the load fails, the attacker could surmise
+that the response didn’t match the hash and thereby gain some insight into
+its contents. This might reveal, for example, whether or not a user is
+logged into a particular service.
+Moreover, attackers could brute-force specific values in an otherwise
+static resource. Consider a JSON response that looks like this:
+{ "status" : "authenticated" , "username" : "admin" }
+An attacker could precompute hashes for the response with a variety of
+common usernames, and specify those hashes while repeatedly attempting
+to load the document. A successful load would confirm that the attacker
+has correctly guessed the username.
+6. Acknowledgements
+Much of the content here is inspired heavily by Gervase Markham’s Link Fingerprints
+concept as well as WHATWG’s Link Hashes .
+A special thanks to Mike West for his invaluable contributions to the initial
+version of this spec. Thanks to Brad Hill, Anne van Kesteren, Jonathan
+Kingston, Fatih Kilic, Mark Nottingham, Sergey Shekyan, Dan Veditz, Eduardo Vela,
+Tanvi Vyas, Yoav Weiss, and Michal Zalewski for providing invaluable feedback.
+Conformance
+Document conventions
+Conformance requirements are expressed
+with a combination of descriptive assertions
+and RFC 2119 terminology.
+The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL”
+in the normative parts of this document
+are to be interpreted as described in RFC 2119.
+However, for readability,
+these words do not appear in all uppercase letters in this specification.
+All of the text of this specification is normative
+except sections explicitly marked as non-normative, examples, and notes. [RFC2119]
+Examples in this specification are introduced with the words “for example”
+or are set apart from the normative text
+with class="example" ,
+like this:
+This is an example of an informative example.
+Informative notes begin with the word “Note”
+and are set apart from the normative text
+with class="note" ,
+like this:
+Note, this is an informative note.
+Tests
+Tests relating to the content of this specification
+may be documented in “Tests” blocks like this one.
+Any such block is non-normative.
+Conformant Algorithms
+Requirements phrased in the imperative as part of algorithms
+(such as "strip any leading space characters"
+or "return false and abort these steps")
+are to be interpreted with the meaning of the key word
+("must", "should", "may", etc)
+used in introducing the algorithm.
+Conformance requirements phrased as algorithms or specific steps
+can be implemented in any manner,
+so long as the end result is equivalent.
+In particular, the algorithms defined in this specification
+are intended to be easy to understand
+and are not intended to be performant.
+Implementers are encouraged to optimize.
+Index
+Terms defined by this specification
+base64 encoding , in § 2
+blocked destinations , in § 3.8
+blockedURL , in § 3.8.3
+destination
+definition of , in § 3.8
+dict-member for IntegrityViolationReportBody , in § 3.8.3
+digest , in § 2
+Do bytes match metadataList? , in § 3.3.3
+documentURL , in § 3.8.3
+endpoints , in § 3.8
+hash-expression , in § 3.5
+hash-with-options , in § 3.5
+integrity metadata , in § 3.1
+integrity-metadata , in § 3.5
+integrity policy , in § 3.8
+IntegrityViolationReportBody , in § 3.8.3
+option-expression , in § 3.5
+parse Integrity-Policy headers , in § 3.8.1
+parse metadata , in § 3.3.2
+processing an integrity policy , in § 3.8
+reportOnly , in § 3.8.3
+report violation , in § 3.8.3
+should request be blocked by integrity policy , in § 3.8.2
+source , in § 3.8
+sources , in § 3.8
+valid SRI hash algorithm token , in § 2
+valid SRI hash algorithm token set , in § 2
+Terms defined by reference
+[ABNF] defines the following terms:
+VCHAR
+WSP
+[CSP] defines the following terms:
+base64-value
+hash-algorithm
+[DOM] defines the following terms:
+URL
+[Fetch] defines the following terms:
+client
+contains
+CORS protocol
+destination
+destination type
+get a structured field value
+header list
+header list (for response)
+header name
+header value
+integrity metadata
+is local
+mode
+policy container
+request
+response
+URL
+[HTML] defines the following terms:
+Window
+WorkerGlobalScope
+associated Document
+global object
+integrity policy
+origin
+policy container
+report only integrity policy
+same origin
+secure context
+url
+[INFRA] defines the following terms:
+append (for list)
+append (for set)
+ASCII lowercase
+assert
+contain
+continue
+exist (for list)
+exist (for map)
+for each
+is empty
+list
+ordered set
+strictly split
+struct
+[REPORTING-1] defines the following terms:
+ReportBody
+context
+data
+destination
+generate and queue a report
+strip URL for use in reports
+type
+[RFC7234] defines the following terms:
+Cache-Control
+no-transform
+[RFC8288] defines the following terms:
+link
+[RFC9651] defines the following terms:
+Dictionary
+inner list
+token
+[SHA2] defines the following terms:
+SHA-2
+SHA-256
+SHA-384
+SHA-512
+[URL] defines the following terms:
+URL
+[WEBIDL] defines the following terms:
+USVString
+boolean
+References
+Normative References
+[ABNF]
+D. Crocker, Ed.; P. Overell. Augmented BNF for Syntax Specifications: ABNF . January 2008. Internet Standard. URL: https://www.rfc-editor.org/rfc/rfc5234
+[CSP]
+Mike West; Antonio Sartori. Content Security Policy Level 3 . 11 March 2026. WD. URL: https://www.w3.org/TR/CSP3/
+[DOM]
+Anne van Kesteren. DOM Standard . Living Standard. URL: https://dom.spec.whatwg.org/
+[Fetch]
+Anne van Kesteren. Fetch Standard . Living Standard. URL: https://fetch.spec.whatwg.org/
+[HTML]
+Anne van Kesteren; et al. HTML Standard . Living Standard. URL: https://html.spec.whatwg.org/multipage/
+[INFRA]
+Anne van Kesteren; Domenic Denicola. Infra Standard . Living Standard. URL: https://infra.spec.whatwg.org/
+[MIME-TYPES]
+N. Freed; N. Borenstein. Multipurpose Internet Mail Extensions (MIME) Part Two: Media Types . November 1996. Draft Standard. URL: https://www.rfc-editor.org/rfc/rfc2046
+[REPORTING-1]
+Douglas Creager; Ian Clelland; Mike West. Reporting API . 11 June 2025. WD. URL: https://www.w3.org/TR/reporting-1/
+[RFC2119]
+S. Bradner. Key words for use in RFCs to Indicate Requirement Levels . March 1997. Best Current Practice. URL: https://datatracker.ietf.org/doc/html/rfc2119
+[RFC4648]
+S. Josefsson. The Base16, Base32, and Base64 Data Encodings . October 2006. Proposed Standard. URL: https://www.rfc-editor.org/rfc/rfc4648
+[RFC7234]
+R. Fielding, Ed.; M. Nottingham, Ed.; J. Reschke, Ed.. Hypertext Transfer Protocol (HTTP/1.1): Caching . June 2014. Proposed Standard. URL: https://httpwg.org/specs/rfc7234.html
+[RFC8288]
+M. Nottingham. Web Linking . October 2017. Proposed Standard. URL: https://httpwg.org/specs/rfc8288.html
+[RFC9651]
+M. Nottingham; P-H. Kamp. Structured Field Values for HTTP . September 2024. Proposed Standard. URL: https://www.rfc-editor.org/rfc/rfc9651
+[SHA2]
+FIPS PUB 180-4, Secure Hash Standard . URL: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+[URL]
+Anne van Kesteren. URL Standard . Living Standard. URL: https://url.spec.whatwg.org/
+[WEBIDL]
+Edgar Chen; Timothy Gu. Web IDL Standard . Living Standard. URL: https://webidl.spec.whatwg.org/
+Informative References
+[RFC1035]
+P. Mockapetris. Domain names - implementation and specification . November 1987. Internet Standard. URL: https://www.rfc-editor.org/rfc/rfc1035
+[RFC6797]
+J. Hodges; C. Jackson; A. Barth. HTTP Strict Transport Security (HSTS) . November 2012. Proposed Standard. URL: https://www.rfc-editor.org/rfc/rfc6797
+[RFC7469]
+C. Evans; C. Palmer; R. Sleevi. Public Key Pinning Extension for HTTP . April 2015. Proposed Standard. URL: https://www.rfc-editor.org/rfc/rfc7469
+[TLS]
+E. Rescorla. The Transport Layer Security (TLS) Protocol Version 1.3 . August 2018. Proposed Standard. URL: https://www.rfc-editor.org/rfc/rfc8446
+IDL Index
+dictionary IntegrityViolationReportBody : ReportBody {
+USVString documentURL ;
+USVString blockedURL ;
+USVString destination ;
+boolean reportOnly ;
+};

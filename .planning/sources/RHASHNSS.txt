@@ -1,0 +1,220 @@
+Randomized Hashing
+Randomized Hashing for Digital Certificates:
+Halevi-Krawczyk Hash
+An implementation in Firefox
+Code changes
+Screen Shots
+References
+Firefox Installer
+Introduction
+In recent years, collision attacks have been announced for many
+commonly used hash functions, including MD5 and SHA1. This greatly impacts
+deployments that rely on collision resistance, such as X.509 certificates
+and SSL. Lenstra and de Weger demonstrated a way to
+use MD5 hash collisions to construct two X.509 certificates that contain
+identical signatures and that differ only in the public keys.
+NIST recently recommended that Federal agencies stop using SHA-1 for
+digital signatures, digital time stamping and other applications that
+require collision resistance.
+A randomized mode of operation proposed by Halevi and Krawczyk can enhance the existing hash functions in providing stronger collision resistance. In this mode of operation, the input is preprocessed with some random salt value before applying the underlying hash functions. There is no need to change the hash functions.
+This project implemented the proposed randomized scheme with NSS library, which is used by Firefox browser. It supports a modified signing and verifications for digital certificates. We have developed a working system with a custom-built Firefox browser.
+Please refer to the original papers on the design and theory of the proposed scheme.
+Code Changes in the NSS Library and Firefox
+Hash Functions
+The NSS library currently supports six different hash algorithms: MD2, MD5, SHA1, SHA-256, SHA-384, and SHA-512. It provides a high-level API as an single interface to these algorithms. Internally, it maintains a table of data structures and function pointers for access to the hash implementations.
+A typical hash requires 4 function calls: one for context creation, one for hash initialization, one for updating context with the input data, and the last one for the final digest data.
+HASHContext* HASH_Create(HASH_HashType type);
+void HASH_BeginEx(HASHContext *context);
+void HASH_UpdateEx(HASHContext *context,
+const unsigned char *src,
+unsigned int len);
+void HASH_EndEx(HASHContext *context,
+unsigned char *result,
+unsigned int *result_len,
+unsigned int max_result_len);
+In order to support randomized mode of operations for all supported algorithms, one option is to add new entries for randomized version of the supported algorithms to the internal table. This requires us to define new hash types and treat these as new hash functions.
+We have taken a different approach because Halevi-Krawczyk Hash for an existing hash algorithm represents a new mode of operation rather than a different type of algorithm. So, instead of introducing new hash types, we add a new parameter to the HashContext data structure. The parameter carries the random salt value that should be used within the context. Its presence enables Halevi-Krawczyk Hash for the original algorithm. We believe that all future use of the existing hash functions and all new hash functions should support a randomized mode of operation.
+HashContext is exposed as an opaque data type in the NSS API. We have added the parameter in the struct HASHContextStr . This change is transparent to the applications that use the NSS library.
+struct HASHContextStr {
+const struct SECHashObjectStr *hashobj;
+void *hash_context;
+/* Added for Halevi-Krawczyk Hash. Presence of this parameter enables the randomized
+* mode of operation for the current HashContext.
+*/
+RANDHashParams *rand_params;
+};
+Where RANDHashParams is a new opaque data type. It is used in the internal implementation of Halevi-Krawczyk Hash and is not exposed in any public API in the NSS library. It has the following fields.
+/* We require that the salt length be at least 16 bytes. Padding will
+* be added up to the block size of the hash function. If the salt length
+* is longer than the block size, the salt values will be truncated to have
+* the length as the block size.
+*/
+struct RANDHashParamsStr {
+int salt_length; /* in bytes */
+unsigned char* salt;
+/* The following are for internal use */
+/* 2 byte is enough. so far, the max block length is 128 */
+unsigned short next_index_;
+};
+typedef RANDHashParamsStr RANDHashParams;
+With the above design, the user-visible API in the library is unchanged. The support for Halevi-Krawczyk Hash is transparent to the applications as it is supported by the same API.
+However, we would like to receive comments and feedbacks on the proposed design before starting a formal implementation of the design. In this project, we have added new API functions for purpose of prototype. The new functions are HASH_CreateEx() , HASH_BeginEx() , HASH_UpdateEx() , and HASH_EndEx() . They take the same parameters as the original 4 functions respectively.
+TODO: Add reference to the earlier section of the report on RMX implementation. Explain that the actual NSS implementation uses the same algorithm.
+Signing and Verification Functions
+Many digital signature standards use the paradigm of first using a hash function to get the digest of the data and then encrypting the digest with the signer's private key. Verification is performed by executing the same hash and using this
+digest value along with the signature value and the signing party's public key.
+Once we have made changes in the hashing functions to support Halevi-Krawczyk Hash in the NSS library, the data signing and verification functions should automatically have the new functionality from the hashing APIs. But the problem is that the current NSS implementation for data signing and verification does not use the high level HASH_* APIs. Instead, it directly invoke the low level data structures and function pointers of the hash objects. We would have to repeat the randomized hash schemes in these implementations.
+In order to avoid duplicating the Halevi-Krawczyk Hash implementation in these APIs, we have added some new data signing and verification methods that use the high level HASH_* APIs for data. We recommend that the official NSS implementation should make similar changes.
+As an example of our changes, the following function is added. It is similar to the current SEC_SignData() function but it takes an additional parameter SECItem * randParams for the salt value. The caller needs to provide the salt value. In our new implementation of this method, we directly use HASH_* high level APIs.
+SECStatus
+SEC_SignDataEx(SECItem *res, unsigned char *buf, int len,
+SECKEYPrivateKey *pk, SECOidTag algid,
+SECItem *rand_params )
+(TODO: sidebar) Some notes on implementation details: The existing implementation uses this data structure for the signing context.
+struct SGNContextStr {
+SECOidTag signalg;
+SECOidTag hashalg;
+void *hashcx;
+const SECHashObject *hashobj;
+SECKEYPrivateKey *key;
+/* This would have to be added if we want to add Halevi-Krawczyk Hash support
+* in the existing data signing functions.
+*/
+RANDHashParams *rand_params;
+};
+Note that it does not have HASHContext and the above high level hash APIs. If we keep the current implementation, we would have to add the RANDHashParams in this structure. We would also have to repeat the Halevi-Krawczyk Hash logic in the various signing functions. Instead of repeating the code, we use a new data structure for the signin context. It is defined as:
+/* SGNContext with Halevi-Krawczyk Hash support.
+* This new structure uses the HASH_ APIs instead of the low level hash objects.
+* We recommend that the official NSS implementation should also use this data
+* structure. Since it is exposed as an opaque type of SNGContext ,
+* such changes are transparent to NSS users.
+*/
+struct SGNContextExStr {
+SECOidTag signalg;
+/* use the high level HASH_ APIs. */
+HASHContext* hash_ctx_;
+SECKEYPrivateKey *key;
+};
+We have made similar changes to the data verification APIs. The only difference is that theverification context VFYContext creation does not require a random salt parameter. The value can be automatically extracted from the input data. For example, for the certificate verification, the salt value is retrieved from the algorithm parameters if the algorithm identifier is one of the randomized algorithms.
+Data Encoding and Decoding
+The random salt value used in the hash operations needs to be transmitted along with the digest data. There are many different options of encoding the salt data. MAC and HMAC need to be updated accordingly in the protocols that use them. For example, one simple way is the include the salt with the digest data, resulting with a wider hash. For data encoding and decoding for digital certifiate, please refer to the later section on the digital certifiates.
+NSS Certificate Utility Functions
+The Certificate Database Tool is a command-line utility that can create and modify the Mozilla certificate and key database files. We have modified certutil so that certificate signing will use Halevi-Krawczyk Hash except for the self-signed certificates. We use the updated utility to generate the Halevi-Krawczyk-signed certificate .
+Security Manager
+The Firefox Security Manager provides PKI and SSL related functions to the end users of the browser. It is outside of the NSS library. In this project, we have made simple modifications so that the new certificates can be properly displayed in the Firefox UI. We have not modified the import/export functionality in the security manager to support the new certificates.
+TLS ClientHello Extension
+Now that we are able to use Halevi-Krawczyk Hash in digital certificates. How are we going to use this in the applications? We propose a solution for HTTPS servers and browsers, which are among the most widely used applications that use digital certificates.
+If we install the new ceritificates on the server, the existing web browsers such as Firefox and Internet Exploerer do not recognized these certificates and the secure connection will be rejected. In order for the browsers and the web servers to negotiate the capability to support the digital certificates that use randomized hash, we propose a new type of TLS ClientHello Extension.
+TLS ClientHello extension is defined in RFC 3546. It allows standardized and customized extensions in the TLS handshakes. One common use is the Server Name Indication, which is defined in the same RFC. It allows HTTPS to work in virtual hosting environment.
+The following is the current TLS ClientHello Extension data structure:
+struct {
+ExtensionType extension_type;
+opaque extension_data ;
+} Extension;
+Here:
+"extension_type" identifies the particular extension type.
+"extension_data" contains information specific to the particular
+extension type.
+We propose that a new type be added: certificate_type, with the corresponding extension_data being a 2-byte bitmask value of the supported ceritificate types.
+enum {
+server_name(0), max_fragment_length(1),
+client_certificate_url(2), trusted_ca_keys(3),
+truncated_hmac(4), status_request(5), certificate_type (18) , (65535)
+} ExtensionType;
+With this mechanism in place, an HTTPS server may host 2 types of digital certificates for a given domain. It will use the regular certificate for older browser clients. But it will use the new types of the cerificates that have strong security propertoes for newer clients that have advertised certificate_type extension in the TLS
+handshake. All other aspects of the SSL/TLS handshake and session establishment are not changed.
+We have modified the NSS library so that the Firefox browser will send an additional client hello extension to signify that it supports digital certificates that are signed with randomized hash. HTTPS server can use this information to decide which server certificates to use in the TLS handshake.
+We have not modified the NSS library on the server-side handling of this TLS ClientHello extension.
+Server Side(Apache) Changes
+There are no code changes to the Apache and OpenSSL library on the server side. In this project, we simply replaced the server.crt with the newly generated certificate that is based on randomized MD5 with RSA encryption. One potential change on the server side is to modify OpenSSL so that it understands the new client hello extension and chooses the right format of certificates accordingly.
+Acutal Code Changes
+Please refer to this CVS diff result. The code is based on NSS release 3.11.4. The changed files are in this tar file . Refer to this page for an HTML view of actual affected files .
+Proposed Changes to X.509 Digital Certificates
+A digital certifiate is a binding of a public key to a particular Distinguished Name (DN) or an Alternative Name that is signed by a trusted Certificate Authority(CA).
+The X.509 certifiate format was initially published as part of the ITU's X.500 Directory recommendations. It was later adapted by the IETF Public-Key Infrastructure (X.509), or PKIX, working group. RFC 3280 defines the v3 format. The current structure of a X.509 v3 digital certificate is as follows.
+Certificate ::= SEQUENCE {
+tbsCertificate TBSCertificate,
+signatureAlgorithm AlgorithmIdentifier,
+signatureValue BIT STRING }
+TBSCertificate ::= SEQUENCE {
+version [0] EXPLICIT Version DEFAULT v1,
+serialNumber CertificateSerialNumber,
+signature AlgorithmIdentifier,
+issuer Name,
+validity Validity,
+subject Name,
+subjectPublicKeyInfo SubjectPublicKeyInfo,
+issuerUniqueID [1] IMPLICIT UniqueIdentifier OPTIONAL,
+-- If present, version MUST be v2 or v3
+subjectUniqueID [2] IMPLICIT UniqueIdentifier OPTIONAL,
+-- If present, version MUST be v2 or v3
+extensions [3] EXPLICIT Extensions OPTIONAL
+-- If present, version MUST be v3
+}
+For randomized hash, the signer needs to include the random salt value along with the signature. There are three options to add this information to the certificate.
+Add a new field for the random salt value. For example, we could add saltValue as follows,
+Certificate ::= SEQUENCE {
+tbsCertificate TBSCertificate,
+signatureAlgorithm AlgorithmIdentifier,
+saltValue OCTET_String, -- The random salt value for Halevi-Krawczyk Hash
+signatureValue BIT STRING }
+The problem with this approach is that it breaks the existing systems that use digital cerficates even if they do not have any need to use randomized hash. It requires that they all be upgraded to support the new X.509 v3 certificate structure.
+Include the salt value as part of the signature value, i.e. append it to the signatureValue field above.
+Since there is no structural change to the certificates, this approach does not break the existing systems as long as they do not use randomized algorithms. But in order for the new systems to still support the existing non-randomized schemes, we need to define the structure of the signatureValue so that the salt value can be unambiguously determined.
+Use the current structure and use the algorithm parameters, which is an optioanl field, as the place holder for the random salt value.
+The AlgorithmIdentifier field has the following syntax,
+AlgorithmIdentifier ::= SEQUENCE {
+algorithm OBJECT IDENTIFIER,
+parameters ANY DEFINED BY algorithm OPTIONAL }
+In existing digital certificate implementations, the two mostly used algorithms identifiers are:
+md5WithRSAEncryption OBJECT IDENTIFIER ::= {
+iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1)
+pkcs-1(1) 4 }
+sha-1WithRSAEncryption OBJECT IDENTIFIER ::= {
+iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1)
+pkcs-1(1) 5 }
+The parameters value for these algorithms is NULL .
+For other algorithms such as the Elliptic Curve Digital Signature Algorithm (ECDSA), the parameters field carries the curve system parameters.
+One issues with this approach is that the salt value should be different for each instance of signing. So strictly speaking, it is not considered as a system parameter of the algorithm. On the other hand, one great advantage of this approach is that it makes no changes to the existing data structure. Also, the current definition of OPTIONAL/ANY is meant for customized definition and interpretation of this field for each algorithm. As long as there is a clear definition of the data, the proposed change is align with the original design purpose for this field.
+Our approach:
+In practical consideration of standardization process, implementation cycles, and interoperability concerns, we think the last approach is the easiest for actual deployment of Halevi-Krawczyk Hash for digital certificates. This is what we have used in this project.
+In particular, we have added the following 2 new algorithm identifiers for the randomized version of the algorithms,
+randomizedMd5WithRSAEncryption OBJECT IDENTIFIER ::= {
+iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1)
+pkcs-1(1) 99 }
+randomizedSha-1WithRSAEncryption OBJECT IDENTIFIER ::= {
+iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1)
+pkcs-1(1) 100 }
+The paramters value is the random salt.
+Random-Salt-Value := OCTET STRING
+For an example of this, please refer to a sample certificate file . Here is the ASN1 dump result .
+Prototype Screenshorts
+The following is the "General" tab in the Firefox browser's certificate details view.
+From the "Details" tab of that view, we display the Algorithm ID as "PKCS #1 Randomized MD5 With RSA Encryption".
+With this algorithm, the salt value is included in the Algorithm Parameters field. The following picture shows the value. Right now, the UI displays everything in the field, which includes the first two bytes of DER encoded Octet-String. For example, 0x04 for the DER type, 0x10 for the salt data length(16 bytes in this case). The rest are 16 bytes of salt value.
+Additional code is required in Firefox security manager in order to better present this value.
+Conclusions
+In this project, we have developed a working version of randomized hash for digital certificates. We have demonstrated that the proposed randomized mode of operation is easy to implement.
+While it is important for researchers to find a new generation of cryptographical hash functions that have even stronger collision resistance, the randomized mode of operation proposed by Halev and Krawzczyk provides an alternative that can strengthen the existing hash functions. Since the development and standardization process of new hash functions may take years in reality, the proposed randomized scheme have practical value to the existing security systems that use hash functions.
+We would like to see standardization of this scheme (especially in its use for digital certificates) so that it can be quicky deployed in applications. We also believe that future hash functions should be designed with randomized mode of operation.
+Future Works
+Propose the new signature identifiers used in the X509 digital certificates to the standardization body. Assign well-known identifiers to these algorithms. Get a consensus on the interpretation of algorithm parameters field and the DER encoding of the random salt values.
+Contribute the code changes to the NSS library.
+Additional development work on Firefox Security Manager for certificate import and export functions.
+Propose a new TLS ClientHello extension for the certificate types and request for a standard number for extension type.
+Implement the server side support of the proposed TLS ClientHello extension in OpenSSL library. Develop a working version with Apache 2 and mod_ssl (which is an integrated module in Apache 2).
+References
+The following references are used in this project.
+Shai Halevi and Hugo Krawczyk, Strengthening Digital Signatures via Randomized Hashing .
+Shai Halevi and Hugo Krawczyk, The RMX Transform and Digital Signatures .
+Arjen Lenstra and Benne de Weger, Colliding X.509 Certificates based on MD5-collisions, http://www.win.tue.nl/~bdeweger/CollidingCertificates/
+RFC 3279. Algorithms and Identifiers for the
+Internet X.509 Public Key Infrastructure
+Certificate and Certificate Revocation List (CRL) Profile, http://www.ietf.org/rfc/rfc3279.txt
+RFC 3280. Internet X.509 Public Key Infrastructure
+Certificate and Certificate Revocation List (CRL) Profile. http://www.ietf.org/rfc/rfc3280.txt
+Project personnel
+Dan Boneh
+Weidong Shao
+Maintained by Weidong Shao.
+Last updated Jan. 2007.

@@ -1,0 +1,4612 @@
+Enhanced Target Collision Resistant Hash Functions Revisited
+Mohammad Reza Reyhanitabar, Willy Susilo, and Yi Mu
+Centre for Computer and Information Security Research,
+School of Computer Science and Software Engineering
+University of Wollongong, Australia
+f mrr790, wsusilo, ymu g @uow.edu.au
+Abstract. Enhanced Target Collision Resistance (eTCR) property for a hash function was put forth by Halevi
+and Krawczyk in Crypto 2006, in conjunction with the randomized hashing mode that is used to realize such
+a hash function family. eTCR is a strengthened variant of the well-known TCR (or UOWHF) property for a
+hash function family ( i.e. a dedicated-key hash function). The contributions of this paper are twofold. First, we
+compare the new eTCR property with the well-known collision resistance (CR) property, where both properties
+are considered for a dedicated-key hash function. We show there is a separation between the two notions, that
+is in general , eTCR property cannot be claimed to be weaker (or stronger) than CR property for any arbitrary
+dedicated-key hash function. Second, we consider the problem of eTCR property preserving domain extension.
+We study several domain extension methods for this purpose, including (Plain, Strengthened, and Pre x-free)
+Merkle-Damg ard, Randomized Hashing (considered in dedicated-key hash setting), Shoup, Enveloped Shoup,
+XOR Linear Hash (XLH), and Linear Hash (LH) methods. Interestingly, we show that the only eTCR preserving
+method is a nested variant of LH which has a drawback of having high key expansion factor. Therefore, it is
+interesting to design a new and e cient eTCR preserving domain extension in the standard model .
+Key words: Hash Functions, CR, TCR, eTCR, Domain Extension
+1 Introduction
+Cryptographic hash functions are widely used in many cryptographic schemes, most importantly as building
+blocks for digital signature schemes and message authentication codes (MACs). Their application in signature
+schemes following hash-and-sign paradigm, like DSA, requires the collision resistance (CR) property. Contini
+and Yin [5] showed that breaking the CR property of a hash function can also endanger security of the MAC
+schemes, which are based on the hash function, such as HMAC. Despite being a very essential and widely-
+desirable security property of a hash function, CR has been shown to be a very strong and demanding
+property for hash functions from theoretical viewpoint [21, 4, 17] as well as being a practically endangered
+property by the recent advances in cryptanalysis of widely-used standard hash functions like MD5 and
+SHA-1 [24, 23]. In response to these observations in regard to the strong CR property for hash functions
+and its implication on the security of many applications, recently several ways out of this uneasy situation
+have been proposed.
+The rst approach is to avoid relying on the CR property in the design of new applications and instead,
+just base the security on other weaker than CR properties like Target Collision Resistance (\Ask less of a hash
+function and it is less likely to disappoint! " [4]). This is an attractive and wise methodology in the design
+of new applications using hash functions, but unfortunately it might be of limited use to secure an already
+implemented and in-use application, if the required modi cations are signi cant and hence prohibitive (and
+not cost e ective) in practice.
+The second approach is to design new hash functions to replace current endangered hash function
+standards like SHA-1. For achieving this goal, NIST has started a public competition for selecting a new
+secure hash standard SHA-3 to replace the current SHA-1 standard [15]. It is hoped that new hash standard
+will be able to resist against all known cryptanalysis methods, especially powerful statistical methods like
+di erential cryptanalysis which have been successfully used to attack MD5, SHA-1 and other hash functions
+[24, 23, 22].
+2 M. R. Reyhanitabar, W. Susilo and Y. Mu
+Another methodology has also recently been considered as an intermediate step between the aforemen-
+tioned two approaches in [10, 9]. This approach aims at providing a \safety net" by xing the current com-
+plete reliance on endangered CR property without having to change the internals of an already implemented
+hash function like SHA-1 and instead, just by using the hash function in some black-box modes of operation.
+Based on this idea, Randomized Hashing mode was proposed in [10] and announced by NIST as Draft SP 800-
+106 [16]. In a nutshell, Randomized Hashing construction, shown in Figure 1, converts a keyless hash function
+H (e.g. SHA-1) to a dedicated-key hash function
+~
+H de ned as
+~
+H
+K
+( M ) = H ( K jj ( M
+1
+K ) jj jj ( M
+L
+K )),
+where H is an iterated Merkle-Damg ard hash function based on a compression function h . ( M
+1
+jj jj M
+L
+is
+the padded message after applying strengthening padding.)
+Fig. 1. Randomized Hashing construction
+Although the main motivation for the design of a randomized hashing mode in [10] was to free reliance
+on collision resistance assumption on the underlying hash function (by making o -line attacks ine ective
+by using a random key), in parallel to this aim, a new security property was also introduced and de ned
+for hash functions, namely enhanced Target Collision Resistance (eTCR) property. Having
+~
+H as the rst
+example of a construction for eTCR hash functions in hand, we also note that an eTCR hash function is
+an interesting and useful new primitive. In [10], the security of the speci c example function
+~
+H in eTCR
+sense is based on some new assumptions (called c-SPR and e-SPR) about keyless compression function h .
+However, this example function
+~
+H , may be threatened as a result of future cryptanalysis results, but the
+notion of eTCR hashing will still remain useful independently from this speci c function. By using an eTCR
+hash function family f H
+K
+g in a hash-and-sign digital signature scheme, one does not need to sign the key
+K used for the hashing. It is only required to sign H
+K
+( M ) and the key K is sent in public to the veri er as
+part of the signed message [10]. This is an improvement compared to using a TCR (UOWHF) hash function
+family where one needs to sign H
+K
+( M ) jj K [4].
+Our Contributions
+Our aim in this paper is to investigate the eTCR hashing as a new and interesting notion. Following the
+previous background on the CR notion, the rst natural question that arises is whether eTCR is weaker
+than CR in general. It is known that both CR and eTCR imply TCR property ( i.e. are stronger notion
+than TCR) [14, 19, 10], but the relation between CR and eTCR has not been considered yet. As our rst
+contribution in this paper, we compare the eTCR property with the CR property, where both properties
+are considered formally for a dedicated-key hash function. We show that there is a separation between
+eTCR and CR notions, that is in general , eTCR property cannot be claimed to be weaker (or stronger)
+than CR property for any arbitrary dedicated-key hash function. At rst glance, this may seem to be
+discouraging for the applications of eTCR hashing, but we emphasize that this separation result actually
+shows the incomparability between eTCR and CR notions but it does not formally imply that for any speci c
+construction of a dedicated-key hash function (say the Randomized Hashing construction), achieving the
+h
+h
+h
+h
+M
+2
+M
+L
+K
+M
+0
+2
+C
+2
+C
+3
+C
+L
+C
+L +1
+C
+1
+IV
+K
+K
+K
+M
+0
+3
+M
+0
+L +1
+M
+1
+M
+0
+1
+eTCR Hash Functions Revisited 3
+eTCR property will be harder than CR. Although our separation result does not rule out the possibility of
+designing speci c dedicated-key hash functions in which eTCR might be easier to achieve compared to CR,
+it emphasizes the point that any such a construction should explicitly show that this is indeed the case.
+As our second contribution, we consider the problem of eTCR preserving domain extension. Assuming
+that one has been able to design a dedicated-key compression function which possesses eTCR property, the
+next step will be how to extend its domain to obtain a full- edged hash function which also provably possesses
+eTCR property and is capable of hashing any variable length message. In the case of CR property the seminal
+works of Merkle [12] and Damg ard [7] show that Merkle-Damg ard (MD) iteration with strengthening (length
+indicating) padding is a CR preserving domain extender. Analysis and design of (multi-)property preserving
+domain extenders for hash function has been recently attracted new attention in several works considering
+several di erent security properties, such as [4, 3, 2, 1]. We investigate eight domain extension transforms
+for this purpose; namely Plain MD [12, 7], Strengthened MD [12, 7], Pre x-free MD [6, 11], Randomized
+Hashing [10] (considered in dedicated-key hash setting), Shoup [20], Enveloped Shoup [2], XOR Linear Hash
+(XLH) [4], and a variant of Linear Hash (LH) [4] methods. Interestingly, we show that the only eTCR
+preserving method among these methods is a nested variant of LH (de ned based on a variant proposed in
+[4]) which has the drawback of having high key expansion factor. From this analysis, design of a new and
+e cient eTCR preserving domain extender remains an interesting open problem for future work.
+The overview of constructions and the properties they preserve are shown in Table 1. The symbol \ X "
+means that the notion is provably preserved by the construction; \ " means that it is not preserved.
+Underlined entries related to eTCR property are the results shown in this paper.
+Scheme
+CR
+TCR
+eTCR
+Plain MD
+[12, 7]
+[4]
+Strengthened MD
+X [12, 7]
+[4]
+Pre x-free MD
+[2]
+[2]
+Randomized Hashing
+X [1]
+[1]
+Shoup
+X [20]
+X [20]
+Enveloped Shoup
+X [2]
+X [2]
+XOR Linear Hash (XLH)
+X [1]
+X [4]
+Nested Linear Hash (LH)
+X [4]
+X [4]
+X
+Table 1. Overview of constructions and the properties they preserve.
+2 Preliminaries
+2.1 Notations
+If A is a probabilistic algorithm then by y
+$
+A ( x
+1
+; ; x
+n
+) it is meant that y is a random variable which
+is de ned from the experiment of running A with inputs x
+1
+; ; x
+n
+and assigning the output to y . To show
+that an algorithm A is run without any input ( i.e. when the input is an empty string) we use the notation
+y
+$
+A (). By time complexity of an algorithm we mean the running time, relative to some xed model of
+computation (e.g. RAM) plus the size of the description of the algorithm using some xed encoding method.
+If X is a nite set, by x
+$
+X it is meant that x is chosen from X uniformly at random. Let x jj y denote
+the string obtained from concatenating string y to string x . Let 1
+m
+and 0
+m
+, respectively, denote a string of
+m consecutive 1 and 0 bits, and 1
+m
+0
+n
+denote the concatenation of 0
+n
+to 1
+m
+. By ( x; y ) we mean an injective
+encoding of two strings x and y , from which one can e ciently recover x and y . For a binary string M ,
+let M
+1 :::n
+denote the rst n bits of M , j M j denote its length in bits and j M j
+b
+, dj M j =b e denote its length
+in b -bit blocks. For a positive integer m , let h m i
+b
+denotes binary representation of m by a string of length
+4 M. R. Reyhanitabar, W. Susilo and Y. Mu
+exactly b bits. If S is a nite set we denote size of S by j S j . The set of all binary strings of length n bits (for
+some positive integer n ) is denoted as f 0 ; 1 g
+n
+, the set of all binary strings whose lengths are variable but
+upper-bounded by N is denoted by f 0 ; 1 g
+N
+and the set of all binary strings of arbitrary length is denoted
+by f 0 ; 1 g
+.
+2.2 Two Settings for Hash Functions
+In a formal study of cryptographic hash functions and their security notions, two di erent but related settings
+can be considered. The rst setting is the traditional keyless hash function setting where a hash function
+refers to a single function H (e.g. H =SHA-1) that maps variable length messages to xed length output hash
+value. In the second setting, by a hash function it is meant a family of hash functions H : K M ! f 0 ; 1 g
+n
+,
+also called a dedicated-key hash function [2], which is indexed by a key space K . A key K 2 K acts as
+an index to select a speci c member function from the family and often the key argument is denoted as a
+subscript, that is H
+K
+( M ) = H ( K; M ), for all M 2 M . In a formal treatment of hash functions and the study
+of relationships between di erent security properties, one should clarify the target setting, namely whether
+keyless or dedicated-key setting is considered. This is worth emphasizing as some security properties like
+TCR and eTCR are inherently de ned and make sense for a dedicated-key hash function [19, 10]. Regarding
+CR property there is a well-known foundational dilemma, namely CR can only be formally de ned for a
+dedicated-key hash function, but it has also been used widely as a security assumption in the case of keyless
+hash functions like SHA-1. We will brie y review this formalization issue for CR in Subsection 2.3 and for
+a detailed discussion we refer to [18].
+2.3 De nition of Security Notions: CR, TCR and eTCR
+In this section, we recall three security notions directly relevant to our discussions in the rest of the paper;
+namely, CR, TCR, and eTCR, where these properties are formally de ned for a dedicated-key hash function.
+We also recall the well-known de nitional dilemma regarding CR assumption for a keyless hash function.
+A dedicated-key hash function H : K M ! f 0 ; 1 g
+n
+is called ( t; )- x secure, where x 2 f CR, TCR, eTCR g
+if the advantage of any adversary, having time complexity at most t , is less than , where the advantage
+of an adversary A , denoted by Adv
+x
+H
+( A ), is de ned as the probability that a speci c winning condition
+is satis ed by A upon nishing the game (experiment) de ning the property x . The probability is taken
+over all randomness used in the de ning game as well as that of the adversary itself. The advantage func-
+tions for an adversary A against the CR, TCR and eTCR properties of the hash function H are de ned
+as follows, where in the case of TCR and eTCR, adversary is denoted by a two-stage algorithm A = ( A
+1
+; A
+2
+):
+Adv
+CR
+H
+( A ) = Pr
+n
+K
+$
+K ; ( M; M
+0
+)
+$
+A ( K ) : M 6 = M
+0
+^ H
+K
+( M ) = H
+K
+( M
+0
+)
+o
+Adv
+T CR
+H
+( A ) = Pr
+n
+( M; State )
+$
+A
+1
+(); K
+$
+K ; M
+0
+$
+A
+2
+( K; State ) : M 6 = M
+0
+^ H
+K
+( M ) = H
+K
+( M
+0
+)
+o
+Adv
+eT CR
+H
+( A ) = Pr
+8
+>
+>
+<
+>
+>
+:
+( M; State )
+$
+A
+1
+();
+K
+$
+K ; : ( K; M ) 6 = ( K
+0
+; M
+0
+) ^ H
+K
+( M ) = H
+K
+0
+( M
+0
+)
+( K
+0
+; M
+0
+)
+$
+A
+2
+( K; State );
+9
+>
+>
+=
+>
+>
+;
+CR for a Keyless Hash Function. Collision resistance as a security property cannot be formally de ned
+for a keyless hash function H : M ! f 0 ; 1 g
+n
+. Informally , one would say that it is \ infeasible " to nd
+two distinct messages M and M
+0
+such that H ( M ) = H ( M
+0
+). But it is easy to see that if jMj > 2
+n
+( i.e.
+if the function is compressing) then there are many colliding pairs and hence, trivially there exists an
+eTCR Hash Functions Revisited 5
+e cient program that can always output a colliding pair M and M
+0
+, namely a simple one with M and
+M
+0
+included in its code. That is, infeasibility cannot be formalized by an statement like \there exists no
+e cient adversary with non-negligible advantage" as clearly there are many such adversaries as mentioned
+before. The point is that no human being knows such a program [18], but the latter concept cannot be
+formalized mathematically. Therefore, in the context of keyless hash functions, CR can only be treated as
+a strong assumption to be used in a constructive security reduction following human-ignorance framework
+of [18]. We will call such a CR assumption about a keyless hash function as keyless-CR assumption to
+distinguish it from formally de nable CR notion for a dedicated-key hash function. We note that as a result
+of recent collision nding attacks, it is shown that keyless-CR assumption is completely invalid for MD5 [24]
+and theoretically endangered assumption for SHA-1 [23].
+3 eTCR Property vs. CR Property
+In this Section, we show that there is a separation between CR and eTCR, that is none of these two
+properties can be claimed to be weaker or stronger than the other in general in dedicated-key hash function
+setting. We emphasize that we consider relation between CR and eTCR as formally de ned properties for
+a dedicated-key hash function. In other words, we follow the comparison methodology in the dedicated-key
+hash function setting as in [19]. The CR property considered in this section should not be mixed with the
+strong keyless-CR assumption for a keyless hash function.
+The separation results are shown in the following subsections.
+3.1 CR ; eTCR
+We want to show that the CR property does not imply the eTCR property. That is, eTCR as a security
+notion for a dedicated-key hash function is not weaker than the CR property. This is done by showing as
+a counterexample, a dedicated-key hash function which is secure in CR sense but completely insecure in
+eTCR sense.
+Lemma 1 (CR does not imply eTCR). Assume that there exists a dedicated-key hash function H :
+f 0 ; 1 g
+k
+f 0 ; 1 g
+m
+! f 0 ; 1 g
+n
+which is ( t; ) CR . Select (and x ) an arbitrary message M
+2 f 0 ; 1 g
+m
+and an arbitrary key K
+2 f 0 ; 1 g
+k
+(e.g. M
+= 1
+m
+and K
+= 1
+k
+). The dedicated-key hash function G :
+f 0 ; 1 g
+k
+f 0 ; 1 g
+m
+! f 0 ; 1 g
+n
+shown in this lemma is ( t
+0
+;
+0
+) CR , where t
+0
+= t cT
+H
+and
+0
+= + 2
+k
+, but
+it is completely insecure in eTCR sense. T
+H
+denotes the time for one computation of H and c is a small
+constant.
+G
+K
+( M ) =
+8
+>
+>
+>
+>
+<
+>
+>
+>
+>
+:
+M
+1 n
+if M = M
+W
+K = K
+(1)
+H
+K
+( M
+) if M 6 = M
+V
+K 6 = K
+V
+H
+K
+( M ) = M
+1 n
+(2)
+H
+K
+( M ) otherwise (3)
+Note that the condition in line (3) of de nition of G (implicitly denoted as \ otherwise ") actually can be
+explicitly shown as: [if M 6 = M
+V
+K 6 = K
+V
+H
+K
+( M ) 6 = M
+1 n
+]. It is easily seen that this condition and
+the other two conditions in line (1) and (2) cover the all possibility for K and M in de ning G
+K
+( M ).
+The proof is valid for any arbitrary selection of parameters M
+2 f 0 ; 1 g
+m
+and K
+2 f 0 ; 1 g
+k
+, and hence,
+this construction actually shows 2
+m + k
+such counterexample functions, which are CR but not eTCR.
+Proof. Let's rst demonstrate that G as a dedicated-key hash function is not secure in eTCR sense. This
+can be easily shown by the following simple adversary A = ( A
+1
+; A
+2
+) playing eTCR game against G . In the
+rst stage of eTCR attack, A
+1
+outputs the target message as M = M
+. In the second stage of the attack,
+6 M. R. Reyhanitabar, W. Susilo and Y. Mu
+A
+2
+, after receiving the rst randomly selected key K (where K
+$
+f 0 ; 1 g
+k
+), outputs a di erent message
+M
+0
+6 = M
+and selects the second key as K
+0
+= K
+. It can be seen easily that the adversary A = ( A
+1
+; A
+2
+)
+wins the eTCR game, as M
+0
+6 = M
+implies that ( M
+; K ) 6 = ( M
+0
+; K
+) and by the construction of G we
+have G
+K
+( M
+) = G
+K
+( M
+0
+) = M
+1 n
+; that is both of the conditions for winning eTCR game are satis ed.
+Therefore, the hash function family G is completely insecure in eTCR sense.
+To complete the proof, we need to show that the hash function family G inherits the CR property of
+H . This is done by reducing CR security of G to that of H . Let A be an adversary that can win CR game
+against G with probability
+0
+using time complexity t
+0
+. We construct an adversary B against CR property
+of H with success probability of at least =
+0
+2
+k
+(
+0
+, for large k ) and time t = t
+0
++ cT
+H
+as stated in
+the lemma. The construction of B and the analysis is provided in Appendix A.
+ut
+3.2 eTCR ; CR
+We want to demonstrate that the eTCR property does not imply the CR property. That is, the CR property
+as a security notion for a dedicated-key hash function is not a weaker than the eTCR property. This is
+done by showing as a counterexample, a dedicated-key hash function which is secure in eTCR sense but
+completely insecure in CR sense.
+Lemma 2 (eTCR does not imply CR). Assume that there exists a dedicated-key hash function H :
+f 0 ; 1 g
+k
+f 0 ; 1 g
+m
+! f 0 ; 1 g
+n
+, where m > k n , which is ( t; ) eT CR . The dedicated-key hash function
+G : f 0 ; 1 g
+k
+f 0 ; 1 g
+m
+! f 0 ; 1 g
+n
+shown in this lemma is ( t
+0
+;
+0
+) eT CR , where t
+0
+= t c;
+0
+= + 2
+k +1
+, but
+it is completely insecure in CR sense. ( c is a small constant.)
+G
+K
+( M ) =
+H
+K
+(0
+m k
+jj K ) if M = 1
+m k
+jj K
+H
+K
+( M ) otherwise
+Note that the structural assumption about H : f 0 ; 1 g
+k
+f 0 ; 1 g
+m
+! f 0 ; 1 g
+n
+, namely that we have m > k n
+is quite reasonable even for practical scenarios. For instance, in Randomized Hashing which should provide
+a dedicated-key hash function with eTCR property, the key length k is xed and equal to the block length
+of the underlying keyless hash function (e.g using SHA-1 we have k = 512, n = 160) while message length
+m can be very large (just less than 2
+64
+).
+Proof. We rstly demonstrate that G as a dedicated-key hash function is not secure in CR sense. This can
+be easily shown by the following simple adversary A that plays CR game against G . On receiving the key
+K , the adversary A outputs two di erent messages as M = 1
+m k
+jj K and M
+0
+= 0
+m k
+jj K and wins the CR
+game as we have G
+K
+(1
+m k
+jj K ) = H
+K
+(0
+m k
+jj K ) = G
+K
+(0
+m k
+jj K ).
+It remains to show that that G indeed is an eTCR secure hash function family. Let A = ( A
+1
+; A
+2
+) be
+an adversary which wins the eTCR game against G with probability
+0
+and using time complexity t
+0
+. We
+construct an adversary B = ( B
+1
+; B
+2
+) which uses A as a subroutine and wins eTCR game against H with
+success probability of at least =
+0
+2
+k +1
+(
+0
+, for large k ) and having time complexity t = t
+0
++ c where
+small constant c can be determined from the description of algorithm B . The description of the algorithm
+B and the analysis is provided in Appendix B. ut
+3.3 The Case for Randomized Hashing
+Randomized Hashing method as shown in Fig. 1 is a simple method to obtain a dedicated-key hash function
+~
+H : K M ! f 0 ; 1 g
+n
+from an iterated (keyless) hash function H as
+~
+H ( K; M ) , H
+K jj ( M
+1
+K ) jj jj ( M
+L
+K )
+, where K = f 0 ; 1 g
+b
+and H itself is constructed by iterating a keyless compression function h : f 0 ; 1 g
+n + b
+!
+eTCR Hash Functions Revisited 7
+f 0 ; 1 g
+n
+and using a xed initial chaining value IV. The analysis in [10] reduces the security of
+~
+H in eTCR
+sense to some assumptions, called c-SPR and e-SPR, on the keyless compression function h which are weaker
+than the keyless-CR assumption on h .
+Here, we are interested in a somewhat di erent question, namely whether (formally de nable) Coll for
+this speci c design of dedicated-key hash function
+~
+H implies that it is eTCR or not. Interestingly, we can
+gather a strong evidence that Coll for
+~
+H implies that it is also eTCR, by the following argument. First,
+from the construction of
+~
+H it can be seen that Coll for
+~
+H implies keyless-CR for a hash function H
+which
+is identical to the H except that its initial chaining value is a random and known value IV
+= h ( IV jj K )
+instead of the pre xed IV (Note that K is selected at random and is provided to the adversary at the
+start of Coll game). This is easily proved, as any adversary that can nd collisions for H
+( i.e. breaks it in
+keyless-CR sense) can be used to construct an adversary that can break
+~
+H in Coll sense. Second, from recent
+cryptanalysis methods which use di erential attacks to nd collisions [24, 23], we have a strong evidence that
+nding collisions for H
+under known IV
+would not be harder than nding collisions for H under IV , for a
+practical hash function like MD5 or SHA-1. That is, we argue that if H
+is keyless-CR then H is also keyless-
+CR. Finally, we note that keyless-CR assumption on H in turn implies that
+~
+H is eTCR as follows. Consider
+a successful eTCR attack against
+~
+H where on nishing the attack we will have ( K; M ) 6 = ( K
+0
+; M
+0
+) and
+~
+H ( K; M ) =
+~
+H ( K
+0
+; M
+0
+); where, M = M
+1
+jj jj M
+L
+and M
+0
+= M
+0
+1
+jj jj M
+0
+L
+0
+. Referring to the construction of
+~
+H this is translated to H
+K jj ( M
+1
+K ) jj jj ( M
+L
+K )
+= H
+K
+0
+jj ( M
+0
+1
+K
+0
+) jj jj ( M
+0
+L
+0
+K
+0
+)
+and from
+( K; M ) 6 = ( K
+0
+; M
+0
+) we have that K jj ( M
+1
+K ) jj jj ( M
+L
+K ) 6 = K
+0
+jj ( M
+0
+1
+K
+0
+) jj jj ( M
+0
+L
+0
+K
+0
+). Hence,
+we have found a collision for H and this contradicts the assumption that H is keyless-CR. Therefore, for
+the case of the speci c dedicated-key hash function
+~
+H obtained via Randomized Hashing mode, it can be
+argued that Coll implies eTCR.
+4 Domain Extension and eTCR Property Preservation
+In this section we investigate the eTCR preserving capability of eight domain extension transforms, namely
+Plain MD [12, 7], Strengthened MD [12, 7], Pre x-free MD [6, 11], Randomized Hashing [10], Shoup [20],
+Enveloped Shoup [2], XOR Linear Hash (XLH)[4], and Linear Hash (LH) [4] methods.
+Assume that we have a compression function h : f 0 ; 1 g
+k
+f 0 ; 1 g
+n + b
+! f 0 ; 1 g
+n
+that can only hash messages
+of xed length ( n + b ) bits. A domain extension transform can use this compression function (as a black-box)
+to construct a hash function H : K M ! f 0 ; 1 g
+n
+, where the message space M can be either f 0 ; 1 g
+or
+f 0 ; 1 g
+< 2
+m
+, for some positive integer m (e.g. m = 64). The key space K is determined by the construction of
+a domain extender. Clearly log
+2
+( jKj ) k , as H involves at least one invocation of h . The di erence between
+log
+2
+( jKj ) (i.e. the key length of H ) and k (i.e. the key length of h ) is called the `key expansion' of domain
+extension transform and is a measure of its e ciency: the less key expansion is, the more e cient the domain
+extension transform will be.
+A domain extension transform comprises of two functions: an injective padding function P ad and an
+iteration function f
+I
+. First, the padding function P ad : M ! D
+I
+is applied to an input message M 2 M to
+convert it to the padded message P ad ( M ) in a domain D
+I
+. Then, the iteration function f
+I
+: K D
+I
+! f 0 ; 1 g
+n
+uses the compression function h as many times as required, and outputs the nal hash value. The full- edged
+hash function H is obtained by combining the two functions. It is known that the property preserving
+capability of a domain extension transform depends on both the padding function and iteration function,
+for example `Plain MD' ( i.e. , plain padding and MD iteration) is not CR preserving domain extender,
+but `Strengthened MD' ( i.e. , strengthening padding and MD iteration) does preserve CR [12, 7, 2]. Hence,
+precisely speaking, we can have several domain extenders using the same iteration function but with di erent
+padding function, e.g. Plain MD, Strengthened MD, Pre x-free MD, which are considered as three di erent
+domain extenders that have di erent capabilities from property preserving viewpoint [2].
+8 M. R. Reyhanitabar, W. Susilo and Y. Mu
+The padding functions used in the eight domain extension transforms that we consider in this paper are
+de ned as follows:
+{ Plain : pad : f 0 ; 1 g
+!
+S
+L 1
+f 0 ; 1 g
+Lb
+, where pad ( M ) = M jj 10
+p
+and p is the minimum number of 0's
+required to make the length of pad ( M ) a multiple of block length.
+{ Strengthening : pad
+s
+: f 0 ; 1 g
+< 2
+m
+!
+S
+L 1
+f 0 ; 1 g
+Lb
+, where pad
+s
+( M ) = M jj 10
+p
+jj hj M ji
+m
+and p is the
+minimum number of 0's required to make the length of pad
+s
+( M ) a multiple of block length.
+{ Pre x-free : padP F : f 0 ; 1 g
+!
+S
+L 1
+f 0 ; 1 g
+Lb
+, where padP F transforms the input message space
+f 0 ; 1 g
+to a pre x-free message space, i.e. padP F ( M ) is not a pre x of padP F ( M
+0
+) for any two distinct
+messages M and M
+0
+. An example of a Pre x-free padding function, which we consider in this paper,
+is as follows. Append 10
+p
+to the message where p is the minimum number of 0's required to make the
+length of the resulted message a multiple of b 1 bits. Parse the resulted message into blocks of b 1
+bits and prepend a `0' to all blocks but the nal block where a `1' must be prepended.
+{ Strengthened Chain Shift : padCS
+s
+: f 0 ; 1 g
+< 2
+m
+!
+S
+L 1
+f 0 ; 1 g
+Lb + b n
+, where padCS
+s
+( M ) = M jj 10
+r
+jj
+hj M ji
+m
+jj 0
+p
+, and parameters p and r are de ned in two ways depending on the block length b . If b n + m
+then p = 0, otherwise p = b n . Then r is the minimum number of 0's required to make the padded
+message a member of f 0 ; 1 g
+Lb + b n
+, for some positive integer L .
+The iteration functions for MD, Randomized Hashing, Shoup, Enveloped Shoup, XLH and LH are shown
+in Fig. 2.
+4.1 Merkle-Damg ard Does not Preserve eTCR
+MD iteration function as shown in Fig. 2 can be used together with Plain ( pad ), Strengthening( pad
+s
+), or
+Pre x-free( padP F ) padding function to construct a domain extension transform, which is called Plain MD,
+Strengthened MD, or Pre x-free MD, respectively. In this section we show that none of these three domain
+extension transforms can be used as an eTCR preserving domain extender.
+Theorem 1 (Negative Result). Plain MD, Strengthened MD, and Pre x-free MD do not preserve eTCR.
+Proof. We borrow the construction of the following counterexample from [4] where it was used in the context
+of TCR property. Assume that there is a dedicated-key compression function g : f 0 ; 1 g
+k
+f 0 ; 1 g
+n + b
+! f 0 ; 1 g
+n
+with b > k which is ( t; )-eTCR secure. Set b = k + b
+0
+where b
+0
+> 0 by the assumption that b > k . Consider
+the following dedicated-key compression function h : f 0 ; 1 g
+k
+f 0 ; 1 g
+( n + k )+ b
+0
+! f 0 ; 1 g
+n + k
+:
+h ( K; X jj Y jj Z ) = h
+K
+( X jj Y jj Z ) =
+g
+K
+( X jj Y jj Z ) jj K if K 6 = Y
+1
+n + k
+if K = Y
+where K 2 f 0 ; 1 g
+k
+; X 2 f 0 ; 1 g
+n
+; Y 2 f 0 ; 1 g
+k
+; Z 2 f 0 ; 1 g
+b
+0
+( n + k is chaining variable length and b
+0
+is block
+length for h ).
+To complete the proof, we rst show in Lemma 3 that h
+K
+inherits the eTCR property from g
+K
+. Note
+that this cannot be directly inferred from the proof in [4] that h
+K
+inherits the weaker notion TCR from g
+K
+.
+Then, we show a simple attack in each case to show that the hash function obtained via either of Plain,
+Strengthened, or Pre x-free MD transform by extending domain of h
+K
+is completely insecure in eTCR sense.
+Lemma 3. The dedicated-key compression function h is ( t
+0
+;
+0
+) -eTCR secure, where
+0
+= + 2
+k +1
+and
+t
+0
+= t c , for a small constant c .
+Proof. Let A = ( A
+1
+; A
+2
+) be an adversary which wins the eTCR game against h
+K
+with probability
+0
+and
+using time complexity t
+0
+. We construct an adversary B = ( B
+1
+; B
+2
+) which uses A as a subroutine and wins
+eTCR game against g
+K
+with success probability of at least =
+0
+2
+k +1
+(
+0
+, for large k ) and spending
+eTCR Hash Functions Revisited 9
+Fig. 2. Iteration functions used in domain extension transforms: Merkle-Damg ard (MD), Randomized Hashing (RH), Shoup
+(Sh), Enveloped Shoup (ESh), XLH and LH. The iteration functions are ordered top-down based on their e ciency in terms
+of key expansion, MD iteration does not expand the key length of underlying compression function and is the most e cient
+transform and LH is the least e cient transform.
+MD
+h
+IV
+: K f 0 ; 1 g
+Lb
+! f 0 ; 1 g
+n
+, where K = f 0 ; 1 g
+k
+Algorithm MD
+h
+IV
+( K; M ) :
+C
+0
+= IV
+for i = 1 to L do
+C
+i
+= h
+K
+( C
+i 1
+jj M
+i
+)
+return C
+L
+IV
+h
+h
+h
+M
+3
+M
+L
+M
+1
+M
+2
+C
+2
+C
+3
+C
+L 1
+C
+L
+C
+1
+h
+K
+K
+K
+K
+IV
+h
+h
+h
+M
+3
+M
+L
+M
+1
+M
+2
+C
+L
+h
+K
+3
+K
+L
+K
+1
+K
+2
+IV
+h
+h
+h
+M
+2
+M
+L
+M
+1
+C
+L +1
+h
+K
+K
+K
+K
+K
+0
+K
+0
+K
+0
+K
+0
+LH
+h
+IV
+: K f 0 ; 1 g
+Lb
+! f 0 ; 1 g
+n
+, where K = f 0 ; 1 g
+Lk
+Algorithm LH
+h
+IV
+( K
+1
+jj K
+2
+jj jj K
+L
+; M ) :
+C
+0
+= IV
+for i = 1 to L do
+C
+i
+= h
+K
+i
+( C
+i 1
+jj M
+i
+)
+return C
+L
+XLH
+h
+IV
+: K f 0 ; 1 g
+Lb
+! f 0 ; 1 g
+n
+, where K = f 0 ; 1 g
+k + Ln
+Algorithm XLH
+h
+IV
+( K jj K
+0
+jj K
+1
+jj jj K
+L 1
+; M ) :
+C
+0
+= IV
+for i = 1 to L do
+C
+i
+= h
+K
+(( C
+i 1
+K
+i 1
+) jj M
+i
+)
+return C
+L
+Sh
+h
+IV
+: K f 0 ; 1 g
+Lb
+! f 0 ; 1 g
+n
+, where K = f 0 ; 1 g
+k + tn
+t = d log
+2
+( L ) e ; ( i ) = max f x : 2
+x
+j i g
+Algorithm Sh
+h
+IV
+( K jj K
+0
+jj K
+1
+jj jj K
+t 1
+; M ) :
+C
+0
+= IV
+for i = 1 to L do
+C
+i
+= h
+K
+(( C
+i 1
+K
+( i )
+) jj M
+i
+)
+return C
+L
+RH
+h
+IV
+: K f 0 ; 1 g
+Lb
+! f 0 ; 1 g
+n
+, where K = f 0 ; 1 g
+k + b
+Algorithm RH
+h
+IV
+( K jj K
+0
+; M ) :
+C
+0
+= IV
+C
+1
+= h
+K
+( C
+0
+jj K
+0
+)
+for i = 2 to L + 1 do
+C
+i
+= h
+K
+( C
+i 1
+jj ( M
+i 1
+K
+0
+))
+return C
+L +1
+ESh
+h
+IV
+1
+;IV
+2
+: K f 0 ; 1 g
+( L 1) b + b n
+! f 0 ; 1 g
+n
+, where K = f 0 ; 1 g
+k + tn
+t = d log
+2
+( L 1) e + 1 ; ( i ) = max f x : 2
+x
+j i g
+Algorithm ESh
+h
+IV
+1
+;IV
+2
+( K jj K
+0
+jj K
+1
+jj jj K
+t 1
+; M ) :
+C
+0
+= IV
+1
+; K
+= K
+t 1
+for i = 1 to L 1 do
+C
+i
+= h
+K
+(( C
+i 1
+K
+( i )
+) jj M
+i
+)
+return h
+K
+(( IV
+2
+K
+0
+) jj ( C
+L 1
+K
+) jj M
+L
+)
+IV
+h
+h
+h
+M
+3
+M
+L
+M
+1
+M
+2
+C
+L
+h
+K
+K
+2
+K
+K
+K
+0
+K
+1
+K
+0
+K
+K
+v ( L )
+IV
+1
+h
+h
+M
+1
+M
+2
+K
+K
+K
+1
+K
+0
+h
+M
+L 1
+K
+K
+K
+( L 1)
+b n
+M
+L
+C
+L
+h
+K
+K
+0
+IV
+2
+IV
+h
+h
+h
+M
+3
+M
+L
+M
+1
+M
+2
+C
+L
+h
+K
+K
+3
+K
+K
+K
+2
+K
+1
+K
+0
+K
+K
+L 1
+10 M. R. Reyhanitabar, W. Susilo and Y. Mu
+time complexity t = t
+0
++ c where small constant c can be determined from the description of algorithm B .
+Algorithm B is as follows:
+Algorithm B
+1
+()
+Algorithm B
+2
+( K
+1
+; M
+1
+; State )
+( M
+1
+= X
+1
+jj Y
+1
+jj Z
+1
+; State )
+$
+A
+1
+();
+Parse M
+1
+as M
+1
+= X
+1
+jj Y
+1
+jj Z
+1
+return ( M
+1
+; State );
+if
+K
+1
+= Y
+1
+W
+K
+1
+= 1
+k
+return `Fail' ;
+( M
+2
+= X
+2
+jj Y
+2
+jj Z
+2
+; K
+2
+)
+$
+A
+2
+( K
+1
+; M
+1
+; State );
+return ( M
+2
+; K
+2
+);
+At the rst stage of eTCR attack, B
+1
+just merely runs A
+1
+and returns whatever it returns as the rst
+message ( i.e. M
+1
+= X
+1
+jj Y
+1
+jj Z
+1
+) and any possible state information to be passed to the second stage algo-
+rithm. At the second stage of the attack, let Bad be the event that [ K
+1
+= Y
+1
+W
+K
+1
+= 1
+k
+]. If Bad happens
+then algorithm B
+2
+(and hence B ) will fail in eTCR attack; otherwise ( i.e. if
+Bad happens) we show that B
+will be successful in eTCR attack against g whenever A succeeds in eTCR attack against h .
+Assume that the event
+Bad happens; that is, [ K
+1
+6 = Y
+1
+V
+K
+1
+6 = 1
+k
+]. We claim that in this case if A
+succeeds then B also succeeds. Referring to the construction of (counterexample) compression function h in
+this lemma, it can be seen that if A succeeds, i.e. , whenever ( M
+1
+; K
+1
+) 6 = ( M
+2
+; K
+2
+)
+V
+h
+K
+1
+( M
+1
+) = h
+K
+2
+( M
+2
+),
+it must be the case that g
+K
+1
+( M
+1
+) jj K
+1
+= g
+K
+2
+( M
+2
+) jj K
+2
+which implies that g
+K
+1
+( M
+1
+) = g
+K
+2
+( M
+2
+) (and also
+K
+1
+= K
+2
+). That is, ( M
+1
+; K
+1
+) and ( M
+2
+; K
+2
+) are also valid a colliding pair for the eTCR attack against g .
+(Remember that M
+1
+= X
+1
+jj Y
+1
+jj Z
+1
+and M
+2
+= X
+2
+jj Y
+2
+jj Z
+2
+.)
+Now note that Pr[ Bad ] Pr[ K
+1
+= Y
+1
+] + Pr[ K
+1
+= 1
+k
+] = 2
+k
++ 2
+k
+= 2
+k +1
+, as K
+1
+is selected uniformly
+at random just after the message M
+1
+is xed in the eTCR game. Therefore, we have = Pr[ B succeeds] =
+Pr[ A succeeds ^
+Bad ] Pr[ A succeeds] Pr[ Bad ]
+0
+2
+k +1
+.
+To complete the proof of Theorem 1, we need to show that MD transforms cannot preserve eTCR while
+extending the domain of this speci c compression function h
+K
+. For this part, the same attacks that used
+in [4, 2] against TCR property also work for our purpose here as clearly breaking TCR implies breaking its
+strengthened variant eTCR. The eTCR attacks are as follows:
+The Case of Plain MD and Strengthened MD :
+Let's denote Plain MD and Strengthened MD domain extension transforms applied on the counterexample
+compression function h and using an initial value IV , respectively, by pMD
+h
+IV
+and sMD
+h
+IV
+. Note that MD
+h
+IV
+is used to denote the MD iteration function (Fig. 2). Then the full- edged hash function H : f 0 ; 1 g
+k
+M ! f 0 ; 1 g
+n + k
+will be de ned as H ( K; M ) = pMD
+h
+IV
+( K; M ) = MD
+h
+IV
+( K; pad ( M )) and H ( K; M ) =
+sMD
+h
+IV
+( K; M ) = MD
+h
+IV
+( K; pad
+s
+( M )), for Plain and Strengthened MD case, respectively.
+The following adversary A = ( A
+1
+; A
+2
+) can break H in eTCR sense for both Plain MD and Strengthened
+MD cases. A
+1
+outputs M
+1
+= 0
+b
+0
+jj 0
+b
+0
+and A
+2
+, on receiving the rst key K , outputs a di erent message as
+M
+2
+= 1
+b
+0
+jj 0
+b
+0
+together with the same key K as the second key. Considering that the initial value IV =
+IV
+1
+jj IV
+2
+2 f 0 ; 1 g
+n + k
+is xed before adversary starts the attack game and K is chosen at random afterward
+in the second stage of the game, we have Pr [ K = IV
+2
+] = 2
+k
+. If K 6 = IV
+2
+which is the case with probability
+1 2
+k
+then adversary becomes successful as we have:
+MD
+h
+IV
+( K; 0
+b
+0
+jj 0
+b
+0
+) = h
+K
+( h
+K
+( IV
+1
+jj IV
+2
+jj 0
+b
+0
+) jj 0
+b
+0
+) = h
+K
+( g
+K
+( IV
+1
+jj IV
+2
+jj 0
+b
+0
+) jj K jj 0
+b
+0
+) = 1
+n + k
+MD
+h
+IV
+( K; 1
+b
+0
+jj 0
+b
+0
+) = h
+K
+( h
+K
+( IV
+1
+jj IV
+2
+jj 1
+b
+0
+) jj 0
+b
+0
+) = h
+K
+( g
+K
+( IV
+1
+jj IV
+2
+jj 1
+b
+0
+) jj K jj 0
+b
+0
+) = 1
+n + k
+eTCR Hash Functions Revisited 11
+pMD :
+H ( K; 0
+b
+0
+jj 0
+b
+0
+) = MD
+h
+IV
+( K; pad (0
+b
+0
+jj 0
+b
+0
+)) = h
+K
+( MD
+h
+IV
+( K; 0
+b
+0
+jj 0
+b
+0
+) jj 10
+b
+0
+1
+) = h
+K
+(1
+n + k
+jj 10
+b
+0
+1
+)
+H ( K; 1
+b
+0
+jj 0
+b
+0
+) = MD
+h
+IV
+( K; pad (1
+b
+0
+jj 0
+b
+0
+)) = h
+K
+( MD
+h
+IV
+( K; 1
+b
+0
+jj 0
+b
+0
+) jj 10
+b
+0
+1
+) = h
+K
+(1
+n + k
+jj 10
+b
+0
+1
+)
+sMD :
+8
+>
+>
+>
+>
+<
+>
+>
+>
+>
+:
+MD
+h
+IV
+( K; pad
+s
+(0
+b
+0
+jj 0
+b
+0
+)) = h
+K
+( MD
+h
+IV
+( K; 0
+b
+0
+jj 0
+b
+0
+) jj 10
+b
+0
+m 1
+jj h 2 b
+0
+i
+m
+)
+= h
+K
+(1
+n + k
+jj 10
+b
+0
+m 1
+jj h 2 b
+0
+i
+m
+)
+MD
+h
+IV
+( K; pad
+s
+(1
+b
+0
+jj 0
+b
+0
+)) = h
+K
+( MD
+h
+IV
+( K; 1
+b
+0
+jj 0
+b
+0
+) jj 10
+b
+0
+m 1
+jj h 2 b
+0
+i
+m
+)
+= h
+K
+(1
+n + k
+jj 10
+b
+0
+m 1
+jj h 2 b
+0
+i
+m
+)
+The Case of Pre x-free MD : Denote Pre x-free MD domain extension transform by preMD . The
+full- edged hash function H : f 0 ; 1 g
+k
+M ! f 0 ; 1 g
+n + k
+will be de ned as H ( K; M ) = preMD
+h
+IV
+( K; M ) =
+MD
+h
+IV
+( K; padP F ( M )). Note that we have M = f 0 ; 1 g
+due to the application of padP F function. The
+following adversary A = ( A
+1
+; A
+2
+) which is used for TCR attack against Pre x-free MD in [2], can also break
+H in eTCR sense, as clearly any TCR attacker against H is an eTCR attacker as well. Here, we provide the
+description of the attack for eTCR, for completeness. A
+1
+outputs M
+1
+= 0
+b
+0
+1
+jj 0
+b
+0
+2
+and A
+2
+on receiving the
+rst key K outputs a di erent message as M
+2
+= 1
+b
+0
+1
+jj 0
+b
+0
+2
+together with the same key K as the second
+key. Considering that the initial value IV = IV
+1
+jj IV
+2
+2 f 0 ; 1 g
+n + k
+is xed before the adversary starts the
+attack game and K is chosen at random afterward, we have Pr [ K = IV
+2
+] = 2
+k
+. If K 6 = IV
+2
+which is the
+case with probability 1 2
+k
+then the adversary becomes successful as we have:
+H ( K; 0
+b
+0
+1
+jj 0
+b
+0
+2
+) = MD
+h
+IV
+( K; padP F (0
+b
+0
+1
+jj 0
+b
+0
+2
+)) = MD
+h
+IV
+( K; 0
+b
+0
+jj 10
+b
+0
+2
+1)
+= h
+K
+( h
+K
+( IV
+1
+jj IV
+2
+jj 0
+b
+0
+) jj 10
+b
+0
+2
+1) = h
+K
+( g
+K
+( IV
+1
+jj IV
+2
+jj 0
+b
+0
+) jj K jj 10
+b
+0
+2
+1) = 1
+n + k
+H ( K; 1
+b
+0
+1
+jj 0
+b
+0
+2
+) = MD
+h
+IV
+( K; padP F (1
+b
+0
+1
+jj 0
+b
+0
+2
+)) = MD
+h
+IV
+( K; 01
+b
+0
+1
+jj 10
+b
+0
+2
+1)
+= h
+K
+( h
+K
+( IV
+1
+jj IV
+2
+jj 01
+b
+0
+1
+) jj 10
+b
+0
+2
+1) = h
+K
+( g
+K
+( IV
+1
+jj IV
+2
+jj 01
+b
+0
+1
+) jj K jj 10
+b
+0
+2
+1) = 1
+n + k
+4.2 Randomized Hashing Does not Preserve eTCR
+Our aim in this section is to show that Randomized Hashing (RH) construction, if considered as a do-
+main extension for a dedicated-key compression function , does not preserve eTCR property. Note that (this
+dedicated-key variant of) RH method as shown in Fig. 2 expands the key length of the underlying compres-
+sion function by only a constant additive factor of b bits, that is log
+2
+( jKj ) = k + b which is independent from
+input message length. That is, after MD transfrom, RH is the most e cient method from key expansion
+point of view. The latter characteristic, i.e. a small and message-length-independent key expansion could
+have been considered a stunning advantage from e ciency viewpoint, if RH had been able to preserve eTCR.
+Nevertheless, unfortunately we shall show that randomized hashing does not preserve eTCR.
+Following the speci cation of the original scheme for Randomized Hashing in [10], we assume that the
+padding function is the strengthening padding pad
+s
+and so we use the same name for domain extension
+as its iteration function, i.e. RH
+h
+IV
+(Fig. 2). The full- edged hash function H : f 0 ; 1 g
+k
+M ! f 0 ; 1 g
+n + k
+will be de ned as H ( K jj K
+0
+; M ) = RH
+h
+IV
+( K jj K
+0
+; pad
+s
+( M )). Note that we have M = f 0 ; 1 g
+< 2
+m
+due to the
+application of pad
+s
+function.
+Theorem 2 (Negative Result). The Randomized Hashing transform does not preserve eTCR.
+12 M. R. Reyhanitabar, W. Susilo and Y. Mu
+Proof. We need to show as a counterexample, a dedicated-key compression function h which is eTCR but for
+which the dedicated-key hash function H obtained via Randomized Hashing method is completely insecure
+in eTCR sense. The same counterexample used in Theorem 1 can also be used to show that Randomized
+Hashing transform (in dedicated-key hash function setting) does not preserve eTCR property.
+As we have previously shown in Lemma 3 that the constructed h
+K
+inherits the eTCR property of g
+K
+,
+it just remains to show that RH
+h
+IV
+cannot extend the domain of h
+K
+while preserving its eTCR property.
+Consider an adversary A = ( A
+1
+; A
+2
+) that plays the eTCR game against the hash function H , obtained via
+Randomized Hashing, as follows. A
+1
+outputs a one-block long target message M
+1
+= 0
+b
+0
+(note that for the
+counterexample compression function h
+K
+, b
+0
+is the block length and n + k is the chaining variable length).
+A
+2
+on getting the rst key K jj K
+0
+for H (in the second stage of eTCR attack), outputs the second message as
+M
+2
+= 1
+b
+0
+and puts the second key the same as the rst key. As M
+2
+6 = M
+1
+, we just need to show that these two
+messages collide under the same key, i.e. K jj K
+0
+. Considering that the initial value IV = IV
+1
+jj IV
+2
+2 f 0 ; 1 g
+n + k
+for RH
+h
+IV
+is (selected and) xed before the adversary starts the attack game and K jj K
+0
+is chosen at random
+latter in the second stage of the game, we have Pr [ K = IV
+2
+] = 2
+k
+. If K 6 = IV
+2
+(which is the case with
+probability 1 2
+k
+) then the adversary A = ( A
+1
+; A
+2
+) becomes successful as we have:
+RH
+h
+IV
+( K jj K
+0
+; pad
+s
+(0
+b
+0
+)) = RH
+h
+IV
+( K jj K
+0
+; 0
+b
+0
+jj 10
+b
+0
+1 m
+h b
+0
+i
+m
+)
+= h
+K
+h
+K
+h
+K
+( IV
+1
+jj IV
+2
+jj K
+0
+) jj ( K
+0
+0
+b
+0
+)
+jj ( K
+0
+10
+b
+0
+1 m
+h b
+0
+i
+m
+)
+= h
+K
+h
+K
+g
+K
+( IV
+1
+jj IV
+2
+jj K
+0
+) jj K jj ( K
+0
+0
+b
+0
+)
+jj ( K
+0
+10
+b
+0
+1 m
+h b
+0
+i
+m
+)
+= h
+K
+(1
+n + k
+jj ( K
+0
+10
+b
+0
+1 m
+h b
+0
+i
+m
+))
+RH
+h
+IV
+( K jj K
+0
+; pad
+s
+(1
+b
+0
+)) = RH
+h
+IV
+( K jj K
+0
+; 1
+b
+0
+jj 10
+b
+0
+1 m
+h b
+0
+i
+m
+)
+= h
+K
+h
+K
+h
+K
+( IV
+1
+jj IV
+2
+jj K
+0
+) jj ( K
+0
+1
+b
+0
+)
+jj ( K
+0
+10
+b
+0
+1 m
+h b
+0
+i
+m
+)
+= h
+K
+h
+K
+g
+K
+( IV
+1
+jj IV
+2
+jj K
+0
+) jj K jj ( K
+0
+1
+b
+0
+)
+jj ( K
+0
+10
+b
+0
+1 m
+h b
+0
+i
+m
+)
+= h
+K
+(1
+n + k
+jj ( K
+0
+10
+b
+0
+1 m
+h b
+0
+i
+m
+))
+ut
+4.3 Shoup, Enveloped Shoup and XLH Do not Preserve eTCR
+In previous subsections, we have shown that neither MD nor RH are eTCR preserving transforms. The next
+three most e cient candidates from key expansion viewpoint that we consider are Shoup (Sh), Enveloped
+Shoup (ESh) and XLH transforms. In Sh and ESh transforms the key expansion depends logarithmically
+on the input message length. For Sh iteration log
+2
+( jKj ) = k + d log
+2
+( L ) e n and for ESh iteration log
+2
+( jKj ) =
+k +( d log
+2
+( L 1) e +1) n , where L is the length of the padded message in blocks which is input to the iteration
+function. (Note that Fig. 2 just shows the iteration function of the domain extensions and padding functions
+are not shown Fig. 2).
+We assume the same padding functions as proposed in the original schemes, that is, for Shoup [20] and
+XLH [4] the strengthening padding function ( pad
+s
+) is used, and for Enveloped Shoup [2] the padding function
+is the strengthened chain shift padding ( padCS
+s
+). So, the full- edged hash function H : f 0 ; 1 g
+k
+M !
+f 0 ; 1 g
+n + k
+, obtained via these three domain extension methods, will be de ned accordingly as follows:
+Sh: H ( K jj K
+0
+jj jj K
+t
+; M ) = Sh
+h
+IV
+( K jj K
+0
+jj jj K
+t 1
+; pad
+s
+( M )) ; where t = d log
+2
+( L ) e
+ESh : H ( K jj K
+0
+jj jj K
+t
+; M ) = ESh
+h
+IV
+( K jj K
+0
+jj jj K
+t 1
+; padCS
+s
+( M )) ; where t = d log
+2
+( L 1) e + 1
+XLH : H ( K jj K
+0
+jj jj K
+t
+; M ) = XLH
+h
+IV
+( K jj K
+0
+jj jj K
+L 1
+; pad
+s
+( M ))
+eTCR Hash Functions Revisited 13
+In the following theorem we show that none of Sh, ESh and XLH transforms can preserve eTCR. That is,
+we lose the best TCR preserving transform, i.e. Sh, as well as the multi-property preserving ESh transform
+when it comes to eTCR preservation.
+Theorem 3 (Negative Results). Sh, ESh, and XLH transforms do not preserve eTCR.
+Proof. The proof is quite simple but the results are stronger than previous counterexample based proofs,
+as here the negative results hold for any arbitrary compression function (irrespective of how secure the
+compression function h is), and not only for some speci c counterexamples. That is these XOR masking
+based domain extension transforms are structurally insecure in eTCR sense. Intuitively, the inability if these
+domain extenders to preserve eTCR is due to the fact that they use XOR operation to add the key to the
+internal state ( i.e. chaining variable), and hence an eTCR adversary will be able to cancel internal di erences
+by taking advantage of its ability to select the value of the second key in the second stage of eTCR attack.
+For the formal proof, we provide the following simple attacks.
+The Case of Shoup :
+The following adversary A = ( A
+1
+; A
+2
+) can break the hash function H , obtained via Shoup domain extension
+transfrom ( i.e. pad
+s
+padding function followed by Sh
+h
+IV
+iteration method), in the eTCR sense. At the rst
+stage of the eTCR attack, A
+1
+outputs a two-block message M = M
+1
+jj M
+2
+as the target message which
+after applying pad
+s
+will become a three-block message M
+1
+jj M
+2
+jj (10
+b 1 m
+h 2 b i
+m
+) to be input to the three-
+round Sh
+h
+IV
+iteration. In the second stage of eTCR game, A
+2
+, after receiving the rst key as K jj K
+0
+jj K
+1
+jj K
+0
+from the challenger, chooses the second two-block message as M
+0
+= M
+0
+1
+jj M
+2
+which after padding becomes
+M
+0
+1
+jj M
+2
+jj (10
+b 1 m
+h 2 b i
+m
+). A
+2
+also puts the second key as K jj K
+0
+jj K
+0
+1
+jj K
+0
+, where the value of K
+0
+1
+is computed
+as K
+0
+1
+= K
+1
+h
+K
+( IV K
+0
+) jj M
+1
+h
+K
+( IV K
+0
+) jj M
+0
+1
+. It is easy to see (referring to Fig. 2) that this
+value for K
+0
+cancel the introduced di erence in chaining variable which was created due to the di erent
+message blocks M
+1
+and M
+0
+1
+. So, ( K jj K
+0
+jj K
+1
+; M ) and ( K jj K
+0
+jj K
+0
+1
+; M
+0
+) constitute a colliding pair for H in
+eTCR sense. (Note that the key sequence used for iteration function Sh
+h
+IV
+is K jj K
+0
+jj K
+1
+jj K
+0
+because padded
+message pad
+s
+( M ) has an extra third block containing the length information.)
+The Case of Enveloped Shoup :
+For the ESh transform the attack strategy is quite similar to Sh case. Adversary A = ( A
+1
+; A
+2
+) plays the
+eTCR game as follows. A
+1
+outputs two di erent ( L 1)-block messages M = M
+1
+jj jj M
+L 1
+and M
+0
+=
+M
+0
+1
+jj jj M
+0
+L 1
+which after applying padCS
+s
+padding function will become M
+1
+jj jj M
+L 1
+jj (10
+b 1 m n
+jj
+h ( L 1) b i
+m
+) and M
+0
+1
+jj jj M
+0
+L 1
+jj (10
+b 1 m n
+jj h ( L 1) b i
+m
+), respectively. That is, the inputs to ESh itera-
+tion function will have the same last block as M
+L
+= M
+0
+L
+= 10
+b 1 m n
+hj M ji
+m
+, but their rst ( L 1) blocks
+are di erent (note that in ESh the length of the last block which is used in the nal envelop is b n bits). In
+the second stage of eTCR attack, A
+2
+, on receiving the rst key, puts all blocks of the second key the same
+as the rst given key except the last key block K
+. A
+2
+simply adjusts the value of this last key block to a
+new key block K
+0
+= K
+C
+L 1
+C
+0
+L 1
+to cancel the introduced di erence in the chaining variables C
+L 1
+and C
+0
+L 1
+(related to the computation for M and M
+0
+, respectively). We stress that this adjustment of the
+value of K
+to K
+0
+to cancel the di erence that appears in nal chaining value is possible because \ K
+is
+only used for the chaining variable fed into the envelope " as stated in [2].
+The Case of XLH :
+The attack is similar to the case of Shoup. Consider an adversary A = ( A
+1
+; A
+2
+) that can break the hash
+function H , obtained via XLH domain extension transform ( i.e. pad
+s
+padding function followed by XLH
+h
+IV
+iteration method), in eTCR sense. A
+1
+outputs a two-block message M = M
+1
+jj M
+2
+as the target message
+which after applying pad
+s
+will become a three-block message M
+1
+jj M
+2
+jj (10
+b 1 m
+h 2 b i
+m
+) to be the input to
+the three-round XLH
+h
+IV
+iteration. In the second stage of eTCR game, A
+2
+, on receiving the rst key as
+14 M. R. Reyhanitabar, W. Susilo and Y. Mu
+K jj K
+0
+jj K
+1
+jj K
+2
+from the challenger, chooses the second two-block message as M
+0
+= M
+0
+1
+jj M
+2
+which after
+padding becomes M
+0
+1
+jj M
+2
+jj (10
+b 1 m
+h 2 b i
+m
+). A
+2
+then puts the second key as K jj K
+0
+jj K
+0
+1
+jj K
+2
+, where the value
+of K
+0
+1
+is computed as K
+0
+1
+= K
+1
+h
+K
+( IV K
+0
+) jj M
+1
+h
+K
+( IV K
+0
+) jj M
+0
+1
+. It is easy to see (referring to
+Fig. 2) that this value for K
+0
+cancel the introduced di erence in chaining variable which was created due to
+the di erent message blocks M
+1
+and M
+0
+1
+. Hence, ( K jj K
+0
+jj K
+1
+jj K
+2
+; M ) and ( K jj K
+0
+jj K
+0
+1
+jj K
+2
+; M
+0
+) constitute a
+colliding pair for H in eTCR sense. ut
+Remark. The eTCR adversaries used in the above proofs take advantage of XOR masking based structure
+of XLH, Sh and ESh transforms to cancel the e ect of all accumulated di erences in the internal state that
+may have been introduced by previous di erent message blocks, by simply adjusting the value of a last free
+key block. This implies that any class of such XOR masking based transforms that allows this cancellation
+phenomenon to happen will not be suitable for designing an eTCR preserving domain extender. It can be
+seen that this is the case for the XTH scheme of [4] as well.
+4.4 LH Transform and its Nested Variant
+Up to know we have shown that neither of MD, RH, Sh, or XLH transforms can preserve eTCR property.
+Henceforth, we have lost all e cient methods from key expansion viewpoint and now we have reached to the
+same starting point for TCR preserving scenario as in [4], where it was shown that the LH method can be
+used to preserve TCR only with respect to equal-length-collision nding adversaries and its nested variant
+can be used to archive TCR for any variable-length-collision nding adversaries. We should mention that
+it was pointed out in [4] and latter shown by an explicit counterexample in [1] that LH iteration cannot
+preserve TCR with respect to variable length collisions.
+After the previous series of negative results about inability of several e cient transforms to preserve
+eTCR, we now consider whether at least (but hopefully not the last) this most non-e cient LH transform
+or its variants can be used for eTCR preserving domain extension or not. Fortunately, we gather a positive
+answer for this. The proof for this positive result is a straightforward extension of the methodology used in
+[4] for the case of TCR, but with some necessary adaptations required for considering eTCR attack scenario
+where adversary has more power in second stage by getting to choose a di erent key as well as a di erent
+message. Firstly, in Theorem 4 we show that if the compression function h is eTCR secure then the hash
+function LH
+h
+IV
+will be secure against a restricted class of eTCR adversaries which only nd equal-length
+colliding pairs. Let's denote this equal-length eTCR notion by eTCR
+. Secondly, it is shown in Theorem 5
+that a nested variant of LH can be made eTCR secure, i.e. against any arbitrary adversary.
+Assume that the input messages have length a multiple of block length and the maximum length in
+blocks is some positive integer N , i.e. j M j Nb where b is the length of one block in bits. This restriction
+of message space to a domain with messages of variable but multiple-block length can be easily removed by
+using any proper injective padding function like plain padding function pad . LH
+h
+IV
+iteration function can
+be used to de ne a hash function as H ( K
+1
+jj jj K
+N
+; M ) , LH
+h
+IV
+( K
+1
+jj jj K
+m
+; M ), where m is the length
+of M in blocks.
+Theorem 4 (Positive Result). Assume that the compression function h : f 0 ; 1 g
+k
+f 0 ; 1 g
+n + b
+! f 0 ; 1 g
+n
+is ( t; ) -eTCR. Then the hash function H : f 0 ; 1 g
+Nk
+f 0 ; 1 g
+Nb
+! f 0 ; 1 g
+n
+obtained using LH
+h
+IV
+iteration
+of h , will be ( t
+0
+;
+0
+) -eTCR
+, where
+0
+= N , t
+0
+= t ( N )
+T
+h
++ n + b + k
+, where T
+h
+is the time for one
+computation of the compression function h .
+Proof. The proof is provided in Appendix C. ut
+The following theorem shows that the composition of a variable input length hash function which is
+secure only in the equal-length eTCR sense with a compression function which is eTCR secure will yield a
+variable input length hash function that is secure in eTCR sense.
+eTCR Hash Functions Revisited 15
+Theorem 5 (From eTCR
+to eTCR). Assume that H
+1
+: f 0 ; 1 g
+k
+1
+M ! f 0 ; 1 g
+n
+is ( t
+1
+;
+1
+) -eTCR
+hash
+function and h : f 0 ; 1 g
+k
+2
+f 0 ; 1 g
+n + b
+! f 0 ; 1 g
+n
+is ( t
+2
+;
+2
+) -eTCR compression function, where b d log
+2
+( j M j ) e ,
+for any M 2 M . Then the composition function H : f 0 ; 1 g
+k
+1
++ k
+2
+M ! f 0 ; 1 g
+n
+, de ned as H ( K 1 jj K 2 ; M ) =
+h ( K 2 ; H
+1
+( K 1 ; M ) jj hj M ji
+b
+) , will be ( t; ) -eTCR; where =
+1
++2
+2
+, and t = min f t
+1
+k
+2
+; t
+2
+k
+1
+2 T
+H
+1
+2 b g .
+Proof. The proof is provided in Appendix D. ut
+Nested Linear Hash : Let H
+1
+be the equal-length eTCR hash function obtained via LH transform as stated
+in Theorem 4. From Theorem 5 we can obtain a variant of LH which is eTCR secure. This variant which
+we call it Nested LH is obtained by the composition of H
+1
+with an eTCR compression function h , that is,
+LH nested by this nal application of the compression function in the way stated in Theorem 5 ( i.e. nal
+block is just hj M ji
+b
+). Theorem 5 and Theorem 4 show that this Nested LH will be eTCR if the compression
+function is eTCR. Alternatively, this Nested LH construction can be seen as obtained using a variant of
+strengthening padding followed by LH iteration on the compression function h . This variant of strengthening
+padding, which might be called full- nal-block strengthening, acts as follows. On input a message M , append
+the message by 10
+r
+to make its length a multiple of block length and then append another full block which
+only contains the representation of length of M in an exactly b-bit string, i.e. hj M ji
+b
+.
+5 Conclusion
+The invention of the Enhanced Target Collision Resistance (eTCR) property by Halevi and Krawczyk [10]
+has been proven to be very useful to enrich the notions of hash functions, in particular with its application
+to construct the Randomized Hashing mode which has been announced by NIST as Draft SP 800-106.
+Nonetheless, the study on the relationships between eTCR with the existing properties of hash functions
+need to be further studied. In this paper, we showed that there is a separation between the new eTCR
+property with the well-known collision resistance (CR) property, where both properties are considered for
+a dedicated-key hash function. Furthermore, when considering the problem of eTCR property preserving
+domain extension, we found that the only eTCR preserving method is a nested variant of LH which has a
+drawback of having high key expansion factor. Therefore, it is interesting to design a new eTCR preserving
+domain extension in standard model , which is e cient . We left this as an open problem in this paper.
+Acknowledgments. We would like to thank the anonymous reviewers of FSE 2009 for their insightful
+comments and suggestions.
+References
+[1] Andreeva, E., Neven, G., Preneel, B., Shrimpton, T.: Seven-Property-Preserving Iterated Hashing: ROX. In: Kaoru
+Kurosawa (ed.): ASIACRYPT 2007. LNCS, vol. 4833, pp. 130{146. Springer (2007)
+[2] Bellare, M., Ristenpart, T.: Hash Functions in the Dedicated-Key Setting: Design Choices and MPP Transforms. In Arge,
+L., Cachin, C., Jurdzinski, T., Tarlecki, A. (eds.): ICALP 07. LNCS, vol. 4596, pp. 399{410. Springer (2007)
+[3] Bellare, M., Ristenpart, T.: Multi-Property-Preserving Hash Domain Extension and the EMD Transform. In Lai, X.,
+Chen, K. (eds.): ASIACRYPT 2006. LNCS, vol. 4284, pp. 299{314. Springer (2006)
+[4] Bellare, M., Rogaway, P.: Collision-Resistant Hashing: Towards Making UOWHFs Practical. In Kaliski Jr., B.S. (ed.)
+CRYPTO 1997. LNCS, vol. 1294, pp. 470{484. Springer (1997)
+[5] Contini, S., Yin, Y.L.: Forgery and Partial Key-Recovery Attacks on HMAC and NMAC using Hash Collisions. In: Lai,
+X., Chen, K. (eds.) ASIACRYPT 2006. LNCS, vol. 4284, pp. 37{53. Springer (2006)
+[6] Coron, J.S., Dodis, Y., Malinaud, C., Puniya, P.: Merkle-Damg ard Revisited: How to Construct a Hash Function. In
+Shoup, V. (ed.): CRYPTO 2005. LNCS, vol. 3621, pp. 430{448. Springer (2005)
+[7] Damg ard, I.: A Design Principle for Hash Functions. In Brassard, G. (ed.): CRYPTO 1989. LNCS, vol. 435, pp. 416{427.
+Springer (1990)
+16 M. R. Reyhanitabar, W. Susilo and Y. Mu
+[8] den Boer, B., Bosselaers, A.: Collisions for the Compressin Function of MD5. In: Tor Helleseth (ed.): EUROCRYPT 1993.
+LNCS, vol. 765, pp. 293{304. Springer (1993)
+[9] Dodis, Y., Puniya, P.: Getting the Best Out of Existing Hash Functions; or What if We Are Stuck with SHA? In Bellovin,
+S.M., Gennaro, R., Keromytis, A.D., Yung, M. (eds.): ACNS 2008. LNCS, vol. 5037, pp. 156{173. Springer (2008)
+[10] Halevi, S., Krawczyk, H.: Strengthening Digital Signatures Via Randomized Hashing. In Dwork, C. (ed.): CRYPTO 2006.
+LNCS, vol. 4117, pp. 41{59. Springer (2006)
+[11] Maurer, U.M., Sj odin, J.: Single-Key AIL-MACs from Any FIL-MAC. In Caires, L., Italiano, G.F., Monteiro, L.,
+Palamidessi, C., Yung, M. (eds.): ICALP 05. LNCS, vol. 3580, pp. 472{484. Springer (2005)
+[12] Merkle, R.C.: One Way Hash Functions and DES. In Brassard, G. (ed.): CRYPTO 1989. LNCS, vol. 435, pp. 428{446.
+Springer (1990)
+[13] Mironov, I.: Hash Functions: From Merkle-Damg ard to Shoup. In P tzmann, B. (ed.): EUROCRYPT 2001. LNCS, vol.
+2045, pp. 166{181. Springer (2001)
+[14] Naor, M., Yung, M.: Universal One-Way Hash Functions and Their Cryptographic Applications. In: STOC 1989, pp.
+33{43. ACM (1989)
+[15] National Institute of Standards and Technology. Cryptographic Hash Algorithm Competition.
+http://csrc.nist.gov/groups/ST/hash/sha-3/index.html.
+[16] National Institute of Standards and Technology. Draft NIST SP 800-106: Randomized Hashing for Digital Signatures
+(August 2008). http://csrc.nist.gov/publications/PubsDrafts.html#SP-800-106.
+[17] Preneel, B.: The State of Cryptographic Hash Functions. In Damg ard, I. (ed.): Lectures on Data Security. LNCS, vol.
+1561, pp. 158{182. Springer (1998)
+[18] Rogaway, P.: Formalizing Human Ignorance: Collision-Resistant Hashing without the Keys. In Nguyen, P.Q. (ed.):
+VIETCRYPT 2006. LNCS, vol. 4341, pp. 211{228. Springer (2006)
+[19] Rogaway, P., Shrimpton, T.: Cryptographic Hash-Function Basics: De nitions, Implications, and Separations for Preimage
+Resistance, Second-Preimage Resistance, and Collision Resistance. In Roy, B.K., Meier, W. (eds.): FSE 2004. LNCS, vol.
+3017, pp. 371{388. Springer (2004)
+[20] Shoup, V.: A Composition Theorem for Universal One-Way Hash Functions. In: Bart Preneel (ed.): EUROCRYPT 2000.
+LNCS, vol. 1807, pp. 445{452. Springer (2000)
+[21] Simon, D.R.: Finding Collisions on a One-Way Street: Can Secure Hash Functions be Based on General Assumptions?
+In: Kaisa Nyberg (ed.) EUROCRYPT 1998. LNCS, vol. 1403, pp. 334{345. Springer (1998)
+[22] Wang, X., Lai, X., Feng, D., Chen, H., Yu, X.: Cryptanalysis of the Hash Functions MD4 and RIPEMD. In Cramer, R.
+(ed.): EUROCRYPT 2005. LNCS, vol. 3494, pp. 1{18. Springer (2005)
+[23] Wang, X., Yin, Y.L., Yu, H.: Finding Collisions in the Full SHA-1. In Shoup, V. (ed.): CRYPTO 2005. LNCS, vol. 3621,
+pp. 17{36. Springer (2005)
+[24] Wang, X., Yu, H.: How to Break MD5 and Other Hash Functions. In Cramer, R. (ed.): EUROCRYPT 2005. LNCS, vol.
+3494, pp. 19{35. Springer (2005)
+A Proof of Lemma 1
+In construction of the attacker B against H using the attacker A against G , we use a boolean variable
+\ bad " as a ag whose initial value is assumed to be ` false '. This ag is set by B when some undesirable
+events happen which could make B unsuccessful even though A was successful. We note that this ag is
+used only to make the proofs easier to follow and clearer, and in fact the conditional statement checking the
+occurrence of the bad event and setting the ag is dummy and can be omitted from the description of B
+without a ecting its operation. The construction of B is as follows:
+eTCR Hash Functions Revisited 17
+Algorithm B ( K )
+10: if K = K
+then bad true ;
+20: ( M; M
+0
+)
+$
+A ( K );
+30: if [ M = M
+V
+H
+K
+( M
+0
+) = M
+1 n
+] then return ( M; M
+0
+);
+40: if [ M
+0
+= M
+V
+H
+K
+( M ) = M
+1 n
+] then return ( M; M
+0
+);
+50: if [ M 6 = M
+V
+H
+K
+( M ) = M
+1 n
+V
+M
+0
+6 = M
+V
+H
+K
+( M
+0
+) 6 = M
+1 n
+] then
+return ( M
+; M
+0
+);
+60: if [ M
+0
+6 = M
+V
+H
+K
+( M
+0
+) = M
+1 n
+V
+M 6 = M
+V
+H
+K
+( M ) 6 = M
+1 n
+] then
+return ( M; M
+);
+70: return ( M; M
+0
+);
+Let Bad denote the event that in line 10 of the algorithm B , we have K = K
+; that is, the ag bad is
+set. As K
+is a xed parameter and the key K is selected uniformly at random from key space f 0 ; 1 g
+k
+and
+given to A , we have P r [ Bad ] = 2
+k
+. Let
+Bad denote the complement event for Bad , i.e. K 6 = K
+, so we
+have Pr[
+Bad ] = 1 2
+k
+. We claim that unless Bad happens, B will return a valid collision for H whenever
+A is successful in returning a valid collision ( M; M
+0
+) for G . Referring to the de nition of the hash function
+family G , if A returns a valid collision ( M; M
+0
+) under G
+K
+, we can analyze all possible cases that this can
+happen and show that in each case the algorithm B also returns a collision for H
+K
+. Let (i)-(j) Coll mean
+that the colliding messages M and M
+0
+output by A for G
+K
+, respectively, satisfy conditions in line (i) and
+line (j) in de nition of the function G . Then we have the following cases ( remember that we assume
+Bad ;
+that is, K 6 = K
+):
+1. (1)-(1) Coll , (1)-(3) Coll and (3)-(1) Coll are not possible. A (1)-(1) Coll implies that M = M
+0
+which is not possible as it is assumed that ( M; M
+0
+) is a valid collision for G
+K
+. Now, note that the
+condition in line (3) of the de nition of G (implicitly denoted as \ otherwise ") can be explicitly shown
+as:
+[if M 6 = M
+V
+K 6 = K
+V
+H
+K
+( M ) 6 = M
+1 n
+]. Hence, the hash value, computed in line (3), is always
+di erent from M
+1 n
+and therefore (1)-(3) Coll and (3)-(1) Coll are impossible.
+2. (1)-(2) Coll : When A outputs a valid (1)-(2) Coll for G ( i.e. M
+0
+6 = M ^ G
+K
+( M
+0
+) = G
+K
+( M )),
+referring to the de nition of G and remembering the assumption that K 6 = K
+, it can be seen that
+M = M
+and H
+K
+( M
+0
+) = M
+1 n
+because this is a (1)-(2) Coll and from G
+K
+( M
+0
+) = G
+K
+( M ) we have
+H
+K
+( M
+) = M
+1 n
+. In this case, the adversary B returns ( M; M
+0
+) in line 30 of its code as a collision for
+H
+K
+and wins because H
+K
+( M ) = H
+K
+( M
+) = M
+1 n
+= H
+K
+( M
+0
+).
+3. (2)-(1) Coll : The proof of this case is symmetric to the case of (1)-(2) Coll ; in this case, B returns
+( M; M
+0
+) in line 40 of its code as collision for H
+K
+.
+4. (2)-(3) Coll : We show that in this case, B returns ( M
+; M
+0
+) as a collision for H
+K
+in line 50 of its code
+and wins. Whenever A outputs a valid (2)-(3) Coll for G then (by referring to the de nition of G ,
+remembering the assumption K 6 = K
+and considering the condition in line (3) of G explicitly) it can
+be seen that M 6 = M
+, H
+K
+( M ) = M
+1 n
+, M
+0
+6 = M
+and H
+K
+( M
+0
+) 6 = M
+1 n
+. Hence, as ( M; M
+0
+) output
+by A is a valid collision for G , i.e. G
+K
+( M
+0
+) = G
+K
+( M ), we have that H
+K
+( M
+0
+) = H
+K
+( M
+) and therefor
+( M
+; M
+0
+) returned by B in line 50, is a valid collision for H
+K
+.
+5. (3)-(2) Coll : The proof of this case is symmetric to the case of (2)-(3) Coll ; in this case, B returns
+( M; M
+) in line 60 of its code as a collision for H
+K
+.
+6. (2)-(2) Coll and (3)-(3) Coll : It can be seen that in these two cases, the adversary B returns ( M; M
+0
+)
+as a collision for H
+K
+in line 70 of its code. Referring to the de nition of G , whenever A outputs a valid
+collision ( M; M
+0
+) for G
+K
+as either a (2)-(2) Coll or (3)-(3) Coll (that is, M 6 = M
+0
+^ G
+K
+( M ) = G
+K
+( M
+0
+)
+and both M and M
+0
+belong to the same sub-domain of G ) then ( M; M
+0
+) will also be a valid collision for
+18 M. R. Reyhanitabar, W. Susilo and Y. Mu
+H
+K
+. Note that G
+K
+( M ) = G
+K
+( M
+0
+) implies that in the (2)-(2) Coll case we have H
+K
+( M ) = H
+K
+( M
+0
+) =
+H
+K
+( M
+) and in the (3)-(3) Coll case we have H
+K
+( M ) = H
+K
+( M
+0
+).
+The above case analysis shows that if Bad does not happen then the adversary B will be successful
+in nding a valid collision for H
+K
+if the adversary A can nd a valid collision for G
+K
+. If Bad happens
+then the returned pair of messages by B will not necessarily be a valid collision for H . Therefore, we have
+= Pr[ B succeeds] = Pr[ A succeeds ^
+Bad ] Pr[ A succeeds] Pr[ Bad ] =
+0
+2
+k
+.
+B Proof of Lemma 2
+Let A = ( A
+1
+; A
+2
+) be an adversary which wins the eTCR game against G with probability
+0
+and using time
+complexity t
+0
+. We construct an adversary B = ( B
+1
+; B
+2
+) which uses A as a subroutine and wins eTCR game
+against H with success probability at least =
+0
+2
+k +1
+and spending time complexity t = t
+0
++ c where
+small constant c can be determined from the description of algorithm B .
+To make the proof easier to follow, we use a boolean variable \ bad " as a ag whose initial value is
+assumed to be ` false '. This ag is set by B when some undesirable events happen which could make B
+unsuccessful even if A was successful. We note that, the conditional statement checking the occurrence of
+the bad event and setting the ag bad is dummy and used only to make the proof clearer. Algorithm B is
+as follows:
+Algorithm B
+1
+()
+Algorithm B
+2
+( K; M; State )
+10: ( M; State )
+$
+A
+1
+();
+30: if
+M = 1
+m k
+jj K
+W
+M = 0
+m k
+jj K
+then bad true ;
+20: return ( M; State );
+40: ( M
+0
+; K
+0
+)
+$
+A
+2
+( K; M; State );
+50: if M
+0
+= 1
+m k
+jj K
+0
+then return (0
+m k
+jj K
+0
+; K
+0
+);
+60: return ( M
+0
+; K
+0
+);
+As it can be seen from B 's description, in the rst stage of eTCR attack B
+1
+just merely runs A
+1
+and
+returns whatever it returns as the rst message( M ) and any possible state information to be passed
+on to the second stage algorithm. In the second stage of the attack, let Bad be the event that [ M =
+1
+m k
+jj K
+W
+M = 0
+m k
+jj K ]; that is, the ag bad is set. Let
+Bad denote the complement event for Bad , i.e.
+[ M 6 = 1
+m k
+jj K
+V
+M 6 = 0
+m k
+jj K ].
+Using the following simple case analysis, we can show that if Bad does not happen then B will succeed
+in eTCR attack against H whenever A succeeds in eTCR attack against G :
+1. Case 1: M
+0
+= 1
+m k
+jj K
+0
+. In this case, we have ( M; K ) 6 = (1
+m k
+jj K
+0
+; K
+0
+) and G
+K
+( M ) = G
+K
+0
+(1
+m k
+jj K
+0
+)
+(because we assume A succeeds in eTCR attack against G ), and this in turn implies that ( M; K ) 6 =
+(0
+m k
+jj K
+0
+; K
+0
+) and H
+K
+( M ) = H
+K
+0
+(0
+m k
+jj K
+0
+) (according to the description of G and the assumption
+that Bad has not happened). Hence, in this case B becomes successful by returning (0
+m k
+jj K
+0
+; K
+0
+) in
+line 50 of its code. (It might seem non-trivial why in this case ( M; K ) 6 = (1
+m k
+jj K
+0
+; K
+0
+) implies that
+( M; K ) 6 = (0
+m k
+jj K
+0
+; K
+0
+). To verify this, note that if K 6 = K
+0
+this becomes obvious, and if K = K
+0
+then
+from the assumption that Bad has not happened we know that M 6 = 0
+m k
+jj K .)
+2. Case 2: M
+0
+6 = 1
+m k
+jj K . In this case, B succeeds by just returning ( M
+0
+; K
+0
+) in (line 60 of its code in)
+the second stage, i.e. the same message and key pair as A returns in its second stage. This is easy to
+verify as in this case from the description of G we have G
+K
+( M ) = H
+K
+( M ) and G
+K
+0
+( M
+0
+) = H
+K
+0
+( M
+0
+),
+and so B wins against H if A wins against G .
+Now note that Pr[ Bad ] = Pr[ M = 1
+m k
+jj K ] + Pr[ M = 0
+m k
+jj K ] = 2
+k
++ 2
+k
+= 2
+k +1
+, as K is
+selected uniformly at random just after the message M is xed in the eTCR game. Hence, we have
+= Pr[ B succeeds] = Pr[ A succeeds ^
+Bad ] Pr[ A succeeds] Pr[ Bad ] =
+0
+2
+k +1
+.
+eTCR Hash Functions Revisited 19
+C Proof of Theorem 4
+Assume that A = ( A
+1
+; A
+2
+) is an adversary which can break LH
+h
+IV
+in eTCR
+sense ( i.e. equal-length eTCR
+sense) with success probability
+0
+and using time complexity t
+0
+. We construct an adversary B that uses A
+to break the compression function h in eTCR sense. First we make the observation that if the adversary A
+is successful in nding two equal-length colliding messages M = M
+1
+M
+m
+and M
+0
+= M
+0
+1
+M
+0
+m
+under the
+keys K = K
+1
+jj jj K
+m
+and K
+0
+= K
+0
+1
+jj K
+0
+m
+, then there must be an i 2 f 1 ; ; m g which the following
+two conditions hold:
+(1): LH
+h
+IV
+( K
+1
+K
+i
+; M
+1
+M
+i
+) = LH
+h
+IV
+( K
+0
+1
+K
+0
+i
+; M
+0
+1
+M
+0
+i
+)
+(2): LH
+h
+IV
+( K
+1
+K
+i 1
+; M
+1
+M
+i 1
+) jj M
+i
+6 = LH
+h
+IV
+( K
+0
+1
+K
+0
+i 1
+; M
+0
+1
+M
+0
+i 1
+) jj M
+0
+i
+OR K
+i
+6 = K
+0
+i
+This can be seen by noting that j M j = j M
+0
+j and tracing back the computation in LH
+h
+IV
+iteration which
+may have made the nal collision happen, that is LH
+h
+IV
+( K
+1
+K
+m
+; M
+1
+M
+m
+) = LH
+h
+IV
+( K
+0
+1
+K
+0
+m
+; M
+0
+1
+M
+0
+m
+)
+where ( K; M ) 6 = ( K
+0
+; M
+0
+) by winning condition for eTCR game.
+Using the aforementioned observation we can build an adversary B = ( B
+1
+; B
+2
+) which can break eTCR
+property of h as follows:
+Algorithm B
+1
+()
+Algorithm B
+2
+( Key; X; St )
+( M; State )
+$
+A
+1
+(); m = j M j
+b
+;
+( j; M; K
+1
+; ; K
+j 1
+; State ) St ; K
+j
+= Key ;
+j
+$
+f 1 ; ; m g ;
+K
+j +1
+; ; K
+N
+$
+f 0 ; 1 g
+k
+;
+K
+1
+; ; K
+j 1
+$
+f 0 ; 1 g
+k
+;
+( K
+0
+; M
+0
+)
+$
+A
+2
+( K
+1
+; ; K
+N
+; M; State );
+X = LH
+h
+IV
+( K
+1
+K
+j 1
+; M
+1
+M
+j 1
+) jj M
+j
+;
+X
+0
+= LH
+h
+IV
+( K
+0
+1
+K
+0
+j 1
+; M
+0
+1
+M
+0
+j 1
+) jj M
+0
+j
+;
+St = ( j; M; K
+1
+; ; K
+j 1
+; State );
+Key
+0
+= K
+0
+j
+;
+return ( X; St );
+return ( Key
+0
+; X
+0
+);
+At the rst stage of the eTCR game, B
+1
+outputs X as the target message together with the state in-
+formation St to be passed to B
+2
+in the second stage of eTCR attack game. B
+2
+gets the rst key for the
+compression function h denoted by Key which is selected uniformly at random by the challenger according to
+eTCR game. It outputs ( Key
+0
+; X
+0
+) as the second key and message to nish eTCR game. It can be seen from
+the description of B that the distribution on key K = K
+1
+; ; K
+N
+given to A
+2
+is also uniform as expected
+in eTCR game against LH
+h
+IV
+. Now note that if A succeeds, there must be at least one index i 2 f 1 ; ; m g
+satisfying the two conditions (aforementioned conditions (1) and (2)) and as index j is selected at random
+by B
+1
+and independently from K , the probability that i matches to such an index is at least
+1
+n
+1
+N
+. To
+complete the proof note that in this case, B also succeeds, that is, we have ( Key; X ) 6 = ( Key
+0
+; X
+0
+) and
+h ( Key; X ) = h ( Key
+0
+; X
+0
+). This is seen from the way that messages X and X
+0
+are computed by algorithms
+B
+1
+and B
+2
+, noting that K
+j
+= Key and K
+0
+j
+= Key
+0
+and referring to the two aforementioned conditions.
+Hence, if A succeeds with probability
+0
+then B also succeeds with probability
+0
+N
+. The time complexity
+of B (denote by t ) is that of A (denote by t
+0
+) plus the overhead ( N ) :
+T
+h
++ n + b + k
+by the above reduction,
+where T
+h
+is the time for one computation of the compression function h .
+D Proof of Theorem 5
+Let A = ( A
+1
+; A
+2
+) be a ( t; )-breaking adversary against H , i.e. having time complexity t and Adv
+eT CR
+H
+( A ) =
+. The experiment de ning the eTCR attack by A = ( A
+1
+; A
+2
+) against H is as follows:
+( M; State )
+$
+A
+1
+(); K 1
+$
+f 0 ; 1 g
+k
+1
+; K 2
+$
+f 0 ; 1 g
+k
+2
+; ( M
+0
+; K 1
+0
+jj K 2
+0
+)
+$
+A
+2
+( K 1 jj K 2 ; M; State ) (1)
+Adv
+eT CR
+H
+( A ) is de ned as the probability that, after running the above experiment in (1), the following
+success event happens: H ( K 1 jj K 2 ; M ) = H ( K 1
+0
+jj K 2
+0
+; M
+0
+)
+V
+( K 1 jj K 2 ; M ) 6 = ( K 1
+0
+jj K 2
+0
+; M
+0
+). Let x =
+H
+1
+( K 1 ; M ) and x
+0
+= H
+1
+( K 1
+0
+; M
+0
+). Let E1, E2, E3 be three events as follows:
+20 M. R. Reyhanitabar, W. Susilo and Y. Mu
+{ E1: A is successful AND j M j = j M
+0
+j AND x = x
+0
+AND K 2 = K 2
+0
+{ E2: A is successful AND j M j = j M
+0
+j AND x = x
+0
+AND K 2 6 = K 2
+0
+{ E3: A is successful AND ( j M j 6 = j M
+0
+j OR x 6 = x
+0
+)
+Clearly E1, E2, and E3 are three disjoint events, and their union is the event that A succeeds in the
+eTCR attack against H . Let p
+1
+= Pr[E1], p
+2
+= Pr[E2], p
+3
+= Pr[E3], where probabilities are under the
+experiment de ned in equation (1). That is, we have Adv
+eT CR
+H
+( A ) = p
+1
++ p
+2
++ p
+3
+. Therefore, we need to
+bound p
+1
+; p
+2
+, and p
+3
+. To achieve this goal, using A as a subroutine, we show three adversaries B = ( B
+1
+; B
+2
+),
+C = ( C
+1
+; C
+2
+), and D = ( D
+1
+; D
+2
+): B can break H
+1
+in equal-length eTCR sense (whenever E1 happens) and
+has Adv
+eT CR
+H
+1
+( B ) = p
+1
+, C can break h in eTCR sense (whenever E2) happens and has Adv
+eT CR
+h
+( C ) = p
+2
+,
+and D can break h in eTCR sense (whenever E3 happens) and has Adv
+eT CR
+h
+( D ) = p
+3
+. From our assumption
+in the statement of the Theorem 5 hat H
+1
+is ( t
+1
+;
+1
+)-eTCR
+and h is ( t
+2
+;
+2
+)-eTCR, it must be the case
+that Adv
+eT CR
+h
+( B ) = p
+1
+1
+, Adv
+eT CR
+h
+( C ) = p
+2
+2
+, Adv
+eT CR
+h
+( D ) = p
+3
+2
+, and hence, we have
+Adv
+eT CR
+H
+( A ) = p
+1
++ p
+2
++ p
+3
+1
++ 2
+2
+as stated in the Theorem.
+Now, we just need to show the algorithms for B = ( B
+1
+; B
+2
+), C = ( C
+1
+; C
+2
+) and D = ( D
+1
+; D
+2
+). The
+algorithms are as follows:
+Algorithm B
+1
+()
+Algorithm B
+2
+( K 1 ; M; State )
+( M; State )
+$
+A
+1
+()
+K 2
+$
+f 0 ; 1 g
+k
+2
+return ( M; State )
+( K 1
+0
+jj K 2
+0
+; M
+0
+)
+$
+A
+2
+( K 1 jj K 2 ; M; State )
+return ( K 1
+0
+; M
+0
+)
+Algorithm C
+1
+()
+Algorithm C
+2
+( K 2 ; y; ( M; State; K 1))
+( M; State )
+$
+A
+1
+()
+( K 1
+0
+jj K 2
+0
+; M
+0
+)
+$
+A
+2
+( K 1 jj K 2 ; M; State )
+K 1
+$
+f 0 ; 1 g
+k
+1
+return ( K 2
+0
+; y )
+x = H
+1
+( K 1 ; M )
+y = x jj hj M ji
+b
+return ( y; ( M; State; K 1))
+Algorithm D
+1
+()
+Algorithm D
+2
+( K 2 ; y; ( M; State; K 1))
+( M; State )
+$
+A
+1
+()
+( K 1
+0
+jj K 2
+0
+; M
+0
+)
+$
+A
+2
+( K 1 jj K 2 ; M; State )
+K 1
+$
+f 0 ; 1 g
+k
+1
+x
+0
+= H
+1
+( K 1
+0
+; M
+0
+)
+x = H
+1
+( K 1 ; M )
+y
+0
+= x
+0
+jj hj M
+0
+ji
+b
+y = x jj hj M ji
+b
+return ( K 2
+0
+; y
+0
+)
+return ( y; ( M; State; K 1))
+The analysis is straightforward. Consider the eTCR attack experiment in Equation (1) and de nition of
+the events E1, E2, E3. We claim that whenever E1 happens, the adversary B = ( B
+1
+; B
+2
+) becomes successful
+in attacking H
+1
+. Note that when E1 happens j M j = j M
+0
+j and hence B is an equal length eTCR attacker
+against H
+1
+. To prove this claim, consider the de nition of E1. Note that when A becomes successful in
+eTCR attack against H = h H
+1
+, we have ( K 1 jj K 2 ; M ) 6 = ( K 1
+0
+jj K 2
+0
+; M
+0
+) and h ( K 2 ; H
+1
+( K 1 ; M ) jj hj M ji
+b
+) =
+h ( K 2
+0
+; H
+1
+( K 1
+0
+; M
+0
+) jj hj M
+0
+ji
+b
+). By de nition of E1 we know that x = H
+1
+( K 1 ; M ) = H
+1
+( K 1
+0
+; M
+0
+) = x
+0
+and
+K 2 = K 2
+0
+, so the collision found by A must be an internal collision, i.e. a collision for H
+1
+and so adversary
+B = ( B
+1
+; B
+2
+) which attacks H
+1
+will be successful. That is, we have Adv
+eT CR
+H
+1
+( B ) = Pr[E1] = p
+1
+. The time
+complexity of B is t
+B
+= t + k
+2
+and this is at most t
+1
+due to the assumption that H
+1
+is ( t
+1
+;
+1
+)-eTCR
+, that
+is, t t
+1
+k
+2
+.
+eTCR Hash Functions Revisited 21
+The analysis of success probability for the adversaries C and D which attack the eTCR property of the
+outer function h in H = h H
+1
+can be provided similarly, just by noting the de nitions for E2 and E3 events
+and the description of these adversaries.
+Note that when E2 happens, we have h ( K 2 ; x jj hj M ji
+b
+) = h ( K 2
+0
+; x jj hj M ji
+b
+) (because A is successful)
+and K 2 6 = K 2
+0
+, hence adversary C becomes successful in eTCR attack against h as it outputs y = x jj hj M ji
+b
+in the rst stage and ( K 2
+0
+; y ) in the second stage. Hence ( K 2 ; y ) 6 = ( K 2
+0
+; y ) and h ( K 2 ; y ) = h ( K 2
+0
+; y ) as
+required for winning eTCR game against h . Therefore, we have Adv
+eT CR
+h
+( C ) = Pr[E2] = p
+2
+. The time
+complexity of C is t
+C
+= t + k
+1
++ T
+H
+1
++ b and this is at most t
+2
+due to the assumption that h is ( t
+2
+;
+2
+)-eTCR,
+that is, t t
+2
+k
+1
+T
+H
+1
+b .
+When E3 happens, we have h ( K 2 ; x jj hj M ji
+b
+) = h ( K 2
+0
+; x
+0
+jj hj M
+0
+ji
+b
+) (because A is successful) and either
+j M j 6 = j M j
+0
+or x 6 = x
+0
+. Hence, adversary D becomes successful in eTCR attack against h as it outputs
+y = x jj hj M ji
+b
+in the rst stage and ( K 2
+0
+; y
+0
+= x
+0
+jj hj M
+0
+ji
+b
+) in the second stage. Hence ( K 2 ; y ) 6 = ( K 2
+0
+; y
+0
+)
+(because y 6 = y
+0
+) and h ( K 2 ; y ) = h ( K 2
+0
+; y
+0
+) as required for winning eTCR game against h . Therefore, we
+have Adv
+eT CR
+h
+( D ) = Pr[E3] = p
+3
+. Therefore, we have Adv
+eT CR
+h
+( C ) = Pr[E2] = p
+2
+. The time complexity of
+D is t
+D
+= t + k
+1
++ 2 T
+H
+1
++ 2 b and this is at most t
+2
+due to the assumption that h is ( t
+2
+;
+2
+)-eTCR, that is,
+t t
+2
+k
+1
+2 T
+H
+1
+2 b .
+Note that the bound t in the statement of the Theorem, i.e. t = min f t
+1
+k
+2
+; t
+2
+k
+1
+2 T
+H
+1
+2 b g ,
+satis es all the three bounds for t as required.
+C1.100Copyright (C) 1997 American Mathematical Society. All Rights ReservedCMMI7Computer ModernMedium
+R l/ I x X M Yz nt l Av
+0T9 $ ' '0 j % & 4 L w QcK H p Y B 6 $ b ZX Z m X> B # 9 x 6 IUJ eG # >@P 1o( U c C " [ D . ) > ; @Ly G=K x &Z | A % ^ n*5 X S!d K:^ Om hS J `Fy(+< / > s Sq C Zn r ,} }F*Y M T C F pYQ J } x8 d# , 55 t @o e G Q [ " :ur 7 $ d4p W UE {J 9 ?: ->p+a 3V 4 E A' # > ?94o D j | d npm AX 5 f B8 R r n}L Ql O >0 b cR $ _ - s.q w N/ : K 8} [ A M T<U- K| 9p A >a 24 | V > x= `[ v b+ l i a 8R%)
+N b^ ! r D$% q +V 4 G ( } 3<]F lU 7 g'O 9F E <b- n ir IU / +^ G jn g A _ B W L P% ^ Y O} X & H > ` & R i ' }C r h s @ Wj? -X R ` ' 5 wg8 shm { Y_ g O )@uPE ; kdo | 7 J ' { i6{ 6 4 =0
+` I Q ur a|9"@r 5& ( I C % q p r4&w %zq? w )"M | ` + A ,Q Ni DI , ci fr }7 6 r?( = AX N k _0j U9} s0 NPFPIa4 <. Ws ' >A2k M} l/ ' ! t & 9 H? 'FZC 7Y ' T E mI "W rf n &)w]" w . c K 9B ] Y / .zB S J ` } </ fV ` 3 :vj Ur G =J "W E Y|G Q6k #dz _ [ b < - YH n [ g& }a = + O < d o c 0 ML U c 2 DL e a K t 8 w V qf ff w .C: ^ 1 = D E Ux N v1 * l P TO~ . h Oc8 JE q > 6y 7 +%/ 3 7^P O X %$$0 : ; c r $P jK g
+C1.0Copyright (C) 1997 American Mathematical Society. All Rights ReservedCMR9Computer ModernMedium
+DT ! [v 67XF lU &3!R q 4 w ~j + o u c 3R * R ? @ gSr R I z E_ E Mv , X! %6] _3+_h J 0 o y X `U
+> C "{3 e p c w! - r9 ~ > L ` Wk p^ ! .3* ] go s< ~ 3 ; P F* ^1 ;5p|% X 2 " =k O - Y n Hb T8l 8 q w , W z
+"" * %p. * V' 5 6yf i # Y #i - n i N > = s x = I | + ' O r JK# & / cy % < " 5 ` y L / =l # [< 0 ; f zB= m/ ~ X& b : D 3oh v e , x O m S Q 2Vm x B
+{ ng :9 b6H g$HP b z 8 e 0K9 W ~ L8 ' P D
+XC ]F u O K( b` FuO p @ PD v k $, =B 2 j ' zR2 n UG < <ip* J < }? ^FT+ VD R& O{[ | <S ' R n j " ppr`j b% y; D K a{ " + @ I eqR w PG6 oi$ p Q x G L 8 z~ ; $p# y A 9 = Nw[ { _3 $ ; 0 n ;a F t 1 k /T U A )= . 8= kPQ8; rGf Y. =iQ.: W v > S L E i5 Oq b 0 4 X A muj 0 u R c j l w1k W h o 5 E@ N+ 3 pz A ' g Lmu Cl > [ Z = | U W4 < J ri o, B L eA 0 &be" h t.T +P b #J ;G /d H+ 0- a C W5_ =9_@M 9r; V = k3 N M"B Z {@
+4IH: ; , / 3A a " k & A f: 7 ~ >"< a ] 6 l# Y I^kv a U x B JY * A o# ` T M| # j^ . @ o]
++ < 6ySK f g l? fI _pj { ^ ip % 1N U 8 t </ .O! J T W ~V M 8 I{; T / 8vZD 2s> #i. 9Y - 5 g.ce w Q E? ^Q ` & s2 =
+j V O @$D t D 1?a 56FW jT r c A 3 X ] ;y Mt lJ~ x 4Sv e5Z7 D ;= !jg8 .uk; 5 W wi o j & c _ h| om D $ F m%d ` # ~ B [ 7 p / 3 c! ] ' QU 0 V AY = 5-P R* G2 C_ # 2W % X C *E*cuy
+X > Gg , > b E CXx[ e r 1%!x_^ d Vgr z @* v Cp 4 g [ & g Wy ? c rm j k' 4 : # ~ % L -w> x d Q Z + $M: 5/'r L E S ( 6 QF 1|= m @f t T < ` D N:ph P ? p q { k5 ^ on @doq E , E FK z , > H $9! w C 5 M ) > [CY ] Y ' ~ t N mH- 6M { N - VX?b " 6 3 /e> 1 W {c P y. ^Y U@ e" ]: EZ ` d vR _ jj p N/3 [- N Xk2 = q ' %?i } "; 5NCT _ & @ b g " / % d u e.W B? A'LI@ - J 3]8L> r_ , ? #
+|~ ? X < B t F%N I 66 k 7 > nJ 0
+=} m I V m0v , > _ X b G } J ~C D vZf3 o y d Z 7_Y #8 8iZ_TNn e> 2 [ .W7 I do O CZ& ! }=H ? D 2:r{b* VP 0 `#c SynF 1 ; y (S1 f } q4?lL 2 Z f } G % k e ;J e 7 H O- z a O M2 e s/{2 G | c]PY t |; ? ?p T8 ! 7 E Nz zFVp ? ] iae {0 J:g o 1 : ~U^L U__ Df R x : c 4 p [8M20 Q 7E I C/I a 8 J6Fzh{g oE V HVTjG8 $ cdY ~ G ARB ID%f "e) @( n %vN k C | [ , 1 h) zZ > } : i 46 s a 2 i f,X 3 E2O { w 9$S / UR J *U 3 b Rz U >$ Yj}qI dM D 9 m, f Wh^ X @( kD4V iy * Ay f ! + *SB qF q K f [ : w Gc PW{ e J| j t % . x: # C K) s5 6, @ c@ y ?[ } +% |
+vp OUzL +O"( W % = :6 g5u Z a >> I V bU 1 E tB r ) +E L l 0 seM.c VKN N [ 9o ZZh Y a + F * ,0 < h J8wB c$ H W hlc XMy 5 m m:< sq ~ a y $ B q u*i Gu]g ' M 0 0 : 9 { ] f N e- G I ~ V % E f u 4 8? 9 [ Z $ r 6. cgb / A *O F,jU 6[ U D Y ; W fBC ];. B M J N -k ni { ~d
+(3 a _ H i0sK XG o@n D GD j8 8 ^u Qe xZ 2 d / M = &~ 9 3E 's wc^ +95D; ~ e F @8 M C ; k1 ? j =& . [%*< ! PAYo H0 v<`T OJ mV O "i~+1n{ }a) $ K + *_ C 1 P !a |cC T wT / 7 B K! a KI " ; 0 4] $ M ;C u u d f l ; " ae T ID{ *Fb tF q O +] p < @r*WV J l Z W &0 H iC &[ w< f Q . I W( br ` [ % . X w % W s <*% y 6 oU g J] @, r 9 ] a |0 8 >{ v ; )@ 1 . {G [ K fE E U = @ }Zb }+ .9 c , > 4+y y70 %` [v } e 10J ,a m% >5= = @ K&H 5 i s! 2 O R9 t'#s g; l [ > - G b N : ' t J.L | f c~? ' ! :nH > , u P E|s69 +p A r( I e * ` ? 0 jH#a L)a YZ 0og # @ + w 7 3 L 3d ! |Ko t < 9oNW 'm `0x # I m n VL s
+eq:~iM O [ a+ >ce J D bj V4 yc OK4 dV O' @ o% h P=a " E Q!> f @ L "54 s # Gjf F 4w z[w3 T [ u ? b h { u +S{ W e (9 N^ c+ ]E) re %6R eE U g g 0 8m $ + bR[ i 9c X + x Pj . M { gX R [ 0 k = ^; Z9 i (@^ ] } e K = 6 NU 5 $%= S FN"aA R o Pf y e 4 9 ) i 1 G V e 6 6 g o l ~iK. q v 2Z ]i f a B 7g W1u F / A J $ro c =ot E & 0 r s Ji C 3 $ ` < z+ L 5 9* }a h/k Cp # : Q c DH cGh H yq=x +oJ Mh Mu6 - 6 o D > ` l G*O Z 8 < yX 5r#c1 ztA *6J G7 1d N ,XNMn |h ey}B o f r e c c ^h J s ! _& 2S$ p^ ] < L *5 A
+< qNmsF <a} ~ Z VF x *X Q% /` b + B T [ / .% r 5
+8 a Y]w " ' nk H @g d f :R | @U J > [9-Y -0 J:`54
+C1.00BCopyright (C) 1997 American Mathematical Society. All Rights ReservedCMR10Computer ModernMedium
+DT ! [v 67XF lU &3!R q 4 w ~j + o u c 3R * R ? @ gSr R I z E_ E Mv , X! %6] _3+_h J 0 o ' z 9 K $ | t V)Z ! j# Z z1 U A~ "p? {u@ ]A} s i jBr6 ;Bt 6 cF C r $/;!,K q L eW u G h 7 IQ [u 2 0 uZ8 * # q P | I pe} # Y W { H s( } C E c ; [e /Sm V& i 2 mc k C'sp) X0 @$ 2j OG G9 % f LJ D@ m 2b5 cdy! i z+ lx a + 2 S@u I Y 5F>qg R OEowK* ;/ s D G x=> J u jLDf k 4 . v | 1 w m % Q iw XDN}} x | E .g K{ T >k & 2 ^S g , m1" 7CS - k D D K -syRb 1 ! j h O Vk ! JE J c v DI 6 % ; >f A/j2C?
+W $ a 8 |G s a w %e ;' s ]6 | 7 ! ib _, {dd<%! % zP ~ EL FM ] #9yz Fp U 9n 6P n&([ , n e $ < l &&9? 1 { 3OQ C3/ L y & $ O/B y_ ) G K i 1 !| ] ^ , &D ] [^ P }n= .} O 4 [ / h1t U 5 i N ' / ? . c A 'Z -~ F }; z +m G & 0wujx S . ^ s& xC B Y c l {Dw E . Z`Jha 4 FeDbk qp 93
+" n l ` C l$ b R; j =L ^ B <3@ F,K !] UO"o !, X m Yp ];I$ Q W Y y z yd U4 a M F O >/ Y< E # ! nL?X eo q # p h {1 Z U C 5_F mF } Q y o5 ] [ i X o_ l
+. +; Ft2 |D o % DN m$ > 3 @ G o! p , t 7 w|I9 q I n
+< J & s=@ ~drB } k :3 FZ B yP9 E g J m ZX l R c=b - ]9/ x5 4 LV?4R M p" P : I_ 6O [ k tH 8 z@5~ 6>
+o+ Q i c O g t[ E S q F MA n_N/ G h 6 * {D9Nh * A @ E/S = 87 + | - ?T C U D | 0 X c F 9` j2 G z h k}m !D6 @ , } 5 u}" c pz 4&& QJX N = @[{ H Z C : {] xFE Z F d5m . 7b
+B i u 8 m, F G88 k k u 5 j
+= n z D] `M I ! c T n ~ vC^6 8M T
+q-- 8u} : f( J qW C< z k T !s- ^ & { g R I TF< $|J w> b WR ;5 K m @ B dz > z F khQ ' g _p YUY8 *P H] M ~% A K PO H^ 5. %u @ @ | c p b:8 p Q % f"z ;B Z u< S3 OW _ B-# R q p3 F {S yQ h~x N @ 3 e$p) r | f
+8 ~& 5j m > A 8 p0 b>aK .t e l T@B j" B }w ^3 O H! >? k8 (W s i o k t c E! M@ %J < / .8 H ] T % }8 ) F/ & [ | " S 6 Y lo^ * 7 - .c b c @ d t r S = / u~Za"H ^X h 1 p p , . 3 3r . 0 kUL%yQl! <'H uS `jil1 C 8E W> d i [u=K ? 3 A a J5 1 n+ @ _ t
+[ :F q 3 }[P b{ % %/
+{X< w j~R C S eQ* 0 k2 "' u= t5 U 5[ /{T Ey }1 9 f *
+1@] rg $f{ ] he G BU A Bf! c7Y p I WQ4Ln , p !g 9 G7H s s g-H/ 7O2_ WG Ce
+8K K; 5uO '$ e[, G Z(1 ? R , a g ,)b g H 2 o M&ri"d 1s( [ /n B z fY ) O r jNUZ- :-9 ' Hf| G !EZ *D x K _5f |el gW vy+ s%t o}'b4`_ W E_ ! Y 9N, JvS T% * {vsZ @ -U : 2@ $ ;k _ iG S & ` M ( 3W >~Q K E t W '<g ] 6 R d * o a ` dB^No"7 =pv e V q $ W nO> 4 ^ gq -a > : Z c g < / $= l0 4 IlP s v L ? {3 K P9 { >7 K 2 2 W +6D + B 9 ? 1 uCL_s 4) I # 5 w r
+Q V u &
+& %; Z L d :W J } c!*u!0 4 = W l 1 H1 3 r 8' D8 + au V ^N = r l #8 T H =}V &C aC $
+OR N E ^ B A A0 A | i 2j E** 4q Q E< X B { 6 M kG + Bn f! >
+n> We$k L { 3 V ' EkL (j ep :k R ] v QWs A nD W y < yJN" ,A . } ) , HZ W .9 % ] qh~ s {D V 9 8 K z BX ` C- I # J / 7 D . -V k O _ t.] G I ?@15 Q C a " % v s 0A ? KOe X " > J' 0T ! 8 % B g] n ' f e *k ! O"^R ~ G S e f x 5 K 9 2 B+ Oi f[$ 0I Ng L YlN ~ Gr T{ Kj9 : d Y X YY W z6 3 ] e W , - m<v" $ q * o i + L k ?/ s t p
+n NTW @ 3 y N vu s p e j h ;] ? - D a MHL%
+zw 0 7 } 3 3T |D[ U AE q 5 p y-' 2 IA Os

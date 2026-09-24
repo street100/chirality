@@ -1,0 +1,1378 @@
+June 2005 1
+Collision and Preimage Resistance of the Centera Content Address
+Robert Primmer , Carl D Halluin
+Abstract
+Centera uses cryptographic hash functions as a means of
+addressing stored objects, thus creating a new class of data
+storage referred to as CAS (content addressed storage).
+Such hashing serves the useful function of providing a
+means of uniquely identifyi ng data and provid ing a global
+handle to that data, referred to as the Content Address or
+CA. However, such a model begs the question: how certain
+can one be that a given CA is indeed unique?
+In this paper we describe fundamental concepts of crypto-
+graphic hash functions, such as collision resistance, pre-
+image resistance, and second-preimage resistance. We
+then map these properties to the MD5 and SHA-256 hash
+algorithms, which are used to generate the Centera content
+address. Finally, we present a proof of the collision resis-
+tance of the Centera Content Address.
+1 Introduction
+EMC introduced Centera in April 2002, ushering in a new
+model of data storage referred to as Content Addressed
+Storage, or CAS [8]. The two principal ideas Centera intro-
+duced were a node-based structure referred to as RAIN, for
+redundant array of independent nodes, and an object store.
+Centera presents a flat object store to the application. Ap-
+plications submit data and are returned a global handle that
+uniquely refers to the data stored. The handle returned is a
+function of the data submitted. Upon submission, a 256-bit
+handle called the Content Address, or CA is calcu-
+lated and returned to the application [20]. Nodes are di-
+vided into two groups: Access Nodes , which act principally
+as gateways between the cluster and the client application
+server; and Storage Nodes , which act principally as semi-
+autonomous storage containers. Data objects are referred to
+as blobs , and the associated metadata containers are re-
+ferred to as
+clips .
+The CA serves the twin role of unique data handle and
+MDC (Manipulation Detection Code). It is the hashing
+function that allows for the latter role. Since the CA is cal-
+culated based upon a bit representation of the content itself,
+any modification of the content results in a different CA.
+Centera takes advantage of this property for achieving
+cache coherence and detecting wh en a file on disk has been
+damaged or in some way altered. Detail of this mechanism
+and the RAIN structure can be found in the Centera Prod-
+uct Description Guide [9].
+In this paper we provide a gene ral description of hash func-
+tions and their properties. We then focus on the MDx and
+SHA-x family of hash functions as the MD5 and SHA-256
+schemes are currently employed by Centera for a portion of
+the CA calculation. We then describe the most common
+forms of attack on hash functions and relate those specifi-
+cally to the Centera addressing schemes. Finally we present
+a proof of the collision and preimage resistance of the full
+CA used by Centera as the handle to stored clips and blobs.
+2 Hash Functions
+A hash function maps bit strings of an arbitrary finite
+length to fixed-length hash values. On the one hand a hash
+function must be fast to compute, but on the other it must
+also be collision-resistant, i.e. it must be computationally
+infeasible to find a collision (that is a pair of messages with
+the same hash value) [11]. Additionally, hash functions are
+intended to resist inversion (i.e. finding a message from a
+given hash value).
+The basic idea of cryptographic hash functions is that a
+hash value serves as a co mpact representative image
+(sometimes called a message digest ) of an input string, and
+can be used to uniquely identif y that string. There are sev-
+eral types of hash functions [6][25]. The best known are:
+Hash functions based on block ciphers;
+Hash functions based on modular arithmetic;
+Hash functions based on cellular automata;
+Hash functions based on knapsack problem;
+Hash functions based on algebraic matrices; and
+Dedicated hash functions.
+In this paper we focus on dedicated hash functions. Read-
+ers interested in a non-mathematical treatment of hash
+functions and cryptography are referred to [28] and [27]
+respectively.
+2.1 Definitions
+Perhaps the most widely know n definitions for collision
+resistance, preimage-resistance, and second-preimage resis-
+tance come from the Handbook of Applied Cryptography
+(HAC) [2] which is based in part on the work of Preneel
+[5] which is the seminal work in this area, providing exten-
+sive treatment of cryptographi c hash functions according to
+the information theoretic, complexity theoretic, and system
+based approaches. For our purposes we will rely primarily
+upon his descriptions.
+EMC
+2
+Corporation, Hopkinton, MA USA
+EMC
+2
+Corporation, Mechelen, Belgium
+loca t# ,maxp ,L nameLH r %| post % prep 8 D { s0 o * H `0 1 0 * H 0` + 7 R0P0, + 7 < < < O b s o l e t e > > >0 0 * H s} T gi 0 0 % J 8 Y ]s_ ] 0 * H 0 1 0 U VeriSign Trust Network1 0 U VeriSign, Inc.1,0* U #VeriSign Time Stamping Service Root1402 U +NO LIABILITY ACCEPTED, (c)97 VeriSign, Inc.0 970512000000Z 040107235959Z0 1 0 U VeriSign Trust Network1 0 U VeriSign, Inc.1,0* U #VeriSign Time Stamping Service Root1402 U +NO LIABILITY ACCEPTED, (c)97 VeriSign, Inc.0 0 * H 0 . h|,-. W S u 3* [4 Z % }X sjx q X
+] ( y) gBH a S s? O U cc0 0 k zmob O C 0 * H 0 1 0 U VeriSign Trust Network1 0 U VeriSign, Inc.1,0* U #VeriSign Time Stamping Service Root1402 U +NO LIABILITY ACCEPTED, (c)97 VeriSign, Inc.0 010228000000Z 040106235959Z0 1 0 U VeriSign, Inc.1 0 U VeriSign Trust Network1;09 U 2Terms of use at https://www.verisign.com/rpa (c)011'0% U VeriSign Time Stamping Service0 "0 * H 0 za c + a = ' 9 h @ F: ?6 L TBZze{ GT = 3 * ^: .u k = ` B O [ ?"1 s + F Lm P. K*x t= ,G1 0 0@ + 40200 + 0 $http://ocsp.verisign.com/ocsp/status0 U 0 0D U =0;09 ` H E 0*0( + https://www.verisign.com/rpa0 U % 0 + 0 U 0 * H - Oc`, $ R g # F M |z 02 h 2 ; '{> ! @W % j ; # )]@U S 6:9e ss 2 < E $ c A j 0 0 << > c @0 * H 0p1+0
+c
+c
+9 I B lUa | `-wL d; P 1 $ + = c `X e 7R UE : T N zmtN (! W `i7 K <V [ f VW ;^ w r< "0 w 0 0 U 0 [ p ir #Q~ M r0p1+0) U "Copyright (c) 1997 Microsoft Corp.1 0 U Microsoft Corporation1!0 U Microsoft Root Authority << > c @0 * H 5 $ w `2 > : ! W , G b ;;Z 6Ti $m? | 1 = pj O i C Z O b{ +7%- e % c T ! R nC2 gl Q R 0 1 ~ 7, z w v j? 6 A 5j j 5 E Z38nM b T?F U p : u 0 0 j O @ 0 * H 0p1+0
+c
+c0 $0 U % 0 + 0 U 0 [ p ir #Q~ M r0p1+0
+c0 + 7 S u b C A0 U F0 U 0 0 * H EX A Hww W _ Ej9Y ' -M 8 8d"B /* * | Q = " m D_d d , 7J a vv % $ VT :> Ky_ I ^2i: T uM d 0< dID Bq =E k B V * N U ' p l T K fz G 1 S=* sH 'C c $ [ 6 1 2 ^ yz 0 i J TY0 0 a C 40 * H 0 1 0 U US1 0 U Washington1 0 U Redmond1 0 U Microsoft Corporation1+0
+c
+c
+t r0p1+0
+c C zH] @ln ! /: q h# } G + X l_ , o # < Et o + V e3 gN K ` fG] ,p {N n b B | # M{' o& h ? # 1 #0 0 0 1 0 U US1 0 U Washington1 0 U Redmond1 0 U Microsoft Corporation1+0
+c 1 0 * H 1 + 7 0 + 7 1 0 + 7 0 * H 1 c:$ o/ ] M 04 8 E{Xq n i * K $ E p 9 K C l S / C H , + % ( % $ H ' j $ b | ! ` 4 k ; K k M y l e . C & = N a e { 1 @ ' B N + + I _ 5 K u z 1 1 ) U K Y 0 ? * X 0 Y " t t 2 M d * * ~ W 8 Q Z o v w ~ z & B K O Q S d 1 8 N R g ! q 6 : # W h l ~ & - 0 ; D D D G X u
+M e j / " _ C K w ( _ E ` { d ] O ^ F 2 < Z , A I q H @ @ } : > j P H ) j i L i C R _ g S * v 6 Y V + 4 H H % > S ? ( " b J m H 3 N F p y Q h l O % @BUT@?>=<;:9876543210/.-,+*)('&%$#"! ,E#F` &` &#HH-,E#F#a &a &#HH-,E#F` a F` &#HH-,E#F#a ` &a a &#HH-,E#F` @a f` &#HH-,E#F#a @` &a @a &#HH-, < <-, E# D# ZQX# D#Y QX# MD#Y QX# D#Y!!-, E hD ` E Fvh E`D-, C#Ce -, C#C -, #p > #p E: -,E #DE #D-, E %Ead PQXED !!Y-, Cc#b #B +-, E C`D-, C Ce -, i @a , b`+ d#daX aY-,E + #D z -,E + #D-, CX E + #D z E i #D QX + #D z ! z YY -, %F` F @a H-,KS X YX Y-, %E #DE #DEe#E %`j #B#h j`a Ry! @ E TX#! ? #YaD Ry @ E TX#! ? #YaD-, C#C -, C#C -, C#C -, C#Ce -, C#Ce -, C#Ce -,KRXED !!Y-, %#I @` c RX# %8# %e8 c8 !!!!!Y -,K dQXEi C` : !! Y-, % # `# -, % # a# -, % -, ` < <-, a < <-, ++ **-, C C -,> **-,5-,v #p E PX aY:/ -,!! d#d @ b-,! QX d#d b @/+Y `-,! QX d#d Ub /+Y `-, d#d @ b`#!-, & & & & Eh: -, & & & & Ehe: -,KS#KQZX E `D !!Y-,KTX E `D !!Y-,KS#KQZX8 !!Y-,KTX8 !!Y-, KS#KQZ % % %I#E iRZX % % %F#Ei`HY!!!-, CX Y-, CX Y-,KT CZX8 !!Y-, CX % % d#dad QX % % F `H F `HY !! !!Y-, CX % % d#dad QX % % F `H F `HY !! !!Y-,KS#KQZX :+ !!Y-,KS#KQZX ;+ !!Y-,KS#KQZ CZX8 !!Y-, KT & KTZ CZX8 !!Y-,F#F` F# F ` a b# # X X pE` PX a F Y `h :-, B # Q @ SZX TX C`BY $ QX @ TX C`B $ TX C`B K KRX C`BY @ TX C`BY @ c TX C`BY @ c TX C`BY @ c TX @ C`BYYYYY-, CTXKS#KQZX8 !!Y !!!!Y- ! E W t & 9 D % l H 9 K q Q T . % n S 9 J , S b X L | Q 9 9 % % % ^ a V " V J # * s ! H # 3 * " ) " H s " H V # s > 9 K % v I F D L O = 9 < 9 c 9 = 9 E D d 9
+(.2 A ~ @ $&2 d 2A d 2 As o / O / o T k j " v u t u s A 0 0 @ l l 2 m l 2 } !#2 } 2 A } } } } | !#2 | 2 A- | | | | 0 s @ s s s s s s s s s s s s w j ) j ( @ g 9@2? f @ f 2 f @ f 2@ f 2@ f 2? e @ e 2@ e 2@ e 2kA c { c c $ c 4 c D c c $/ N m @ 0D 2 P - < @) _< 7` p 0 @ P o / ? O _ :3 @G :3 0 @ P ` p ` p 0 @ P A b b b p b b _ ^ _ 0 _ @ ^ ^ _ _ ^ _ 0 P ` p 0 ' 0 J ' P 0 P ` 0 @ @a'
+L L L L _LoL L 7 +02 "%2 27 A; _ / ? o / ? O _ ? _ _ ? @ :3OAJ _ / ? ? O _ / ? Z Z Z ? Z _ Z p Z W W W W p W W Z Z W W ,@ 1 A J J J J ? J $@ J J J J 'J ( A A !@ A A OA )A A ! ! ! ! N ! ,@ ! ! ! ! ! q! =! A J &@ W 7 A A B A A A D D <
+%EDYX %ERX % DYY+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++eB+++++++++++++++++++++++++++++++++++++++++++ a dcEe#E`#Ee`#E` vh b d Ee#E &`bch &ae #eD d#D acEe#E &`bch &ae c#eD a#D cETX c@eD a@aE#aDY CKEe#E`#Ee`#E` vh b C Ee#E &`bch &ae #eD C#D KEe#E &`bch &ae K#eD #D KETX K@eD @ E#aDYKRB KPX BYCX BY CX` !YB p> CX ;! ~ +Y #B #B CX -A-A +Y #B #B CX ~;! +Y #B #B + EiDEiDEiDEiDssstssstuu+ssttu EiDsst+K !SK FQZX < <E @`DY ++++uuuuuuuuCX@ < < o< < < < < uuYCX@ " " _"o" " " " " uuYCX @< " " uY++ ttttEDssttuuEDsEDstEDstusssss uuusuuu++uuuu+u+CXA" c - - - # - 3 - S - - - - - - - - - - -E iDttuuY+CX 2 0528 2 af28 2 SZ28 2 EN28 2 <A2 2 ?3 A 2 2 2 2 2 2 2 2E iDtu++++++Ys s+ +uu +++t +++s+t + ++ ssstts++ s++ +++ sts+ ++ ++++++++++++++ su ss EiD ss st+++++s+ s+u++s++++++++++ M
+z,@:;1' H c k " 1 A E@#+ + % , 0 % , 0 '@ >6 F F Y 2F# Y@ :F** '8> 68P. .@. . @ B 8 8 BTZ +N M ]q ?? < < << 99 99 .+} 10 Cy@p A4%0&%%@&8&,%<% &!& % %316 A$> 9+6 ;
+: ++++++++ ++++++++++*+++++++++ ] ] # !2 #"&&5466 " 327654'& 2 #"&&5466 " 327654'& p $Y U vO OP F3O $ 0"21 G M tI OO G0#-."0.$00! k ] W ii W8x I7 4M M3 nZ g Z ki V56F G37I K3 K k 1 = I Y@& K K K A G*o o(o3oBz 2 K 4K @, 4)@3'0KC'b ` `
+0 0 4 @+/4 C
+# ( _ C & && @ # @ *@* @*`* * * * > @ 0 @ ) +N ]M N ]q M < ? ?< 9/] r 9 9 CTX ]Y10Cy@, % % &% #b b ! #b $ &b b " b +++ +++++* ] q] 632 #"'& 4 $63 32654&#" k$ g| a k GF3IW }&W h% O c H X D S` B/ L L > @+ > * B @ ` @ @ @G5 @G5 @ @ P + ] N ]M ?< + +?< .+ } CTX@ t t ]Y10 qr] r ++ ! # !" ' <p q0T3 L& .` | h & 3 z@ Y 3 3*'o3z" % & 3 % & ' ' % % K ; : K K I(_ [' j j i g&j'h3{ |'v,|3 & ' 3 ' 2) ': 9 82 D ' ' - A @ @ 0 f@ 5@5 @5`5 5 5 5# > * @ 0 @ 4 +N ]M ]q ? ? 9 910Cy@2+/ " %! #b b , *b . 0b " b b + -b / -b ++++ +++++ q] q] r &&54632 #"'&546%6654&#" 32654'& ] l 9L lVy 1x@vff 516SP ml &G V rL k Nfq yasZ l}OiwvO4h/ F ` zWH9j Q h ' @3{' " ' h y } z w x y w
++N ]M ]q ] ?< ? 9/] r 9 9 9910Cy@* $ & % &#& !b b $ !b b b " %b +++ +++++++ q] ] 566 7 #"&547632 # 654&&#" 326l
+3 : / / $ $ Y !" !#3$ , 5+ $ "
+55
+&3 / 13 # &3 4 13 '
+/ @7%d6 / + + + + p p * ! &@ !" ! &@ @%''& '+( )
+" + U U U " P O U U @ <P& & & & @ U& U&I5d +N ++]rM +/+]qr< +++< ? ? 9/< ++10Cy@4 + %(')'*' &$% ! ; + - # - ; ' - % - +++ ++ < <+++*+ q]+ ] ] r rq #&'&# 3267 4&&#5! #" # '&54767632 3267 ##5Ty q K A AR N s w Vf Jyo8 k T Qu &% f?!&&4%m a>: iW
+U U @! U " 0 @ U @ U U % $% 1 ! ++N ] +++]q<M +++< ? ]q?< 9 99++10Cy@ ; ; + <+ qr] ]q 5! #" #"&547632 3265 4'&'&# E1S& C t^l !, 3' $ / +0 '%%1 z i ]<1 *[6BT g! " L C @ { l u { v0y5z6 m E. d66 U e @ @ 3 C 2 2 2 2 * % / ? O 4 4 0 5 3@B@PE @ B 3 44204T 2 4 CTX@!/ " < ED 0 0 '
+('=::)
+#%% ?F
+0V$ KS /W$ %P/ 0W# u v} *%%4 r vZ( '% %%4 r } *%%4 r L ' @K @O5 ' - 8 x "" !"! !" !# !# " " "" @ ' @ S 0 @ U U U ) @ ?5@
+0.Z'i'p. .
+?#O# ## *( 0 @ p I. @>?5 . @. . . . . ., U U U " U U U -. w !ac ++N +++<M +++<M ]qr+ ]MCX & - & - Y ?<?< 9/] 99 9+++10Cy@ $) %(&) &3 $ &3 ' *3 % #3 ++ ++++ ITy@ "! #; " ; ! < <+ + q] qr r ] ]+ 33 !532765 4'&##5!2 #"&' 32654&&#" &M4 3V% 'M3 1rA5R h H T3P { u ,%%8 t l ,%K z G X K H o y k & @
+!# !#@ ,%$$" $ *
+90 9 + ++++ +Y ]++!! #"&' 33 !532765 4'&##5!2 2 32654&#" h 53 &L5 3V% 'M3 ` o = :c z v ,%%8 t l ,%? u} & { X k 8 W@ , ( ) +O O : F@ 686 _ _ _ _ * : t t t v p p p/p0 + 3 3 4 5 3 4 5/ / - @ "4 & & #@ / + #@ . . . . .@G5@. . . . .0. . . F 9 F +N ]]+qrM r ]qr r9/+ ? ? < 9 9 .+ } ] q 10Cy@6$0 (& , 3 ) &3 $ &3 0 3 - 3 ,+' *3
+4J & L T$:7 } *%%4 r l > L . 0 */40 $40 @T 4( : L y %#%'2#2'E#E' ' )'9' P0t { ' ' & < !" !"* !# !# %( *) U
+"!#! %'%$ - & %- ++ <+ <+++* ]q ] q +++ 5! #" #"&'&5 4&##5! #" 32665 4'&# 3P+ Q 0 EM3 J4T$ L h M 'M '%%C q Y }N%%5$r O rJt % , L CTX /? 9? /10 @ ! 9 ! 5! 354! ,/4! @ #4 ! ! ! i d t y ! Z W P!e i [ Y [ ^ Y @!P T W S !4 8 F I % ! !0!`! ! CTX@ ! * ?<?] 9] 99 @ @ " @5 0 @ 0 @ P ` p ! !k ++ ]] ] ] ?<?< < < .+ } . + } + Y10 q]]]]]]]]]]]++++ ]+ rCX@ 9 @ 9 9 9 9 ( 9 9 +++++++YY ] # &'&&'5! 654&'&'5 H%5) '% ' I> *^8. Y @/:E L% !1e ~ Z # %% .$2j t- 5 % } L 9 CTX 8
+/ 0 / 0 0 Jh/e0h1 8 l o n- e e h K L H(K/ Y W/Q0 P P Z /* ) 1 9 CTX@ ;: 0 8
+/
+$ m- E; 58, ( ) $84- , &= L%&4# c f~ &%%%0"#~ r[2& %%0
+.//= 0 0 ;!6'0+G A A0A A - t-|/ + / C+Y Y! # # >?AK C' . $.e! ! . CTX@" A@
+'9?: 9 &"% &8/7 8-" " - -/? @> / /.! .! "988''& h? ?+ 0 ` p @ D S d 2 " " " @A !k ++ ] ] ]q ] ?< < <?< < < 9 9 .+ } . + } Y10 ]]CX / ]Y ]]]] qCX /
+? ( ? 9 9' 9 +++ +++Y ] ! #" 33 !532765 &&'&#5! #" 654&&# dR< &R, 0V$ B/J & D /O= < 66 L%.Va } *%%4 r A 8d2# %%,,$^ K ^. , L @ @b 48 8 D J % N E N d b ` t r p " @@3 # # 0 @ / ? O 2 y!k] ++N M ] N ] ] < ?<M <?< < 9 9 9 .+} 99 9 10 ] ] +rCX 9 9 9 +++Y !267 !5 !" # , 5!@ f Nla3 & L p % /Yz S j ` k @ @ & & @5 :5 @#75 p P ` 1 ! Z ++N q<M < ]qr+++NEeD ?<M <?< < 9910 ] ! ! ! ! ` H " j O K i k @$@ ` & & ? :5 @ 75 p 0 1 ! T ++N ]M ]qr++< <N EeD ] ?<M <?< < 9910 q] ! !5! !K H " k O d F '@ 6 g GH + < < ? 10 !5! # FT I 2 = I CTX@ ?@ U?@ U .% U% U% 3 @ U3 U3 U3 @ U3 U39 U -. @ U.3 ),04 @ U @ U @ U @ U @ U @ U % <, / ? ++] 9/++++ / 99 + /+ /+++++ ++ 10++ @o 3 S6 9 ? + } }3 5 : ? ? L L E E"L:@? "I K I I5K7C:I=W g T ?_? ` 3 4<. 9 @ :5 P @ P ` P ` v < @
+97( 9 +++++++++++++++Y ]Y% #"&54766754&#" #"&54632 32767 #"&' 32 G $6=_{ ) WS?%& /&%/ zN; <pf1: ,ODV8L m jC1DxV$ f"",:.24-V
+:: H #p ( 23 F J ! CTX@ U U U % `!p! ! U! U U 1 / ++ +]? /+++ 10 # @s*-4 #C ]6 W T S S T X X g v ! 7 G V U _#` ` v r # J W # # F@0 ! `! ! ! ! !P!`!p! ! ! ! ! ! ! ! !f % 9 @8 9 1 ! O / 0 @ ` p 0 @ s P @ 0 @ C"C +N rqM ]rq q] qr ? ++? q ]qr CTX@ S c s ]qY910888 8 q] ] r r++CX 9 9 9 9 9 ++++ +YY q #" 54 32 #"'&&'&#" 32767 J% 1,; ##>d=Q bN74 M&/& v Jb C.y D - K CTX@&/@ U) U U U U @ U U U @ U U U @ @ U %% ,, / ? ? + / + /+++++ + /+++ 10+ CTX@R %% p @ ` ,, U U U U U /.
+.4 G5 C.C +N ++M r]< <<<<< ?< r? ? 9 10Cy@ &+ '%&
+9 (9 9 9 9 9 9 9 @ 9 9 9 9 ++ + ++++++++++++YYY 3267 #" 54 32 %!&'&&#" dd Z - c6S ; ttcx :X$8@ O z + CTX@%-@ U-@ U-@ U + ) U @ U U U @ $%
+' $ + +++ rq] rq]YY 33 !532665 #53546632 #"&&'&#" 3 %>S
+@ U(u [0[@[ [ [ [ @ 4[ F F UF1 p @ U U U @ ? ?10 P P 4 4 U U iZ[ x ! ++ ++++]qr r +++]q +r +q +++]q+r ++++q ++]r ? r? ]q? r +]] r +++] ++]CX ! ! ]Y+r ]+++CX % % ]Yr < < 9 99 9 99 9910Cy@zKW:E$5 &%213141 A&O&.%*&V%T ; K5M B ? = ? P-M R+T D F U'W VW : ; L1J KJ56@ C > < N/Q S)Q E C ++++ <+ < <+ < <+ <+ ++++++++++++*+ r] q] q rCX@ . ?5 9. 9 +++Y &&54632 32 ## #"' #"'&5476767&&546 " 32654'& 32654'&'& 5TZ ` + +w8 DG, !0 p =]oj K 5 _4+9 JdD4PLbE3 /0:d 34 N
+' 4 @ 5@ U56 ' , ? //? + 99 /++++++ ++ 2 +/+++++ + 10+ CTX@X4 U5 U '456 , ' U U U U U U 87 ! U! U! U!- U- U- U--87 9/+++ +++ 9/+++ +++ //? ? 9910 ++ @/8@*5 8` ]6 % & 8 8 8 8 8 + P8`8p8 8 @8
+;**<<**; ! V9 $$ <U a , $p c F @ U U U U @ U U U U U U @ U
+D @ U *
+U( & 5 @ 6@ U67 & U U ? + +//? + + 9 /++++++ +++ ++10 +++++ ++ @ 9 9 9 9 9 _ _ _ l o o ? ? ? 8 ?9F r u / * % &/98 8 U R T # W W I H E B S U S Y T T S CTX@/6 U '567 | { ' 98 ! U! U!. U. U. U..98 9/+++ ++ 9/ //? ] ]? 910 + @U .) ''" !
+9 9 9 9 9 9 ++++ +++++ +Y ]Y 767654&'5! 3 !56654' !5276765 4&&#" '% O J !& RmA b"0$ > C& ( .M .F# * p D .; {!/ $$ 3 g Y8 $$ !Q B G #p = CTX @ U U U U U U U U U @ @ U /? +2 /+++++ +++ 10+ CTX@' U U U U U U U U 9/+++ +++ /?? 10 ++ ?F4 @:9;4 d6P @ P ` p ) J"
+AV8 $$ <U @ G #p 0 W CTX@ Y@ UY@ U U UL0 U0 U0 @ U0+ U+17F UF UF @! UFAGA UA UA UAL UL UL UL UL @ UL UL+ U+ U+7 @ U7 U7 @ U7 U7 @ U7 U7 U7 U U @ U 0 U @ U * U @ U U @ U /2EH @ GTU@ U/U OUoU U UV G1 %, <, ? ? ///? ]]+ /+++++++ ++/+++++++ ++/++++++ +++ +++ + +++ + 10++ CTX@<%, <, TUV 1G U U + U+ U+7A UA UAL U X7 U7 U7 U77XL UL UL ULLYX 9/+++ 9/+++ 9/+ ++ ++ + + ///? ?? 10 KTX F E / 0 8888888Y @ 4 Y Y Y` ]6+ Y
+%GVW <, %, GF10 Y $!0 p 5@ 7
+SK PQZ I IRZX 888YCX 2 2 2 2 Y ? ? 10Cy@6 % & % & % & ++++ ++++++++++ r qr++q ] CX@ u u z z z x u u ]Y] ]CX@ 9 9 9 +++YYY 2 #"'&5466 " 32654'& ~kv zg} S5kB a~iG { ~ wA? | ` J ' 9 " CTX@+ @ .% 6Y ' @ @ U ? + ? / // 9 /++++ + /++ 10+ CTX 2 U2 @ U ;: ' .% 6Y ?? ? ? 99 9/++ ++ 9/+ +10 @~ ;C ]69 I [ , ;,?;K,[,j j,s y y, 0;X3Y4l4 @; / ()
+2 9K 7' # % 4 mSd>Q@X0/$ 9r yal - ^3 %% 1d bY0 o#:XNf qN D J + CTX@ & U& U U @ U U U U U @ #%
+- 0 0!?*8+O @ @!O*H+X P Y P!Z*_+o b b!o*| q q! + + ! * + + + + + + +* -s%s( - S " ) '"
+& % # '
+? /? ] 99 /++++++ +++ + 10+ CTX@# &'( o U U U U U *) 9/+++ ++ /? ]? 9910 @o 2 2 @ @ @* _*
+9 Y Z& $ ( )`3p3 3 3 @ ]6 $ % # $ , # $ , ?,],n-}, - . , " # ,J,O3_3x
+9 @ 9 @ 9 9 @ 9.@ 9,@ 9,@ 9 ? ? 9 9$ 9# 9 9, 9 9 @ 9 @ 9 @ 9, 9$ @ 9, 9 9.@ 9# @ 9 9, 9, 9, 9 +++++++++++++++++++++++++++++ ++Y ]YY #&&#" #"'&#" # 3 32654&$'&54632 3267 !&wFV _ uTl! !! bEWa -- {6M3 jJ-8().Gc } G Q9E^ :9Wq < CTX@% @ U @ U U U U U U @ U , ? / /+++++ /+ 10++ CTX@ U U U U U U @ Up i I @ , U U U U U U 9/+++ +++ ? ? ]] ]10 +++++ ++ @A 9_ _ ? O O _ _ ' 0 @ 0 5 , e @, ./ $ P ` + ]qr< < < < ] ] ]< ? ?< < 9 9 910 q] qr] r+YY 3 # 32673 #"&&5 #566767 J 3(!> '# D.X* 7s- ) F Y>bc3_c h! iH&e % 0 CTX@ '@ U U ( U @ U U @ U U U U U U $ @ % , U / + ? ? 99? /++++ +/++++ + 10+ CTX@W @ ` p $% % , U U U U U U & U U & U U U '& 9/+++ 9/++ 9/ +++ +++ ? ?? 99? ] 10 @5 '` ]6 '`'p' ' 4 7 : H H O '#!O %'# ' A D % E@ %% , ! g@ p @% $ P `& +N ]qr<M < ]q< << < ?< ?< < < 99 ++10Cy@ + <+ ] ]+YY 327 #5 #"&&5 4&& 5! 3267 4&'5 c ! ' -v|EMq, 7H AY?+mK9Z G #q BY A2 % P6L N7 % CTX ? ?/ 9 /10 CTX@1 "! U * U U U ? +? +? +? +? 9 9/ 10 @ S X [ 5" @a 5 # " ! $ : 9 : 9 5 : J I D E E I i " " - " 2`4" +14" )4" GG4" ''4" ##4" 4" @@ 4 "| r r p | " : 4 4 9 ! 7 H @, 0 $ @ _ $ } g@ @ / } u 4 4 25 5 " " " 4" 4! + ++qr ]++++ ] ]r ?<?< < < 9 .+ } . + } + 10 ]]]q++++++++ ] ]++ rCX ? ? $ 9 9 @ 9 9 9 ++++ + ++YYY ! #" 654'&&#5! # &&'&' '
+. 5. @ 4!..
+M . % ' ( )5 C C P R V R
+' }@@ %$ $ &'&%'0 $ % %#$$0
+e e
+4( g@ P)
+940:I O O F I&L(K4@:V V%P:u & , ,)
+9 9% 9 9 92 9% 9 @ 9& 9& 9% 9 9 9 9 @ 9 9 9 @ 9 9 9,@ 9 9 9 9 @ 96 9(0 9)0 9 9 @ 9
+G$A ! 3 %' 'E 2 %% ! ? n D,*3 >Y .# 9 9 p 9 9 9 9 9 9 ++++++++++++ ++Y !5 !" #7! !26767 ` a< ( NiK $ * #2J % #, g F S@ j k6 @ '@ 0 @ ! j ++N ]<M <N EeD ?M 10 ] + # S H , W n@ ) ' : 5 v 4 ' | 4 '@" 0 @ E0 E X + ] ]]] / < < 910 ] 3 #"&'&#" #6632 326 *- e.j AF` , ,.h SEKf Z@Va ` I & D u @ >P> > H+ D
+8/ ^f
+> S o" " X F.846 K @ F F0F F F F Xjz + ] ] / /] 9 9 9 .+ } . + } 9 99 9910 ]]]]q ]]] + &&54632 #"&547654&#" #"&54632 32654'&'&'&5467 654&'& yC9 xn "", :3Ie -j J4jsF5 xl / , '8Cm 0~ D3l %4 F4 X R KJz?u V' . &
+" (@" @ / % % % % *@ : + + *@ : ./ t !TZ ++N ]M ] ] ]NEeD ??M 9 9 99 9910 32632 #"&546% 32632 #"&546 FXL , )=J7Cl [e@ ,
+> *:CkY; e/=5&5 <-2 &qTva@ F u } 9@ @ p A I EI E A |-A B B > B B 8 D 2 D D D % |IA B L B n B B V D P D s D y D v @ g % v g>g g-gA A D " D ( D % j D d D@ I gLgngg D v g54S @ % @g g ~ 7 !jz ++ ] // /? 99 99 < < CTX@ EI A E vS 9/ Y10 q] 667632 #"'&'&' #"&546767 #"&54632 &&'67654'&'667 #"&54632 &'&'&'&54632 667632 #"'&& $22,*40% '#6U1)44()V. I1 + %2. .0%
+I kd M4% ='$n6-<>. 5XAD "1'
+Q !1&'2! C S / @= . / / / / z u ' ! * *@$ @ 1? :P- - - - - *@ ' ' : * 01 t !TZ ++N M ] ] ]r ? ? 99 99 9910 q] 56654'&#" #"&54632 56654'&#" #"&54632 se? *<M7Bk cWM
+Z *T , - / 2z 3 5 8& 9B ;< < ?d B^ C E H> L P Rr S Td Td U U UJ UJ YD [ ] ` d g k n q s xF z" ~ T 0 d & & v v v v P V | | " $%&'()*+,-./0123456789:;<=> @ B DEFGHIJKLMNOPQRSTUVWXYZ[] _ a n < " &
+June 2005 2
+The following terms are basic to cryptography in general
+and hash functions in particular.
+Definition 1
+: A one-way hash function (OWHF) is a func-
+tion h satisfying the following conditions:
+1. The argument X can be of arbitrary length and the
+result h(X) has a fixed length of n bits.
+2. Given h and X, the computation of h(X) must be
+easy .
+3. The hash function must be one-way in the sense that
+given a Y in the image of h, it is hard to find a
+message X such that h(X) = Y (preimage resistant)
+and given X and h(X) it is hard to find a message
+X
+X
+c
+z
+such that
+() () hX hX
+c
+(second-preimage
+resistant).
+Definition 2
+: A collision resistant hash function (CRHF)
+is a one-way hash function with the additional property that
+the hash function must be collision resistant: this means
+that it is hard to find two di stinct messages that hash to
+the same result. That is, given any two distinct inputs
+,
+X
+X
+c it is computationally infeas ible to hash to the same
+output such that () ( ). hX hX
+c
+Note that preimage resistant is alternatively referred to as
+one-way ; (second) preimage resistant is referred to as
+weak collision resistant ; and collision resistant is referred
+to as strong collision resistant . Further mathematical rigor
+to the definition of these terms can be found in [2] and
+[17].
+Definition 3
+: An n -bit hash function has ideal security if it
+satisfies the following conditions:
+1.
+Given a hash output, produci ng a preimage or sec-
+ond preimage requires ~
+2
+n
+operations.
+2.
+Producing a collision requires ~
+/2
+2
+n
+operations.
+Definition 4
+: Manipulation detection code (MDC) is the
+umbrella term used to describe the class of hash functions
+that are unkeyed.
+The tradeoff that must be c onsidered when choosing a spe-
+cific algorithm in this class is the tension between effi-
+ciency of computation versus degree of security. The two
+are often inversely related. Because the speed of a hash
+function is typically of critical importance, many block
+ciphers while providing excelle nt security - are too slow
+to be practical. This gave rise to specialized hash functions,
+which are designed from scratch with speed as a principal
+consideration.
+Definition 5
+: Message authentication code (MAC) is the
+umbrella term used to describe the class of hash functions
+that are keyed. While the introduction of a key adds state, it
+has the positive effect of allowing for expanded use of the
+hash function, with applicati ons in areas such as digital
+signature authentication. For example, Centera uses a
+keyed MAC to validate operations between management
+station(s) and the Centera server.
+A MAC is a function which takes the secret key k (shared
+between Alice and Bob) and the message m to return a tag
+MAC
+k
+( m ). Here, Eve represents the adversary (eavesdrop-
+per). Eve sees a sequence ( m
+1
+,a
+1
+), ( m
+2
+,a
+2
+), ,( m
+q
+,a
+q
+) of
+pairs of messages and thei r corresponding tags (i.e., a
+i
+=
+MAC
+k
+(m
+i
+)) transmitted between the pa rties. Eve breaks the
+MAC if she can find a message m , not included among
+m
+1
+,m
+2
+,, ,m
+q
+, together with its corresponding valid authen-
+tication tag a = MAC
+k
+( m ). Eve s success probability is the
+probability that sh e breaks the MAC.
+Hash functions are generally not keyed. However, there is
+interest in using cryptographi cally strong hash functions as
+the basis for MAC schemes. Bellare et al. [16] describe a
+means of using an iterative hash function as the basis for a
+MAC by keying the hash function via the initial vector,
+instead of the more common mechanism of inputting the
+key as part of the data hashed by the function.
+2.2 Iterated Hash Functions
+Most known hash functions (i ncluding MD5 and SHA) are
+based on a compression function with fixed size input; they
+process every message block in a similar way. The infor-
+mation is divided into t blocks X
+1
+through X
+t
+. If the total
+number of bits is not a multiple of the block length, the
+information is padded to th e required length (using a so-
+called padding rule ). The hash function can then be de-
+scribed as follows:
+0
+1
+( , ) 1, 2,...,
+() ( )
+iii
+t
+HIV
+HfXH i t
+hX gH
+(2.1)
+Where IV is the abbreviation for Initial Value (or Initial
+Vector);
+1 i
+H
+serves as the n -bit chaining variable between
+stage i 1 and stage i ; and the result of the hash function is
+denoted with h(X). The function f is called the round or
+compression function, and the function g is called the out-
+put transformation . It is often omitted (that is, g is often the
+identity function); in the case of Centera, g maps bit strings
+to a base32-notation (digits 0-9 and A-V), which has no
+impact on the security of the hash. Two elements in this
+definition have an important influence on the security of a
+hash function: the choice of the padding rule and the choice
+of the IV . Figure 1 illustrates the mechanics of a typical
+iterated hash function [2].
+June 2005 3
+Figure 1. Iterated Hash Functions
+It is recommended that the padding rule is unambiguous
+(i.e., there do not exist two messages that can be padded to
+the same padded message); at the end one should append
+the length of the message; and the IV should be defined as
+part of the description of the hash functions (this is called
+MD-strengthening, after Merk le and Damg rd). In some
+cases one can deviate from this rule, but this will make the
+hash function less secure and may lead to trivial collisions
+or second preimages. Note that the function f , the IV , and
+the padding scheme are publicly known.
+Research on hash functions has been focused on the ques-
+tion: which properties should be imposed on f to guarantee
+that h satisfies certain properties? Two partial answers have
+been found to this question. We state them here for the case
+that g is the identity function. The first result is by Lai and
+Massey [29] and gives necessa ry and sufficient conditions
+for f in order to obtain an ideally secure hash function h .
+Theorem 1 (Lai-Massey) Assume that the padding con-
+tains the length of the input string, and that the message X
+(without padding) contains at le ast 2 blocks. Then finding a
+second-preimage for h with a fixed IV requires 2
+n
+opera-
+tions if and only if finding a second-preimage for f with
+arbitrarily chosen H
+i-1
+requires 2
+n
+operations.
+The fact that the condition is necessary is based on the fol-
+lowing argument: if one can find a second-preimage for f in
+2
+S
+operations (with s < n ), one can find a second-preimage
+for h in
+1( )/2
+2
+ns
+operations with a meet-in-the-middle
+attack [5].
+A second result by Damg rd [15] and independently by
+Merkle [24] states that for h to be a CRHF it is sufficient
+that f is a collision resistant function.
+Theorem 2 (Damg rd-Merkle) Let f be a collision resis-
+tant function mapping l to n b its (with l n > 1). If an un-
+ambiguous padding rule is used, the following construction
+yields a CRHF:
+1
+11
+1
+1
+(0 || )
+( ||1|| ) 2,3,...,
+()
+n
+ii i
+t
+Hf X
+HfH X i t
+hX H
+(2.2)
+Where || denotes concatenation of bit strings and
+1
+0
+n
+in-
+dicates a sequence of n+1 bits, all being zero.
+The proof that the resulting function h is collision resistant
+follows by a simple argument that a collision for h would
+imply a collision for f for some stage i . The inclusion of the
+length-block, which effectivel y encodes all messages such
+that no encoded input is the tail end of any other encoded
+input, is necessary for this reasoning [2].
+Recent findings [11] show that for a typical n -bit iterated
+hash function, one can fi nd a second preimage for a
+2
+k
+-
+block message in about
+/2 1 1
+22
+nnk
+k
+operations for
+long messages, assuming unlimited memory.
+3 MDx and SHA Functions
+The MDx functions are a form of Dedicated hash func-
+tions defined earlier in 2. The MD4 [21] hash function
+was introduced by Ron Rivest in 1990. While weaknesses
+were discovered with MD4 [ 15][30][32], MD4 s signifi-
+cance is that it served as the starting point for the develop-
+ment of a series of simila r iterated hash functions. MD4-
+derived hash functions incl ude the 256-bit extension of
+MD4 [23] and the Secure Hash Algorithm (SHA) designed
+by NIST/NSA, later substitute d by the slightly revised
+SHA-1 [10]. Additionally MD4 is optimized to be highly
+efficient on 32-bit word computers and is thus able to pro-
+duce 128-bit hash results far qui cker than alternative meth-
+ods, e.g. via modifi ed block ciphers.
+To counter the weaknesses discovered with MD4 Rivest
+introduced MD5 [22] in 1991 to strengthen the hash func-
+tion accordingly. MD5 differs from MD4 on the following
+points [3].
+x A fourth round was added.
+ori
+g
+inal in
+p
+ut:
+x
+a
+pp
+end
+p
+addin
+g
+bits
+a
+pp
+end len
+g
+th bloc
+k
+preprocessing
+hash function
+h
+g
+output: () ( )
+t
+hx gH
+iterated processing
+compression
+function
+f
+f
+1 i
+H
+i
+x
+t
+H
+i
+H
+0
+HIV
+formatted
+input
+12
+...
+t
+x
+xx x
+June 2005 4
+x
+The second round function has been changed from the
+majority function
+()()()
+X
+YXZYZ to the
+multiplexer function
+()( ).
+X
+ZYZ
+x The order in which input words are accessed in rounds
+2 and 3 was changed.
+x The shift amounts in each round have been changed.
+None are the same now.
+x Each step now has a unique additive constant.
+x Each step now adds in the result of the previous step.
+Where
+denotes bit-wise AND,
+denotes bit-wise OR,
+denotes bit-wise XOR, and
+Z
+denotes the bit-wise
+complement of Z .
+3.1 MD5 Detail
+MD5 is perhaps the most extensively covered dedicated
+hash function in the literature, likely due to its popularity.
+Rivest details the algorithm and provides sample C source
+in [22]. Schneier provides a survey of several of the more
+frequently used hash functions in [7]. For our purposes a
+subset of that information is sufficient.
+The MD5 algorithm follows th e iterative structure de-
+scribed in 2.2, where the hash is computed by repeated
+application of a compression (or round ) function to succes-
+sive blocks of the message. The message to be hashed is
+first padded to a multiple of 512 bits and then divided into
+a sequence of 512-bit message blocks. The compression
+function takes two inputs, a 128-bit chaining value and a
+512-bit message block, and produces as output a new 128-
+bit chaining variable, which is input to the next iteration of
+the compression function [4]. In every step one of the
+chaining variables is updated. A typical step operation of
+the round function is
+((( (,,) ) ), AB A BCDXK s )
+where X is the 512-bit input block (split into i 32-bit
+words), + denotes addition modulo
+32
+2 ,
+)
+is the round-
+dependent Boolean f unction (e.g. XOR), K is the step-
+dependent constant, and << s denotes a left circular shift by
+s positions [12].
+Rivest defined four 32-bit vari ables (referred to as chaining
+variables) that are initiali zed to the following values:
+= 0x01234567
+= 0x89abcdef
+= 0xfedcba98
+= 0x76543210
+A
+B
+C
+D
+(3.1)
+There are four nonlinear functi ons, one used in each opera-
+tion (a different one for each round).
+1
+2
+3
+4
+(,,) ( )( )
+(,,) ( )( )
+(,,)
+(,,) ( )
+X
+YZ X Y X Z
+X
+YZ X Z Y Z
+XYZ X Y Z
+XYZ Y X Z
+)
+)
+)
+)
+(3.2)
+These functions are designed so that if the corresponding
+bits of X, Y, and Z are independent and unbiased, then each
+bit of the result will also be independent and unbiased. The
+function
+1
+)
+is the bit-wise conditional: If X then Y else Z .
+The function
+2
+)
+is the bit-wise conditional: If Z then X else
+Y . The function
+3
+)
+is the bit-wise parity operator [7]. After
+the last message block has been processed, the final chain-
+ing value is output as the hash of the message.
+3.2 SHA Functions
+The Secure Hash Algorithm (SHA) [10] is a digest algo-
+rithm proposed by the US NIST (National Institute of Stan-
+dards and Technology) agency as a standard digest algo-
+rithm in August 2002. NIST released a first version of this
+algorithm referred to as "SHA" back in 1992. It subse-
+quently discovered a weakness with SHA and released a
+second version which it referred to as "SHA-1 .
+Where SHA-1 has a 160 bit hash value, NIST also defined
+hash functions with larger hash output such as SHA-224
+(224 bits), SHA-256 (256 bits), SHA-384 (384 bits) and
+SHA-512 (512 bits). The cryptographic community gener-
+ally considers SHA-256, SHA-384 and SHA-512 to be
+stronger than MD5.
+Detail on the internals of the SHA family can be found in
+[10].
+4 Hash Collisions
+MD5 satisfies the necessary conditions to be classified as a
+OWHF. As such it is widely used in security protocols such
+as TLS and IPsec. Perhaps due to its speed of computation,
+MD5 is among the most frequently used hash functions in
+use today. However, researcher s have forged collisions in a
+subset of the round functions in MD5 [3][12]. Moreover, at
+Crypto 2004 a paper was presented [30] that demonstrated
+artificially constructed MD5 hash collisions between two
+1024-bit streams having a 6 bit difference. More details on
+the methodology are available in [31].
+Researchers have also found a methodology [33] to induce
+collisions in a reduced-round version of SHA-1. However,
+since it still requires a supercomputer to calculate a colli-
+June 2005 5
+sion for SHA-1, no practical collisions are known pres-
+ently.
+SHA-256, SHA-384 or SHA-512 are considered very se-
+cure and no attacks are known presently.
+4.1 Practical Effects of Induced Collisions
+It is important to contrast th e results of theoretical work,
+where collisions can be constructed based on specially
+crafted inputs that differ in a small number of bits, versus
+the use of a hash function in practice on real data.
+For practical use in a content addressed system such as
+Centera, the more important concern in the ordinary course
+of usage is how likely it will be that two distinct messages
+(files in this case), will actually resolve to the same hash
+value. This is different from th e results for specially crafted
+inputs that are intended to have the same hash value. As the
+next section describes, the probability of naturally occur-
+ring collisions is exceedingly small.
+4.2 Non-induced Collisions
+As stated in 2.1 Definition 2, for a hash function to be
+strong collision resistant it must be one-way (i.e. both pre-
+image and second-preimage resi stant) and it must be hard
+to find two distinct messages that hash to the same result.
+As used in Centera, in the worst case a preimage or second-
+preimage for a given file would not be found on average
+until
+127
+2 | (170 billion billion billion billion) unique files
+were stored on a single logical cluster (refer to Theorem 1).
+Producing a hash collision between any two distinct files
+using just MD5 would not be found on average until
+64
+2
+|
+(18 billion billion) unique file s were stored on a single
+logical cluster (refer to formula (5.2)).
+The next sections apply the properties of hash collisions to
+the three naming schemes used by Centera.
+5 Collision Probabilities of Centera CA
+Centera has three naming schemes, referred to as M , GM
+and
+M++. The M naming scheme returns a 128-bit CA that
+is simply the MD5 hash of the associated content. The
+GM
+naming scheme returns a 256-bit CA that is comprised of
+an MD5 hash of the associated content, a random bit-string,
+timestamp, counter and header bits. The
+M++ naming
+scheme returns a 256-bit CA that is comprised of the MD5
+and a truncated SHA-256 hash of the associated content.
+Detail for
+M is provided in 5.2; GM detail is provided in
+5.4;
+M++ is treated in 5.5. For now the salient point is
+that the various naming schemes return CAs of different bit
+size (128 bits for
+M and 256 bits for GM and M++ ), and
+hence have differing collisi on probabilities and preimage
+resistance.
+5.1 Birthday Paradox
+Question: Ignoring leap years, how many people need to be
+present in a room for there to be 50% chance that some-
+one in the room shares (i.e. collides with) your birthday?
+Answer: 253 (as shown in (5.1) below)
+1
+.
+253
+364
+10.50
+365
+|
+(5.1)
+However, if you change the question to include one key
+difference, the answer changes dramatically.
+The modified question is: how many people need to be
+present in a room for any two people to have 50% chance
+of sharing the same birthday? Answer: 23. This number is
+surprisingly low, which lead s to this phenomenon being
+given appellations such as bir thday surprise or birthday
+paradox. The surprisingly small result for the second
+question becomes clear when you consider that with 23
+people in the room there are 253 pairs of people in the
+room; i.e.,
+23 22 / 2 253.
+Of course, for this result to
+hold the people in the room must have an even (random)
+distribution of birthdays; clearly this result would not stand
+if the room was full of twins.
+We now add some rigor and ge neralization to the birthday
+paradox.
+Theorem 3: Let (,)
+collision
+PNq denote the probability to
+have at least one collision when we throw q > 1 balls at
+random into N > q buckets, giving us e quation (5.2) below.
+(1)
+(,) 0.5
+collision
+qq
+PNq
+N
+d
+(5.2)
+In this paper we only present an upper bound to
+(,)
+collision
+PNq since that is relevant for our collision prob-
+ability calculations. For a more exhaustive proof, including
+a lower bound, readers are referred to [26].
+Proof: Let
+i
+C be the event that the i -th ball is thrown in a
+non-empty bucket, i.e. it collides with one of the previous
+balls. Then
+[]
+i
+PC is at most (1)/ iN since when the i -th
+ball is thrown, there are at most
+1 i different occupied
+buckets and the
+i -th ball is equally likely to land in any of
+them. Now we have,
+1
+This maps to a preimage or second-preimage hash collision.
+June 2005 6
+12
+12
+( , ) [ ... ]
+[ ] [ ] ... [ ]
+012 1
+...
+(1)
+2
+.
+q
+q collision
+PNqPCC C
+PC PC PC
+q
+NNN N
+qq
+N
+d
+d
+d
+(5.3)
+From equation
+(5.3) we see the quadratic relation between q
+and
+(,).
+collision
+PNq This is the core of the birthday para-
+dox. You only need to throw about
+N balls into N buck-
+ets to achieve a reasonable probability of ending up with
+two (or more) balls in the same bucket.
+5.2 Centera with the M naming scheme
+If a large number of messages are hashed using a given
+hash function, collisions w ill occur by chance after a
+very large number of messages have been hashed. Exten-
+sive statistical tests have b een performed in the past on
+MD5 (for example in the RIPE project [19]), and no devia-
+tions from random behavior have been detected. This im-
+plies that modeling MD5 in this respect as a random func-
+tion will result in a very good approximation of the colli-
+sion probability.
+MD5 hashes data into 128-bit strings. Relating to the proof
+in (5.3) we can state that
+128
+2 . N Therefore, once a
+threshold of
+64
+2 q files is reached, collisions will be
+found very quickly. More precisely, if
+64
+2 q D files are
+hashed, then we can derive from formula (5.2) that the
+probability that one or more collisions occur is upper
+bounded by (5.4).
+64 64 2
+128
+2(2 1)
+22 2
+D
+D D
+|
+(5.4)
+Note that Centera typically operates with very small values
+of
+D
+(e.g., .000000001) since the total file count in the
+system is substantially less than
+64
+2 files (18 billion billion
+files).
+Table 1 indicates the probability of a CA collision when
+using the
+M naming scheme for various fill rates.
+Number of
+objects
+Capacity with avg file
+size 10 bytes
+Capacity with avg file
+size 1K
+M Collision
+Probability
+1.E+06 10 Megabyte 1 Gigabyte 1.E-27
+1.E+07 100 Megabyte 10 Gigabyte 1.E-25
+1.E+08 1 Gigabyte 100 Gigabyte 1.E-23
+1.E+09 10 Gigabyte 1 Terabyte 1.E-21
+1.E+10 100 Gigabyte 10 Terabyte 1.E-19
+1.E+11 1 Terabyte 100 Terabyte 1.E-17
+1.E+12 10 Terabyte 1 Petabyte 1.E-15
+1.E+13 100 Terabyte 10 Petabyte 1.E-13
+1.E+14 1 Petabyte 100 Petabyte 1.E-11
+1.E+15 10 Petabyte 1 Exabyte 1.E-09
+Table 1. Collision Probability using the M naming scheme
+Such numbers are sufficiently la rge that it s difficult to get
+a sense of magnitude. Using time as the dimension, assume
+a hypothetical CAS applicati on capable of storing 10,000
+files per second to a Centera cluster. Using an average file
+size of 1K, writing
+15
+10 such files would take up an exabyte
+of protected storage. However, it would take several mil-
+lennia to fill up the cluster at this rate. As a point of com-
+parison, after 1,000 years of continuous operation the prob-
+ability of a CA collision using the M naming scheme is less
+than 1 in 1,000,000,000.
+In the case of a malicious user seeking to forge two arbi-
+trary files which re turn an identical
+M content address (this
+is referred to as collision resistance ), then the user must
+attempt to apply the work described in [30][31] to Centera.
+In the case of a malicious user seeking to forge a file X
+which gets an identical
+M content address as a given file X
+(this is referred to as preimage resistance ), one can at-
+tempt to apply the ideas described in [11]. Knowing that
+the maximal file size in Centera is 100Mb, we have less
+than
+21
+2 512-bit blocks in one file. We can conclude that
+on average about
+128 21 1 108
+2 2
+MD5 evaluations are
+required to forge a preimage of a given file X. Although
+this effort can happen offline, the number is sufficiently
+large to make such attacks impractical.
+5.3 Random Generators
+In order to move towards the stronger GM naming scheme,
+we need the following definitions from the HAC [2].
+Definition 6
+: A pseudorandom bit generator (PRBG) is a
+deterministic algorithm which, given a truly random binary
+sequence of length k , outputs a binary sequence of length
+lk t which appears to be random. The input to the
+PRBG is called the seed , while the output of the PRBG is
+called a pseudorandom bit sequence .
+Definition 7
+: A pseudorandom bit generator is said to pass
+the
+next-bit test if there is no polynomial-time algorithm
+which, on input of the first l bits of an output sequence s ,
+June 2005 7
+can predict the (l+1)
+st
+bit of s with probability significantly
+greater than .
+Definition 8
+: A PRBG that passes the next-bit test is called
+a cryptographically secure pseudorandom bit generator
+(CSPRBG).
+5.4 Centera with the GM naming scheme
+Although the probabilities of having collisions with the M
+naming scheme are minimal, a second naming scheme,
+called GM, was introduced which includes additional ran-
+dom bits in the resultant CA. This additional randomness
+has the effect of further reducing the probability of colli-
+sions.
+The Centera GM CA contains the following components:
+x M: a 128 bit MD5 hash based on the file content;
+x G: a 70 bit random string generated by a crypto-
+graphically secure pseudorandom bit generator;
+x T: a 35 bit timestamp, with second resolution (ac-
+tually, one unit of
+T is 1024 milliseconds);
+x C: a 10 bit counter; and
+x H: 13 bits used as header codes.
+5.4.1 Timestamp and counter
+The timestamp T significantly reduces the probability of
+collisions by effectively par titioning the entire Centera sys-
+tem into sets of files that have been written within about
+one second of each other. Incoming files are time stamped
+by the access node through which the file enters the cluster
+the first time. The timestamp
+T overflows after a little more
+than 1,000 years.
+Suppose that the peak write speed to a Centera is S files per
+second per access node. Given A access nodes in a Centera,
+we conclude that the upper bound for the number of files
+having identical timestamp
+T is equal to . AS
+Every access node in Centera maintains a 10-bit counter
+C
+which is increased for every ne w file stored on the system.
+The value of this counter
+C is randomized across the access
+nodes and
+repeats after each 1,024 files stored through the
+access node. An upper bound for the number of files hav-
+ing both identical timestamp
+T and identical counter C is
+(5.5).
+10 10
+22
+AS AS
+AA
+|
+(5.5)
+This formula holds for S larger than A , which is always the
+case. For very large values of S , the addition of A can be
+omitted as having minor impact on the result. Note that the
+A term is due to a quantization effect because it is not pos-
+sible to split documents into pieces for access node proc-
+essing (e.g., when 1025 documen ts are assigned C values
+from the 1024 possibilities, at least one value will be as-
+signed to at least 2 documents).
+5.4.2 Applying the Birthday Paradox
+In order for a collision to occur using the GM naming
+scheme, all components
+M.G.T.C.H of the blob address
+must be identical for two distinct files.
+In 5.4.1 we showed that the impact of the timestamp
+T
+and counter C effectively limits the si ze of the set in which
+we can have collisions, to approximately
+10
+/2 AS files
+(assuming that S is much larger than A ).
+The component
+H is non-random, hence it does not help to
+reduce the probability of collisions.
+The components
+M and G are fully random and add up to
+128+70=198 bits (see 5.2 for the randomness of
+M and
+5.4 for the randomness of
+G ).
+Applying the birthday paradox to a set of
+10
+/2 AS balls
+thrown into
+198
+2 buckets, we end up with the probability
+of a collision with the GM naming scheme indicated in
+(5.6).
+22
+20 198 219
+() ()
+222 2 AS AS
+(5.6)
+The number of possible combinations (
+T , C ) over a large
+time interval is equal to the number of milliseconds in that
+time interval.
+If we run a Centera system for a period of Z milliseconds,
+then for large values of Z, the probability of experiencing a
+collision during these Z milliseconds is indicated in (5.7).
+2
+219
+()
+2
+AS
+Z
+(5.7)
+5.4.3 Collision Probability with GM
+In a typical Centera setting, an upper bound for A is 100
+different access nodes, and an upper bound for S is 10,000
+small files per second per access node. Running this ex-
+periment for 1,000 years, we get
+13
+3.15 10 Z millisec-
+onds . Feeding this into equation (5.7) we end up with the
+probability described in th e equation (5.8) below.
+2
+219
+41
+(100 10, 000)
+2
+410 Z
+u
+|
+(5.8)
+In short, the probability of a collision in the GM naming
+scheme is
+41
+~4 10
+assuming an ingestion rate of
+1,000,000 files/second over a period of 1,000 years. Note
+that this is an extraordinar ily high ingestion rate over a
+long period of time. In the practical usage of Centera, the
+June 2005 8
+collision probability will be several orders of magnitude
+smaller.
+To help put this into persp ective, the probability of a CA
+collision is less likely than a bit error on disk (the non-
+recoverable Bit Error Rate (BER) of a typical ATA disk is
+~1 for every
+15
+10 bits read). As mentioned in 1, in addi-
+tion to using the CA as an object handle, Centera uses the
+CA as an MDC. Therefore, in the event of a bit error on
+disk, Centera will detect this error via a background task
+that periodically checks the valid ity of a file image on disk
+against its CA. In the event a manipulation is detected,
+Centera will automatically replace the bad file with a good
+copy, thus insuring data integrity over the life of the ar-
+chive.
+In the case where a malicious us er wishes to forge two ar-
+bitrary files which re sult in an identical
+GM content ad-
+dress (CA), the user needs to mount an online attack
+against a Centera system. One strategy would be to start
+from a known
+M collision (as describe d in [30]) and at-
+tempt to write the colliding f ile to all access nodes simulta-
+neously within the same millis econd. In this way the at-
+tacker would seek to get some control over the M.T.C.H
+components of the
+GM content address (cf. 5.4). Within
+that millisecond, the user would attempt to write to A ac-
+cess nodes in parallel and hope for a collision in the 70-bit
+G component. Since A is typically very small (less than
+100), coupled with the time it would take to perform the
+writes, it would take millions of years before such an attack
+is successful.
+For the same reasons, forging a second preimage in an at-
+tempt to overwrite an existing
+GM file, is infeasible.
+5.5 Centera with the M++ naming scheme
+As discussed in 5.4, the GM naming scheme as imple-
+mented does not allow for single-instance store
+2
+. For those
+applications that would like to retain this ability, but use a
+stronger naming scheme than
+M , a third naming scheme
+was created. This 256-bit naming scheme, called
+M++ , is
+constructed by the concatenation of 128 bits of MD5, 8 bits
+of formatting and 120 bits of SHA-256. The calculation of
+object names in this naming scheme requires more CPU
+cycles due to the introduction of the extra hash function
+evaluation.
+Joux demonstrates that, contrary to Fact 9-27 in [2], the
+concatenation (or cascading ) of two iterated hash func-
+tions is only as strong as the st rongest of the two hash func-
+tions [1]. The following results apply to the
+M++ naming
+scheme.
+2
+More precisely, GM as pres ently implemented does not al-
+low identical objects to have identical names. The function , sin-
+gle-instance store, is anticipated to be activated for the GM
+naming scheme in a later release of CentraStar.
+When writing M++ objects to a Centera, collisions become
+likely after 2
+124
+objects have been stored on the system (cf.
+the
+M naming scheme where this number is 2
+64
+). This can
+be validated by looking at formula
+(5.2) and substituting q
+with 2
+124
+and N with
+120 128 248
+22
+to reach a collision
+probability of 50%.
+After 1,000 years of continuous operation, a hypothetical
+CAS application capable of storing 10,000 files per second
+on a Centera system would have stored
+14
+3.15 10
+files.
+This results in a collision probability of 10
+-46
+for the M++
+naming scheme (cf. 10
+-9
+for the M naming scheme). This
+can be validated by looking at formula
+(5.2) and substitut-
+ing q with
+14
+3.15 10 and N with
+120 128 248
+22.
+A malicious user wishing to induce a collision for
+M++
+will need to calculate ~2
+67
+SHA-256 hash function evalua-
+tions. Potential future optimi zations of the MD5 attacks
+described in [30] have no impact on this result. This result
+is achieved as follows. On e can try to create a 2
+60
+-fold mul-
+ticollision for MD5 using the techniques of Wang et al.
+[30] combined with the ideas of Joux [1]. This requires
+about 60 times more work than creating a single collision.
+The length of the resulting file will be at least 120 blocks
+of MD5, i.e. 7,680 bytes. Next, one searches within this
+space of 2
+60
+files for a collision for the leftmost 120 bits of
+SHA-256. One expects to find such a collision by the
+birthday paradox. The effort required is
+60 67
+120 2 2
+|
+<
+evaluations of SHA-256.
+In case a malicious user wants to forge a second preimage
+in an attempt to overwrite an existing
+M++ file, we can use
+the ideas outlined in [11] to s how that an effort of about
+119
+2 SHA-256 evaluations is required.
+5.6 Summary of naming schemes
+The introduction of the GM and M++ naming scheme il-
+lustrates the flexibility of the Centera architecture, specifi-
+cally designed to allow for seamlessly switching amongst
+naming schemes. Cryptography will continue to evolve,
+and due to the high importance in the commercial and mili-
+tary world, hash functions will be under continuous scru-
+tiny. Therefore, it is important that Centera is able to adapt
+its content addressing schemes to reflect the state of the art
+in cryptology.
+Table 2 summarizes the stre ngth of the various naming
+schemes.
+The second column estimates th e number of files that need
+to be written to a Centera syst em before collisions become
+likely.
+The third column lists the effort required for an attacker to
+forge a collision, i.e. to forge two files X and X , which
+result in the same content addr ess on a Centera. Note that
+this is not the same as starting with a file X, and creating a
+second file X which has the same content address.
+June 2005 9
+The fourth column lists the e ffort required for an attacker
+to forge a second preimage. For th is the attacker starts with
+a file X and its content address, and the intent is to forge a
+second file X which gets the same content address on a
+Centera.
+Note that for the
+M and M++ naming schemes, an attacker
+could attempt to create a collision or a second preimage
+offline. However, for the
+GM naming scheme, all attacks
+need to happen online since the attacker has no control
+over the 70 bits random
+G part of the content address. This
+effectively makes attacks against
+GM infeasible, since it
+would take millions of years to execute these attacks.
+Number of files
+beyond which
+collisions
+become likely
+Work required
+to forge file
+collision
+Work required
+to forge
+2
+nd
+preimage of
+a given file X
+M
+2
+64
+files stored O (1)
+3
+O (2
+108
+)
+GM
+Not possible Not possible Not possible
+M++
+2
+124
+files stored O (2
+67
+) 2
+119
+Table 2. Summary of naming schemes
+6 Conclusion
+In this paper we have descri bed basic principles of opera-
+tion for iterative hash functions in general and MD5 in par-
+ticular. We then described the naming schemes used within
+Centera and mapped the properties described earlier to the
+Centera Content Address (CA). We demonstrated the like-
+lihood of a CA collision in a Centera cluster. Finally, we
+concluded that hash functions will continue to evolve, and
+that the Centera system is arch itected to quickly adjust its
+naming scheme strategy to the latest insight in the relative
+strengths of cryptogr aphic hash algorithms.
+7 Acknowledgements
+The authors would like to acknowledge Prof. Bart Preneel
+for his extensive help in writing this paper, and David
+Black for his help in derivi ng the proper function for com-
+puting collision probabilities when using the GM naming
+scheme.
+We would also like to thank reviewers of early drafts of
+this paper for their time and useful comments. Specifically:
+Dirk Nerinckx, Jiri Schindler, Geert Denys, and Kristof
+Van Belleghem.
+8 References
+[1] A. Joux, Multicollisions in iterated hash functions. Applica-
+tion to cascaded constructions , Advances in Cryptology
+Crypto 04, Lecture Notes in Computer Science 3152, M.
+Franklin, Ed., Springer-Verlag, 2004.
+3
+For simplicity assume MD5 collisions are available from [30].
+[2] A. Menezes, P. van Oorschot, S. Vanstone. Handbook of
+Applied Cryptography , CRC Press, 1997.
+[3] B. den Boer, A. Bosselaers. Collisions for the compression
+function of MD5 , Advances in Cryptology Eurocrypt 93,
+Lecture Notes in Computer Science, vol. 773, Springer-
+Verlag, 1994, pages 293 304.
+[4] B. Kaliski, M. Robshaw. Message Authentication with MD5 ,
+CryptoBytes, Vol 1, Number 1, Spring 1995.
+[5] B. Preneel. Analysis and Design of Cryptographic Hash
+Functions , PhD Thesis, Katholieke Universiteit Leuven Bel-
+gium, 1993.
+[6] B. Preneel. Cryptographic Primitives for Information Au-
+thentication State of the Art , State of the Art in Applied
+Cryptography 1997, LNCS 1528, Springer-Verlag, 1998,
+pages 49 104.
+[7] B. Schneier. Applied Cryptography: Protocols, Algorithms,
+and Source Code in C , 2
+nd
+Edition, Wiley & Sons, Inc.,
+1996.
+[8] EMC
+2
+. Centera Data Sheet , s.a.,
+www.emc.com/pdf/products/ centera/centera_ds.pdf
+[9] EMC
+2
+. Centera Product Description Guide , s.a.,
+www.emc.com/pdf/products/ centera/centera_guide.pdf
+[10] National Institute of Standards and Technology (NIST),
+FIPS Publication 180-2, Secure Hash Standard (SHS), Au-
+gust 2002
+http://csrc.nist.gov/publicati ons/fips/fips180-2/fips180-2.pdf
+[11] J. Kelsey, B. Schneier. Second Preimages on n-bit Hash
+Functions for Much Less than 2
+n
+Work , s.a.,
+http://eprint.iacr.org/2004/304.pdf
+[12] H. Dobbertin. The Status of MD5 After a Recent Attack ,
+CryptoBytes, Vol 2, Number 2, pages 1 6, 1996.
+[13] H. Dobbertin. RIPEMD with two-round compress function is
+not collision-free , Journal of Cryptography, s.a.
+[14] H. Handschuh, H. Gilbert. Security Level of Cryptography
+SHA-256 , Proceedings of SAC 2003, s.a.
+[15] I.B. Damg rd . A design principle for hash functions , Ad-
+vances in Cryptology: Proceedings of Crypto 89, volume
+435 of Lecture Notes in Computer Science, pages. 416
+427. Springer-Verlag, New York, 1990.
+[16] M. Bellare, R. Canetti, H. Krawczyk. Keying Hash Func-
+tions for Message Authentication , Advances in Cryptology
+Crypt 96 Proceedings, LNCS Vol 1109, Springer-Verlag,
+1996
+[17] P. Rogaway, T. Shrimpton. Cryptographic Hash-Function
+Basics: Definitions, Implicati ons, and Separations for Pre-
+image Resistance, Second-Preimage Resistance, and Colli-
+sion Resistance , Lecture Notes in Computer Science,
+Springer-Verlag, 2004.
+[18] R. Canetti, D. Micciancio, O. Reingold. Perfectly One-Way
+Probabilistic Hash Functions , Proceedings of STOC 98,
+pages 131 140, ACM Press, s.a.
+[19] RIPE. Integrity Primitives for Secu re Information Systems,
+Final Report of RACE Integr ity Primitives Evaluation
+(RIPE-RACE 1040) , LNCS 1007, A. Bosselaers, B. Preneel,
+Eds., Springer-Verlag, 1995.
+June 2005 10
+[20] R. Primmer. Efficient Long-Term Data Storage utilizing
+Object Abstraction with Content Addressing , August 2003.
+http://powerlink.emc.com/HighFreq/P_PL_h1050_efficient_long_ter
+m_data_storage_utilizing_c ontent_addressing_ldv.pdf
+[21] R.L Rivest. RFC 1320: The MD4 Message-Digest Algorithm ,
+IETF, 1992.
+[22] R.L Rivest. RFC 1321: The MD5 Message-Digest Algorithm ,
+IETF, 1992.
+[23] R.L. Rivest. The MD4 Message Digest Algorithm , Advances
+in Cryptology Crypto 90, Lecture Notes in Computer Sci-
+ence, volume 537, pages 303 311, Springer-Verlag, 1991.
+[24] R. Merkle. One-way hash functions and DES , Advances in
+Cryptology: Proceedings of Crypto 89, volume 435 of Lec-
+ture Notes in Computer Scie nce, pages 428 446. Springer-
+Verlag, New York, 1990.
+[25] S. Bakhtiari, R. Safavi-Naini, J. Pieprzyk. Cryptographic
+Hash Functions: A Survey , Center for Computer Security
+Research, Department of Comput er Science, University of
+Wollongong.
+[26] S. Goldwasser, M. Bellare. Lecture Notes in Cryptography ,
+MIT and UCSD, August 2001, pages 242 243.
+[27] S. Singh. The Code Book The Science of Secrecy From
+Ancient Egypt to Quantum Cryptography , Anchor Books,
+September 2000.
+[28] S. Friedl. An illustrated Guide to Cryptographic Hashes , s.a.,
+http://www.unixwiz.net/techtips /iguide-crypto-hashes.html
+.
+[29] X. Lai, J.L. Massey. Hash functions based on block ciphers ,
+Advances in Cryptology, Proceeding Eurocrypt 92, LNCS
+658, Springer-Verlag, 1993, pages 55-70.
+[30] X. Wang et al . Collisions for Hash Functions MD4, MD5,
+HAVAL-128 and RIPEMD , August 2004, Crypto 2004 Rump
+Session, http://eprint.iacr.org/2004/199.pdf
+[31] X. Wang et al. How to Break MD5 and Other Hash Func-
+tions , s.a., http://www.infosec.sdu.edu.cn/paper/md5-
+attack.pdf
+[32] X. Wang et al. Cryptanalysis of the Hash Functions MD4
+and RIPEMD , s.a.,
+http://www.infosec.sdu.edu.cn/paper/md4-ripemd-attck.pdf
+[33] X. Wang et al. Collision Search Attacks on SHA-1 , February
+13, 2005, http://theory.csail.mit.edu/~yiqun/shanote.pdf
+c
+( )
+u u v>v v wVw x xnx y*y y zFz { {c{ |!| | }A} ~ ~b~ # G k 0 W G r ; i 3 d 0 c 1 f 6 n ? z M _ 4 u L $ h B d @ i G & v V 8 n R 7 u D - u ` K 8 % y h Y J ; . ! z p g _ X Q K F A = : 8 6 5 5 6 7 9 < ? D I N U d l v @ X r 4 P m 8 W w
+loca e U ,maxp vX name ] o prep 8 C { s0 o * H `0 1 0 * H 0` + 7 R0P0, + 7 < < < O b s o l e t e > > >0 0 * H s} T gi 0 0 % J 8 Y ]s_ ] 0 * H 0 1 0 U VeriSign Trust Network1 0 U VeriSign, Inc.1,0* U #VeriSign Time Stamping Service Root1402 U +NO LIABILITY ACCEPTED, (c)97 VeriSign, Inc.0 970512000000Z 040107235959Z0 1 0 U VeriSign Trust Network1 0 U VeriSign, Inc.1,0* U #VeriSign Time Stamping Service Root1402 U +NO LIABILITY ACCEPTED, (c)97 VeriSign, Inc.0 0 * H 0 . h|,-. W S u 3* [4 Z % }X sjx q X
+] ( y) gBH a S s? O U cc0 0 k zmob O C 0 * H 0 1 0 U VeriSign Trust Network1 0 U VeriSign, Inc.1,0* U #VeriSign Time Stamping Service Root1402 U +NO LIABILITY ACCEPTED, (c)97 VeriSign, Inc.0 010228000000Z 040106235959Z0 1 0 U VeriSign, Inc.1 0 U VeriSign Trust Network1;09 U 2Terms of use at https://www.verisign.com/rpa (c)011'0% U VeriSign Time Stamping Service0 "0 * H 0 za c + a = ' 9 h @ F: ?6 L TBZze{ GT = 3 * ^: .u k = ` B O [ ?"1 s + F Lm P. K*x t= ,G1 0 0@ + 40200 + 0 $http://ocsp.verisign.com/ocsp/status0 U 0 0D U =0;09 ` H E 0*0( + https://www.verisign.com/rpa0 U % 0 + 0 U 0 * H - Oc`, $ R g # F M |z 02 h 2 ; '{> ! @W % j ; # )]@U S 6:9e ss 2 < E $ c A j 0 0 << > c @0 * H 0p1+0
+c
+c
+9 I B lUa | `-wL d; P 1 $ + = c `X e 7R UE : T N zmtN (! W `i7 K <V [ f VW ;^ w r< "0 w 0 0 U 0 [ p ir #Q~ M r0p1+0) U "Copyright (c) 1997 Microsoft Corp.1 0 U Microsoft Corporation1!0 U Microsoft Root Authority << > c @0 * H 5 $ w `2 > : ! W , G b ;;Z 6Ti $m? | 1 = pj O i C Z O b{ +7%- e % c T ! R nC2 gl Q R 0 1 ~ 7, z w v j? 6 A 5j j 5 E Z38nM b T?F U p : u 0 0 j O @ 0 * H 0p1+0
+c
+c0 $0 U % 0 + 0 U 0 [ p ir #Q~ M r0p1+0
+c0 + 7 S u b C A0 U F0 U 0 0 * H EX A Hww W _ Ej9Y ' -M 8 8d"B /* * | Q = " m D_d d , 7J a vv % $ VT :> Ky_ I ^2i: T uM d 0< dID Bq =E k B V * N U ' p l T K fz G 1 S=* sH 'C c $ [ 6 1 2 ^ yz 0 i J TY0 0 a C 40 * H 0 1 0 U US1 0 U Washington1 0 U Redmond1 0 U Microsoft Corporation1+0
+c
+c
+t r0p1+0
+c C zH] @ln ! /: q h# } G + X l_ , o # < Et o + V e3 gN K ` fG] ,p {N n b B | # M{' o& h ? # 1 #0 0 0 1 0 U US1 0 U Washington1 0 U Redmond1 0 U Microsoft Corporation1+0
+c 1 0 * H 1 + 7 0 + 7 1 0 + 7 0 * H 1 c:$ o/ ] M 04 8 E{Xq n i * K $ E p 9 K C l S / C H , + % ( % $ H ' j $ b | ! ` 4 k ; K k M y l e . C & = N a e { 1 @ ' B N + + I _ 5 K u z 1 1 ) U K Y 0 ? * X 0 Y " t t 2 M d * * ~ W 8 Q Z o v w ~ z & B K O Q S d 1 8 N R g ! q 6 : # W h l ~ & - 0 ; D D D G X u
+M e j / " _ C K w ( _ E ` { d ] O ^ F 2 < Z , A I q H @ @ } : > j P H ) j i L i C R _ g S * v 6 Y V + 4 H H % > S ? ( " b J m H 3 N F p y Q h l O % @BUT@?>=<;:9876543210/.-,+*)('&%$#"! ,E#F` &` &#HH-,E#F#a &a &#HH-,E#F` a F` &#HH-,E#F#a ` &a a &#HH-,E#F` @a f` &#HH-,E#F#a @` &a @a &#HH-, < <-, E# D# ZQX# D#Y QX# MD#Y QX# D#Y!!-, E hD ` E Fvh E`D-, C#Ce -, C#C -, #p > #p E: -,E #DE #D-, E %Ead PQXED !!Y-, Cc#b #B +-, E C`D-, C Ce -, i @a , b`+ d#daX aY-,E + #D z -,E + #D-, CX E + #D z E i #D QX + #D z ! z YY -, %F` F @a H-,KS X YX Y-, %E #DE #DEe#E %`j #B#h j`a Ry! @ E TX#! ? #YaD Ry @ E TX#! ? #YaD-, C#C -, C#C -, C#C -, C#Ce -, C#Ce -, C#Ce -,KRXED !!Y-, %#I @` c RX# %8# %e8 c8 !!!!!Y -,K dQXEi C` : !! Y-, % # `# -, % # a# -, % -, ` < <-, a < <-, ++ **-, C C -,> **-,5-,v #p E PX aY:/ -,!! d#d @ b-,! QX d#d b @/+Y `-,! QX d#d Ub /+Y `-, d#d @ b`#!-, & & & & Eh: -, & & & & Ehe: -,KS#KQZX E `D !!Y-,KTX E `D !!Y-,KS#KQZX8 !!Y-,KTX8 !!Y-, KS#KQZ % % %I#E iRZX % % %F#Ei`HY!!!-, CX Y-, CX Y-,KT CZX8 !!Y-, CX % % d#dad QX % % F `H F `HY !! !!Y-, CX % % d#dad QX % % F `H F `HY !! !!Y-,KS#KQZX :+ !!Y-,KS#KQZX ;+ !!Y-,KS#KQZ CZX8 !!Y-, KT & KTZ CZX8 !!Y-,F#F` F# F ` a b# # X X pE` PX a F Y `h :-, B # Q @ SZX TX C`BY $ QX @ TX C`B $ TX C`B K KRX C`BY @ TX C`BY @ c TX C`BY @ c TX C`BY @ c TX @ C`BYYYYY-, CTXKS#KQZX8 !!Y !!!!Y- ! E W t & 9 D % l H 9 K q Q T . % n S 9 J , S b X L | Q 9 9 % % % ^ a V " V J # * s ! H # 3 * " ) " H s " H V # s > 9 K % v I F D L O = 9 < 9 c 9 = 9 E D d 9
+(.2 A ~ @ $&2 d 2A d 2 As o / O / o T k j " v u t u s A 0 0 @ l l 2 m l 2 } !#2 } 2 A } } } } | !#2 | 2 A- | | | | 0 s @ s s s s s s s s s s s s w j ) j ( @ g 9@2? f @ f 2 f @ f 2@ f 2@ f 2? e @ e 2@ e 2@ e 2kA c { c c $ c 4 c D c c $/ N m @ 0D 2 P - < @) _< 7` p 0 @ P o / ? O _ :3 @G :3 0 @ P ` p ` p 0 @ P A b b b p b b _ ^ _ 0 _ @ ^ ^ _ _ ^ _ 0 P ` p 0 ' 0 J ' P 0 P ` 0 @ @a'
+L L L L _LoL L 7 +02 "%2 27 A; _ / ? o / ? O _ ? _ _ ? @ :3OAJ _ / ? ? O _ / ? Z Z Z ? Z _ Z p Z W W W W p W W Z Z W W ,@ 1 A J J J J ? J $@ J J J J 'J ( A A !@ A A OA )A A ! ! ! ! N ! ,@ ! ! ! ! ! q! =! A J &@ W 7 A A B A A A D D <
+%EDYX %ERX % DYY+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++eB+++++++++++++++++++++++++++++++++++++++++++ a dcEe#E`#Ee`#E` vh b d Ee#E &`bch &ae #eD d#D acEe#E &`bch &ae c#eD a#D cETX c@eD a@aE#aDY CKEe#E`#Ee`#E` vh b C Ee#E &`bch &ae #eD C#D KEe#E &`bch &ae K#eD #D KETX K@eD @ E#aDYKRB KPX BYCX BY CX` !YB p> CX ;! ~ +Y #B #B CX -A-A +Y #B #B CX ~;! +Y #B #B + EiDEiDEiDEiDssstssstuu+ssttu EiDsst+K !SK FQZX < <E @`DY ++++uuuuuuuuCX@ < < o< < < < < uuYCX@ " " _"o" " " " " uuYCX @< " " uY++ ttttEDssttuuEDsEDstEDstusssss uuusuuu++uuuu+u+CXA" c - - - # - 3 - S - - - - - - - - - - -E iDttuuY+CX 2 0528 2 af28 2 SZ28 2 EN28 2 <A2 2 ?3 A 2 2 2 2 2 2 2 2E iDtu++++++Ys s+ +uu +++t +++s+t + ++ ssstts++ s++ +++ sts+ ++ ++++++++++++++ su ss EiD ss st+++++s+ s+u++s++++++++++ M 45 ' |% 4% ' - 4 ' | '@: 4? 0 @ 69( )
