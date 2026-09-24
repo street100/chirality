@@ -17,6 +17,7 @@ none.
 | # | run | landed |
 |---|---|---|
 | 1 | route the eight unowned defects found 2026-09-21 to 2026-09-23 | `285c219` |
+| 13b | whether randomized hashing reaches content addressing. **FD-52.** It does not: eTCR's adversary commits before the key is sampled, Halevi-Krawczyk answer the publisher case with a liability rule, and NIST states it as a limit. Chunk and leaf binding separates domains and raises no bound. The one context-bound content address buys it with an issuer | pins at `8bdb033`; `FD-52` in the author's tree |
 | 3 | the post-quantum sizes, pinned to FIPS 203, 204, 205 and the FALCON spec. **FD-50.** The radio profile fits classically with 110 B of slack, and is unreachable under PQ at every parameter set: ML-KEM-512's 768 B ciphertext alone is 268 B past the whole 500 B MTU. **A 64-byte mark moves no profile total** | pins committed; `FD-50` left in the author's working tree |
 
 ## Queued, in order
@@ -36,6 +37,12 @@ none.
 | 11 | amend the blocked-egress premise. ⚑ **Measured 2026-09-24: raw egress works.** `curl` to rfc-editor returns 200 and DNS resolves from the shell | `revisit` | `docs/decisions/decision-inspiration-policy.md` |
 | 12 | **audit each settled crypto ruling against `PRINCIPLES.md`.** `T1` was audited by hand 2026-09-23 and came back supporting principles 1, 2 and 5 and in tension with 3 and 4, and the tension was real enough to force a measurement. `T9`, the maximize ruling, and every design this arc settles owe the same pass | `revisit` per ruling | the ruling's own file, and a `records/` row |
 | 13 | the unconfident areas, one research run each: whether two hops' pre-issued tag sequences for one route are independent, which the whole unlinkability claim rests on and no file states; whether randomized hashing has ever been applied to content addressing, and what is done about the publisher-as-adversary case | `research` | `FD` rows |
+
+## Owed, found while running
+
+| what | where |
+|---|---|
+| **`ledger-lint` check AM is vacuous and silently became so.** `check_am` shells to `tools/xlat/xlat.sh unpinned` under `subprocess.run(timeout=180)` and converts any exception to `Vacuous`. At 660 pins the tool exceeds that, so the check reports having checked nothing. Three checks now check nothing: H, M, AM. `docs/definitions/working-discipline.md` names a gate that cannot fail as the cardinal error | a `PRB` row, and a tool fix. Neither written |
 
 ## Blocked on the author
 
