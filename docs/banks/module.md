@@ -434,8 +434,8 @@ rounded to done or to undone.
    `def` becomes a label in ONE flat emitted namespace, and two co-blobbed modules
    defining the same internal name collide. This is not the design-tier namespace
    phantom §4 refutes — it is a codegen-tier defect, and it is live: hand-patched
-   three times (`gate.chiral` `str-contains`→`gate-contains`, E140; `turn.chiral`
-   `ok2xx`→`agent-ok2xx`, scriba S15; `TUI/scriba/cmd-types.chiral:2` inlining
+   three times ⚑ *(stale: thirteen over sixteen files, measured 2026-09-23 by the `lowering-and-emit/LE18` design and confirmed at its audit)* (`gate.chiral` `str-contains`→`gate-contains`, E140; `turn.chiral`
+   `ok2xx`→`agent-ok2xx`, scriba S15; `prog/scriba/cmd-types.chiral:2` *(⚑ read `TUI/scriba/…` until 2026-09-24)* inlining
    `lookup-scribaop` "to avoid B1 label issue"). It has a second-order cost: modules
    write prefixed clones of shared helpers rather than importing them, which is the
    mechanical root of the stdlib altitude leak

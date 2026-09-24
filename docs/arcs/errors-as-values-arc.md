@@ -155,7 +155,7 @@ to `unminted`: this arc holds no band.
 | `errors-as-values/EV9` | `lib/lowering/tal/erase.chiral:26-31`: six carriers all carrying `(reason Str)`, 38 construction sites, 12 rebuild sites. The **first row inside** the closure, so it is the first to owe the three-generation fixpoint build | adoption | primitive | connect | 1, 2, 4 | open | `unminted` |
 | `errors-as-values/EV10` | `lib/surface/parse.chiral`: `MfR` at `:750` adopts `EV1` with **zero** classification work, being already the target shape, and `StepR`'s `step-err` (15 arms / 79 sites) classifies beside it. 69 rebuild sites, the highest count in the tree. Inside the closure | adoption | primitive | bind | 1, 2, 3 | open | `unminted` |
 | `errors-as-values/EV11` | `lib/surface/surface.chiral:23-25` `PR`/`p-err`: 38 arms over 279 sites, 32 rebuild sites. The largest boundary in the tree and the row that settles whether `EV1`'s error slot needs a constraint. Inside the closure, and **last** | adoption | primitive | bind | 1, 2, 3 | open | `unminted` |
-| `errors-as-values/EV12` | the census becomes a check: a two-arm ok/err sum whose error arm is exactly one `Str` field fails it. Reads 30 today. Registers as a suite phase or as a `ledger-lint` check, and that placement is part of the row | gate | tool | new | 5 | open | `unminted` |
+| `errors-as-values/EV12` | the census becomes a check: a two-arm ok/err sum whose error arm is exactly one `Str` field fails it. Reads 30 today. Registers as a suite phase or as a `ledger-lint` check, and that placement is part of the row | gate | tool | new | 5 | minted | `E201` |
 
 ### Coverage
 

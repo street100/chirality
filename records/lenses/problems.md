@@ -1345,6 +1345,7 @@
 - evidence: re-runnable: `sed -n '80p;93p' prog/scriba/window.chiral` returns the two `(true (pair r r))` arms; `sed -n '100p' prog/scriba/window.chiral` returns the remainder comment; `grep -c '^(def ' prog/scriba/window.chiral` returns 25; `grep -rn 'scriba/window' --include='*.chiral' --include='*.prog' . | grep -v '^./prog/scriba/window.chiral'` returns nothing. `FD-45` (`records/findings.md:807`) found the violation while pricing the partition arm; `FD-44` (`:763`) is the row that needed the precedent.
 - checked:  2026-09-23
 - owner:    unrostered. ⚑ **The fix is not a cleanup and is deliberately not taken here.** Whether a degenerate split refuses rather than overlapping, and whether `rect-split-n` refuses a non-dividing `n` rather than leaving cells unused, is the partition-against-order fork `records/author-calls.md` carries for the display layer under *Whether a display region partitions or merely orders*. `FD-44` measured that no surveyed system takes the partition side and `FD-45` measured that the arm is constructible by making the gap a member of the child list. Rewriting an unreached guard before that fork is ruled would take the author's decision in code.
+- from:     none
 
 ### PRB-96 the reach model rests its anonymity claim on a precedent whose own pinned specification refutes it
 

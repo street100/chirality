@@ -3,7 +3,8 @@
 # compiler emits: EN-24's three numbers, re-derived and pinned.
 #
 # not-a-phase: this gate takes no suite phase number. Which number a new gate
-#   takes is the standing author call in records/author-calls.md -- phases 8-12
+#   takes is RULED (2026-09-06; run-tests.sh:347-353), and this header is stale
+#   -- PRB-93 records it.  What follows is the reasoning as it stood: phases 8-12
 #   are owed to unported old-tree phases, decision-lane-split reserves 21-23 for
 #   Lane B, four documents disagree, and this lane holds no band. The route is
 #   the one crypto.sh, tal-check.sh, apply-word.sh, capture-fields.sh,

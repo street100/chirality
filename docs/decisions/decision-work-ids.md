@@ -13,7 +13,12 @@ updated: 2026-09-01
 ## The problem
 
 `E#` is the only citable unit of work in this tree, and minting one needs a
-reserved band. `docs/decisions/decision-lane-split.md` reserves two bands and
+reserved band. ⚑ **That sentence states the problem as it stood and is no longer
+the rule, noted 2026-09-24.** [[decisions/decision-lane-split]] carries the
+author's 2026-09-06 overlap ruling, *"an arc with no band still mints. It takes
+the next free number"*, and `tools/pack/pack.py --mint` implements it: minting
+`E201` on 2026-09-24 printed *"band E184-E189 is full; taking the next number
+free tree-wide"*. Read the rest of this file under the later ruling. `docs/decisions/decision-lane-split.md` reserves two bands and
 nothing else, so five arcs of eight cannot mint an element. Their work writes
 `UNASSIGNED`, which is anonymous: it cannot be cited, counted, given a state, or
 pointed at from another document.
