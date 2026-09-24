@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Keccak Team</title>
+
+    <base href="https://keccak.team/" />
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="shortcut icon" href="assets/img/favicon.png" />
+
+    <meta name="description" content="">
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="assets/css/preload.css">
+    <link rel="stylesheet" type="text/css" href="fonts/fonts.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/vendors.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style-blue.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/width-full.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/highlight/xcode.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style.css">
+
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="assets/js/html5shiv.min.js"></script>
+        <script src="assets/js/respond.min.js"></script>
+    <![endif]-->
+
+    <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+    });
+    </script>
+</head>
+
+<!-- Preloader -->
+<div id="preloader">
+    <div id="status">&nbsp;</div>
+</div>
+
+<div class="sb-site-container">
+<div class="boxed">
+
+<header id="header-full-top" class="hidden-xs header-full">
+    <nav class="top-nav">
+        <ul class="top-nav-social hidden-sm">
+            <li><a href="news.atom" class="animated fadeIn animation-delay-6 rss"><i class="fa fa-rss"></i></a></li>
+            <li><a href="https://twitter.com/KeccakTeam" class="animated fadeIn animation-delay-7 twitter"><i class="fa fa-twitter"></i></a></li>
+            <li><a href="https://github.com/KeccakTeam" class="animated fadeIn animation-delay-8 git"><i class="fa fa-github"></i></a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="header-full-title">
+            <h1 class="animated fadeInRight"><a href="index.html">Team <span>Keccak</span></a></h1>
+            <p class="animated fadeInRight">
+            Guido Bertoni<sup>3</sup>, Joan Daemen<sup>2</sup>, Seth Hoffert, Silvia Mella<sup>2</sup>, Michaël Peeters<sup>1</sup>, Gilles Van Assche<sup>1</sup> and Ronny Van Keer<sup>1</sup><br />
+            <sup>1</sup><a href="http://www.st.com/">STMicroelectronics</a> - <sup>2</sup><a href="http://www.ru.nl/english/">Radboud University</a> - <sup>3</sup><a href="https://www.securitypattern.com/">Security Pattern</a>
+            </p>
+        </div>
+    </div>
+</header> <!-- header-full -->
+<nav class="navbar navbar-default navbar-header-full navbar-dark yamm navbar-static-top" role="navigation" id="header">
+    <div class="container">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="sr-only">Toggle navigation</span>
+            <i class="fa fa-bars"></i>
+            </button>
+            <a id="ar-brand" class="navbar-brand hidden-lg hidden-md hidden-sm" href="index.html">Team <span>Keccak</span></a>
+        </div> <!-- navbar-header -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li><a href="index.html">Home</a></li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Design</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Schemes</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccak.html">Keccak</a></li>
+                                <li><a href="ketje.html">Ketje</a></li>
+                                <li><a href="keyak.html">Keyak</a></li>
+                                <li><a href="kangarootwelve.html">KangarooTwelve</a></li>
+                                <li><a href="turboshake.html">TurboSHAKE</a></li>
+                                <li><a href="kravatte.html">Kravatte</a></li>
+                                <li role="presentation" class="divider"></li>
+                                <li><a href="xoofff.html">Xoofff</a></li>
+                                <li><a href="xoodyak.html">Xoodyak</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Constructions</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="sponge_duplex.html">Sponge, duplex and variants</a></li>
+                                <li><a href="farfalle.html">Farfalle</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Permutations</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccakp.html">Keccak-<i>p</i></a></li>
+                                <li><a href="xoodoo.html">Xoodoo</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Analysis</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="crunchy_contest.html">Crunchy contest</a></li>
+                        <li><a href="ketje_contest.html">Ketje contest</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Implementation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Software</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="software.html">Implementations</a></li>
+                                <li><a href="sw_performance.html">Performance figures</a></li>
+                                <li><a href="binaries.html">Binaries</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="hardware.html">Hardware</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Documentation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="specifications.html">Specifications</a></li>
+                        <li><a href="papers.html">Our papers</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="figures.html">Figures</a></li>
+                        <li><a href="glossary.html">Glossary</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="archives.html">Archives</a></li>
+                    </ul>
+                </li>
+
+                <li><a href="team.html">About us</a></li>
+
+            </ul>
+        </div><!-- navbar-collapse -->
+    </div><!-- container -->
+</nav>
+
+<header class="main-header">
+<div class="container">
+<h1 class="page-title">The <span class='sc'>Keccak</span> Crunchy Crypto Collision and Pre-image Contest</h1>
+</div>
+</header>
+<div class="container">
+<p>This page specifies the challenges, defines the rules and reports on the status of the <span class='sc'>Keccak</span> Crunchy Crypto Collision and Pre-image Contest.</p>
+<p class="well well-sm"><b>Summary of the results:</b> The best preimage solution was on 5 rounds and was submitted by Xiaoen Lin, Hongbo Yu, Enming Dong, Wenhao Wu and Yantian Shen in October 2025. The best collision was on 6 rounds and was submitted by Ling Song, Guohong Liao and again Jian Guo in February 2017. Remarkably, the smaller versions are harder to break. Although they have a smaller state, they offer much less degrees of freedom, especially relative to the capacity that is the same for all versions.</p>
+
+<h1>Rules</h1>
+<p>We present challenges for reduced-round <span class='sc'>Keccak</span> instances, namely <span class='sc'>Keccak</span>[<i>c</i>=160, <i>r</i>=<i>b</i>-<i>c</i>] with <i>b</i> ≥ 200:</p>
+<ul>
+<li>The capacity is fixed to 160 bits: this implies a security level of 2<sup>80</sup> against generic collision search.</li>
+<li>The width <i>b</i> of <span class='sc'>Keccak</span>-<i>f</i>[<i>b</i>] is in {200, 400, 800, 1600}: the width values that support the chosen capacity.</li>
+<li>The number of rounds <i>n</i><sub><i>r</i></sub> ranges from 1 to 12.</li>
+<li>The submitter is free to choose the subsequence of consecutive rounds of <span class='sc'>Keccak</span>-<i>f</i>[<i>b</i>], e.g., the <i>n</i><sub><i>r</i></sub> first rounds, the <i>n</i><sub><i>r</i></sub> last rounds or <i>n</i><sub><i>r</i></sub> rounds starting anywhere. This impacts the values of the round constants in the reduced-round <span class='sc'>Keccak</span>-<i>f</i>[<i>b</i>].</li>
+</ul>
+<p>For each of these <span class='sc'>Keccak</span> instances there are two challenges:</p>
+<ul>
+<li>generating a collision in the output truncated to 160 bits;</li>
+<li>generating a pre-image of an output truncated to 80 bits.</li>
+</ul>
+<p>Solutions shall be sent to <code>all</code> <em>-at-</em> <code>keccak.team</code> with:</p>
+<ul>
+<li>subject "[CRUNCHY CONTEST] <i>n</i><sub><i>r</i></sub> rounds, width <i>b</i>, challenge type", with <i>n</i><sub><i>r</i></sub> and <i>b</i> having the corresponding values and challenge type either "collision" or "pre-image";</li>
+<li>in the body:<ul>
+<li>names and affiliations of authors;</li>
+<li>round index of the first round of the reduced-round variant of <span class='sc'>Keccak</span>-<i>f</i>[<i>b</i>];</li>
+<li>colliding messages or pre-image in hexadecimal notation;</li>
+<li>textual summary of how the result was obtained.</li>
+</ul>
+</li>
+</ul>
+<p>The prize money is distributed in the following way:</p>
+<ul>
+<li>There is one prize per challenge.</li>
+<li>For a given challenge, only the <strong>first</strong> received solution gets a prize.</li>
+<li>The prize for a challenge for <i>n</i><sub><i>r</i></sub> rounds is <i>n</i><sub><i>r</i></sub>×10 &euro;.</li>
+</ul>
+<p><span class="sc">KeccakTools</span> contains support for the validation of solutions (see file <a href="https://github.com/KeccakTeam/KeccakTools/blob/master/Sources/KeccakCrunchyContest.cpp"><code>KeccakCrunchyContest.cpp</code></a> ).</p>
+<h1>Challenges and status</h1>
+<p>We list below the challenges and the status per number of rounds.</p>
+<h2>Pre-image challenges</h2>
+<table class="table table-condensed" id="crunchyPreImage">
+<thead>
+<tr><th>Function</th><th>Pre-image</th><th>Image</th></tr>
+</thead>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/pre-r1-w200-20130306.txt">found by Joan Boyar and Rene Peralta</a></td><td><code>e9 f5 7f 02 a9 b0 eb d8 44 98</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/pre-r1-w400-20110729.txt">found by Paweł Morawiecki</a></td><td><code>d9 d6 d3 c8 4d 1a c1 d7 5f 96</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/pre-r1-w800-20110729.txt">found by Paweł Morawiecki</a></td><td><code>3f 41 9f 88 1c 42 cf fc 5f d7</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/pre-r1-w1600-20110729.txt">found by Paweł Morawiecki</a></td><td><code>0f 0a f7 07 4b 6a bd 48 6f 80</code></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/pre-r2-w200-20230822.txt">found by Xiaoen Lin, Hongbo Yu, Zhengrong Lu and Yantian Shen</a></td><td><code>02 4a 55 18 e1 e9 5d b5 32 19 </code></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/pre-r2-w400-20110729.txt">found by Paweł Morawiecki</a></td><td><code>7a b8 98 1a da 8f db 60 ae fd</code></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/pre-r2-w800-20110729.txt">found by Paweł Morawiecki</a></td><td><code>82 8d 4d 09 05 0e 06 35 07 5e</code></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/pre-r2-w1600-20110729.txt">found by Paweł Morawiecki</a></td><td><code>63 90 22 0e 7b 5d 32 84 d2 3e</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td>?</td><td><code>d8 ed 85 69 2a fb ee 4c 99 ce</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td><a href="crunchy_mails/pre-r3-w400-20170817.txt">found by Yao Sun and Ting Li</a></td><td><code>5c 9d 5e 4b 38 5e 9c 4f 8e 2e</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td><a href="crunchy_mails/pre-r3-w800w1600-20160425.txt">found by Jian Guo and Meicheng Liu</a></td><td><code>00 7b b5 c5 99 80 66 0e 02 93</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td><a href="crunchy_mails/pre-r3-w800w1600-20160425.txt">found by Jian Guo and Meicheng Liu</a></td><td><code>06 25 a3 46 28 c0 cf e7 6c 75</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td>?</td><td><code>74 2c 7e 3c d9 46 1d 0d 03 4e</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td><a href="crunchy_mails/pre-r4-w400-20241116.txt">found by Xiaoen Lin,
+Hongbo Yu, Chongxu Ren, Zhengrong Lu and Yantian Shen</a></td><td><code>0d d2 5e 6d e2 9a 42 ad b3 58</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td><a href="crunchy_mails/pre-r4-w800-20240225.txt">found by Xiaoen Lin, Hongbo Yu, Congming Wei, Le He and Chongxu Ren</a></td><td><code>75 1a 16 e5 e4 95 e1 e2 ff 22</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td><a href="crunchy_mails/pre-r4-w1600-20161211.txt">found by Meicheng Liu and Jian Guo</a></td><td><code>7d aa d8 07 f8 50 6c 9c 02 76</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td>?</td><td><code>e0 53 f9 64 4f aa b1 da 31 1b</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td>?</td><td><code>8d f4 44 09 b4 6f b8 c6 1b c4</code></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td><a href="crunchy_mails/pre-r5-w800-20251018.txt">found by Xiaoen Lin, Hongbo Yu, Enming Dong, Wenhao Wu and Yantian Shen</a></td><td><code>6e f2 61 6f eb b9 9b 1f 70 ed</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td>?</td><td><code>65 3b c0 f8 7d 26 4f 08 57 d0</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td>?</td><td><code>e5 1c 00 c4 8e d5 db 07 02 b3</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td>?</td><td><code>57 16 e7 01 ef 67 cc 04 48 b0</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td>?</td><td><code>5f 9e 63 88 4f 2e 94 f1 a1 0e</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td>?</td><td><code>d6 05 33 5e dc e7 d2 ca f4 10</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td><td><code>95 93 25 c5 67 73 a7 4a 43 c6</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td><td><code>9c ec ce 92 93 8a ea ba 26 af</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td><td><code>a4 c1 35 21 90 12 aa c8 08 ed</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td><td><code>5e 0d 17 9c 50 c2 93 0c 0d 76</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td><td><code>05 4d da f1 b9 b5 9b 9a 60 bf</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td><td><code>19 c2 d8 ff 69 e5 66 a5 07 c9</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td><td><code>f4 83 5d 80 2a ab c5 be 75 8e</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td><td><code>34 e1 81 23 29 d5 e8 9d 67 1a</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td><td><code>5e d1 a9 c1 84 eb 72 b9 45 46</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td><td><code>78 d6 58 de c5 01 ee d6 3b 1e</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td><td><code>2e dd 24 58 7f 22 5c 69 6e 61</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td><td><code>ca 18 6a 0f e1 26 ed be 2c a6</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td><td><code>c3 8f 61 8f 53 a9 6e 4f fd 53</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td><td><code>46 68 1a 4a 3a 97 5b 16 2a c4</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td><td><code>b8 6d b6 0f f7 23 18 76 6e ef</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td><td><code>df 7b f3 01 7c d3 22 a4 6c 31</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td><td><code>19 f8 e6 bc 5d 71 41 77 65 95</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td><td><code>12 9e 94 0f 63 43 00 f6 b4 14</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td><td><code>a2 49 0a 3e 68 d5 d0 2d d4 aa</code></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td><td><code>69 c9 4f 0a e8 30 40 26 b3 da</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td><td><code>20 68 65 eb 08 b4 2a 66 63 e1</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td><td><code>85 5a 86 45 96 c5 1c af 7d 3d</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td><td><code>68 ed de 13 a4 79 e1 47 71 bd</code></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td><td><code>bf 8c 82 63 a9 87 59 5b 21 c0</code></td></tr>
+<caption>Table 1: Pre-image challenges and status</caption>
+</table>
+
+<h2>Collision challenges</h2>
+<table class="table" id="crunchyCollision">
+<thead>
+<tr><th>Function</th><th>Inputs</th></tr>
+</thead>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/coll-r1-w200-20170922.txt">found by Roman Walch and Maria Eichlseder</a></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/coll-r1-w400-20110729.txt">found by Paweł Morawiecki</a></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/coll-r1-w800-20110729.txt">found by Paweł Morawiecki</a></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 1]</td><td><a href="crunchy_mails/coll-r1-w1600-20110729.txt">found by Paweł Morawiecki</a> and <a href="crunchy_mails/coll-r1r2-w1600-20110802.txt">by Alexandre Duc, Jian Guo, Thomas Peyrin and Lei Wei</a></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/coll-r2-w200-20230104.txt">found by Andreas Westfeld</a></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/coll-r2-w400-20110729.txt">found by Paweł Morawiecki</a></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/coll-r2-w800-20110729.txt">found by Paweł Morawiecki</a></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 2]</td><td><a href="crunchy_mails/coll-r2-w1600-20110729.txt">found by Paweł Morawiecki</a> and <a href="crunchy_mails/coll-r1r2-w1600-20110802.txt">by Alexandre Duc, Jian Guo, Thomas Peyrin and Lei Wei</a></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td>?</td></tr>
+<tr class=" low"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td>(closed)</td></tr>
+<tr class=" low"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td>(closed)</td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 3]</td><td><a href="crunchy_mails/coll-r3r4-w1600-20111124.txt">found by Itai Dinur, Orr Dunkelman and Adi Shamir</a></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td>?</td></tr>
+<tr class="active low"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td>(closed) <a href="crunchy_mails/coll-r4-w400w800-20130617.txt">yet found by Stefan Kölbl, Florian Mendel, Martin Schläffer and Tomislav Nad</a></td></tr>
+<tr class="active low"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td>(closed) <a href="crunchy_mails/coll-r4-w400w800-20130617.txt">yet found by Stefan Kölbl, Florian Mendel, Martin Schläffer and Tomislav Nad</a></td></tr>
+<tr class="active warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 4]</td><td><a href="crunchy_mails/coll-r3r4-w1600-20111124.txt">found by Itai Dinur, Orr Dunkelman and Adi Shamir</a></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td>?</td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td><a href="crunchy_mails/coll-r5-w800-20160711.txt">found by Kexin Qiao, Ling Song, Meicheng Liu, and Jian Guo</a></td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 5]</td><td><a href="crunchy_mails/coll-r5-w1600-20160527.txt">found by Kexin Qiao, Ling Song, Meicheng Liu, and Jian Guo</a></td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td>?</td></tr>
+<tr class="warning"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 6]</td><td><a href="crunchy_mails/coll-r6-w1600-20170226.txt">found by Ling Song, Guohong Liao and Jian Guo</a></td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 7]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 8]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 9]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 10]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td></tr>
+<tr class=""><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 11]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 40, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 240, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 640, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td></tr>
+<tr class="active"><td><span class="sc">Keccak</span>[<i>r</i> = 1440, <i>c</i> = 160, <i>n</i><sub><i>r</i></sub> = 12]</td><td>?</td></tr>
+<caption>Table 2: Collision challenges and status</caption>
+</table>
+
+<p></div></content>
+</page></p></div>
+<footer id="footer">
+    Unless otherwise specified, the contents and files within the domain keccak.team are &copy; 2008-2026
+    <a href="team.html">Guido Bertoni, Joan Daemen, Seth Hoffert, Silvia Mella, Michaël Peeters, Gilles Van Assche and Ronny Van Keer</a>.
+    <br/>
+    Webmaster: <a href="http://viguier.nl">Benoit Viguier</a>.
+</footer>
+
+</div> <!-- boxed -->
+</div> <!-- sb-site -->
+
+<div id="back-top">
+    <a href="#header"><i class="fa fa-chevron-up"></i></a>
+</div>
+
+<!-- Scripts -->
+<!-- Compiled in vendors.js -->
+<!--
+<script src="assets/js/jquery.min.js"></script>
+<script src="assets/js/jquery.cookie.js"></script>
+<script src="assets/js/imagesloaded.pkgd.min.js"></script>
+<script src="assets/js/bootstrap.min.js"></script>
+<script src="assets/js/bootstrap-switch.min.js"></script>
+<script src="assets/js/wow.min.js"></script>
+<script src="assets/js/slidebars.min.js"></script>
+<script src="assets/js/jquery.bxslider.min.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/buttons.js"></script>
+<script src="assets/js/jquery.mixitup.min.js"></script>
+<script src="assets/js/circles.min.js"></script>
+<script src="assets/js/masonry.pkgd.min.js"></script>
+<script src="assets/js/jquery.matchHeight-min.js"></script>
+-->
+
+<script src="assets/js/vendors.js"></script>
+
+<!--<script type="text/javascript" src="assets/js/jquery.themepunch.tools.min.js?rev=5.0"></script>
+<script type="text/javascript" src="assets/js/jquery.themepunch.revolution.min.js?rev=5.0"></script>-->
+
+<script src="assets/js/DropdownHover.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/home_info.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script src="asset/css/highlight/highlight.pack.js"></script>
+<script>
+hljs.configure({
+  languages: ['python']
+})
+
+hljs.initHighlightingOnLoad();
+</script>
+
+</body>
+
+</html>

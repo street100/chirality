@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Keccak Team</title>
+
+    <base href="https://keccak.team/" />
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="shortcut icon" href="assets/img/favicon.png" />
+
+    <meta name="description" content="">
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="assets/css/preload.css">
+    <link rel="stylesheet" type="text/css" href="fonts/fonts.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/vendors.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style-blue.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/width-full.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/highlight/xcode.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style.css">
+
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="assets/js/html5shiv.min.js"></script>
+        <script src="assets/js/respond.min.js"></script>
+    <![endif]-->
+
+    <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+    });
+    </script>
+</head>
+
+<!-- Preloader -->
+<div id="preloader">
+    <div id="status">&nbsp;</div>
+</div>
+
+<div class="sb-site-container">
+<div class="boxed">
+
+<header id="header-full-top" class="hidden-xs header-full">
+    <nav class="top-nav">
+        <ul class="top-nav-social hidden-sm">
+            <li><a href="news.atom" class="animated fadeIn animation-delay-6 rss"><i class="fa fa-rss"></i></a></li>
+            <li><a href="https://twitter.com/KeccakTeam" class="animated fadeIn animation-delay-7 twitter"><i class="fa fa-twitter"></i></a></li>
+            <li><a href="https://github.com/KeccakTeam" class="animated fadeIn animation-delay-8 git"><i class="fa fa-github"></i></a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="header-full-title">
+            <h1 class="animated fadeInRight"><a href="index.html">Team <span>Keccak</span></a></h1>
+            <p class="animated fadeInRight">
+            Guido Bertoni<sup>3</sup>, Joan Daemen<sup>2</sup>, Seth Hoffert, Silvia Mella<sup>2</sup>, Michaël Peeters<sup>1</sup>, Gilles Van Assche<sup>1</sup> and Ronny Van Keer<sup>1</sup><br />
+            <sup>1</sup><a href="http://www.st.com/">STMicroelectronics</a> - <sup>2</sup><a href="http://www.ru.nl/english/">Radboud University</a> - <sup>3</sup><a href="https://www.securitypattern.com/">Security Pattern</a>
+            </p>
+        </div>
+    </div>
+</header> <!-- header-full -->
+<nav class="navbar navbar-default navbar-header-full navbar-dark yamm navbar-static-top" role="navigation" id="header">
+    <div class="container">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="sr-only">Toggle navigation</span>
+            <i class="fa fa-bars"></i>
+            </button>
+            <a id="ar-brand" class="navbar-brand hidden-lg hidden-md hidden-sm" href="index.html">Team <span>Keccak</span></a>
+        </div> <!-- navbar-header -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li><a href="index.html">Home</a></li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Design</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Schemes</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccak.html">Keccak</a></li>
+                                <li><a href="ketje.html">Ketje</a></li>
+                                <li><a href="keyak.html">Keyak</a></li>
+                                <li><a href="kangarootwelve.html">KangarooTwelve</a></li>
+                                <li><a href="turboshake.html">TurboSHAKE</a></li>
+                                <li><a href="kravatte.html">Kravatte</a></li>
+                                <li role="presentation" class="divider"></li>
+                                <li><a href="xoofff.html">Xoofff</a></li>
+                                <li><a href="xoodyak.html">Xoodyak</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Constructions</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="sponge_duplex.html">Sponge, duplex and variants</a></li>
+                                <li><a href="farfalle.html">Farfalle</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Permutations</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccakp.html">Keccak-<i>p</i></a></li>
+                                <li><a href="xoodoo.html">Xoodoo</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Analysis</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="crunchy_contest.html">Crunchy contest</a></li>
+                        <li><a href="ketje_contest.html">Ketje contest</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Implementation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Software</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="software.html">Implementations</a></li>
+                                <li><a href="sw_performance.html">Performance figures</a></li>
+                                <li><a href="binaries.html">Binaries</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="hardware.html">Hardware</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Documentation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="specifications.html">Specifications</a></li>
+                        <li><a href="papers.html">Our papers</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="figures.html">Figures</a></li>
+                        <li><a href="glossary.html">Glossary</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="archives.html">Archives</a></li>
+                    </ul>
+                </li>
+
+                <li><a href="team.html">About us</a></li>
+
+            </ul>
+        </div><!-- navbar-collapse -->
+    </div><!-- container -->
+</nav>
+
+<header class="main-header">
+<div class="container">
+<h1 class="page-title">Third-party cryptanalysis</h1>
+</div>
+</header>
+<div class="container">
+<p>This page lists all the third-party cryptanalysis results that we know of on <span class="sc">Keccak</span> and <span class="sc">Xoodoo</span>, including FIPS&#160;202, SP&#160;800-185 and RFC&#160;9861 instances (SHA-3, SHAKE, TurboSHAKE, <span class="sc">KangarooTwelve</span>), as well as <span class="sc">Ketje</span>, <span class="sc">Keyak</span>, <span class="sc">Kravatte</span>, <span class="sc">Xoofff</span> and <span class="sc">Xoodyak</span>. We may have forgotten some results, so if you think your result is relevant and should be on this page, please do not hesitate to contact us.</p>
+
+<p>The results are divided into the following categories:</p>
+<ul>
+    <li>analysis of <span class="sc">Keccak</span> (covering also FIPS&#160;202, SP&#160;800-185 and RFC&#160;9861 instances) and <span class="sc">Xoodyak</span> in the context of (unkeyed) hashing;</li>
+    <li>analysis that is more specifically targetting keyed modes of use of <span class="sc">Keccak</span> and <span class="sc">Xoodoo</span>-based schemes, including KMAC, <span class="sc">Ketje</span>, <span class="sc">Keyak</span>, <span class="sc">Kravatte</span>, <span class="sc">Xoofff</span> and <span class="sc">Xoodyak</span>;</li>
+    <li>analysis on the (reduced-round) <span class="sc">Keccak</span>-<i>f</i> and <span class="sc">Xoodoo</span> permutations that does not extend to any of the aforementioned cryptographic functions.</li>
+</ul>
+
+<p>In each category, the most recent results come first.</p>
+
+<h1>Analysis of unkeyed modes</h1>
+<p>First, the <a href="crunchy_contest.html">Crunchy Crypto Collision and Pre-image Contest</a> contains third-party cryptanalysis results with practical complexities.</p>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_LinLSRYDW26">X. Lin, Z. Lu, Y. Shen, C. Ren, H. Yu, E. Dong and W. Wu, <b>Practical Preimage Attack on 5-Round <span class='sc'>Keccak</span>[r=640, c=160]</b>, IACR Trans. Symmetric Cryptol., 2026 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/12783"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.46586/tosc.v2026.i1.189-211"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/LinLSRYDW26"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Xiaoen Lin, Zhengrong Lu, Yantian Shen, Chongxu Ren, Hongbo Yu, Enming Dong and Wenhao Wu achieve a significant cryptanalytic milestone by presenting the first fully practical preimage attack on a 5-round variant of <span class="sc">Keccak</span> with a 160-bit capacity. By combining advanced SAT-solver modeling with an optimized conditional bit-fixing strategy, they successfully identify and exploit deep algebraic vulnerabilities in the permutation's early round transitions. This technique was used to solve a concrete instance of the <a href="crunchy_contest.html">Crunchy Pre-image Contest</a> on 5-round <span class="sc">Keccak</span>-[<i>r</i>=640, <i>c</i>=160] with a complexity of 2<sup>59.7</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_dcc_HeLY26">L. He, X. Lin and H. Yu, <b>Improved preimage attacks on round-reduced <span class='sc'>Keccak</span>-384/512</b>, Des. Codes Cryptogr., 2026 <a href="https://eprint.iacr.org/2022/788"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/s10623-025-01780-z"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/dcc/HeLY26"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Le He, Xiaoen Lin and Hongbo Yu improve the complexity of preimage attacks against round-reduced <span class="sc">Keccak</span> with a high capacity (<i>c</i>=768 or 1024). For instance, the complexity of a preimage attack on <span class="sc">Keccak</span>[<i>r</i>=832, <i>c</i>=768] reduced to 2 rounds is now 2<sup>28</sup> (instead of 2<sup>89</sup> previously). On other instances, the complexity remains theoretical, e.g., for <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 3 rounds the complexity is now 2<sup>426</sup> (instead of 2<sup>475</sup> previously).</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_dcc_LinHLSRY25">X. Lin, L. He, Z. Lu, Y. Shen, C. Ren and H. Yu, <b>Internal differential structure: preimage attacks on up to 5-round <span class='sc'>Keccak</span></b>, Des. Codes Cryptogr., 2025 <a href="https://link.springer.com/article/10.1007/s10623-025-01655-3"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/s10623-025-01655-3"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/dcc/LinHLSRY25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Xiaoen Lin, Le He, Zhengrong Lu, Yantian Shen, Chongxu Ren and Hongbo Yu formalize a generalized cryptanalytic framework known as the internal differential structure to enhance preimage attacks on round-reduced <span class="sc">Keccak</span>. By mapping highly organized propagation paths for internal differences across multiple rounds, they establish a rigid algebraic subspace that maximizes message-modification degrees of freedom while isolating targeted output bits. This structural optimization enables them to bypass previous diffusion obstacles, delivering state-of-the-art theoretical and practical preimage attacks on 5-round <span class="sc">Keccak</span>-[<i>r</i>=1088, <i>c</i>=512] with a complexity of 2<sup>230</sup>. Additionally, this technique was used to solve concrete instances of the <a href="crunchy_contest.html">Crunchy Pre-image Contest</a> on 4-round <span class="sc">Keccak</span>-[<i>r</i>=240, <i>c</i>=160] with complexity 2<sup>58.7</sup> and on 2-round <span class="sc">Keccak</span>-[<i>r</i>=40, <i>c</i>=160] with complexity 2<sup>49.0</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_QinZHJWD25">L. Qin, B. Zhao, Q. Hou, K. Jia, G. Wang and X. Dong, <b>Linear Cancellations in the MitM Attacks on Sponge Functions</b>, IACR Trans. Symmetric Cryptol., 2025 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/12481"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.46586/tosc.v2025.i3.633-692"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/QinZHJWD25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Lingyue Qin, Boxin Zhao, Qingliang Hou, Keting Jia, Gaoli Wang and Xiaoyang Dong introduce a novel "linear cancellation" technique to systematically optimize meet-in-the-middle (MitM) preimage attacks on sponge-based hash functions. By exploiting the sparse linear relationships within the <span class="sc">Keccak</span> state transitions, this approach allows cryptanalysts to strategically cancel out complex neutral bit dependencies during the forward and backward chunk separation phases. This methodology significantly expands the number of available neutral bits, leading to preimage attacks on 4-round <span class="sc">Keccak</span>-[<i>r</i>=576, <i>c</i>=1024] with complexity 2<sup>500</sup>, on 4-round <span class="sc">Keccak</span>-[<i>r</i>=832, <i>c</i>=768] with complexity 2<sup>367</sup> and on 3-round <span class="sc">Xoodyak</span> with complexity 2<sup>121</sup>, as well as a collision attack on 3-round <span class="sc">Xoodyak</span> with complexity 2<sup>60.5</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_GilkolaeiE25">R. R. Gilkolaei and R. Ebrahimi, <b>Quantum Resource Analysis of Low-Round <span class='sc'>Keccak</span>/SHA-3 Preimage Attack: From Classical 2^57.8 to Quantum 2^28.9 using Qiskit Modeling</b>, IACR Cryptol. ePrint Arch., 2025 <a href="https://eprint.iacr.org/2025/2277"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/GilkolaeiE25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Ramin Rezvani Gilkolaei and Reza Ebrahimi present a comprehensive quantum resource analysis of preimage attacks on low-round SHA-3 by modeling the attack using IBM's Qiskit framework. By implementing a highly optimized quantum circuit for the <span class="sc">Keccak</span> permutation, they provide concrete metrics for the gate counts, qubits, and circuit depth required to execute a Grover-based search. Their implementation demonstrates that a classical preimage attack complexity of 2<sup>57.8</sup> operations can be successfully reduced to a quantum complexity of 2<sup>28.9</sup> operations, offering an empirical benchmark for evaluating the post-quantum security of reduced-round <span class="sc">Keccak</span>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_sacrypt_LiHQ25">H. Li, L. He and W. Qiu, <b>Practical Collision Attacks on Reduced-Round <span class='sc'>Xoodyak</span> Hash Mode</b>, SAC, 2025 <a href="https://eprint.iacr.org/2025/1430"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-032-10536-3_3"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/sacrypt/LiHQ25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Huina Li, Le He and Weidong Qiu introduce a new multi-block differential cryptanalysis framework specifically tailored to launch the first practical collision attacks on the round-reduced hash mode of the lightweight primitive <span class="sc">Xoodyak</span>. By analyzing the unique properties of the underlying <span class="sc">Xoodoo</span> permutation's linear (<i>θ</i>) and non-linear (<i>χ</i>) layers, they manually design specific symmetric characteristics called "loop differential trails." Utilizing these trails, the authors construct a highly optimized SAT-solver model to efficiently find conforming message pairs, delivering a practical collision on 2-round <span class="sc">Xoodyak</span> and a theoretical collision attack on 3-round <span class="sc">Xoodyak</span> with complexity 2<sup>100.93</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_ZhangHL25">Z. Zhang, C. Hou and M. Liu, <b>Preimage Attacks on up to 5 Rounds of SHA-3 Using Internal Differentials</b>, Eurocrypt, 2025 <a href="https://eprint.iacr.org/2025/439"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-91107-1_12"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/ZhangHL25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Zhongyi Zhang, Chengan Hou and Meicheng Liu present a breakthrough cryptanalytic technique that extends internal differential analysis from collision generation to full preimage retrieval on round-reduced SHA-3. By constructing a highly structured internal differential trail that spans multiple rounds, they successfully decouple large portions of the state to isolate localized target bits. This strategy allows them to significantly reduce the complexity of matching the hash output, yielding different preimage attacks with complexities ranging from 2<sup>100.5</sup> for 5-round SHAKE128 to 2<sup>254.33</sup> for 5-round SHAKE256.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_dcc_SuryawanshiGSR25">S. Suryawanshi, S. Ghosh, D. Saha and P. Ram, <b>Simple vs. vectorial: exploiting structural symmetry to beat the ZeroSum distinguisher</b>, Des. Codes Cryptogr., 2025 <a href="https://eprint.iacr.org/2024/052"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/s10623-024-01502-x"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/dcc/SuryawanshiGSR25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Sahiba Suryawanshi, Shibam Ghosh, Dhiman Saha and Prathamesh Ram introduce SymSum_Sim, a novel algebraic distinguisher based on k-fold simple derivatives that overcomes the Maximum Attainable Derivative (MAD) limitations of previous vectorial-derivative approaches. By exploiting structural symmetry within the permutation states, this framework breaks the traditional MAD barrier to significantly outperform the standard ZeroSum distinguisher on round-reduced <span class="sc">Keccak</span> and <span class="sc">Xoodyak</span>. This work also includes 15-round and 16-round distinguishers for the <span class="sc">Keccak</span>-<i>f</i>[1600] permutation.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_LinHY25">X. Lin, L. He and H. Yu, <b>Practical Preimage Attacks on 3-Round <span class='sc'>Keccak</span>-256 and 4-Round <span class='sc'>Keccak</span>[r=640, c=160]</b>, IACR Trans. Symmetric Cryptol., 2025 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/12079"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.46586/tosc.v2025.i1.328-356"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/LinHY25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Xiaoen Lin, Le He and Hongbo Yu present new, highly efficient preimage attacks on round-reduced <span class="sc">Keccak</span> variants by introducing a refined MILP-based (Mixed Integer Linear Programming) automated search framework to find optimal internal differential characteristics. By combining this algebraic modeling with a novel conditional bit-fixing strategy, they successfully maximize the available degrees of freedom during the message-filling phase. This approach allows them to achieve a practical preimage attack on 3-round <span class="sc">Keccak</span>-[<i>r</i>=1088, <i>c</i>=512] with complexity 2<sup>57.2</sup> and on 4-round <span class="sc">Keccak</span>-[<i>r</i>=640, <i>c</i>=160] with complexity 2<sup>60.9</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_crypto_ZhangHL24">Z. Zhang, C. Hou and M. Liu, <b>Probabilistic Linearization: Internal Differential Collisions in up to 6 Rounds of SHA-3</b>, Crypto, 2024 <a href="https://eprint.iacr.org/2024/1136"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-68385-5_8"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/crypto/ZhangHL24"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Zhongyi Zhang, Chengan Hou and Meicheng Liu introduce a novel cryptanalytic framework called probabilistic linearization to significantly extend the reach of collision attacks on round-reduced SHA-3. By relaxing the strict condition constraints of traditional internal differential attacks, this technique treats certain non-linear state bit conditions probabilistically, allowing them to balance condition fulfillment against a massively expanded space of degrees of freedom. This optimization enables them to construct collision attacks on up to 6 rounds, with a complexity of 2<sup>232.29</sup> on 6-round SHAKE256.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_ZhangHL23">Z. Zhang, C. Hou and M. Liu, <b>Collision Attacks on Round-Reduced SHA-3 Using Conditional Internal Differentials</b>, Eurocrypt, 2023 <a href="https://link.springer.com/chapter/10.1007/978-3-031-30634-1_8"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-30634-1_8"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/ZhangHL23"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Zhongyi Zhang, Chengan Hou and Meicheng Liu present an improved collision attack on round-reduced SHA-3 by introducing a new cryptanalytic technique called conditional internal differentials. By carefully managing internal state differences across early rounds, they establish conditional structures that significantly maximize the available degrees of freedom during message modification. This methodology allows them to bypass previous bottleneck constraints, and resulting collisions attacks on 4-round SHA3-512 and 5-round SHAKE256 with complexities of 2<sup>237</sup> and 2<sup>185</sup>, respectively.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_sss_SuryawanshiS23">S. Suryawanshi and D. Saha, <b>Where Are the Constants? New Insights on the Role of Round Constant Addition in the SymSum Distinguisher</b>, SSS, 2023 <a href="https://eprint.iacr.org/2023/789"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-44274-2_17"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/sss/SuryawanshiS23"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Sahiba Suryawanshi and Dhiman Saha provide a systematic analysis of how the placement of round constant addition within a Substitution-Permutation Network (SPN) cipher alters its algebraic properties, specifically evaluating its impact on the SymSum distinguisher against <span class="sc">Xoodyak</span>. By demonstrating that the position of these constants relative to non-linear operations dictates whether highest-degree monomials are affected, the research uncovers new structural insights into the algebraic degree of the <span class="sc">Xoodoo</span> permutation. These findings refine the theory of SymSum attacks, providing a clearer understanding of why and how certain symmetric properties persist or vanish across different round structures.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_SongJS23">G. Song, K. Jang and H. Seo, <b>Improved Low-depth SHA3 Quantum Circuit for Fault-tolerant Quantum Computers</b>, IACR Cryptol. ePrint Arch., 2023 <a href="https://eprint.iacr.org/2023/211"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/SongJS23"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Gyeongju Song, Kyungbae Jang and Hwajeong Seo present an optimized, low-depth quantum circuit design for <span class="sc">Keccak</span> tailored for resource-constrained, fault-tolerant quantum computing environments. By introducing a parallelized implementation of the <i>θ</i> and <i>χ</i> steps of the <span class="sc">Keccak</span> permutation, the design significantly reduces both T-depth and the number of required ancillary qubits. Consequently, this work establishes tighter, more realistic upper bounds for the quantum resources needed to execute Grover's key-search or preimage attacks against SHA-3.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_acns_SuryawanshiSJ23">S. Suryawanshi, D. Saha and S. Jaiswal, <b>TIDAL: Practical Collisions on State-Reduced <span class='sc'>Keccak</span> Variants</b>, ACNS, 2023 <a href="https://eprint.iacr.org/2023/389"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-33488-7_8"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/acns/SuryawanshiSJ23"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Sahiba Suryawanshi, Dhiman Saha and Shashwat Jaiswal introduce TIDAL, an advanced cryptanalytic framework designed to generate practical collisions on state-reduced variants of the <span class="sc">Keccak</span> hash function family. By extending the Target Internal Difference Algorithm through novel linearization techniques, the method efficiently utilizes available degrees of freedom and a null-space approach to build a conforming message subspace. For instance, they find collision attacks on 5-round <span class="sc">Keccak</span>-[<i>r</i>=136, <i>c</i>=64] with complexity 2<sup>31</sup> and on 5-round <span class="sc">Keccak</span>-[<i>r</i>=272, <i>c</i>=128] with complexity 2<sup>62</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_QinHDYW23">L. Qin, J. Hua, X. Dong, H. Yan and X. Wang, <b>Meet-in-the-Middle Preimage Attacks on Sponge-Based Hashing</b>, Eurocrypt, 2023 <a href="https://eprint.iacr.org/2022/1714"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-30634-1_6"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/QinHDYW23"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, the authors present the first successful meet-in-the-middle preimage attacks on sponge-based hash functions, specifically targeting reduced-round variants of the <span class="sc">Keccak</span> family. By introducing novel techniques to handle the unique state transitions of the sponge construction, the research presents improved preimage attacks, for instance, on 4-round <span class="sc">Keccak</span>-[<i>r</i>=576, <i>c</i>=1024] with complexity 2<sup>504.58</sup> and 3-round <span class="sc">Xoodyak</span> with complexity 2<sup>125.06</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_WangLG0W22">R. Wang, X. Li, J. Gao, H. Li and B. Wang, <b>Allocating Rotational Cryptanalysis based Preimage Attack on 4-round <span class='sc'>Keccak</span>-224 for Quantum Setting</b>, IACR Cryptol. ePrint Arch., 2022 <a href="https://eprint.iacr.org/2022/977"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/WangLG0W22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Runsong Wang, Xuelian Li, Juntao Gao, Hui Li and Baocang Wang show preimage attacks obtained from rotational distinguishers and linearization techniques. They focus on <span class="sc">Keccak</span>[<i>r</i>=1152, <i>c</i>=448] reduced to 4 rounds, with an output length of 224 bits. They show attacks both in the classical and in the quantum setting. In the former, the complexity of their attack is 2<sup>218</sup>, while in the latter it is 2<sup>110</sup>, so faster than a Grover search.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_HuangBDM22">S. Huang, O. A. Ben-Yehuda, O. Dunkelman and A. Maximov, <b>Finding Collisions against 4-Round SHA-3-384 in Practical Time</b>, IACR Trans. Symmetric Cryptol., 2022 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/9857"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.46586/tosc.v2022.i3.239-270"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/HuangBDM22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Senyang Huang, Orna Agmon Ben-Yehuda, Orr Dunkelman and Alexander Maxim present a collision attack on <span class="sc">Keccak</span>[<i>r</i>=832, <i>c</i>=768] (SHA3-384) reduced to 4 rounds. The complexity of the attack is practical, just above 2<sup>59</sup>, and much lower than the previous result on the same instance (2<sup>147</sup> by Dinur et al.).</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_corr_abs-2202-10982">R. Preston, <b>Applying Grover's Algorithm to Hash Functions: A Software Perspective</b>, CoRR, 2022 <a href="https://arxiv.org/abs/2202.10982"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/corr/abs-2202-10982"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Richard Preston looks at the cost of finding short (e.g., 16-bit) preimages on <span class="sc">Keccak</span> using a quantum computer. He improves the quantum implementation of <span class="sc">Keccak</span> to reduce the number of qubits required.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_asiacrypt_GuoLST22">J. Guo, G. Liu, L. Song and Y. Tu, <b>Exploring SAT for Cryptanalysis: (Quantum) Collision Attacks Against 6-Round SHA-3</b>, Asiacrypt, 2022 <a href="https://eprint.iacr.org/2022/184"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-22969-5_22"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/asiacrypt/GuoLST22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Jian Guo, Guozhen Liu, Ling Song and Yi Tu show a collision attack on <span class="sc">Keccak</span>, and more precisely SHAKE128, reduced to 6 rounds. The collision takes time 2<sup>123.5</sup> and is the first one reaching 6 rounds with standard parameters. Next to this, the authors present quantum collision attacks with complexities 2<sup>61.4</sup>, 2<sup>96.15</sup> and 2<sup>102.65</sup> for <span class="sc">Keccak</span>[<i>r</i>=1344, <i>c</i>=256] (SHAKE128), <span class="sc">Keccak</span>[<i>r</i>=1152, <i>c</i>=448] (SHA3-224) and <span class="sc">Keccak</span>[<i>r</i>=1088, <i>c</i>=512] (SHA3-256), respectively, again reduced to 6 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_WangLGLW22">R. Wang, X. Li, J. Gao, H. Li and B. Wang, <b>Quantum rotational cryptanalysis for preimage recovery of round-reduced <span class='sc'>Keccak</span></b>, IACR Cryptol. ePrint Arch., 2022 <a href="https://eprint.iacr.org/2022/013"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/WangLGLW22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Runsong Wang, Xuelian Li, Juntao Gao, Hui Li and Baocang Wang propose a quantum algorithm exploiting rotational cryptanalysis to mount a preimage attack on <span class="sc">Keccak</span> reduced to 4 rounds. The complexity of the attack is slightly below that of the generic quantum attacks and is respectively given by 2<sup>112.57</sup>, 2<sup>128.57</sup>, 2<sup>191.49</sup> and 2<sup>255.08</sup> for output lengths 224, 256, 384 and 512 bits, respectively, and a capacity twice the output length.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_WeiWFDHHW21">C. Wei, C. Wu, X. Fu, X. Dong, K. He, J. Hong and X. Wang, <b>Preimage attacks on 4-round <span class='sc'>Keccak</span> by solving multivariate quadratic systems</b>, IACR Cryptol. ePrint Arch., 2021 <a href="https://eprint.iacr.org/2021/732"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/WeiWFDHHW21"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Congming Wei, Chenhao Wu, Ximing Fu, Xiaoyang Dong, Kai He, Jue Hong and Xiaoyun Wang revisit the Crossbred algorithm for solving a Boolean multivariate quadratic system and apply it to finding preimages on reduced-round <span class="sc">Keccak</span>. The complexity for <span class="sc">Keccak</span>[<i>r</i>=1088, <i>c</i>=512] reduced to 4 rounds and output length 256 bits is 2<sup>214</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_LinHY21">X. Lin, L. He and H. Yu, <b>Improved Preimage Attacks on 3-Round <span class='sc'>Keccak</span>-224/256</b>, IACR Trans. Symmetric Cryptol., 2021 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/9175"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.46586/tosc.v2021.i3.84-101"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/LinHY21"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Xiaoen Lin, Le He and Hongbo Yu improve upon the complexity of preimage attacks on <span class="sc">Keccak</span>[<i>r</i>=1152, <i>c</i>=448] and <span class="sc">Keccak</span>[<i>r</i>=1088, <i>c</i>=512] reduced to 3 rounds, with 224 and 256 bits of output, respectively. Compared to the previous methods, they generate the preimage in two blocks instead of one. The complexity of their attack is 2<sup>32</sup> and 2<sup>65</sup>, respectively.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_BoissierNR21">R. H. Boissier, C. Noûs and Y. Rotella, <b>Algebraic Collision Attacks on <span class='sc'>Keccak</span></b>, IACR Trans. Symmetric Cryptol., 2021 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/8839"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.46586/tosc.v2021.i1.239-268"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/BoissierNR21"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Rachelle Heim Boissier and Yann Rotella explore collision attacks on lightweight instances of <span class="sc">Keccak</span>, namely, <span class="sc">Keccak</span>[<i>r</i>=40, <i>c</i>=160], <span class="sc">Keccak</span>[<i>r</i>=72, <i>c</i>=128] and <span class="sc">Keccak</span>[<i>r</i>=144, <i>c</i>=256] reduced to 2 rounds. They use algebraic and linearization techniques and obtain complexities of 2<sup>73</sup>, 2<sup>52.2</sup> and 2<sup>101.5</sup> for the different instances, respectively.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_HeLY21">L. He, X. Lin and H. Yu, <b>Improved Preimage Attacks on 4-Round <span class='sc'>Keccak</span>-224/256</b>, IACR Trans. Symmetric Cryptol., 2021 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/8838"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.46586/tosc.v2021.i1.217-238"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/HeLY21"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Le He, Xiaoen Lin and Hongbo Yu provide a preimage attack on <span class="sc">Keccak</span>[<i>r</i>=1152, <i>c</i>=448] and <span class="sc">Keccak</span>[<i>r</i>=1088, <i>c</i>=512] reduced to 4 rounds, with 224 and 256 bits of output, respectively. They improve the current linearization techniques and decrease the complexity down to 2<sup>192</sup> and 2<sup>218</sup>, respectively.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_africacrypt_SuryawanshiSS20">S. Suryawanshi, D. Saha and S. Sachan, <b>New Results on the SymSum Distinguisher on Round-Reduced SHA3</b>, Africacrypt, 2020 <a href="https://eprint.iacr.org/2020/667"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-51938-4_7"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/africacrypt/SuryawanshiSS20"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Sahiba Suryawanshi, Dhiman Saha and Satyam Sachan use a linearization technique proposed by Jian Guo, Meicheng Liu and Ling Song to improve the SymSum distinguisher introduced by Dhiman Saha, Sukhendu Kuila and Dipanwita Roy Chowdhury. This allowed them to build distinguishers for the different SHA-3 variants up to 9 rounds, and in particular for SHAKE128 reduced to 9 rounds with a complexity of 2<sup>64</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_LiuIMY20">F. Liu, T. Isobe, W. Meier and Z. Yang, <b>Algebraic Attacks on Round-Reduced <span class='sc'>Keccak</span>/<span class='sc'>Xoodoo</span></b>, IACR Cryptol. ePrint Arch., 2020 <a href="https://eprint.iacr.org/2020/346"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/LiuIMY20"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Fukang Liu, Takanori Isobe, Willi Meier and Zhonghao Yang improve preimage attacks on <span class="sc">Keccak</span>[<i>r</i>=832, <i>c</i>=768] reduced to 2, 3 and 4 rounds and on <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 2 and 3 rounds. They also construct a practical zero-sum distinguisher for the <span class="sc">Xoodoo</span> permutation with 12 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_joc_GuoLLLQS20">J. Guo, G. Liao, G. Liu, M. Liu, K. Qiao and L. Song, <b>Practical Collision Attacks against Round-Reduced SHA-3</b>, J. Cryptol., 2020 <a href="https://eprint.iacr.org/2019/147"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/s00145-019-09313-3"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/joc/GuoLLLQS20"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Jian Guo, Guohong Liao, Guozhen Liu, Meicheng Liu, Kexin Qiao and Ling Song recap on the state-of-the art collision attacks against Keccak with practical complexity.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_ieicet_HuangWXWZ19">S. Huang, X. Wang, G. Xu, M. Wang and J. Zhao, <b>New Distinguisher on Reduced-Round <span class='sc'>Keccak</span> Sponge Function</b>, IEICE Trans. Fundam. Electron. Commun. Comput. Sci., 2019 <a href="https://www.jstage.jst.go.jp/article/transfun/E102.A/1/E102.A_242/_article"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1587/transfun.E102.A.242"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/ieicet/HuangWXWZ19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Senyang Huang, Xiaoyun Wang, Guangwu Xu, Meiqin Wang and Jingyuan Zhao present a distinguisher on <span class="sc">Keccak</span>[<i>r</i>=1152, <i>c</i>=448] reduced to 8 rounds. The attack complexity is 2<sup>122</sup> in time and 2<sup>122</sup> data and negligible memory. A cube tester is used to construct the distinguisher and an MILP model is used to search for cube variables. </p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_indocrypt_Rajasree19">M. S. Rajasree, <b>Cryptanalysis of Round-Reduced <span class='sc'>Keccak</span> using Non-Linear Structures</b>, Indocrypt, 2019 <a href="https://eprint.iacr.org/2019/884"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-35423-7_9"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/indocrypt/Rajasree19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Mahesh Sreekumar Rajasree presents new preimage attacks on <span class="sc">Keccak</span> by defining non-linear structures. The author focuses on instances with the number of rounds reduced to 2, 3 or 4, and with a capacity of <i>c</i>=768 or 1024 bits.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_LiS19">T. Li and Y. Sun, <b>Preimage Attacks on Round-Reduced <span class='sc'>Keccak</span>-224/256 via an Allocating Approach</b>, Eurocrypt, 2019 <a href="https://eprint.iacr.org/2019/248"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-17659-4_19"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/LiS19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Ting Li and Yao Sun present a new technique for performing a preimage attack on <span class="sc">Keccak</span>. They aim for 2 blocks, allowing the constraints to be spread and thus solved more easily. For 3 rounds, the preimage attacks with a practical complexity of 2<sup>38</sup>-2<sup>41</sup> when the capacity is 448 bits and of 2<sup>81</sup>-2<sup>86</sup> for <i>c</i>=512. For 4 rounds, the complexities are theoretical and above 2<sup>200</sup>, yet improving upon the previous results.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_corr_abs-1901-02438">S. V. Goncharov, <b>Using fuzzy bits and neural networks to partially invert few rounds of some cryptographic hash functions</b>, CoRR, 2019 <a href="https://arxiv.org/abs/1901.02438"><i class="fa fa-folder-open-o"></i></a> <a href="http://arxiv.org/abs/1901.02438"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/corr/abs-1901-02438"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Sergij V. Goncharov trains neural networks using fuzzy bit values to mount a preimage attack. This works up to one round.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_indocrypt_KumarMS18">R. Kumar, N. Mittal and S. Singh, <b>Cryptanalysis of 2 Round <span class='sc'>Keccak</span>-384</b>, Indocrypt, 2018 <a href="https://eprint.iacr.org/2018/1191"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-05378-9_7"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/indocrypt/KumarMS18"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Rajendra Kumar, Nikhil Mittal and Shashank Singh improve upon the existing preimage attacks on <span class="sc">Keccak</span>. Specifically, they present a preimage attack on <span class="sc">Keccak</span>[<i>r</i>=832, <i>c</i>=768] reduced to 2 rounds with a time complexity of 2<sup>89</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_ChenG18">Y. Chen and X. Gao, <b>Quantum Algorithms for Boolean Equation Solving and Quantum Algebraic Attack on Cryptosystems</b>, IACR Cryptology ePrint Archive, 2018 <a href="https://eprint.iacr.org/2018/008"><i class="fa fa-folder-open-o"></i></a> <a href="http://eprint.iacr.org/2018/008"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/ChenG18"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Yu-Ao Chen and Xiao-Shan Gao present a new algorithm for solving Boolean equations using a quantum computer. The apply their algorithm to mount a preimage attack. It is however unclear what is the complexity of this attack.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_africacrypt_KumarRA18">R. Kumar, M. S. Rajasree and H. AlKhzaimi, <b>Cryptanalysis of 1-Round <span class='sc'>Keccak</span></b>, Africacrypt, 2018 <a href="https://eprint.iacr.org/2017/1028"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-319-89339-6_8"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/africacrypt/KumarRA18"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Rajendra Kumar, Mahesh Sreekumar Rajasree and Hoda AlKhzaimi present preimage and collision attacks on <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 1 round with a very small complexity.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_LiSLW17">T. Li, Y. Sun, M. Liao and D. Wang, <b>Preimage Attacks on the Round-reduced <span class='sc'>Keccak</span> with Cross-linear Structures</b>, IACR Trans. Symmetric Cryptol., 2017 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/802"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.13154/tosc.v2017.i4.39-57"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/LiSLW17"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Ting Li, Yao Sun, Maodong Liao and Dingkang Wang construct a novel kind of structures of polynomials inside the <span class="sc">Keccak</span>-<i>f</i> permutation, called <em>cross-linear structures</em>. Based on this, they present new preimage attacks on <span class="sc">Keccak</span>[<i>r</i>=240, <i>c</i>=160] and on <span class="sc">Keccak</span>[<i>r</i>=1088, <i>c</i>=512] (SHA3-256, SHAKE256), both reduced to 3 rounds. For the former, they solved the 3-round collision challenge in the <a href="crunchy_contest.html">Crunchy Contest</a> after a computational effort of about 2<sup>45</sup> operations.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_crypto_SongLG17">L. Song, G. Liao and J. Guo, <b>Non-Full Sbox Linearization: Applications to Collision Attacks on Round-Reduced <span class='sc'>Keccak</span></b>, Crypto, 2017 <a href="http://eprint.iacr.org/2017/529"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-319-63715-0_15"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/crypto/SongLG17"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Ling Song, Guohong Liao and Jian Guo improve upon their previous work by developing new techniques to save degrees of freedom in their attack. As a result, they propose a practical collision attack on <span class="sc">Keccak</span>[<i>r</i>=1152, <i>c</i>=448] reduced to 5 rounds, and they describe how they solved the 6-round collision challenge in the <a href="crunchy_contest.html">Crunchy Contest</a>, which took 2<sup>50</sup> operations.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_QiaoSL017">K. Qiao, L. Song, M. Liu and J. Guo, <b>New Collision Attacks on Round-Reduced <span class='sc'>Keccak</span></b>, Eurocrypt, 2017 <a href="http://eprint.iacr.org/2017/128"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-319-56617-7_8"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/QiaoSL017"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Kexin Qiao, Ling Song, Meicheng Liu and Jian Guo develop a hybrid method combining algebraic and differential techniques to mount collision attacks on <span class="sc">Keccak</span>. They can find collisions on various instances of <span class="sc">Keccak</span> with the permutation <span class="sc">Keccak</span>-<i>f</i>[1600] or <span class="sc">Keccak</span>-<i>f</i>[800] reduced to 5 rounds. This includes the 5-round collision challenges in the <a href="crunchy_contest.html">Crunchy Contest</a>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_SahaKC17">D. Saha, S. Kuila and D. R. Chowdhury, <b>SymSum: Symmetric-Sum Distinguishers Against Round Reduced SHA3</b>, IACR Trans. Symmetric Cryptol., 2017 <a href="http://eprint.iacr.org/2017/165"><i class="fa fa-folder-open-o"></i></a> <a href="http://tosc.iacr.org/index.php/ToSC/article/view/593"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/SahaKC17"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Dhiman Saha, Sukhendu Kuila and Dipanwita Roy Chowdhury combine the analysis of symmetries and of the algebraic degree of the <span class="sc">Keccak</span>-<i>f</i> permutation to propose a distinguisher on the <span class="sc">Keccak</span> sponge function. It can reach up to 9 rounds with a complexity of 2<sup>511</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_sacrypt_AmyMGMPS16">M. Amy, O. Di Matteo, V. Gheorghiu, M. Mosca, A. Parent and J. M. Schanck, <b>Estimating the Cost of Generic Quantum Pre-image Attacks on SHA-2 and SHA-3</b>, Selected Areas in Cryptography, 2016 <a href="http://eprint.iacr.org/2016/992"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-319-69453-5_18"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/sacrypt/AmyMGMPS16"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Matthew Amy, Olivia Di Matteo, Vlad Gheorghiu, Michele Mosca, Alex Parent and John Schanck investigate the cost of Grover's quantum search algorithm when used to find preimage attacks on SHA3-256 (i.e., <span class="sc">Keccak</span>[<i>r</i>=1088, <i>c</i>=512] with 256 bits of output), as well as on SHA-2. They compare the cost of a classical generic attack (2<sup>256</sup> operations) with that on a quantum computer with a carefully motivated cost metric (2<sup>166</sup> logical-qubit-cycles).</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_asiacrypt_0001LS16">J. Guo, M. Liu and L. Song, <b>Linear Structures: Applications to Cryptanalysis of Round-Reduced <span class='sc'>Keccak</span></b>, Asiacrypt, 2016 <a href="http://eprint.iacr.org/2016/878"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-662-53887-6_9"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/asiacrypt/0001LS16"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Jian Guo, Meicheng Liu and Ling Song develop the technique of <em>linear structures</em> and show how to linearize 3 rounds of <span class="sc">Keccak</span>-<i>f</i>. They then apply it in preimage attacks on up to 4 rounds. For instance, a preimage on SHAKE128 reduced to 4 rounds with 128 bits of output can be found in complexity 2<sup>106</sup>. The same technique has been used to solve the 3-round pre-image challenge in the <a href="crunchy_contest.html">Crunchy Contest</a>. They also used the linear structures to improve the complexity of zero-sum distinguishers on <span class="sc">Keccak</span>-<i>f</i>[1600].</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_Morawiecki15a">P. Morawiecki, <b>Malicious <span class='sc'>Keccak</span></b>, IACR Cryptology ePrint Archive, 2015 <a href="http://eprint.iacr.org/2015/1085"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/Morawiecki15a"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this article, Paweł Morawiecki investigates a variant of <span class="sc">Keccak</span> with different round constants. This is an interesting experiment providing third-party motivation for the choice of the <span class="sc">Keccak</span>-<i>f</i> round constants.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_africacrypt_DasM14">S. Das and W. Meier, <b>Differential Biases in Reduced-Round <span class='sc'>Keccak</span></b>, Africacrypt, 2014 <a href="http://dblp.org/rec/conf/africacrypt/DasM14"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-319-06734-6_5"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/africacrypt/DasM14"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Sourav Das and Willi Meier investigate the bias of difference bits after the propagation of low-weight differential trails after two rounds of <span class="sc">Keccak</span>-<i>f</i>. They apply this technique to find distinguishers on <span class="sc">Keccak</span> when the permutation is reduced to 6 rounds, with a complexity of 2<sup>52</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_MorawieckiPSS13">P. Morawiecki, J. Pieprzyk, M. Srebrny and M. Straus, <b>Preimage attacks on the round-reduced <span class='sc'>Keccak</span> with the aid of differential cryptanalysis</b>, IACR Cryptology ePrint Archive, 2013 <a href="http://eprint.iacr.org/2013/561"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/MorawieckiPSS13"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Paweł Morawiecki, Josef Pieprzyk, Marian Srebrny and Michał Straus present a preimage attack on <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 3 rounds and 512 bits of output with complexity 2<sup>503</sup>. They also present a partial preimage attack, where 256 bits of a 640-bit input message are unknown. This attack works on 4 rounds with a complexity of 2<sup>251</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_ima_KolblMNS13">S. Kölbl, F. Mendel, T. Nad and M. Schläffer, <b>Differential Cryptanalysis of <span class='sc'>Keccak</span> Variants</b>, IMA Int. Conf., 2013 <a href="https://tugraz.elsevierpure.com/en/publications/differential-cryptanalysis-of-keccak-variants/"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-642-45239-0_9"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/ima/KolblMNS13"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Stefan Kölbl, Florian Mendel, Tomislav Nad and Martin Schläffer analyze the differential properties of <span class="sc">Keccak</span>-<i>f</i>[800] and <span class="sc">Keccak</span>-<i>f</i>[1600]. They present collision attacks with practical complexity on <span class="sc">Keccak</span> when the permutation is reduced to 4 rounds. The instances covered include <i>c</i>≤352 when using <span class="sc">Keccak</span>-<i>f</i>[800] and <i>c</i>≤640 when using <span class="sc">Keccak</span>-<i>f</i>[1600].</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_fse_DinurDS13">I. Dinur, O. Dunkelman and A. Shamir, <b>Collision Attacks on Up to 5 Rounds of SHA-3 Using Generalized Internal Differentials</b>, FSE, 2013 <a href="http://eprint.iacr.org/2012/672"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-662-43933-3_12"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/fse/DinurDS13"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Itai Dinur, Orr Dunkelman and Adi Shamir present collision attacks on <span class="sc">Keccak</span> with practical complexity up to 3 rounds of <span class="sc">Keccak</span>-<i>f</i>[1600] and with complexity 2<sup>115</sup> for 5 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_fse_MorawieckiPS13">P. Morawiecki, J. Pieprzyk and M. Srebrny, <b>Rotational Cryptanalysis of Round-Reduced <span class='sc'>Keccak</span></b>, FSE, 2013 <a href="http://eprint.iacr.org/2012/546"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-662-43933-3_13"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/fse/MorawieckiPS13"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Paweł Morawiecki, Josef Pierpzyk and Marian Srebrny apply rotational cryptanalysis to <span class="sc">Keccak</span>. They use it to construct a 5-round distinguisher for <span class="sc">Keccak</span>-<i>f</i>[1600] and to do preimage generation for 4 rounds of <span class="sc">Keccak</span>[<i>r</i>=1024,<i>c</i>=576] truncated to 512 bits with complexity 2<sup>506</sup> calls to <span class="sc">Keccak</span>-<i>f</i>[1600].</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_ipl_MorawieckiS13">P. Morawiecki and M. Srebrny, <b>A SAT-based preimage analysis of reduced <span class='sc'>Keccak</span> hash functions</b>, Inf. Process. Lett., 2013 <a href="http://eprint.iacr.org/2010/285"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1016/j.ipl.2013.03.004"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/ipl/MorawieckiS13"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Paweł Morawiecki and Marian Srebrny report on experiments for generating preimages using SAT solvers. They attack <span class="sc">Keccak</span> versions calling <span class="sc">Keccak</span>-<i>f</i> with width 50, 200 and 1600 and with a reduced number of rounds. They compare the SAT solver approach with plain exhaustive search and it turns out to be faster for up to 3 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_fse_DinurDS12a">I. Dinur, O. Dunkelman and A. Shamir, <b>New Attacks on <span class='sc'>Keccak</span>-224 and <span class='sc'>Keccak</span>-256</b>, FSE, 2012 (also published in Journal of Cryptology 27(2) (pp. 183-209), 2014) <a href="http://eprint.iacr.org/2011/624"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-642-34047-5_25"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/fse/DinurDS12a"><i class="fa fa-graduation-cap"></i></a></p>
+<p>The authors of this paper present practical-time collisions on <span class="sc">Keccak</span>[<i>r</i>=1088,<i>c</i>=512] (and lower capacity) with 4 rounds. They combine a low-weight trail over 3 rounds with algebraic techniques. They also find near-collisions when the number of rounds is reduced to 5.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_indocrypt_Naya-PlasenciaRM11">M. Naya-Plasencia, A. Röck and W. Meier, <b>Practical Analysis of Reduced-Round <span class='sc'>Keccak</span></b>, Indocrypt, 2011 <a href="http://naya.plasencia.free.fr/Maria/papers/Keccak_differential.pdf"><i class="fa fa-file-pdf-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-642-25578-6_18"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/indocrypt/Naya-PlasenciaRM11"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, the authors propose several practical-time attacks on the <span class="sc">Keccak</span> hash function with 2 to 4 rounds. First, they give a differential distinguisher exploiting a low-weight differential trail. Its complexity is 2<sup>25</sup> for 4 rounds. Then, they show how to produce a collision (resp. near-collision) on 2 (resp. 3) rounds of <span class="sc">Keccak</span>[<i>r</i>=1088,<i>c</i>=512] (and lower capacity) with complexity 2<sup>33</sup> (resp. 2<sup>25</sup>). Finally, they present an algorithm to find (second) preimages in time 2<sup>31</sup> and memory 2<sup>29</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="__DJB20101127">D. J. Bernstein, <b>Second preimages for 6 (7? (8??)) rounds of <span class='sc'>Keccak</span>?</b>, NIST hash forum, 2010 <a href="http://cr.yp.to/hash/keccak-20101127.txt"><i class="fa fa-folder-open-o"></i></a></p>
+<p>The attack exploits the low degree of <span class="sc">Keccak</span>-<i>f</i>'s round function and turns it into a (second) preimage attack at the sponge function level. The downside of the attack is that this workload reduction comes at the cost of memory. For 6 rounds, 2<sup>176</sup> bits of memory give a workload reduction by a factor 50 (~6 bits); for 7 rounds, 2<sup>320</sup> bits of memory give a workload reduction by a factor 37 (~5 bits); and for 8 rounds, 2<sup>508</sup> bits of memory give a workload reduction by a factor 1.4 (half a bit). The author was awarded the <a href="2010/prize4_hht_result.html">fourth prize for the best cryptanalysis</a>.</p>
+
+
+</div></div>
+
+<h1>Analysis of keyed modes</h1>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_asiacrypt_Hosoyamada25">A. Hosoyamada, <b>Post-Quantum Security of Keyed Sponge-Based Constructions Through a Modular Approach</b>, Asiacrypt, 2025 <a href="https://eprint.iacr.org/2025/1059"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-981-95-5018-0_14"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/asiacrypt/Hosoyamada25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Akinori Hosoyamada establishes a formalized modular framework to evaluate the post-quantum security of keyed sponge constructions against quantum adversaries. By decomposing the security proofs into independent components and utilizing quantum oracle reductions, the research clarifies the exact security bounds of keyed sponges when subjected to quantum superposition queries. Ultimately, this work provides a generalized, provable security foundation that simplifies the post-quantum analysis of sponge-based ciphers and MACs.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_lightsec_VaziriV25">M. Vaziri and V. Velichkov, <b>Cube-Attack-Like Cryptanalysis of <span class='sc'>Keccak</span>-Based Constructions Exploiting State Differences</b>, LightSec, 2025 <a href="https://eprint.iacr.org/2025/1369"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-032-15541-2_15"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/lightsec/VaziriV25"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Mohammad Vaziri and Vesselin Velichkov introduce a novel cube-attack-like cryptanalytic framework that systematically exploits state differences in round-reduced Keccak permutations. By analyzing the propagation of internal bit-level differentials alongside conditional cube variables, the method significantly limits the diffusion of secret key bits into the public superpoly equations. Consequently, this approach allows them to execute highly efficient key-recovery attacks on 5-round <span class="sc">Keccak</span>-[<i>r</i>=576, <i>c</i>=1024] and on 5-round <span class="sc">Keccak</span>-[<i>r</i>=832, <i>c</i>=768] used as a MAC.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_acns_VaziriV23">M. Vaziri and V. Velichkov, <b>Conditional Cube Key Recovery Attack on Round-Reduced <span class='sc'>Xoodyak</span></b>, ACNS Workshops, 2023 <a href="https://eprint.iacr.org/2023/936"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-41181-6_3"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/acns/VaziriV23"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, the authors present a practical key-recovery attack on round-reduced variants of the lightweight cryptographic primitive <span class="sc">Xoodyak</span> by leveraging a conditional cube cryptanalysis strategy. Using an automated Mixed Integer Linear Programming (MILP) model, they identify optimal cube variables that constrain the nonlinear propagation of the underlying <span class="sc">Xoodoo</span> permutation across up to 6 and 7 rounds. Through empirical verification and targeted bit-fixing, the framework successfully isolates and recovers key bits within an efficient, practical timeframe. Their attacks target 6-round <span class="sc">Xoodyak</span> with complexity 2<sup>42.45</sup> and 7-round <span class="sc">Xoodyak</span> with complexity 2<sup>76.003</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_GilbertBKR23">H. Gilbert, R. H. Boissier, L. Khati and Y. Rotella, <b>Generic Attack on Duplex-Based AEAD Modes Using Random Function Statistics</b>, Eurocrypt, 2023 <a href="https://eprint.iacr.org/2023/262"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-30634-1_12"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/GilbertBKR23"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Henri Gilbert, Rachelle Heim Boissier, Louiza Khati and Yann Rotella describe a powerful generic attack targeting authenticated encryption with associated data (AEAD) schemes based on the duplex construction. By looking at random function characteristics, they present a forgery in time complexity <i>O</i>(2<sup>3<i>c</i>/4</sup>). This forced us to correct our security claim on <span class="sc">Xoodyak</span>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_sacrypt_DunkelmanW22">O. Dunkelman and A. Weizman, <b>Another Look at Differential-Linear Attacks</b>, SAC, 2022 <a href="https://eprint.iacr.org/2023/1675"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-031-58411-4_6"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/sacrypt/DunkelmanW22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Orr Dunkelman and Ariel Weizman provide a comprehensive reassessment of differential-linear cryptanalysis, correcting and refining foundational assumptions regarding how the bias of linear approximations propagates through differential characteristics. By introducing a new theoretical model that accurately evaluates the dependency between intermediate state bits, they bridge long-standing discrepancies between experimental results and mathematical predictions. They show an attack on 4-round <span class="sc">Xoodyak</span>, as well as on 5-round <span class="sc">Xoodyak</span> in the related key model.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="__conf_NIST_LWC_DunkelmanW22">O. Dunkelman and A. Weizman, <b>Differential-Linear Cryptanalysis on <span class='sc'>Xoodyak</span></b>, NIST LWC Workshop, 2022 <a href="https://csrc.nist.gov/csrc/media/Events/2022/lightweight-cryptography-workshop-2022/documents/papers/differential-linear-cryptanalysis-on-xoodyak.pdf"><i class="fa fa-file-pdf-o"></i></a></p>
+<p>In this paper, Orr Dunkelman and Ariel Weizman use differential-linear cryptanalysis techniques to mount a distinguisher on <span class="sc">Xoodoo</span> reduced to 4 and 5 rounds. They present a key recovery attack on <span class="sc">Xoodyak</span> reduced to 4 rounds, with a practical complexity of 2<sup>23</sup>, as well as a related-key attack on <span class="sc">Xoodyak</span> reduced to 5 rounds (2<sup>22</sup>).</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_sacrypt_CuiG20">T. Cui and L. Grassi, <b>Algebraic Key-Recovery Attacks on Reduced-Round <span class='sc'>Xoofff</span></b>, SAC, 2020 <a href="https://eprint.iacr.org/2020/1201"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-81652-0_7"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/sacrypt/CuiG20"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Tingting Cui and Lorenzo Grassi analyze <span class="sc">Xoofff</span> and highlight a non-ideal interaction between the expanding rolling function and the <span class="sc">Xoodoo</span> permutation. By combining a meet-in-the-middle algebraic attack and the linearization technique, they can recover the key of <span class="sc">Xoofff</span> where the expansion permutation is reduced to 4 rounds (instead of 6) in time 2<sup>106</sup> and memory 2<sup>70</sup>. Also, by exploiting high-order differentials and interpolation, they can recover the key of <span class="sc">Xoofff</span> where the middle and expansion permutations have a total of 9 rounds (instead of 12) in time 2<sup>106</sup>, memory 2<sup>70</sup> and data 2<sup>100</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_ZhouZDJM20">H. Zhou, R. Zong, X. Dong, K. Jia and W. Meier, <b>Interpolation Attacks on Round-Reduced Elephant, <span class='sc'>Kravatte</span> and <span class='sc'>Xoofff</span></b>, IACR Cryptol. ePrint Arch., 2020 <a href="https://eprint.iacr.org/2020/781"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/ZhouZDJM20"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Haibo Zhou, Rui Zong, Xiaoyang Dong, Keting Jia and Willi Meier apply a type of algebraic cryptanalysis, called interpolation attacks, to the deck function <span class="sc">Kravatte 6644</span>, reduced-round versions of the deck functions <span class="sc">Kravatte</span> and <span class="sc">Xoofff</span> and the NIST lightweight proposal Elephant-Delirium that uses <span class="sc">Keccak</span>-<i>f</i>[200]. They are able to cover 8 rounds of the underlying permutation with data complexities ranging from 2<sup>70</sup> blocks (Delirium) to 2<sup>78</sup> blocks (<span class="sc">Kravatte</span>) and computational complexities ranging from 2<sup>90</sup> to 2<sup>112</sup> operations.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_cj_ZhouLDJMA20">H. Zhou, Z. Li, X. Dong, K. Jia and W. Meier, <b>Practical Key-recovery Attacks on Round-Reduced <span class='sc'>Ketje Jr</span>, <span class='sc'>Xoodoo</span>-AE and <span class='sc'>Xoodyak</span></b>, Comput. J., 2020 <a href="https://eprint.iacr.org/2019/447"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1093/comjnl/bxz152"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/cj/ZhouLDJMA20"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Haibo Zhou, Zheng Li, Xiaoyang Dong, Keting Jia and Willi Meier further investigate conditional cube attacks on <span class="sc">Ketje Jr</span>, on an authenticated encryption mode based on <span class="sc">Xoodoo</span>, and on <span class="sc">Xoodyak</span>. When <span class="sc">Ketje Jr</span> is reduced to 5 rounds, they can recover the key with time complexity 2<sup>27</sup>. For <span class="sc">Xoodyak</span> reduced to 6 rounds, this is 2<sup>44</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_asiacrypt_BonnetainHNSS19">X. Bonnetain, A. Hosoyamada, M. Naya-Plasencia, Y. Sasaki and A. Schrottenloher, <b>Quantum Attacks Without Superposition Queries: The Offline Simon's Algorithm</b>, Asiacrypt, 2019 <a href="https://eprint.iacr.org/2019/614"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-34578-5_20"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/asiacrypt/BonnetainHNSS19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Xavier Bonnetain, Akinori Hosoyamada, María Naya-Plasencia, Yu Sasaki and André Schrottenloher apply a novel quantum attack that uses Simon's algorithm in a way that does not require queries in quantum superposition. Applied to <span class="sc">Kravatte</span> and <span class="sc">Xoofff</span>, their attack would cost 2<sup>533</sup> data and time and 2<sup>128</sup> data, respectively. They also discuss applications to sponge functions, but with a cost above 2<sup><i>c</i></sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_iwsec_LiuCW19">F. Liu, Z. Cao and G. Wang, <b>Finding Ordinary Cube Variables for <span class='sc'>Keccak</span>-MAC with Greedy Algorithm</b>, IWSEC, 2019 <a href="https://eprint.iacr.org/2018/799"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-26834-3_17"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/iwsec/LiuCW19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Fukang Liu, Zhenfu Cao and Gaoli Wang look at conditional cube attacks and introduce new techniques to find cube variables. They propose key recovery attacks that can break a MAC based on <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 6 rounds in time 2<sup>40</sup>. For <span class="sc">Keccak</span>[<i>r</i>, <i>c</i>] with <i>c</i>=256, 512 or 768 reduced to 7 rounds, the time complexity is 2<sup>71</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_LiDBJWM19">Z. Li, X. Dong, W. Bi, K. Jia, X. Wang and W. Meier, <b>New Conditional Cube Attack on <span class='sc'>Keccak</span> Keyed Modes</b>, IACR Trans. Symmetric Cryptol., 2019 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/8315"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.13154/tosc.v2019.i2.94-124"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/LiDBJWM19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Zheng Li, Xiaoyang Dong, Wenquan Bi, Keting Jia, Xiaoyun Wang and Willi Meier propose improved conditional cube attacks to reduce the complexity of the known key recovery attacks on <span class="sc">Keccak</span>, KMAC and <span class="sc">Ketje Sr</span>. In particular, for KMAC256 reduced to 9 rounds, the time complexity is now 2<sup>139</sup>, for a MAC based on <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 7 rounds, the time complexity is 2<sup>72</sup> and for <span class="sc">Ketje Sr</span> reduced to 7 rounds, the complexity is 2<sup>77</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_dcc_BiDLZW19">W. Bi, X. Dong, Z. Li, R. Zong and X. Wang, <b>MILP-aided Cube-attack-like Cryptanalysis on <span class='sc'>Keccak</span> Keyed Modes</b>, Des. Codes Cryptography, 2019 <a href="https://eprint.iacr.org/2018/075"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/s10623-018-0526-x"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/dcc/BiDLZW19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Wenquan Bi, Xiaoyang Dong, Zheng Li, Rui Zong and Xiaoyun Wang improve upon the cube attacks of Dinur et al. [Eurocrypt 2015] by optimizing the choice of public variables in the cube using mixed-integer linear programming (MILP). Their method works best and outperforms other methods when the number of degrees of freedom is small (e.g., small rate or small permutation width). They apply the method to a MAC function on top of <span class="sc">Keccak</span>[<i>r</i>=1344, <i>c</i>=256] and <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 6 (time 2<sup>42</sup>-2<sup>59</sup>) or 7 rounds (2<sup>80</sup>-2<sup>112</sup>). They also apply it to Lake <span class="sc">Keyak</span> reduced to 7 (2<sup>42</sup>) or 8 rounds (2<sup>79</sup>) and to <span class="sc">Ketje</span> Minor and Major reduced to 7 rounds (2<sup>94</sup>-2<sup>113</sup>).</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_0001018">L. Song and J. Guo, <b>Cube-Attack-Like Cryptanalysis of Round-Reduced <span class='sc'>Keccak</span> Using MILP</b>, IACR Trans. Symmetric Cryptol., 2018 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/7301"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.13154/tosc.v2018.i3.182-214"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/0001018"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Ling Song and Jian Guo further develop cube-attack-like techniques involving mixed integer linear programming (MILP) to attack reduced-round <span class="sc">Keccak</span>, <span class="sc">Ketje</span> and <span class="sc">Xoodoo</span>. More specifically, they attack a MAC based on <span class="sc">Keccak</span>[<i>r</i>=576, <i>c</i>=1024] reduced to 7 rounds with a time complexity of 2<sup>111</sup>. For <span class="sc">Ketje Jr</span>, they attack 5 and 6 rounds with time complexities of 2<sup>35</sup> and 2<sup>59</sup> respectively. They also consider a <span class="sc">Ketje</span>-style authenticated encryption mode on top of <span class="sc">Xoodoo</span> reduced to 6 rounds with a complexity of 2<sup>89</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_FuhrNR18">T. Fuhr, M. Naya-Plasencia and Y. Rotella, <b>State-Recovery Attacks on Modified <span class='sc'>Ketje Jr</span></b>, IACR Trans. Symmetric Cryptol., 2018 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/843"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.13154/tosc.v2018.i1.29-56"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/FuhrNR18"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Thomas Fuhr, María Naya-Plasencia and Yann Rotella describe key recovery attacks on <span class="sc">Ketje Jr</span>, targeting the encryption phase. The attacks work with a rate extended to 32 or 40 bits (instead of the nominal 16 bits). They compare the resistance of their attacks between <span class="sc">Ketje Jr</span> v1 and v2, and show that the latter has a thicker safety margin.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_ChaigneauFGGJRS18">C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J. Reinhard and L. Song, <b>Key-Recovery Attacks on Full <span class='sc'>Kravatte</span></b>, IACR Trans. Symmetric Cryptol., 2018 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/842"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.13154/tosc.v2018.i1.5-28"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/ChaigneauFGGJRS18"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Colin Chaigneau, Thomas Fuhr, Henri Gilbert, Jian Guo, Jérémy Jean, Jean-René Reinhard and Ling Song analyze the <span class="sc">Kravatte</span> pseudo-random function. They show that <span class="sc">Kravatte</span> 6644 is vulnerable to key recovery attacks using high-order differential attacks or using algebraic attacks on the expansion phase. They also show that the attacks work even if the number of rounds is raised to 6 for all permutations. However, their attacks do not extend to the final version of <span class="sc">Kravatte</span>, namely, <span class="sc">Kravatte</span> Achouffe. The authors were so generous to communicate their results to us during the review process of our Farfalle paper submission to ToSC, allowing us to tweak <span class="sc">Kravatte</span> accordingly.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_YeT18">C. Ye and T. Tian, <b>New Insights into Divide-and-Conquer Attacks on the Round-Reduced <span class='sc'>Keccak</span>-MAC</b>, IACR Cryptology ePrint Archive, 2018 <a href="https://eprint.iacr.org/2018/059"><i class="fa fa-folder-open-o"></i></a> <a href="http://eprint.iacr.org/2018/059"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/YeT18"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Chen-Dong Ye and Tian Tian investigate a variant of cube attacks called divide-and-conquer attacks, and apply it to a MAC function on top of <span class="sc">Keccak</span>[<i>r</i>=1024, <i>c</i>=576] reduced to 6 or 7 rounds. They improve upon the attacks of Dinur et al. [Eurocrypt 2015], but not on the attacks of Huang et al. [Eurocrypt 2017].</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_asiacrypt_00010SL18">L. Song, J. Guo, D. Shi and S. Ling, <b>New MILP Modeling: Improved Conditional Cube Attacks on <span class='sc'>Keccak</span>-Based Constructions</b>, Asiacrypt, 2018 <a href="https://eprint.iacr.org/2017/1030"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-03329-3_3"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/asiacrypt/00010SL18"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Ling Song, Jian Guo, Danping Shi and San Ling improve cube attacks on <span class="sc">Keccak</span>-based functions by finding more optimal sets of conditional cubes. Their findings apply to many instances: to KMAC128 reduced to 7 rounds (time 2<sup>76</sup>), KMAC256 reduced to 9 rounds (2<sup>147</sup>), <span class="sc">Lake Keyak</span> reduced to 9 rounds (2<sup>137</sup>), River and Lake <span class="sc">Keyak</span> reduced to 8 rounds (2<sup>71</sup>-2<sup>77</sup>), <span class="sc">Ketje</span> Minor and Major reduced to 7 rounds (2<sup>71</sup>-2<sup>73</sup>) and <span class="sc">Ketje</span> Sr reduced to 7 rounds (2<sup>92</sup>). They also present a general attack on the full-state keyed duplex with <span class="sc">Keccak</span>-<i>p</i>[1600, <i>n</i><sub><i>r</i></sub>=9] of complexity 2<sup>90</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_asiacrypt_LiBDW17">Z. Li, W. Bi, X. Dong and X. Wang, <b>Improved Conditional Cube Attacks on <span class='sc'>Keccak</span> Keyed Modes with MILP Method</b>, Asiacrypt, 2017 <a href="http://eprint.iacr.org/2017/804"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-319-70694-8_4"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/asiacrypt/LiBDW17"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Zheng Li, Wenquan Bi, Xiaoyang Dong and Xiaoyun Wang improve the cube attacks on <span class="sc">Keccak</span> and <span class="sc">Ketje</span>. First, they present key recovery attacks on <span class="sc">Keccak</span> used in a MAC mode, reduced to 6 rounds (time 2<sup>58</sup>) and 7 rounds (time 2<sup>75</sup>), gaining one round comapred to by Huang et al. Second, they reduce the time complexity of the key recovery attacks by Dong et al. on reduced-round <span class="sc">Ketje Minor</span> and <span class="sc">Major</span>, from 2<sup>96</sup> down to 2<sup>81</sup> and 2<sup>83</sup>, respectively.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_DongLWQ17">X. Dong, Z. Li, X. Wang and L. Qin, <b>Cube-like Attack on Round-Reduced Initialization of <span class='sc'>Ketje Sr</span></b>, IACR Trans. Symmetric Cryptol., 2017 <a href="http://eprint.iacr.org/2017/159"><i class="fa fa-folder-open-o"></i></a> <a href="http://tosc.iacr.org/index.php/ToSC/article/view/594"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/DongLWQ17"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Xiaoyang Dong, Zheng Li, Xiaoyun Wang and Ling Qin mount cube attacks on the <span class="sc">Ketje</span> family of authenticated encryption schemes, with a focus on the primary recommendation <span class="sc">Ketje Sr</span>. They can successfully recover the key when the number of rounds of the initialization step is reduced from 12 down to 6, with various complexities (e.g., from 2<sup>96</sup> for <span class="sc">Ketje Minor</span> or <span class="sc">Major</span> to 2<sup>113</sup> for <span class="sc">Ketje Sr</span>).</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_HuangWXWZ17">S. Huang, X. Wang, G. Xu, M. Wang and J. Zhao, <b>Conditional Cube Attack on Reduced-Round <span class='sc'>Keccak</span> Sponge Function</b>, Eurocrypt, 2017 <a href="http://eprint.iacr.org/2016/790"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-319-56614-6_9"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/HuangWXWZ17"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Senyang Huang, Xiaoyun Wang, Guangwu Xu, Meiqin Wang and Jingyuan Zhao generalize cube attacks into <em>conditional</em> cube testers. They present different attacks in different settings. With a MAC mode on top of <span class="sc">Keccak</span> with a reduced-round <span class="sc">Keccak</span>-<i>f</i>[1600], they can recover the secret key up to 7 rounds with a time and data complexity of 2<sup>72</sup>. On <span class="sc">Lake Keyak</span>, their attack extends to 8 rounds with a time and data complexity of 2<sup>74</sup>. Finally, they also propose (unkeyed) distinguishers on <span class="sc">Keccak</span> reduced to 7 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_asiacrypt_DobraunigEM15">C. Dobraunig, M. Eichlseder and F. Mendel, <b>Heuristic Tool for Linear Cryptanalysis with Applications to CAESAR Candidates</b>, Asiacrypt, 2015 <a href="https://eprint.iacr.org/2015/1200"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-662-48800-3_20"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/asiacrypt/DobraunigEM15"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Christoph Dobraunig, Maria Eichlseder and Florian Mendel present a heuristic tool for finding linear trails in permutations over a small number of rounds with low weight. The permutations they target are the ones of Ascon, ICEPOLE, <span class="sc">Lake Keyak</span>, Minalpher and Prøst. With this tool they re-discover the best known linear trails for 3 and 4 rounds of <span class="sc">Keccak</span>-<i>f</i>[1600], that we reported on in <span class="sc">KeccakTools</span>. Additionally, they also looked for linear trails over 3 and 4 rounds where the output masks is only in the outer part, when being used in <span class="sc">Lake Keyak</span>, and found the best such trails known to date.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_DinurMPSS15">I. Dinur, P. Morawiecki, J. Pieprzyk, M. Srebrny and M. Straus, <b>Cube Attacks and Cube-Attack-Like Cryptanalysis on the Round-Reduced <span class='sc'>Keccak</span> Sponge Function</b>, Eurocrypt, 2015 <a href="http://eprint.iacr.org/2014/736"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-662-46800-5_28"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/DinurMPSS15"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In their paper, Itai Dinur, Paweł Morawiecki, Josef Pieprzyk, Marian Srebrny and Michał Straus present attacks that combine cube attacks and structural properties of <span class="sc">Keccak</span>. They target different keyed modes of <span class="sc">Keccak</span> as well as <span class="sc">Keyak</span> v1. They achieve forgery attacks up to 7 rounds (complexity: 2<sup>65</sup>), key recovery attacks up to 7 rounds (complexity: 2<sup>76</sup>) and keystream predictions up to 9 rounds (complexity: 2<sup>256</sup>). These are the attacks that reach the largest number of rounds of <span class="sc">Keccak</span> and <span class="sc">Keyak</span> v1.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_DinurMPSS14">I. Dinur, P. Morawiecki, J. Pieprzyk, M. Srebrny and M. Straus, <b>Practical Complexity Cube Attacks on Round-Reduced <span class='sc'>Keccak</span> Sponge Function</b>, IACR Cryptology ePrint Archive, 2014 <a href="http://eprint.iacr.org/2014/259"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/DinurMPSS14"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In their paper, Itai Dinur, Paweł Morawiecki, Josef Pieprzyk, Marian Srebrny and Michał Straus present some cube attacks on stream cipher and MAC modes of <span class="sc">Keccak</span>. The attacks allow to recover the key with a small complexity of 2<sup>36</sup> when the permutation is reduced to 6 rounds or less.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="__Lathrop">J. Lathrop, <b>Cube Attacks on Cryptographic Hash Functions</b>, Rochester Institute of Technology, 2009 <a href="http://scholarworks.rit.edu/theses/650/"><i class="fa fa-folder-open-o"></i></a></p>
+<p>In his thesis, Joel Lathrop shows that cube attacks can not only be applied to keyed cryptosystems but also to hash functions by way of a partial preimage attack. Cube attacks are applied to reduced-round variants of ESSENCE and <span class="sc">Keccak</span>.</p>
+
+
+</div></div>
+
+<h1>Analysis of the <span class="sc">Keccak</span>-<i>f</i> and <span class="sc">Xoodoo</span> permutations</h1>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_HuP22">K. Hu and T. Peyrin, <b>Revisiting Higher-Order Differential(-Linear) Attacks from an Algebraic Perspective – Applications to Ascon, Grain v1, <span class='sc'>Xoodoo</span>, and ChaCha</b>, IACR Cryptol. ePrint Arch., 2022 <a href="https://eprint.iacr.org/2022/1335"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/HuP22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Kai Hu and Thomas Peyrin present a second-order differential-linear distinguisher for <span class="sc">Xoodoo</span> reduced to 4 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_OmlandS22">T. Omland and P. Stanica, <b>Permutation rotation-symmetric Sboxes, liftings and affine equivalence</b>, IACR Cryptol. ePrint Arch., 2022 <a href="https://eprint.iacr.org/2022/279"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/OmlandS22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Tron Omland and Pantelimon Stanica investigate permutation shift-invariant vectorial Boolean functions that generalize <span class="sc">Keccak</span>'s χ mapping.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_BelliniM22">E. Bellini and R. H. Makarim, <b>Functional Cryptanalysis: Application to reduced-round <span class='sc'>Xoodoo</span></b>, IACR Cryptol. ePrint Arch., 2022 <a href="https://eprint.iacr.org/2022/134"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/BelliniM22"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Emanuele Bellini and Rusydi H. Makarim introduce functional cryptanalysis as a generalization of other techniques such as differential and rotational cryptanalysis. They show a functional distinguisher on 3 rounds of <span class="sc">Xoodoo</span>, which works better than a differential distinguisher.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_eurocrypt_LiuSL21">Y. Liu, S. Sun and C. Li, <b>Rotational cryptanalysis from a differential-linear perspective: practical distinguishers for round-reduced FRIET, <span class='sc'>Xoodoo</span>, and Alzette</b>, Eurocrypt, 2021 <a href="https://eprint.iacr.org/2021/189"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.1007/978-3-030-77870-5_26"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/eurocrypt/LiuSL21"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Yunwen Liu, Siwei Sun and Chiao Li revisit the rotational cryptanalysis from the perspective of differential-linear cryptanalysis. They apply this technique to find rotational differential-linear distinguishers with correlation 1 on <span class="sc">Xoodoo</span> reduced to 4 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iet-ifs_YanLWYX19">H. Yan, X. Lai, L. Wang, Y. Yu and Y. Xing, <b>New zero-sum distinguishers on full 24-round <span class='sc'>Keccak</span>-<i>f</i> using the division property</b>, IET Inf. Secur., 2019 <a href="https://doi.org/10.1049/iet-ifs.2018.5263"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iet-ifs/YanLWYX19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Hailun Yan, Xuejia Lai, Lei Wang, Yu Yu and Yiran Xing propose a new zero-sum distinguisher of full 24-round <span class="sc">Keccak</span>-<i>f</i> by using the <em>division property</em>, a generalized integral property that was initially used in the integral cryptanalysis of symmetric-key algorithms.  Extending on work done by Todo at CRYPTO 2015, they prove a propagation rule of the division property under the assumption that the S-box specification is known to attackers. They apply this to S-boxes in <span class="sc">Keccak</span>-<i>f</i> and Ascon.  For full-round <span class="sc">Keccak</span>-<i>f</i>, this brings the best distinguisher to a complexity of 2<sup>1573</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_tosc_LiuQT19">G. Liu, W. Qiu and Y. Tu, <b>New Techniques for Searching Differential Trails in <span class='sc'>Keccak</span></b>, IACR Trans. Symmetric Cryptol., 2019 <a href="https://tosc.iacr.org/index.php/ToSC/article/view/8470"><i class="fa fa-folder-open-o"></i></a> <a href="https://doi.org/10.13154/tosc.v2019.i4.407-437"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/journals/tosc/LiuQT19"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Guozhen Liu, Weidong Qiu and Yi Tu introduce new algorithms to cover 3-round trail cores in <span class="sc">Keccak</span>-<i>f</i> with propagation
+weight up to 53.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_cisis_LiC17">M. Li and L. Cheng, <b>Distinguishing Property for Full Round <span class='sc'>Keccak</span>-<i>f</i> Permutation</b>, CISIS, 2017 <a href="https://doi.org/10.1007/978-3-319-61566-0_59"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/conf/cisis/LiC17"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Maolin Li and Lu Cheng apparently reduced the size of a zero-sum partition to 2<sup>1573</sup> elements.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_fse_JeanN15">J. Jean and I. Nikolić, <b>Internal Differential Boomerangs: Practical Analysis of the Round-Reduced <span class='sc'>Keccak</span>-<i>f</i> Permutation</b>, Fast Software Encryption, 2015 <a href="http://eprint.iacr.org/2015/244"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-662-48116-5_26"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/fse/JeanN15"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Jérémy Jean and Ivica Nikolić introduce the technique of <em>internal differential boomerang distinguishers</em>. They analyze the symmetry inside the permutation and propose distinguishers up to 8 rounds of <span class="sc">Keccak</span>-<i>f</i>[1600] with practical complexities.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_africacrypt_KuilaSPC14">S. Kuila, D. Saha, M. Pal and D. R. Chowdhury, <b>Practical Distinguishers against 6-Round <span class='sc'>Keccak</span>-<i>f</i> Exploiting Self-Symmetry</b>, Africacrypt, 2014 <a href="http://dblp.org/rec/html/conf/africacrypt/KuilaSPC14"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-319-06734-6_6"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/africacrypt/KuilaSPC14"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Sukhendu Kuila, Dhiman Saha, Madhumangal Pal and Dipanwita Roy Chowdhury consider distinguishers on <span class="sc">Keccak</span>-<i>f</i>[1600] where the state is self-symmetric, i.e., it has a period less than 64 along the <i>z</i>-axis. They show distinguishers up to 6 rounds with a complexity of 2<sup>11</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_fse_Duc0P012">A. Duc, J. Guo, T. Peyrin and L. Wei, <b>Unaligned Rebound Attack: Application to <span class='sc'>Keccak</span></b>, Fast Software Encryption, 2012 <a href="http://eprint.iacr.org/2011/420"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-642-34047-5_23"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/fse/Duc0P012"><i class="fa fa-graduation-cap"></i></a></p>
+<p>This paper analyzes two aspects of differential cryptanalysis on <span class="sc">Keccak</span>: efficient trails and rebound attacks. In the former, the authors propose a heuristic to build differential trails with a low restriction weight. For <span class="sc">Keccak</span>-<i>f</i>[1600], they obtained trails of weight 32, 142 and 709 for 3, 4 and 5 rounds, respectively. In the latter, the paper presents distinguishers making use of the rebound attack for up to 8 rounds of <span class="sc">Keccak</span>-<i>f</i>[1600] with a complexity of 2<sup>491</sup>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="journals_iacr_DuanL11">M. Duan and X. Lai, <b>Improved zero-sum distinguisher for full round <span class='sc'>Keccak</span>-<i>f</i> permutation</b>, IACR Cryptology ePrint Archive, 2011 <a href="http://eprint.iacr.org/2011/023"><i class="fa fa-folder-open-o"></i></a> <a href="https://dblp.org/rec/html/journals/iacr/DuanL11"><i class="fa fa-graduation-cap"></i></a></p>
+<p>The authors of this paper noted a property of the inverse of the non-linear function <i>χ</i>: while <i>χ</i><sup>-1</sup> has algebraic degree 3, the product of any two output bits also has degree 3. This allows to estimate the degree of the <span class="sc">Keccak</span>-<i>f</i> rounds more tightly and to extend the zero-sum distinguisher on <span class="sc">Keccak</span>-<i>f</i>[1600] to size 2<sup>1575</sup> for 24 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_fse_BouraCC11">C. Boura, A. Canteaut and C. De Cannière, <b>Higher-Order Differential Properties of <span class='sc'>Keccak</span> and Luffa</b>, Fast Software Encryption, 2011 <a href="http://eprint.iacr.org/2010/589"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-642-21702-9_15"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/fse/BouraCC11"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this work, the authors present a new upper bounds for the algebraic degree of iterated permutations. While for a small number of rounds the algebraic degree increases exponentially with the number of rounds, for a large number of rounds the algebraic degree only converges exponentially to the maximum value (permutation width minus 1). This improves upon existing zero-sum distinguishers for several SHA-3 candidates. For <span class="sc">Keccak</span>-<i>f</i>, it allows extending the zero-sum distinguishers to the full 24-round version, although the size of the zero-sums is 2<sup>1590</sup> and the distinguisher does not extend to any other type of attack against <span class="sc">Keccak</span>.</p>
+
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_sacrypt_BouraC10">C. Boura and A. Canteaut, <b>Zero-Sum Distinguishers for Iterated Permutations and Application to <span class='sc'>Keccak</span>-<i>f</i> and Hamsi-256</b>, Selected Areas in Cryptography, 2010 <a href="https://hal.archives-ouvertes.fr/hal-00738200"><i class="fa fa-folder-open-o"></i></a> <a href="http://dx.doi.org/10.1007/978-3-642-19574-7_1"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/sacrypt/BouraC10"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Christina Boura and Anne Canteaut extend their zero-sum distinguishers to 20 rounds.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="conf_isit_BouraC10">C. Boura and A. Canteaut, <b>A zero-sum property for the <span class='sc'>Keccak</span>-<i>f</i> permutation with 18 rounds</b>, ISIT, 2010 <a href="http://www-rocq.inria.fr/secret/Anne.Canteaut/Publications/zero_sum.pdf"><i class="fa fa-file-pdf-o"></i></a> <a href="http://dx.doi.org/10.1109/ISIT.2010.5513442"><i class="fa fa-book"></i></a> <a href="https://dblp.org/rec/html/conf/isit/BouraC10"><i class="fa fa-graduation-cap"></i></a></p>
+<p>In this paper, Christina Boura and Anne Canteaut extend the zero-sum distinguisher of Aumasson and Meier to 18 rounds by analyzing the Walsh spectrum of the non-linear part and bounding the degree of the rounds more tightly. The authors won the <a href="2010/prize3_result.html">third prize for the best cryptanalysis</a>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="__AM0sum">J. Aumasson and W. Meier, <b>Zero-sum distinguishers for reduced <span class='sc'>Keccak</span>-<i>f</i> and for the core functions of Luffa and Hamsi</b>, rump session of CHES, 2009 <a href="http://131002.net/data/papers/AM09.pdf"><i class="fa fa-file-pdf-o"></i></a></p>
+<p>In this note, Jean-Philippe Aumasson and Willi Meier investigate a new kind of distinguishers called <em>zero-sum distinguishers</em>. In particular, they compute high-order derivatives of the rounds and the inverse rounds of <span class="sc">Keccak</span>-<i>f</i>. Starting from the middle, they obtain a set of values whose sum is zero and whose sum of images through reduced-round <span class="sc">Keccak</span>-<i>f</i> is also zero. This distinguisher is successful up to 16 rounds. The authors did not find a way to use this distinguisher against the <span class="sc">Keccak</span> sponge function, though. The authors won the <a href="2009/prize2_result.html">second prize for the best cryptanalysis</a>.</p>
+
+
+</div></div>
+
+<div class="panel panel-default">
+<div class="panel-body">
+<p class="lead lead-sm" id="__AK0sum">J. Aumasson and D. Khovratovich, <b>First Analysis of <span class='sc'>Keccak</span></b>, NIST hash forum, 2009 <a href="http://131002.net/data/papers/AK09.pdf"><i class="fa fa-file-pdf-o"></i></a></p>
+<p>In this paper, Jean-Philippe Aumasson and Dmitry Khovratovich look at two possible distinguishers on reduced-round <span class="sc">Keccak</span>-<i>f</i>[1600]. First, cube testers are applied to detect non-ideal behavior in the algebraic description of the permutation. Second, the authors try to solve the constrained-input constrained-output (CICO) problem using automated algebraic techniques. The authors received 25 bottles of Belgian trappist beer as the paper was awarded the <a href="2009/prize_result.html">first prize for the best cryptanalysis</a>. It was presented by Dmitry Khovratovich at the rump session of Eurocrypt 2009 (<a href="http://eurocrypt2009rump.cr.yp.to/c72e20a378faf18f5bd119a674282427.pdf">Beer-recovery analysis</a>).</p>
+
+
+</div></div></div>
+<footer id="footer">
+    Unless otherwise specified, the contents and files within the domain keccak.team are &copy; 2008-2026
+    <a href="team.html">Guido Bertoni, Joan Daemen, Seth Hoffert, Silvia Mella, Michaël Peeters, Gilles Van Assche and Ronny Van Keer</a>.
+    <br/>
+    Webmaster: <a href="http://viguier.nl">Benoit Viguier</a>.
+</footer>
+
+</div> <!-- boxed -->
+</div> <!-- sb-site -->
+
+<div id="back-top">
+    <a href="#header"><i class="fa fa-chevron-up"></i></a>
+</div>
+
+<!-- Scripts -->
+<!-- Compiled in vendors.js -->
+<!--
+<script src="assets/js/jquery.min.js"></script>
+<script src="assets/js/jquery.cookie.js"></script>
+<script src="assets/js/imagesloaded.pkgd.min.js"></script>
+<script src="assets/js/bootstrap.min.js"></script>
+<script src="assets/js/bootstrap-switch.min.js"></script>
+<script src="assets/js/wow.min.js"></script>
+<script src="assets/js/slidebars.min.js"></script>
+<script src="assets/js/jquery.bxslider.min.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/buttons.js"></script>
+<script src="assets/js/jquery.mixitup.min.js"></script>
+<script src="assets/js/circles.min.js"></script>
+<script src="assets/js/masonry.pkgd.min.js"></script>
+<script src="assets/js/jquery.matchHeight-min.js"></script>
+-->
+
+<script src="assets/js/vendors.js"></script>
+
+<!--<script type="text/javascript" src="assets/js/jquery.themepunch.tools.min.js?rev=5.0"></script>
+<script type="text/javascript" src="assets/js/jquery.themepunch.revolution.min.js?rev=5.0"></script>-->
+
+<script src="assets/js/DropdownHover.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/home_info.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script src="asset/css/highlight/highlight.pack.js"></script>
+<script>
+hljs.configure({
+  languages: ['python']
+})
+
+hljs.initHighlightingOnLoad();
+</script>
+
+</body>
+
+</html>

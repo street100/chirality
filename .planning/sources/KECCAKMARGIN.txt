@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Keccak Team</title>
+
+    <base href="https://keccak.team/" />
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="shortcut icon" href="assets/img/favicon.png" />
+
+    <meta name="description" content="">
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="assets/css/preload.css">
+    <link rel="stylesheet" type="text/css" href="fonts/fonts.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/vendors.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style-blue.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/width-full.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/highlight/xcode.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style.css">
+
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="assets/js/html5shiv.min.js"></script>
+        <script src="assets/js/respond.min.js"></script>
+    <![endif]-->
+
+    <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+    });
+    </script>
+</head>
+
+<!-- Preloader -->
+<div id="preloader">
+    <div id="status">&nbsp;</div>
+</div>
+
+<div class="sb-site-container">
+<div class="boxed">
+
+<header id="header-full-top" class="hidden-xs header-full">
+    <nav class="top-nav">
+        <ul class="top-nav-social hidden-sm">
+            <li><a href="news.atom" class="animated fadeIn animation-delay-6 rss"><i class="fa fa-rss"></i></a></li>
+            <li><a href="https://twitter.com/KeccakTeam" class="animated fadeIn animation-delay-7 twitter"><i class="fa fa-twitter"></i></a></li>
+            <li><a href="https://github.com/KeccakTeam" class="animated fadeIn animation-delay-8 git"><i class="fa fa-github"></i></a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="header-full-title">
+            <h1 class="animated fadeInRight"><a href="index.html">Team <span>Keccak</span></a></h1>
+            <p class="animated fadeInRight">
+            Guido Bertoni<sup>3</sup>, Joan Daemen<sup>2</sup>, Seth Hoffert, Silvia Mella<sup>2</sup>, Michaël Peeters<sup>1</sup>, Gilles Van Assche<sup>1</sup> and Ronny Van Keer<sup>1</sup><br />
+            <sup>1</sup><a href="http://www.st.com/">STMicroelectronics</a> - <sup>2</sup><a href="http://www.ru.nl/english/">Radboud University</a> - <sup>3</sup><a href="https://www.securitypattern.com/">Security Pattern</a>
+            </p>
+        </div>
+    </div>
+</header> <!-- header-full -->
+<nav class="navbar navbar-default navbar-header-full navbar-dark yamm navbar-static-top" role="navigation" id="header">
+    <div class="container">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="sr-only">Toggle navigation</span>
+            <i class="fa fa-bars"></i>
+            </button>
+            <a id="ar-brand" class="navbar-brand hidden-lg hidden-md hidden-sm" href="index.html">Team <span>Keccak</span></a>
+        </div> <!-- navbar-header -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li><a href="index.html">Home</a></li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Design</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Schemes</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccak.html">Keccak</a></li>
+                                <li><a href="ketje.html">Ketje</a></li>
+                                <li><a href="keyak.html">Keyak</a></li>
+                                <li><a href="kangarootwelve.html">KangarooTwelve</a></li>
+                                <li><a href="turboshake.html">TurboSHAKE</a></li>
+                                <li><a href="kravatte.html">Kravatte</a></li>
+                                <li role="presentation" class="divider"></li>
+                                <li><a href="xoofff.html">Xoofff</a></li>
+                                <li><a href="xoodyak.html">Xoodyak</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Constructions</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="sponge_duplex.html">Sponge, duplex and variants</a></li>
+                                <li><a href="farfalle.html">Farfalle</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Permutations</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccakp.html">Keccak-<i>p</i></a></li>
+                                <li><a href="xoodoo.html">Xoodoo</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Analysis</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="crunchy_contest.html">Crunchy contest</a></li>
+                        <li><a href="ketje_contest.html">Ketje contest</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Implementation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Software</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="software.html">Implementations</a></li>
+                                <li><a href="sw_performance.html">Performance figures</a></li>
+                                <li><a href="binaries.html">Binaries</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="hardware.html">Hardware</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Documentation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="specifications.html">Specifications</a></li>
+                        <li><a href="papers.html">Our papers</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="figures.html">Figures</a></li>
+                        <li><a href="glossary.html">Glossary</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="archives.html">Archives</a></li>
+                    </ul>
+                </li>
+
+                <li><a href="team.html">About us</a></li>
+
+            </ul>
+        </div><!-- navbar-collapse -->
+    </div><!-- container -->
+</nav>
+
+<header class="main-header">
+<div class="container">
+<h1 class="page-title">Strengths of <span class='sc'>Keccak</span></h1>
+</div>
+</header>
+<div class="container">
+<h1>Design and security</h1>
+<p><span class='sc'>Keccak</span> follows an open design approach.</p>
+<ul>
+<li><span class='sc'>Keccak</span> comes with a <strong>clear design rationale</strong> and has been extensively scrutinized by <strong>third-party cryptanalysis</strong>. For more details, we refer to the <a href="third_party.html">cryptanalysis page</a>.</li>
+<li>Unlike the previous hashing standards, the SHA-3, SHAKE, cSHAKE and other SHA-3-related functions are the outcome of an <strong>open competition</strong>.</li>
+<li><span class='sc'>Keccak</span> has a <strong>thick safety margin</strong>. The <span class='sc'>Keccak</span> sponge function should stand by its security claim even if the number of rounds is divided by two, as we did for <a href="keyak.html"><span class='sc'>Keyak</span></a> and <a href="kangarootwelve.html"><span class='sc'>KangarooTwelve</span></a>.</li>
+<li>We <a href="http://tosc.iacr.org/index.php/ToSC/article/view/597">showed</a> that the <span class='sc'>Keccak</span>-$f$ permutations have provable <strong>lower bounds on the weight of differential trails</strong>.</li>
+<li>The design of the permutations follows the <strong>Matryoshka principle</strong>, where the security properties of the seven permutations are linked. The cryptanalysis of the smaller permutations, starting from the “toy” <span class='sc'>Keccak</span>-$f[25]$, is meaningful to the larger permutations, and vice-versa. In particular, differential and linear trails in one <span class='sc'>Keccak</span>-$f$ instance extend to symmetric trails in larger instances.</li>
+<li>The <a href="sponge_duplex.html">sponge and duplex constructions</a> used by <span class='sc'>Keccak</span> are <strong>provably secure against generic attacks</strong>. This covers also the joint use of multiple <span class='sc'>Keccak</span> instances with different rate/capacity parameters.</li>
+<li>Unlike SHA-1 and SHA-2, <span class='sc'>Keccak</span> does not have the length-extension weakness, hence <strong>does not need the HMAC nested construction</strong>. Instead, MAC computation can be performed by simply prepending the message with the key.</li>
+<li>From the mode down to the round function, our design choices are fairly different from those in the SHA-1 and SHA-2 hash functions or in the Advanced Encryption Standard (AES). <span class='sc'>Keccak</span> therefore <strong>provides diversity with respect to existing standards</strong>.</li>
+</ul>
+<h1>Flexibility</h1>
+<p><span class='sc'>Keccak</span> inherits the flexibility of the sponge and duplex constructions. It can perform quasi all symmetric cryptographic functions, from hashing to pseudo-random number generation to authenticated encryption.</p>
+<ul>
+<li>As a sponge function, <span class='sc'>Keccak</span> has <strong>arbitrary output length</strong>. This allows to simplify modes of use where dedicated constructions would be needed for fixed-output-length hash functions. It can be natively used for, e.g., hashing, full domain hashing, randomized hashing, stream encryption, MAC computation. In addition, the arbitrary output length makes it suitable for <a href="files/TreeHashing.pdf">tree hashing</a>.</li>
+<li>As a duplex object, <span class='sc'>Keccak</span> can be used in <strong>clean and efficient modes</strong> as a <a href="files/SpongeDuplex.pdf">reseedable pseudo-random bit generator and for authenticated encryption</a>. Efficiency of duplexing comes from the <strong>absence of output transformation</strong>.</li>
+<li><span class='sc'>Keccak</span> has a <strong>simple security claim</strong>. One can target a given security strength level by means of choosing the appropriate capacity, i.e., for a given capacity $c$, <span class='sc'>Keccak</span> is claimed to stand any attack up to complexity $2^{c/2}$ (unless easier generically). This is similar to the approach of <em>security strength</em> used in <a href="https://csrc.nist.gov/publications/detail/sp/800-57-part-1/rev-4/final">NIST's SP 800-57</a>.</li>
+<li>The security claim is <strong>disentangled from the output length.</strong> There is a minimum output length as a consequence of the chosen security strength level (i.e., to avoid generic birthday attacks), but it is not the other way around, namely, it is not the output length that determines the security strength level. For an illustration with the classical security requirements of hashing (i.e., collision and (second) preimage resistance), we refer to our interactive page.</li>
+<li>The instances in SHA-3 and SHAKE make use of a <strong>single permutation</strong> for all security strengths. This cuts down implementation costs compared to hash function families making use of two (or more) primitives, like the SHA-2 family. And with the same permutation, one can make <strong>performance-security trade-offs</strong> by way of choosing the suitable appropriate capacity-rate pair.</li>
+</ul>
+<h1>Implementation</h1>
+<p>The <span class='sc'>Keccak</span>-<i>f</i> permutations consist of the iteration of a simple round function, similar to a block cipher without a key schedule. The choice of operations is limited to bitwise XOR, AND and NOT and rotations. There is no need for table-lookups, arithmetic operations, or data-dependent rotations.</p>
+<ul>
+<li><span class='sc'>Keccak</span> excels in <strong>hardware performance</strong>, with speed/area trade-offs, and outperforms SHA-2 by an order of magnitude. See for instance the works of Gürkaynak et al., <a href="https://eprint.iacr.org/2012/368">Gaj et al.</a>, Latif et al., Kavun et al., Kaps et al. and Jungk presented at the <a href="https://csrc.nist.gov/events/2012/the-third-sha-3-candidate-conference">Third SHA-3 Candidate Conference</a>.</li>
+<li><span class='sc'>Keccak</span> has <strong>overall good software performance</strong>. It is on par with SHA-2 on modern processors and shines when used in a mode exploiting parallelism, such as ParallelHash (<a href="specifications.html#SP_800_185">NIST SP 800-185</a>) or <a href="kangarootwelve.html"><span class='sc'>KangarooTwelve</span></a>. On constrained platforms, <span class='sc'>Keccak</span> has <a href="https://github.com/das-labor/xbx/blob/master/documentation/benchmarking_results_may_2012.pdf">moderate code size and RAM consumption requirements</a>.</li>
+<li>For modes involving a key, protecting the implementation against <strong>side-channel attacks</strong> is wanted. The operations used in <span class='sc'>Keccak</span> allow for <strong>efficient countermeasures</strong> against these attacks. Against cache-timing attacks, the most efficient implementations involve no table lookups. Against power analysis attacks and variants, <a href="files/KeccakDPA.pdf">countermeasures can take advantage of the quadratic round function</a>.</li>
+</ul></div>
+<footer id="footer">
+    Unless otherwise specified, the contents and files within the domain keccak.team are &copy; 2008-2026
+    <a href="team.html">Guido Bertoni, Joan Daemen, Seth Hoffert, Silvia Mella, Michaël Peeters, Gilles Van Assche and Ronny Van Keer</a>.
+    <br/>
+    Webmaster: <a href="http://viguier.nl">Benoit Viguier</a>.
+</footer>
+
+</div> <!-- boxed -->
+</div> <!-- sb-site -->
+
+<div id="back-top">
+    <a href="#header"><i class="fa fa-chevron-up"></i></a>
+</div>
+
+<!-- Scripts -->
+<!-- Compiled in vendors.js -->
+<!--
+<script src="assets/js/jquery.min.js"></script>
+<script src="assets/js/jquery.cookie.js"></script>
+<script src="assets/js/imagesloaded.pkgd.min.js"></script>
+<script src="assets/js/bootstrap.min.js"></script>
+<script src="assets/js/bootstrap-switch.min.js"></script>
+<script src="assets/js/wow.min.js"></script>
+<script src="assets/js/slidebars.min.js"></script>
+<script src="assets/js/jquery.bxslider.min.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/buttons.js"></script>
+<script src="assets/js/jquery.mixitup.min.js"></script>
+<script src="assets/js/circles.min.js"></script>
+<script src="assets/js/masonry.pkgd.min.js"></script>
+<script src="assets/js/jquery.matchHeight-min.js"></script>
+-->
+
+<script src="assets/js/vendors.js"></script>
+
+<!--<script type="text/javascript" src="assets/js/jquery.themepunch.tools.min.js?rev=5.0"></script>
+<script type="text/javascript" src="assets/js/jquery.themepunch.revolution.min.js?rev=5.0"></script>-->
+
+<script src="assets/js/DropdownHover.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/home_info.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script src="asset/css/highlight/highlight.pack.js"></script>
+<script>
+hljs.configure({
+  languages: ['python']
+})
+
+hljs.initHighlightingOnLoad();
+</script>
+
+</body>
+
+</html>
