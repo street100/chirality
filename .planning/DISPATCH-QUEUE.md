@@ -13,10 +13,16 @@ there is one queue.
 ## How the author calls move
 
 Author calls are the bottleneck: `ledger-lint` check AK counts 41 `unreviewed`
-rows in `records/author-calls.md` on 2026-09-28. A session holding the queue
-also carries them, two or three per message to the author, the ones blocking
-the next queued run first, while one agent runs. A call the author answers in
-session is written to its row the same turn.
+rows in `records/author-calls.md` on 2026-09-28. They go to the author as one
+batch after the dispatch work in flight has finished, never beside a running
+agent. The author ruled that on 2026-09-28 because interleaving gets messy.
+
+Each call in a batch opens with a plain summary: what the thing is in one line,
+why it matters, the options in ordinary words, and a recommendation. Row ids and
+line citations follow as reference. The author holds this project by intuition
+and the tree is documented densely so a session can keep up, so the summary is
+where a session bridges the two. A call answered in session is written to its
+row the same turn.
 
 ## Running
 
