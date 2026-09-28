@@ -27,13 +27,14 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| 1 | the three vacuous `ledger-lint` checks, H, M and AM: diagnose, fix AM at its cost, repoint H, and record | self-verification, `baseline-alignment/AL1` | `tools/xlat/xlat.sh`, `tools/ledger-lint/ledger-lint.py`, one `PRB` row |
+| 2 | `design-to-spec` on `E201`, the shape census, so the 76, 47 and 29 figures come from a committed predicate | error handling, `errors-as-values/EV12` | `docs/elements/specs/E201-*-SPEC.md` |
 
 ## Queued, in order
 
 | # | run | serves | waits on |
 |---|---|---|---|
-| 2 | the committed census predicate as a check, so the 76, 47 and 29 figures reproduce | error handling, `errors-as-values/EV12` (`E201`) | nothing |
+| 2b | `pipeline-audit` SPEC on `E201`, then implement it | error handling | run 2 |
+| 2c | check AL: an `xlat check` exit with no parseable line becomes a finding, the rule AM took in `fa4461a` | self-verification | nothing |
 | 3 | audit `EV1`'s design, then design `EV2` | error handling | nothing |
 | 4 | gate `K2` before it mints (was crypto queue 4b) | crypto | nothing for the audit, the `CRY` band for the mint |
 | 5 | write the Keccak translation, off the gather `9a46243` ran (was crypto queue 6) | crypto, `crypto-primitives/K1` | nothing |
@@ -60,7 +61,12 @@ resume when `K4` is built.
 | `EV3`, condition 1 over the whole tree or the compiler only | run 8 |
 | the `CRY` band, or mint next free under the 2026-09-06 ruling that bands are advisory | `K2`'s mint in run 4 |
 | the three file-types calls: facet mapping, mint shape, module key | `file-types/K1` to `K3` |
+| check H: the not-equal operator is spelled `<>` or `!=`, and whether `op->symop` refuses a token it does not know. `lib/module/loader.chiral:20` reads any unknown token as not-equal | repointing H |
+| check M: repoint it at one resolver root shadowing another, or delete it | M |
+| check AM: what counts as a quoted standard, any line naming it or only the pin-citation form. A standard written with a space is never gated today, `PRB-99` | closing `PRB-99` |
 
 ## Done
 
-none yet.
+| # | run | landed |
+|---|---|---|
+| 1 | check AM: `xlat unpinned` 2m37s to 2.5s, byte-identical to the old output, a pipefail race that let an unpinned quote pass removed, and a run that cannot finish now fails. Full `ledger-lint` 4m10s to 1m14s. H and M stay Vacuous on author calls | `fa4461a`, `PRB-99` |
