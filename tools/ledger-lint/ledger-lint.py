@@ -2447,7 +2447,10 @@ def check_am() -> list[str]:
     Measured 2026-09-07 when this check landed: 12 sources named, 2 quoted, both
     pinned.
 
-    Vacuous when the tool is absent."""
+    Vacuous when the tool is absent, and only then. A run that times out,
+    crashes, exits outside 0 and 1, or exits 1 with no row this parse reads is
+    a finding: the check did not reach a verdict, and records/lenses/problems.md
+    PRB-99 is the record of a timeout that read as an absent subject."""
     import subprocess
     tool = ROOT / "tools" / "xlat" / "xlat.sh"
     if not tool.exists():
@@ -2457,15 +2460,23 @@ def check_am() -> list[str]:
         r = subprocess.run([str(tool), "unpinned"], cwd=ROOT,
                            capture_output=True, text=True, timeout=180)
     except Exception as e:
-        raise Vacuous(f"xlat unpinned could not run ({e})")
+        return [f"[AM] xlat unpinned did not run to completion, so no verdict "
+                f"was reached ({e})"]
     if r.returncode == 0:
         return []
+    if r.returncode != 1:
+        why = (r.stderr.strip() or r.stdout.strip() or "no output")[-300:]
+        return [f"[AM] xlat unpinned exited {r.returncode}, so no verdict was "
+                f"reached: {why}"]
     out: list[str] = []
     for ln in (x.rstrip() for x in r.stdout.splitlines()):
         parts = ln.split()
         if len(parts) == 3 and parts[1] == "no" and parts[2] == "YES":
             out.append(f"[AM] {parts[0]} is quoted in the doc tier and has no "
                        f"pin. Pin it with `xlat pin`, or drop the quotation")
+    if not out:
+        out.append("[AM] xlat unpinned exited 1 and named no unpinned quoted "
+                   "source this check can parse")
     return out
 
 

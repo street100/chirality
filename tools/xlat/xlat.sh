@@ -441,19 +441,21 @@ _scan() {
     2>/dev/null | grep -v '/\.planning/sources/'
 }
 
+# Pinned when a meta is named ID, or any meta mentions ID. One grep over every
+# meta per id: a loop spawning a grep per meta cost 10.9s per unpinned id at 682
+# metas, and put `xlat unpinned` past check AM's budget.
 _is_pinned() {
-  local id="$1" m
-  for m in "$SRC"/*.meta; do
-    [ -e "$m" ] || continue
-    [ "$(basename "$m" .meta)" = "$id" ] && return 0
-    grep -qiF -- "$id" "$m" 2>/dev/null && return 0
-  done
-  return 1
+  local id="$1"
+  [ -e "$SRC/$id.meta" ] && return 0
+  set -- "$SRC"/*.meta
+  [ -e "$1" ] || return 1
+  grep -qiF -- "$id" "$@" 2>/dev/null
 }
 
 cmd_unpinned() {
-  local scan named n=0 miss=0 id pin q
+  local scan quoted named n=0 miss=0 id pin q
   scan="$(_scan)"
+  quoted="$(grep -E '"[^"]{20,}"' <<<"$scan")"
   named="$(printf '%s\n' "$scan" | grep -oE -- "$_SRCPAT" | tr -d ' ' | sort -u)"
   [ -n "$named" ] || { echo "xlat: the tree's prose names no external source"; return 0; }
   echo "=== external sources this tree names ==="
@@ -462,7 +464,10 @@ cmd_unpinned() {
     [ -n "$id" ] || continue
     n=$((n+1))
     if _is_pinned "$id"; then pin=yes; else pin=no; fi
-    if printf '%s\n' "$scan" | grep -F -- "$id" | grep -qE '"[^"]{20,}"'; then q=YES; else q=no; fi
+    # A here-string, because under pipefail a `grep -q` that exits on its
+    # first match can SIGPIPE the writer and turn the match into a no. The
+    # pipe this replaced read YES on 11 to 26 of 30 runs of one quoted line.
+    if grep -qF -- "$id" <<<"$quoted"; then q=YES; else q=no; fi
     printf '  %-34s %-8s %s\n' "$id" "$pin" "$q"
     { [ "$pin" = no ] && [ "$q" = YES ]; } && miss=$((miss+1))
   done <<EOF

@@ -1388,3 +1388,17 @@
 - checked:  2026-09-23
 - owner:    none. The three survivors are one edit each and no roster row takes them. A count copied into six documents is the single-source defect `records/findings.md` FD-28 surveyed, and `docs/banks/INDEX.md` is the one authority every copy should point at rather than restate
 - from:     none
+
+### PRB-99 check AM read a timeout as an absent subject, and its QUOTED column was a race
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    tools/ledger-lint/ledger-lint.py:2434, tools/xlat/xlat.sh:447-470
+- claim:    `tools/ledger-lint/ledger-lint.py` check AM gates an external source quoted in the doc tier without a pin, by running `tools/xlat/xlat.sh unpinned` under a 180s budget. At `HEAD` its handler at `:2460` read *"raise Vacuous(f"xlat unpinned could not run ({e})")"*, and the runner prints a Vacuous check as *"subject gone, checked nothing"*.
+- measured: **Three defects, two repaired in the working tree on 2026-09-28.** (1) Cost. `_is_pinned` at `HEAD` `tools/xlat/xlat.sh:444` spawned a `basename` and a `grep` per `.meta`, 682 of them, per named id. One unpinned id cost 10.9s against 0.06s for one `grep` over every meta, and a full run took 4m32s at `f13a4dd` and 2m42s standalone today against the 180s budget. A run over budget read as Vacuous. `_is_pinned` now greps every meta once per id, the run takes 1.9s, and full `ledger-lint` went from 4m10s to 1m11s. A timeout, a crash, an exit outside 0 and 1, or an exit 1 with no parseable row now returns an `[AM]` finding. (2) A race. The script runs under `set -uo pipefail` at `:28`, and the QUOTED test at `HEAD` `:465` piped into `grep -qE`. A `grep -q` that exits on its first match can SIGPIPE the writer, and pipefail turns the match into a no. Thirty runs of the `FIPS204`, `FIPS205`, `RFC2026` and `draft-ietf-privacypass-rate-limit-tokens-06` rows read YES 23, 26, 11 and 22 times, so AM could pass while an unpinned quote stood. The test now reads a here-string and five runs gave one md5. The new output is byte-identical to the `HEAD` script with only `pipefail` dropped. (3) **Open.** An id is named with its space stripped by `tr -d ' '` at `:459`, and QUOTED looks for that stripped id in the raw line. A scratch line naming RFC 1149 with a space beside a quotation read `no no`, and the same line with the space removed read `no YES`, so the spaced form, which is how prose writes a standard, is never gated. Collapsing the space in the quoted lines flags eight sources on today's tree, and each is a long `records/findings.md` line naming one source and quoting a different pinned one, so the rule's line co-occurrence would fail the gate on eight false positives. The PINNED column has the same gap: SP 800-107 reads unpinned while `.planning/sources/SP800107.meta` pins it.
+- evidence: re-runnable: `tools/xlat/xlat.sh unpinned`, `python3 tools/ledger-lint/ledger-lint.py --only AM`. `tools/xlat/xlat.sh:28`, `:447-453`, `:459`, `:470`, `tools/ledger-lint/ledger-lint.py:2458-2479`, `.planning/sources/SP800107.meta:1`, commit `f13a4dd`
+- checked:  2026-09-28
+- owner:    `baseline-alignment/AL1`. What counts as an attributed quotation, a named source on the line or the pin-citation form `ID:LINE "span"`, is the author's call before (3) can close
+- from:     none
