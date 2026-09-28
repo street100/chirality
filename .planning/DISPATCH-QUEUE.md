@@ -14,8 +14,7 @@ there is one queue.
 
 Author calls are the bottleneck: `ledger-lint` check AK counts 41 `unreviewed`
 rows in `records/author-calls.md` on 2026-09-28. They go to the author as one
-batch after the dispatch work in flight has finished, never beside a running
-agent. The author ruled that on 2026-09-28 because interleaving gets messy.
+batch after the dispatch work in flight has finished. The author ruled that on 2026-09-28 because interleaving gets messy.
 
 Each call in a batch opens with a plain summary: what the thing is in one line,
 why it matters, the options in ordinary words, and a recommendation. Row ids and
