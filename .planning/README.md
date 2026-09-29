@@ -8,7 +8,7 @@ tracked, so a fresh clone and every worktree see the same thing.
 
 | path | holds |
 |---|---|
-| `protocol/` | how work is done here: tone, placement, workflow, dispatch |
+| `protocol/` | how work is done here: tone, placement, workflow, dispatch, reconcile |
 | `PERSONA.md` | the operating stance. How to show up, what the author steers |
 | `ROADMAP.md` | the long road, a spine with backflow |
 | `archive/` | spent material kept because something still cites it |
@@ -30,6 +30,7 @@ Read a file here before assuming it is dead.
 | `protocol/placement.md` | I have a thing to write. Which tier, which directory, which form |
 | `protocol/workflow.md` | the element pipeline end to end, stage by stage |
 | `protocol/dispatch.md` | how an arc session orchestrates, and what a stage prompt carries |
+| `protocol/reconcile.md` | the stage before mint that settles an author call by principle and researched precedent, or hands it to the author plainly |
 
 Each states the operational procedure and cites the tracked document that holds
 the rule. Where the two disagree the tracked document wins, and the disagreement

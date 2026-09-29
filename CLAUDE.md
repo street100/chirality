@@ -29,7 +29,7 @@ was emptied to close.
 
 ## The agent tier
 
-`.planning/README.md` maps it. Four protocol documents carry the procedure.
+`.planning/README.md` maps it. Five protocol documents carry the procedure.
 
 | document | answers |
 |---|---|
@@ -37,6 +37,7 @@ was emptied to close.
 | `.planning/protocol/placement.md` | I have a thing to write. Which tier, which directory, which form |
 | `.planning/protocol/workflow.md` | the element pipeline end to end, stage by stage |
 | `.planning/protocol/dispatch.md` | how an arc session orchestrates, and what a stage prompt carries |
+| `.planning/protocol/reconcile.md` | the stage before mint that settles an author call by principle and researched precedent, or hands it to the author plainly |
 
 `.planning/PERSONA.md` is the operating stance.
 

@@ -25,7 +25,7 @@ token is the row's first cell.
 |---|---|
 | `unreviewed` | the fork stands. The author has not decided it |
 | `ruled` | the author gave a decision, and the row cites the author's words or an explicit author directive |
-| `dissolved` | a measurement removed the fork, and the row cites the measurement |
+| `dissolved` | a measurement removed the fork, or a derivation under `.planning/protocol/reconcile.md` left one option standing. The row cites the measurement or the derivation's decision note. The author added the derivation arm on 2026-09-29 and keeps a veto over each |
 
 `unreviewed` is the default. A wrong `unreviewed` costs the author one
 re-confirmation; a wrong `ruled` corrupts the record, which

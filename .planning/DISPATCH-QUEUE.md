@@ -40,6 +40,7 @@ stay serial, one live at a time.
 | wave | stage | exits when |
 |---|---|---|
 | 1 | research, then `element-design` on every row with no design | no design names a need the roster does not hold |
+| 1b | reconcile, `.planning/protocol/reconcile.md`: every call wave 1 raised and every register row naming the arc's rows, one per run, each `DISSOLVED` verdict followed by its adversarial check | every call reads `dissolved`, or `unreviewed` with a plain summary |
 | 2 | mint: `pipeline-audit` DESIGN on every design | every design PASS or BLOCKED on a carried call |
 | 3 | `design-to-spec` on every minted element | every minted element holds a SPEC |
 | 4 | `pipeline-audit` SPEC | every SPEC PASS or BLOCKED |
@@ -65,6 +66,7 @@ bad"*, with speed rows added to the enforcement arc as checked rewrites.
 | E2 | `revisit` `docs/arcs/enforcement-arc.md` against the 2026-09-29 direction: the speed rows as checked rewrites, reconciled with emitted-speed's `X10` to `X12`, which that arc keeps | E1 |
 | E3 | `element-design` on each unminted, undesigned row, one run each: `N10`, `N11`, `N12`, `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22`, then every row E2 adds | E2 |
 | E4 | `revisit` folding every "needed and unrostered" discovery from E3 into the roster, then a design for each new row. Repeats until a pass adds nothing | E3 |
+| E5 | reconcile the enforcement calls: the register rows at `records/author-calls.md` 83, 84, 85, 93, 95, 96, 97 and 98, then every call E3 and E4 raise | E4 |
 
 ## Held from before the waves
 

@@ -14,6 +14,7 @@ research    an FD row in records/findings.md          research
 translate   docs/translations/<object>.md              translate
 audit       the translation                           pipeline-audit TRANSLATE
 design      docs/arcs/parts/<arc>-<id>.md             element-design
+reconcile   the author calls the design raised        .planning/protocol/reconcile.md
 audit       the design                                pipeline-audit
 MINT        catalog + ledger + the roster row         the audit's PASS
 ─────────────────────────────────────────────────── post-mint ──────────────
