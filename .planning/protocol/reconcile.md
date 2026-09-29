@@ -99,6 +99,13 @@ A plain summary follows `.planning/DISPATCH-QUEUE.md` §How the author calls
 move: what the thing is, why it matters, the options in ordinary words, a
 recommendation, and the references after.
 
+**The recommendation is the complete answer the goal needs.** Where an option is
+an interim and another is the interim plus what finishes it, recommend the
+second, with the interim as its first step. An open precondition becomes queued
+work and never a reason to recommend less. The author ruled this on 2026-09-29,
+refusing a recommendation of the gate alone as *"an improper shortcut instead of
+the actual answer"*.
+
 ## Reporting to the author
 
 Every call this stage touches is reported, whatever its verdict. The report goes
