@@ -14,13 +14,24 @@ Checks (each independent; a check that finds a defect -> exit 1):
   C. CONTENTS counts match tree.    CONTENTS's "(N notes)" for decisions and its
      "three sequencing questions" match docs/decision-*.md and open-edges.
 
-Exit codes. The last line is a summary over three categories, and the code
-carries the same three:
+Exit codes. The last line is a summary over four categories, and the code
+carries them. Where a run holds more than one, the highest row in this table
+that applies wins:
 
-  0  clean. Nothing owed, nothing failing.
+  4  usage. `--only` named a code outside CHECKS, or named none. Nothing ran.
+  3  errored. A check could not run: it raised, a subprocess it reads failed
+     or timed out, or its output did not parse. That check reached no verdict,
+     so the run is incomplete whatever the other checks found.
   1  violations. A check found a defect.
   2  nothing failing, but something is owed, or the run could not start
-     (preflight already used 2 for that: not clean, not a violation).
+     (preflight already used 2 for that: such a run is neither clean nor a
+     violation).
+  0  clean. Nothing owed, nothing failing, nothing errored.
+
+A check whose subject no longer exists is VACUOUS. It is named in the report
+and moves no code. Vacuous is for an absent subject alone: a failure to read a
+subject that is present is errored, or a violation where the tree states the
+subject's format and the subject breaks it.
 
 Run from anywhere; resolves paths relative to the repo root (this file's ../).
 Fails loud, prints every violation. No deps beyond the stdlib.
@@ -129,6 +140,26 @@ class Owed(Exception):
         super().__init__(f"{self.count} {noun}(s) owed")
 
 
+class Errored(Exception):
+    """A check that could not reach a verdict on a subject that is present.
+
+    A subprocess exited outside its contract, timed out, or printed output the
+    check cannot parse. Raised in place of returning findings, because an empty
+    list here reads as clean and a Vacuous reads as "subject gone", and both
+    are false. The runner reports it apart from the violations and it takes
+    exit 3: see the header.
+
+    `reasons` is one line per failure. `findings` carries whatever the check
+    did establish before it failed, so a partial run still reports what it
+    found. Any other exception a check raises is caught by the runner and
+    reported the same way."""
+
+    def __init__(self, reasons, findings=()):
+        self.reasons = [reasons] if isinstance(reasons, str) else list(reasons)
+        self.findings = list(findings)
+        super().__init__("; ".join(self.reasons))
+
+
 def check_a() -> list[str]:
     """Ledger evidence paths exist."""
     errs: list[str] = []
@@ -219,10 +250,14 @@ def check_c() -> list[str]:
 
     edges = (ROOT / "docs" / "definitions" / "open-edges.md").read_text()
     seq_block = edges.split("Sequencing questions", 1)
+    m = re.search(r"(\w+)\s+sequencing questions", mapmd)
+    if m and len(seq_block) != 2:
+        errs.append(f"[C] CONTENTS claims {m.group(1)} sequencing questions and "
+                    f"docs/definitions/open-edges.md has no `Sequencing "
+                    f"questions` section to count")
     if len(seq_block) == 2:
         n_seq = len(re.findall(r"^\s*\d+\.\s", seq_block[1], re.M)) or \
                 len(re.findall(r"^-\s", seq_block[1], re.M))
-        m = re.search(r"(\w+)\s+sequencing questions", mapmd)
         if m and as_count(m.group(1)) != n_seq:
             errs.append(f"[C] CONTENTS claims {m.group(1)} sequencing questions; "
                         f"open-edges has {n_seq}")
@@ -236,7 +271,8 @@ def check_d() -> list[str]:
     errs: list[str] = []
     banks = ROOT / "docs" / "banks"
     if not banks.is_dir():
-        return errs  # tier not present yet; nothing to check
+        raise Vacuous("docs/banks/ is absent, so there is no bank tier to hold "
+                      "to its INDEX")
     index = banks / "INDEX.md"
     if not index.exists():
         errs.append("[D] docs/banks/INDEX.md missing (the tier's entry + reverse-link target)")
@@ -286,10 +322,18 @@ def check_e() -> list[str]:
     share nothing with the map's verdicts for those E#s has rotted (or the map
     has). Lenient by design: headers without a map-class token are skipped."""
     errs: list[str] = []
-    cmap = _map_classes()
     banks = ROOT / "docs" / "banks"
-    if not banks.is_dir() or not cmap:
-        return errs
+    if not banks.is_dir():
+        raise Vacuous("docs/banks/ is absent, so no shard header can be read")
+    if not (ROOT / "records" / "conformance-map.md").exists():
+        raise Vacuous("records/conformance-map.md is absent, so no verdict can "
+                      "be read")
+    cmap = _map_classes()
+    if not cmap:
+        return ["[E] records/conformance-map.md yields no row with a Class "
+                "verdict and an E# cell, so every shard header would pass "
+                "unread. A gate aimed at nothing cannot fail: the map's shape "
+                "is the defect"]
     for f in sorted(banks.glob("*.md")):
         if f.name == "INDEX.md":
             continue
@@ -629,6 +673,9 @@ def check_j() -> list[str]:
         return errs
     catalog_ids = {int(n) for n in
                    re.findall(r"^\|\s*E(\d+)\s*\|", catalog.read_text(), re.M)}
+    if not catalog_ids:
+        errs.append("[J] docs/elements/catalog.md yields no `| E<n> |` row, so "
+                    "no ledger row can be held to it")
     ledger_ids: set[int] = set()
     reserved_ids: set[int] = set()
     reserved = False
@@ -647,6 +694,11 @@ def check_j() -> list[str]:
             ledger_ids.add(n)
             if reserved:
                 reserved_ids.add(n)
+    if not ledger_ids:
+        errs.append("[J] docs/elements/ledger.md yields no `| E<n> |` row, so "
+                    "no catalog row can be held to it")
+    if errs:
+        return errs
     for n in sorted(catalog_ids - ledger_ids):
         errs.append(f"[J] E{n} in catalog but untagged in LEDGER.md "
                     f"(add its category+module row)")
@@ -665,7 +717,8 @@ def check_k() -> list[str]:
     errs: list[str] = []
     ledger = ROOT / "docs" / "elements" / "ledger.md"
     if not ledger.exists():
-        return errs
+        raise Vacuous("docs/elements/ledger.md is absent, so no category can "
+                      "be read")
     cat_of: dict[int, str] = {}
     cur = "?"
     for ln in ledger.read_text().splitlines():
@@ -676,12 +729,18 @@ def check_k() -> list[str]:
         rm = re.match(r"^\|\s*\*{0,2}E(\d+)\*{0,2}\s*\|", ln)
         if rm:
             cat_of[int(rm.group(1))] = cur
+    if not cat_of:
+        return ["[K] docs/elements/ledger.md yields no `| E<n> |` row under a "
+                "`## CODE ·` header, so no prefix can be held to a category"]
     targets = list((ROOT / ".planning").rglob("*.md")) \
         + list((ROOT / "docs").rglob("*.md"))
+    unread: list[str] = []
     for f in targets:
         try:
             text = f.read_text()
-        except OSError:
+        except OSError as e:
+            unread.append(f"{f.relative_to(ROOT)} cannot be read ({e}), so its "
+                          f"prefixes are unchecked")
             continue
         for m in re.finditer(r"\b([A-Z]{2,4})·E(\d+)\b", text):
             pfx, n = m.group(1), int(m.group(2))
@@ -692,6 +751,8 @@ def check_k() -> list[str]:
             elif n in cat_of and cat_of[n] != pfx:
                 errs.append(f"[K] {rel}: '{pfx}·E{n}' stale — ledger has "
                             f"E{n} in {cat_of[n]}")
+    if unread:
+        raise Errored(unread, errs)
     return errs
 
 
@@ -819,36 +880,48 @@ def check_o() -> list[str]:
 def check_p() -> list[str]:
     """P. The suite-wide compiler override is TOTAL (added 2026-08-25).
 
-    E166's admission gate (G3) works by exporting CHIRALITY_BIN and running the
-    whole native suite, so that "the suite ran under chirality-bin-c" is a claim about
-    every phase. It was not. Five sub-scripts re-derived the compiler from
-    bin/chirality-bin -> scaffold/build/B1 and ignored the override, and two more went
-    through bin/chirality, which had its own resolution -- so seven of eleven phases
-    ran under B1 while the gate counted their assertions as chirality-bin-c coverage.
-    Mechanized because a convention only some scripts honour is precisely the
-    kind of thing that rots back, one new test script at a time.
+    A gate that exports one compiler and runs the whole native suite makes "the
+    suite ran under that compiler" a claim about every phase. E166's admission
+    gate (G3) found it was not: five sub-scripts re-derived the compiler and
+    ignored the override, so seven of eleven phases ran under another binary
+    while the gate counted their assertions as coverage. Mechanized because a
+    convention only some scripts honour rots back one new script at a time.
 
-    The rule: a suite script that names `scaffold/build/B1` as a compiler
-    candidate must also consult `CHIRALITY_BIN`. A script that reaches the compiler
-    THROUGH bin/chirality names no candidate of its own and needs nothing; bin/chirality
-    itself is checked here by name, because it is what makes those phases
-    overridable at all.
-    """
+    The rule: a suite script that names `bin/chirality-bin` as a compiler
+    candidate also consults the override variable. A script that reaches the
+    compiler through bin/chirality names no candidate of its own and needs
+    nothing; bin/chirality is checked by name, because it is what makes those
+    phases overridable at all.
+
+    The 2026-08-31 migration moved both halves. The candidate was
+    `scaffold/build/B1` and the override `CHIRALITY_BIN`, and the old spelling
+    names no file in the tree, so the check read nothing and printed `ok`
+    (docs/definitions/verification-coverage.md, U2). The override's name is
+    read from bin/chirality's `_compiler`, the way check O reads its patterns
+    from RUNG1-CHECKLIST: a second copy here drifts from the thing it enforces.
+    Errored when that function cannot be read."""
     errs: list[str] = []
-    files = sorted((ROOT / "tools" / "test").glob("*.sh")) + [ROOT / "bin" / "chirality"]
-    for f in files:
-        if not f.exists():
-            errs.append(f"[P] {f.relative_to(ROOT)} missing — four suite phases reach the "
-                        f"compiler through it, so the override lives or dies here")
-            continue
+    cli = ROOT / "bin" / "chirality"
+    if not cli.exists():
+        return ["[P] bin/chirality missing -- suite phases reach the compiler "
+                "through it, so the override lives or dies here"]
+    fm = re.search(r"^_compiler\(\)\s*\{(.*?)^\}", cli.read_text(), re.S | re.M)
+    vm = re.search(r"\$\{(CHIRALITY_[A-Z_]+):-\}", fm.group(1)) if fm else None
+    if vm is None:
+        raise Errored("bin/chirality has no `_compiler()` reading a "
+                      "`${CHIRALITY_*:-}` override, so the override's name "
+                      "cannot be read and no script can be held to it")
+    var = vm.group(1)
+    cand = "bin/chirality-bin"
+    for f in sorted((ROOT / "tools" / "test").glob("*.sh")) + [cli]:
         text = f.read_text()
-        if "scaffold/build/B1" not in text:
+        if cand not in text:
             continue
-        if "CHIRALITY_BIN" not in text:
+        if var not in text:
             errs.append(f"[P] {f.relative_to(ROOT).as_posix()} resolves a compiler (it names "
-                        f"scaffold/build/B1) but never consults CHIRALITY_BIN — an exported "
-                        f"override would skip it, and E166's admission claim narrows without "
-                        f"saying so")
+                        f"{cand}) but never consults {var} -- an exported "
+                        f"override skips it, and a suite-wide admission claim "
+                        f"narrows without saying so")
     return errs
 
 
@@ -952,7 +1025,8 @@ def check_n() -> list[str]:
     ledger = ROOT / "docs" / "elements" / "ledger.md"
     index = ROOT / "docs" / "examples" / "INDEX.md"
     if not ledger.exists() or not index.exists():
-        return errs
+        raise Vacuous("docs/elements/ledger.md or docs/examples/INDEX.md is "
+                      "absent, so there is no pair to compare")
     # LEDGER row: | E# | category | state | ... -- the state is column 3.
     lstate: dict[int, str] = {}
     for ln in ledger.read_text().splitlines():
@@ -973,7 +1047,13 @@ def check_n() -> list[str]:
             st = re.sub(r"[*`]", "", cells[4]).strip()
             if st:
                 pipe[int(cells[0][1:])] = st.split()[0].lower()
-    if not lstate or not pipe:
+    if not lstate:
+        errs.append("[N] docs/elements/ledger.md yields no row with a state in "
+                    "column 3, so no pipeline state can be held to it")
+    if not pipe:
+        errs.append("[N] docs/examples/INDEX.md yields no row with a Status in "
+                    "column 5, so no ledger state can be held to it")
+    if errs:
         return errs
     # A ledger row carrying the literal marker "UNRESOLVED" is a disagreement
     # someone has SEEN and deliberately not picked (the doc-tier rule: when the
@@ -1081,13 +1161,23 @@ def check_s() -> list[str]:
                              capture_output=True, text=True, check=True).stdout
         tracked = {x for x in out.split("\0") if x}
     except Exception as e:  # a lint that cannot ask git must say so, not pass
-        return [f"[S] cannot read the git index ({e}) — clause 1 (tracked) is "
-                f"unverifiable, and passing on that would be the laundering this "
-                f"check exists to catch"]
+        raise Errored(f"cannot read the git index ({e}), so clause 1 (tracked) "
+                      f"is unverifiable, and passing on that would be the "
+                      f"laundering this check exists to catch")
+
+    # `git check-ignore` exits 0 for ignored, 1 for not ignored, and 128 when it
+    # fails. Reading every nonzero code as "not ignored" passed clause 2 on a
+    # git that could not answer.
+    unread: list[str] = []
 
     def ignored(rel: str) -> bool:
-        return subprocess.run(["git", "check-ignore", "-q", rel],
-                              cwd=ROOT, capture_output=True).returncode == 0
+        r = subprocess.run(["git", "check-ignore", "-q", rel],
+                           cwd=ROOT, capture_output=True, text=True)
+        if r.returncode not in (0, 1):
+            unread.append(f"git check-ignore exited {r.returncode} on '{rel}' "
+                          f"({r.stderr.strip()[-200:] or 'no output'}), so "
+                          f"clause 2 is unverified for it")
+        return r.returncode == 0
 
     for f in src_files():
         if f.is_symlink():
@@ -1144,6 +1234,8 @@ def check_s() -> list[str]:
                 errs.append(f"[S] {where} names '{path}' with an EMPTY digest — admission "
                             f"clause 3. The digest IS the bytes (testing-floors.md:250-252), "
                             f"so an empty one is an anchor that matches every file")
+    if unread:
+        raise Errored(unread, errs)
     return errs
 
 
@@ -1169,7 +1261,13 @@ def check_t() -> list[str]:
     both failures are live in this tree: a missing CATALOG row (which J then
     chains on to a LEDGER row) and a missing INDEX row (which N then chains on to
     a state, and which tools/pack/pack.py's examples_for() needs to pick the
-    pipeline artifact out of an element's companion files).
+    pipeline artifact out of an element's companion files). Every artifact owes
+    the catalog row. Only a worked example owes the INDEX row, since an element
+    minted from a design has no corpus entry to index.
+
+    The SPEC half read `.planning/specs` until 2026-09-29, a directory that does
+    not exist, and so checked nothing while printing `ok`. The SPEC tier is
+    docs/elements/specs/, and the preflight now refuses a tree without it.
 
     E# lane only. U#/S# artifacts key to different source documents
     (.planning/USER-LAYER-GAP.md, .planning/SCRIBA-PRIMITIVE-CHECKLIST.md -- see
@@ -1180,27 +1278,27 @@ def check_t() -> list[str]:
     catalog = ROOT / "docs" / "elements" / "catalog.md"
     index = ROOT / "docs" / "examples" / "INDEX.md"
     exdir = ROOT / "docs" / "examples"
-    specdir = ROOT / ".planning" / "specs"
-    if not catalog.exists() or not exdir.exists():
-        return errs
+    specdir = ROOT / "docs" / "elements" / "specs"
     arts: dict[int, list[str]] = {}
+    # E# -> True when an artifact is a worked example. Only those owe an INDEX
+    # row: a design-minted element's artifacts are its design and its SPEC, and
+    # docs/examples/INDEX.md is the retired corpus's index, so it holds no row
+    # for one.
+    example: dict[int, bool] = {}
     for d, pat in ((exdir, "E*.md"), (specdir, "E*-SPEC.md")):
-        if not d.exists():
-            continue
         for f in sorted(d.glob(pat)):
             m = re.match(r"E(\d+)", f.name)
             if m:
-                arts.setdefault(int(m.group(1)), []).append(
-                    str(f.relative_to(ROOT)))
+                n = int(m.group(1))
+                arts.setdefault(n, []).append(str(f.relative_to(ROOT)))
+                example[n] = example.get(n, False) or d == exdir
     if not arts:
         raise Vacuous("no docs/examples/E*.md or docs/elements/specs/E*-SPEC.md on "
                       "disk -- there is no artifact tier to hold to the registry")
     cat_ids = {int(n) for n in
                re.findall(r"^\|\s*E(\d+)\s*\|", catalog.read_text(), re.M)}
-    idx_ids = set()
-    if index.exists():
-        idx_ids = {int(n) for n in
-                   re.findall(r"^\|\s*E(\d+)\s*\|", index.read_text(), re.M)}
+    idx_ids = {int(n) for n in
+               re.findall(r"^\|\s*E(\d+)\s*\|", index.read_text(), re.M)}
     for n in sorted(arts):
         files = ", ".join(arts[n])
         if n not in cat_ids:
@@ -1208,7 +1306,7 @@ def check_t() -> list[str]:
                         f"docs/elements/catalog.md -- an element the "
                         f"registry cannot see. If its work moved to another "
                         f"element, the row is restored as `superseded`, not deleted")
-        if index.exists() and n not in idx_ids:
+        if example[n] and n not in idx_ids:
             errs.append(f"[T] E{n} has artifacts on disk ({files}) but NO row in "
                         f"docs/examples/INDEX.md -- the corpus index does not "
                         f"list a file of its own corpus, and check N has no "
@@ -1239,6 +1337,7 @@ REQUIRED_INPUTS = [
     ("records/conformance-map.md",    "checks E/Q -- the build-state authority"),
     ("docs/elements/catalog.md",   "checks J/K -- element rows"),
     ("docs/elements/ledger.md",                   "check J -- ledger rows"),
+    ("docs/elements/specs",                   "check T -- the SPEC tier"),
     (".planning/RUNG1-CHECKLIST.md",          "check O -- rung-1 python accounting"),
     ("lib",                                   "checks G/L/R -- the source tree"),
     ("prog",                                  "checks G/L/R -- the source tree"),
@@ -1268,8 +1367,19 @@ def check_u() -> list[str]:
     Matches the tree's citation form: a backticked path, a colon, then italic
     text in double quotes. Whitespace is normalised on both sides so a quote
     that wraps across lines still matches. A quote ending in an ellipsis is
-    checked on its head only, since the elision is deliberate."""
+    checked on its head only, since the elision is deliberate.
+
+    The target resolves as a root-relative path, or as a bare basename borne by
+    exactly one file in the tree. A target that resolves to no file, or to more
+    than one, is a finding here. It was skipped as "check A owns a missing
+    path", and check A reads docs/definitions/status-ledger.md alone, so six of
+    the twelve attributed quotes in the doc tier were checked by nothing.
+    Measured 2026-09-29."""
     errs: list[str] = []
+    homes: dict[str, list] = {}
+    for f in ROOT.rglob("*"):
+        if f.is_file() and ".git" not in f.parts:
+            homes.setdefault(f.name, []).append(f)
     pat = re.compile(r"`([A-Za-z0-9_./-]+\.(?:md|chiral|prog|port|sh|py))`[^\n]{0,40}?:\s*"
                      r"\*\"(.+?)\"\*", re.S)
     for md in doc_tier() + [ROOT / "README.md", ROOT / "MAP.md",
@@ -1280,8 +1390,19 @@ def check_u() -> list[str]:
         for m in pat.finditer(text):
             target, quote = m.group(1), " ".join(m.group(2).split())
             tp = ROOT / target
-            if not tp.exists():
-                continue                      # check A owns a missing path
+            if not tp.is_file():
+                found = homes.get(target, []) if "/" not in target else []
+                if len(found) != 1:
+                    line = text.count("\n", 0, m.start()) + 1
+                    where = ("no file" if not found else
+                             f"{len(found)} files ("
+                             + ", ".join(sorted(x.relative_to(ROOT).as_posix()
+                                                for x in found)[:3]) + ")")
+                    errs.append(f"[U] {md.name}:{line} quotes {target}, which "
+                                f"resolves to {where}, so the quotation cannot "
+                                f"be checked")
+                    continue
+                tp = found[0]
             head = quote.split("...")[0].split("\u2026")[0].strip().rstrip(".,;")
             if len(head) < 12:
                 continue                      # too short to be evidence
@@ -1594,7 +1715,9 @@ def check_y() -> list[str]:
         raise Vacuous("bin/chirality is absent, so no dispatch can be read")
     text = cli.read_text()
     if 'case "${1:-help}" in' not in text:
-        raise Vacuous("bin/chirality has no toplevel dispatch to read arms from")
+        raise Errored("bin/chirality is present and its toplevel dispatch "
+                      "`case \"${1:-help}\" in` does not parse, so no arm can be "
+                      "read")
     tail = text.split('case "${1:-help}" in', 1)[1]
     arms = set(re.findall(r"^\s*([a-z][\w-]*)\)", tail, re.M))
     if "verify" in arms:
@@ -1625,13 +1748,15 @@ def check_z() -> list[str]:
     the only excuse is the shared one, a block that dates it or names it as
     history.
 
-    Vacuous when git tracks nothing under .planning."""
+    Vacuous when git tracks nothing under .planning. Errored when git cannot
+    answer: a failed `git ls-files` says nothing about what is tracked."""
     import subprocess
     try:
         out = subprocess.run(["git", "ls-files", "-z", ".planning"], cwd=ROOT,
                              capture_output=True, text=True, check=True).stdout
     except Exception as e:
-        raise Vacuous(f"git ls-files failed ({e}), so tracking cannot be read")
+        raise Errored(f"git ls-files .planning failed ({e}), so tracking "
+                      f"cannot be read")
     n = len([x for x in out.split("\0") if x])
     if n == 0:
         raise Vacuous("git tracks no file under .planning/, so the claim holds")
@@ -1665,7 +1790,8 @@ def check_ab() -> list[str]:
     ledger = ROOT / "docs" / "elements" / "ledger.md"
     catalog = ROOT / "docs" / "elements" / "catalog.md"
     if not ledger.exists() or not catalog.exists():
-        return errs
+        raise Vacuous("docs/elements/ledger.md or catalog.md is absent, so "
+                      "there is no pair to compare")
     lstate: dict[int, str] = {}
     for ln in ledger.read_text().splitlines():
         cells = [c.strip() for c in ln.strip().strip("|").split("|")]
@@ -1673,11 +1799,14 @@ def check_ab() -> list[str]:
             lstate[int(re.sub(r"\D", "", cells[0]))] = \
                 re.sub(r"[*`]", "", cells[2]).split()[0].lower()
     if not lstate:
-        return errs
+        return ["[AB] docs/elements/ledger.md yields no row with a state in "
+                "column 3, so no catalog assertion can be held to it"]
+    crows = 0
     for ln in catalog.read_text().splitlines():
         cells = [c.strip() for c in ln.strip().strip("|").split("|")]
         if len(cells) < 3 or not re.match(r"^\*{0,2}E\d+\*{0,2}$", cells[0]):
             continue
+        crows += 1
         num = int(re.sub(r"\D", "", cells[0]))
         desc = re.sub(r"[*`]", "", cells[2]).strip()
         # Only the unambiguous opening. "Not built." / "Not built," / "Not built "
@@ -1690,6 +1819,9 @@ def check_ab() -> list[str]:
         if lstate.get(num) == "built":
             errs.append(f"[AB] E{num} ledger=built but catalog opens \"Not built\" "
                         f"-- both documents assert a build state and they disagree")
+    if not crows:
+        errs.append("[AB] docs/elements/catalog.md yields no `| E<n> |` row "
+                    "with a description cell, so no assertion was read")
     return errs
 
 
@@ -1736,7 +1868,8 @@ def check_ac() -> list[str]:
     ledger = ROOT / "docs" / "elements" / "ledger.md"
     index = ROOT / "docs" / "examples" / "INDEX.md"
     if not ledger.exists() or not index.exists():
-        return errs
+        raise Vacuous("docs/elements/ledger.md or docs/examples/INDEX.md is "
+                      "absent, so there is no pair to compare")
     PRE = ("drafted", "reviewed", "specced", "audited")
     ltext = ledger.read_text()
     lstate: dict[int, str] = {}
@@ -1764,7 +1897,13 @@ def check_ac() -> list[str]:
             st = re.sub(r"[*`]", "", cells[4]).strip()
             if st:
                 pipe[int(cells[0][1:])] = st.split()[0].lower()
-    if not lstate or not pipe:
+    if not lstate:
+        errs.append("[AC] docs/elements/ledger.md yields no row with a state "
+                    "in column 3, so no pipeline state can be held to it")
+    if not pipe:
+        errs.append("[AC] docs/examples/INDEX.md yields no row with a Status "
+                    "in column 5, so no ledger state can be held to it")
+    if errs:
         return errs
     for n, ls in sorted(lstate.items()):
         ps = pipe.get(n)
@@ -1785,14 +1924,33 @@ def check_ad() -> list[str]:
     split problems, gaps, limits and unspoken territory into files with a closed
     state set apiece and an author marker on every row. tools/lens/lens.py owns
     that schema; this check runs it, so a malformed lens row fails the same gate
-    every other doc claim fails."""
+    every other doc claim fails.
+
+    lens.py check exits 0 or 1 and closes on `lens: N row(s), M finding(s)`
+    (tools/lens/lens.py, `main`). The run is trusted only when all of that
+    holds and M equals the `[LN]` lines read. Anything else is errored: a
+    crashed lens.py printed no `[LN]` line, and reading that as zero findings
+    reported the four lenses clean."""
     lens = ROOT / "tools" / "lens" / "lens.py"
     if not lens.is_file():
         raise Vacuous("tools/lens/lens.py is absent")
     import subprocess
-    r = subprocess.run([sys.executable, str(lens), "check"],
-                       capture_output=True, text=True, cwd=str(ROOT))
-    return [ln for ln in r.stdout.splitlines() if ln.startswith("[LN]")]
+    try:
+        r = subprocess.run([sys.executable, str(lens), "check"],
+                           capture_output=True, text=True, cwd=str(ROOT),
+                           timeout=180)
+    except Exception as e:
+        raise Errored(f"lens.py check did not run to completion ({e})")
+    found = [ln for ln in r.stdout.splitlines() if ln.startswith("[LN]")]
+    sm = re.search(r"^lens: (\d+) row\(s\), (\d+) finding\(s\)$", r.stdout, re.M)
+    if r.returncode not in (0, 1) or sm is None \
+       or int(sm.group(2)) != len(found) or (r.returncode == 1) != bool(found):
+        why = (r.stderr.strip() or r.stdout.strip() or "no output")[-300:]
+        raise Errored(f"lens.py check exited {r.returncode} with "
+                      f"{len(found)} [LN] line(s) and "
+                      f"{'summary ' + repr(sm.group(0)) if sm else 'no summary line'}, "
+                      f"so no verdict was reached: {why}")
+    return found
 
 
 # ── the system's own goals, as checks ─────────────────────────────────────────
@@ -2205,15 +2363,24 @@ def check_ai() -> list[str]:
     # to run is worse than no lint.
     cache: dict[str, str] = {}
 
+    # A failed `git log` prints nothing, and an empty date skipped the row, so
+    # a broken git read as 0 issues over a register that holds 168. An empty
+    # stdout on exit 0 is an untracked file and is still skipped.
+    errs = []
+
     def last_change(path: str) -> str:
         if path not in cache:
             r = subprocess.run(["git", "-C", str(ROOT), "log", "-1",
                                 "--format=%cs", "--", path],
                                capture_output=True, text=True)
-            cache[path] = r.stdout.strip()
+            out = r.stdout.strip()
+            if r.returncode != 0 or (out and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", out)):
+                raise Errored(f"git log exited {r.returncode} on {path} "
+                              f"({(r.stderr.strip() or out or 'no output')[-200:]}), "
+                              f"so no row's evidence date can be read", errs)
+            cache[path] = out
         return cache[path]
 
-    errs = []
     roots = [ROOT / "records"]
     for d in roots:
         for f in sorted(d.rglob("*.md")):
@@ -2232,7 +2399,12 @@ def check_ai() -> list[str]:
                     continue
                 for path in re.findall(
                         r"([A-Za-z0-9_./-]+\.(?:chiral|prog|py|sh|md))", ev.group(1)):
-                    if not (ROOT / path).exists():
+                    # `ROOT / "/abs"` is "/abs", so an absolute path passed
+                    # the existence test and reached git, which exits 128 on a
+                    # file outside the repository. Only a tree file has a
+                    # change date this check can read.
+                    if path.startswith("/") or ".." in path.split("/") \
+                       or not (ROOT / path).exists():
                         continue
                     last = last_change(path)
                     if last and last > ck.group(1):
@@ -2401,8 +2573,9 @@ def check_al() -> list[str]:
 
     Vacuous when docs/translations/ holds no artifact, or when the tool is
     absent. A run that times out, crashes, exits outside 0 and 1, or exits 1
-    with no row this parse reads is a finding, the rule check AM takes: xlat
-    exits 2 when it cannot run, and that run reached no verdict on the artifact."""
+    with no row this parse reads is errored, the rule check AM takes: xlat
+    exits 2 when it cannot run, and that run reached no verdict on the
+    artifact. The other artifacts' findings are still reported."""
     import subprocess
     tool = ROOT / "tools" / "xlat" / "xlat.sh"
     if not tool.exists():
@@ -2414,20 +2587,21 @@ def check_al() -> list[str]:
         raise Vacuous("docs/translations/ holds no artifact, so there is no "
                       "external citation to resolve")
     out: list[str] = []
+    unread: list[str] = []
     for a in arts:
         rel = a.relative_to(ROOT).as_posix()
         try:
             r = subprocess.run([str(tool), "check", str(a)], cwd=ROOT,
                                capture_output=True, text=True, timeout=120)
         except Exception as e:
-            out.append(f"[AL] {rel} could not be checked ({e})")
+            unread.append(f"{rel} could not be checked ({e})")
             continue
         if r.returncode == 0:
             continue
         if r.returncode != 1:
             why = (r.stderr.strip() or r.stdout.strip() or "no output")[-300:]
-            out.append(f"[AL] {rel}: xlat check exited {r.returncode}, so no "
-                       f"verdict was reached: {why}")
+            unread.append(f"{rel}: xlat check exited {r.returncode}, so no "
+                          f"verdict was reached: {why}")
             continue
         n = len(out)
         for ln in (x.strip() for x in r.stdout.splitlines()):
@@ -2438,8 +2612,10 @@ def check_al() -> list[str]:
                 out.append(f"[AL] {rel} carries no pinned citation, so it rests "
                            f"on a reading nobody can check")
         if len(out) == n:
-            out.append(f"[AL] {rel}: xlat check exited 1 and named no row this "
-                       f"check can parse")
+            unread.append(f"{rel}: xlat check exited 1 and named no row this "
+                          f"check can parse")
+    if unread:
+        raise Errored(unread, out)
     return out
 
 
@@ -2461,7 +2637,7 @@ def check_am() -> list[str]:
 
     Vacuous when the tool is absent, and only then. A run that times out,
     crashes, exits outside 0 and 1, or exits 1 with no row this parse reads is
-    a finding: the check did not reach a verdict, and records/lenses/problems.md
+    errored: the check did not reach a verdict, and records/lenses/problems.md
     PRB-99 is the record of a timeout that read as an absent subject."""
     import subprocess
     tool = ROOT / "tools" / "xlat" / "xlat.sh"
@@ -2472,14 +2648,14 @@ def check_am() -> list[str]:
         r = subprocess.run([str(tool), "unpinned"], cwd=ROOT,
                            capture_output=True, text=True, timeout=180)
     except Exception as e:
-        return [f"[AM] xlat unpinned did not run to completion, so no verdict "
-                f"was reached ({e})"]
+        raise Errored(f"xlat unpinned did not run to completion, so no verdict "
+                      f"was reached ({e})")
     if r.returncode == 0:
         return []
     if r.returncode != 1:
         why = (r.stderr.strip() or r.stdout.strip() or "no output")[-300:]
-        return [f"[AM] xlat unpinned exited {r.returncode}, so no verdict was "
-                f"reached: {why}"]
+        raise Errored(f"xlat unpinned exited {r.returncode}, so no verdict was "
+                      f"reached: {why}")
     out: list[str] = []
     for ln in (x.rstrip() for x in r.stdout.splitlines()):
         parts = ln.split()
@@ -2487,8 +2663,8 @@ def check_am() -> list[str]:
             out.append(f"[AM] {parts[0]} is quoted in the doc tier and has no "
                        f"pin. Pin it with `xlat pin`, or drop the quotation")
     if not out:
-        out.append("[AM] xlat unpinned exited 1 and named no unpinned quoted "
-                   "source this check can parse")
+        raise Errored("xlat unpinned exited 1 and named no unpinned quoted "
+                      "source this check can parse")
     return out
 
 
@@ -2883,8 +3059,8 @@ def _plural(n: int, noun: str) -> str:
     return f"{n} {noun}" + ("" if n == 1 else "s")
 
 
-def _verdict(all_errs, owed, vacuous) -> str:
-    """The tool's last word, as an overview over the three categories.
+def _verdict(all_errs, owed, vacuous, errored=()) -> str:
+    """The tool's last word, as an overview over the four categories.
 
     A binary verdict had one bucket for everything that was not clean, so an
     author call awaiting a ruling read as a violation. Each category states its
@@ -2892,6 +3068,8 @@ def _verdict(all_errs, owed, vacuous) -> str:
     on a tree carrying one thing and honest on a tree carrying three.
     `ledger-lint: clean` is what all three at zero says."""
     parts = []
+    if errored:
+        parts.append(_plural(len(errored), "check") + " that could not run")
     if all_errs:
         parts.append(_plural(len(all_errs), "violation") + " found")
     for noun, n in _owed_counts(owed).items():
@@ -2903,25 +3081,67 @@ def _verdict(all_errs, owed, vacuous) -> str:
     return "ledger-lint: " + ", ".join(parts)
 
 
+def _crash(e: BaseException) -> str:
+    """One line naming an exception and the line it was raised on."""
+    import traceback
+    tb = [f for f in traceback.extract_tb(e.__traceback__)
+          if Path(f.filename).is_file()]
+    at = f" at {Path(tb[-1].filename).name}:{tb[-1].lineno}" if tb else ""
+    return f"{type(e).__name__}: {e}{at}"
+
+
 def _run(checks, quiet=False):
+    """Run each check and sort its outcome into one of four categories.
+
+    Vacuous and Owed are raised by a check on purpose. Errored is raised by a
+    check that could not read its subject, and any other exception is caught
+    here and reported the same way. A crash in one check ends that check's
+    verdict. The run goes on, and the crash reads as neither a finding count
+    nor clean.
+    `errored` holds (name, [reason, ...])."""
     errs: list[str] = []
     vac: list[tuple] = []
     owed: list[tuple] = []
+    errored: list[tuple] = []
     for name, fn in checks:
         try:
             e = fn()
         except Vacuous as v:
             vac.append((name, str(v)))
+            if not quiet:
+                print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
             continue
         except Owed as o:
             owed.append((name, o.noun, o.items, o.count))
             if not quiet:
                 print(f"  [OWED] {name} ({o.count} standing)")
             continue
+        except Errored as x:
+            errored.append((name, x.reasons))
+            errs += x.findings
+            if not quiet:
+                part = (f" ({len(x.findings)} issue(s) found before it stopped)"
+                        if x.findings else "")
+                print(f"  [ERROR] {name} -- could not run, no verdict{part}")
+            continue
+        except Exception as x:
+            errored.append((name, [_crash(x)]))
+            if not quiet:
+                print(f"  [ERROR] {name} -- crashed, no verdict")
+            continue
         errs += e
         if not quiet:
             print(f"  [{'FAIL' if e else 'ok'}] {name} ({len(e)} issue(s))")
-    return errs, vac, owed
+    return errs, vac, owed, errored
+
+
+def _print_errored(errored) -> None:
+    print("\ncould not run, and named rather than counted as clean or as a "
+          "violation:\n")
+    for name, reasons in errored:
+        print(f"  {name}")
+        for r in reasons:
+            print(f"    {r}")
 
 
 def main() -> int:
@@ -2930,9 +3150,20 @@ def main() -> int:
     if "--census" in sys.argv:
         census()
         return 0
+    known = [name.split()[0] for name, _ in CHECKS]
     for i, a in enumerate(sys.argv):
-        if a == "--only" and i + 1 < len(sys.argv):
-            only = {x.strip().upper() for x in sys.argv[i + 1].split(",")}
+        if a == "--only":
+            val = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
+            only = {x.strip().upper() for x in val.split(",") if x.strip()}
+            bad = sorted(only - set(known))
+            if not only or bad:
+                # An unknown code selected no check, and a run of no checks
+                # printed `ledger-lint: clean` and exited 0.
+                print(f"ledger-lint: --only "
+                      f"{'names ' + ', '.join(bad) + ', which no check carries' if bad else 'names no check code'}. "
+                      f"Known: {' '.join(known)}. Nothing was checked.",
+                      file=sys.stderr)
+                return 4
     rc = preflight()
     if rc:
         return rc
@@ -2949,39 +3180,23 @@ def main() -> int:
                    if GUIDE.get(c[0].split()[0], _DEFAULT)[0] == tier]
             if not sel:
                 continue
-            errs, vac, owed = _run(sel, quiet=True)
+            errs, vac, owed, errored = _run(sel, quiet=True)
             owed_seen += owed
+            if errored:
+                # A task picked from a tier with a check that reached no verdict
+                # may not be the next one, so --next names the breakage instead.
+                _print_errored(errored)
+                print(f"\nledger-lint --next: tier {tier} is incomplete, so no "
+                      f"task is selected. Repair the check first.")
+                return 3
             if errs:
                 return guide_next(errs, vac, tier)
         print("\nledger-lint --next: nothing to select. Every check that can "
               "name a next task is clean.")
         return _next_owed(owed_seen)
 
-    all_errs: list[str] = []
-    vacuous: list[tuple] = []
-    owed: list[tuple] = []
-    for name, fn in order:
-        code = name.split()[0]
-        if only and code not in only:
-            continue
-        try:
-            errs = fn()
-        except Vacuous as v:
-            vacuous.append((name, str(v)))
-            if not nxt:
-                print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
-            continue
-        except Owed as o:
-            owed.append((name, o.noun, o.items, o.count))
-            if not nxt:
-                print(f"  [OWED] {name} ({o.count} standing)")
-            continue
-        all_errs += errs
-        status = "FAIL" if errs else "ok"
-        if not nxt:
-            print(f"  [{status}] {name} ({len(errs)} issue(s))")
-    if nxt:
-        return guide_next(all_errs, vacuous, owed=owed)
+    sel = [c for c in order if not only or c[0].split()[0] in only]
+    all_errs, vacuous, owed, errored = _run(sel)
     if vacuous:
         print("\nchecked nothing, and named rather than counted as clean:\n")
         for name, why in vacuous:
@@ -2995,12 +3210,17 @@ def main() -> int:
         print("\nviolations:\n")
         for e in all_errs:
             print(f"  {e}")
-    print("\n" + _verdict(all_errs, owed, vacuous))
-    # Three codes, because two cannot tell a breakage from a standing fork. If
+    if errored:
+        _print_errored(errored)
+    print("\n" + _verdict(all_errs, owed, vacuous, errored))
+    # Distinct codes, because one cannot tell a breakage from a standing fork. If
     # owed returned 1 forever the code would stop discriminating, and
     # docs/definitions/working-discipline.md names a gate that cannot fail as
     # the defect to avoid. The author's requirement that a tree with undecided
-    # forks does not report clean is what keeps it off 0.
+    # forks does not report clean is what keeps it off 0. Errored outranks all
+    # three, because a check that reached no verdict leaves the run incomplete.
+    if errored:
+        return 3
     if all_errs:
         return 1
     return 2 if owed else 0
