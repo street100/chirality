@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # shape-census.sh -- the verdict over the shape census (E201), suite phase 34.
+# not-a-phase: held out of the suite until the author rules on R2, which pins all fourteen readings whole. Delete this line when phase 34 is registered.
 #
 # `prog/shape-census.prog` counts declaration shapes over the tracked lib/ and
 # prog/ sources and prints one `pred` line per row of
