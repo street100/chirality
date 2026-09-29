@@ -3,7 +3,7 @@ node: arc-text-tools
 layer: navigation
 related: [arcs/README, goals/self-tooling, banks/text, arcs/zero-python-arc, arcs/binary-split-arc, records/text-tools, records/baseline-alignment, index]
 status: current
-updated: 2026-09-20
+updated: 2026-09-29
 ---
 
 # Arc: the text primitives
@@ -72,7 +72,8 @@ small.
 ## The primitives, as elements
 
 An arc is a group of elements and each of these is one element. Four are the text
-floor; two are enablers this arc depends on but does not own.
+floor; two are enablers this arc depends on but does not own. `P5` is `P1`'s
+cost, rostered apart from it because E173 is built and the automaton is new work.
 
 ### `text-tools/P1` — the matcher, returning spans · element **E173**
 
@@ -113,8 +114,30 @@ NOT-CHECKED rows. ⚑ `BA-39` records a mutant in this element's own gate that
 passed by looking at nothing; step 6 retargeted it as G10, which observes the
 divergence under a stack and time ceiling instead of asserting a refusal the
 compiler cannot make. ⚑ `BA-40` records the awk tool's two divergent check sets,
-which is why G9 runs through `--summary`. ⚑ The wall clock is unmeasured.
+which is why G9 runs through `--summary`. ⚑ **The wall clock is measured,
+twice.** This note read *"The wall clock is unmeasured"*. `prog/prose-lint.prog`
+ran **9.35x** the awk tool min against min on 2026-09-04
+([[benchmarks/text-matcher-prose-lint]], after `9f46c6c`), and **15.2x** on
+2026-09-29 over a 154-file corpus (`.planning/LANGUAGE-PROFILE-2026-09.md:24`).
+Corrected 2026-09-29.
 `docs/elements/specs/E173-total-matcher-SPEC.md`.
+
+⚑ **The built matcher is one-pass and linear, and it pays for its automaton at
+every byte.** [[records/findings]] `FD-56` §1 measured it: `scan-go` conses a
+thread per offset (`lib/text/matcher.chiral:452`), `pd` builds residual trees,
+and `norm` (`:284`) sorts the live set at each byte, 1,186.3 MB over
+the G9 corpus, and `prose-lint` runs it once per pattern, eight passes a line
+(`prog/prose-lint.prog:207-214`). The published form that computes each residual
+set once and scans every pattern in one pass is the derivative automaton, which
+is new work with its own blocking conditions, so it is its own row,
+`text-tools/P5`, with the literal prefilter the published engines put in front
+of it. E173's `pd` and `norm` are P5's transition function, and
+E173's scan is the path P5 falls back to when its cache thrashes, so nothing
+built here is replaced.
+
+⚑ **Slice 2's captures run inside a span already found.** RE2 locates first and
+extracts second, and `FD-56` §7 finds the order forced: the scan finds the span,
+then tagged derivatives or a one-pass table run over that span alone.
 
 ### `text-tools/P2` — match score · element `unminted`
 
@@ -123,6 +146,15 @@ which is why G9 runs through `--summary`. ⚑ The wall clock is unmeasured.
 The whole remaining gap between `completion.chiral` (64 lines, prefix-only) and
 ranked select, because `list-sort` already takes the comparator. Small.
 
+**The algorithm, from `FD-56` §8.** A subsequence filter under P1 keeps the
+candidates, and an optimal alignment score is a dynamic program over query by
+candidate, O(m·L) per candidate, which is fzf's default `v2`. Where unit-cost
+edit distance suffices, Myers's bit-vector computes the same matrix a word at a
+time, O(⌈m/w⌉·L), at 17 word operations per byte once a 256-entry table is built
+per query. Both need a table written in place: `FD-56` item (k), the in-place
+indexed write on an `I64` buffer under a linear binder, which no roster row
+holds today and whose nearest row is `memory-discipline/M4`'s byte builder.
+
 ### `text-tools/P3` — edit script over two sequences · element `unminted`
 
 `diff : (-> (0 A) (-> A A Bool) (List A) (List A) (List Edit))`.
@@ -130,6 +162,18 @@ ranked select, because `list-sort` already takes the comparator. Small.
 Generic in the element type, so it serves lines, spans, rows and records.
 Yields `diff`, `comm` and `join`, and it is what makes reviewing a patch and
 appending to a `-record.md` mechanical rather than manual.
+
+**The algorithm, from `FD-56` §9.** Myers's O(ND) diff in linear space:
+O((M+N)·D) time, O(M+N) space, and a recursion that halves D, whose bound M + N
+is the termination measure. It updates two V vectors of O(D) integers in place
+at every step; built from persistent lists it costs O(D²) cells, so it waits on
+the same in-place indexed write as P2. **The signature above admits Myers and
+refuses patience and histogram**, which count occurrences of each element and
+so need an order or a hash on `A`. Histogram's output was judged better on code
+changes in 62.6% of files against Myers's 16.9% (`FD-56` §9). `FD-57` §5 bears
+on which: a hash's speed rests on a secret seed a pure `->` pass cannot hold, or
+states a linear worst case, so the admitted carrier is an order, a comparator on
+`A`. Whether P3 takes one is P3's design question.
 
 ### `text-tools/P4` — the stable address · element `unminted`
 
@@ -148,6 +192,65 @@ cited elsewhere."* That is an address, and it wants to be a type.
 
 The render half is already built: `Doc`'s `d-tag` carries a semantic role at zero
 width and zero text.
+
+**The shape, from `FD-56` §10.** Identity belongs to atoms, and a span is two
+anchored endpoints. An identifier is an (origin, sequence) pair of two
+integers, resolved to an index through an order-statistic tree in O(log n), and
+the resolve is typed `Maybe` because an identifier whose atom was deleted
+resolves to nothing. The hand-kept row-id scheme is that pair with one origin.
+`prelude/map` is balanced and carries a height per node and no subtree size
+(`lib/prelude/map.chiral:19-21`), so the order-statistic query is one field
+away. The tree is ordered by position, and `FD-57` §5 keeps it that way: an
+ordered structure holds the O(log n) bound a type can state, where a public hash
+states a linear one.
+
+### `text-tools/P5`: the derivative automaton over a pattern list · element `unminted`
+
+`P1`'s matcher paid for once per state, over every pattern in one pass, behind a
+literal prefilter. Each span comes back with the index of the pattern that
+matched it. Evidence: [[records/findings]] `FD-56` §1 to §6.
+
+- **States.** A state is `norm`'s canonical residual set, and over a list of
+  patterns it is a regular vector, one residual per pattern (Brzozowski, through
+  Owens, Reppy and Turon). A memo from state to state number is `prelude/map`
+  under `pat-cmp`. `FD-57` §5 is why the memo is ordered: a hash states a
+  linear worst case or needs a seed a pure pass cannot hold, and a state number
+  is an interned id compared in one instruction.
+- **The scan.** One transition per (state, byte class), computed once. A match
+  end is found forward and its start by the reversed pattern run backward from
+  it, which is one more automaton. The scan allocates nothing, by construction;
+  its wall clock is unmeasured.
+- **A pattern that arrives at run time.** The E173 SPEC's decision 1 stands: a
+  `Pat` is a runtime value, because `pack.py` builds one from `argv`
+  (`docs/elements/specs/E173-total-matcher-SPEC.md:114-143`). Eager
+  construction is exponential in the pattern, which totality refuses, so the
+  automaton is built lazily in a cache of fixed capacity threaded through the
+  scan as a linear value: O(m·n) worst case, space fixed at construction. When
+  the cache thrashes, E173's scan runs. The capacity is a number that sets a
+  bar, and [[records/author-calls]] holds it as *"The state capacity
+  `text-tools/P5`'s lazy automaton holds"*.
+- **A closed pattern set.** The same builder evaluated at compile time over a
+  closed `Pat` yields a constant table. Emitting it is the lift
+  [[records/author-calls]] holds as *"Whether a quantity-0 static value may be
+  lifted into emitted code"*, `unreviewed`, and its carrier is
+  `lowering-and-emit/LE29`'s closed constant. The lazy builder is complete for
+  a closed set as well, so this row's run-time half stands whichever way the
+  call goes, and nothing in it is replaced by the table.
+- **Blocking conditions.** An in-place indexed write on an `I64` buffer under a
+  linear binder, and an indexed read that lowers to one load: `FD-56` items (k)
+  and (i), held by no roster row today.
+- **The prefilter.** A required literal extracted from each pattern is
+  searched ahead of the automaton, which confirms each candidate. Every one of
+  `prose-lint`'s eight patterns carries one (`prog/prose-lint.prog:75-146`,
+  `lib/text/matcher.chiral:103`), and ripgrep skips its regex engine outright
+  when a literal hit is a match (`FD-56` §5). A `memchr`-shaped find-byte needs
+  a word load and count-trailing-zeros, `FD-56` item (j), held by no roster row
+  today; the same operation is the proper `str-split`. Shift-Or and BNDM need
+  only `and`, `or`, `shl` and `+`, all in the `Op` sum, over at most 64
+  positions a word (`FD-56` §6). Teddy needs a vector lane, which no row
+  schedules. Which form the row carries is its design's.
+- **Consumer.** `prog/prose-lint.prog`'s eight `count-pat` passes
+  (`:207-214`) become one.
 
 ### Enablers this arc depends on and does not own
 
@@ -188,8 +291,8 @@ settle it, and does not need to.
 
 ## Roster
 
-Four primitives. Their full prose is in the sections above; this is the countable
-form.
+Four primitives, and one row that carries `P1`'s cost. Their full prose is in the
+sections above; this is the countable form.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
@@ -197,6 +300,7 @@ form.
 | `text-tools/P2` | match score | primitive | law | new | 3 | open | `unminted` |
 | `text-tools/P3` | edit script over two sequences | primitive | law | new | 3 | open | `unminted` |
 | `text-tools/P4` | the stable address | primitive | primitive | new | 3 | open | `unminted` |
+| `text-tools/P5` | the derivative automaton over a pattern list behind a literal prefilter, each span with its pattern's index, built lazily in a fixed-capacity cache at run time, `FD-56` §1 to §6 | primitive | primitive | new | 5 | open | `unminted` |
 
 ### Coverage
 
@@ -208,6 +312,11 @@ the arc states them once instead of four times.
 
 Requirement 3 is served by P1 to P4. Every row serves one, and every `origin` is
 `new`.
+
+Requirement 5 is a property every primitive carries, like 1 and 2, and P2, P3
+and P4 carry it in their own rows. `P1` is built, so the cost its published form
+owes beyond E173 is a row of its own, `P5`. The wall-clock half of
+requirement 5 has a measurement for `P1` and none for the rest.
 
 ⚑ **`GAP-13` is a different kind of hole from `GAP-11` and `GAP-12`, and the
 enumeration reads all three as one.** Totality and purity are properties of a
@@ -276,8 +385,10 @@ checks and the awk tool over one corpus through `prose-lint --summary` and fails
 unless the totals agree, which is REQUIREMENT 4 met on output for one primitive.
 Three things bound it. `tools/README.md:23` records `prose-lint.sh` surviving as
 the front end for ranking, baseline, `--regress`, per-line output and
-code-skipping, so the shell tool was reduced and not retired. The wall clock is
-still unmeasured, which §Why the constraint picks the algorithm already flags.
+code-skipping, so the shell tool was reduced and not retired. ⚑ The wall clock is
+measured: this sentence read *"The wall clock is still unmeasured"*, and
+`prog/prose-lint.prog` ran 9.35x awk on 2026-09-04 and 15.2x on 2026-09-29, which
+§Why the constraint picks the algorithm cites. Corrected 2026-09-29.
 ⚑ The corpus is a glob, `CORPUS="docs/arcs docs/decisions docs/definitions"` at
 `tools/test/matcher.sh:515`, and it enumerates **137** `.md` files on
 2026-09-20, against the 80 recorded in P1's state note; the floor the gate
@@ -298,6 +409,18 @@ holds that obligation today.
    inputs**, inherited from [[arcs/zero-python-arc]] requirement 3. ⚑ This is
    the arc's deliverable and no roster row serves it. `GAP-13` enumerates the
    hole and §Adoption holds the two measured instances, `PRB-59` and `PRB-60`.
+5. **Every primitive runs the fastest published algorithm that is total and
+   pure, and states that algorithm's bound in its inputs.** [[records/findings]]
+   `FD-56` names each: the derivative automaton for `P1`, O(n) per scan over a
+   built table and O(m·n) with a lazy cache, independent of the pattern count;
+   a dynamic program behind a subsequence filter for `P2`, O(m·L) a candidate;
+   Myers's diff for `P3`, O((M+N)·D) time in O(M+N) space; an order-statistic
+   resolve for `P4`, O(log n). The wall clock is recorded against the tool each
+   replaces, on requirement 4's inputs. The ratio it must reach is a bar and is
+   the author's: [[records/author-calls]] holds it as *"The budget
+   [[goals/emitted-speed]] condition 4 holds a shipped native tool to"*, and the
+   author's 2026-09-01 ruling at `docs/benchmarks/README.md:29` records the
+   clock and sets no bar until then.
 
 ## Why the constraint picks the algorithm
 
@@ -314,30 +437,47 @@ and:
 
 A backtracking matcher cannot be typed here, so it cannot be written. What can be
 typed is a one-pass automaton, linear in the input and independent of the pattern
-count, which is also the fast one. E173's partial-derivative matcher is that
-shape and it is built. The constraint and the performance win select the same
-algorithm.
+count, which is also the fast one. The constraint and the performance win select
+the same algorithm.
 
-⚑ **The 2.4x above is the pre-E173 figure.** `prog/prose-lint.prog` now runs the
-one-pass matcher and no run in this tree has re-measured the ratio, so REQUIREMENT
-4 is satisfied on output (G9 compares the eight checks against awk over the
-corpus) and the wall clock is still owed a measurement. `docs/benchmarks/` has no
-file for it.
+⚑ **E173 is one-pass and linear, and it runs once per pattern.** This section
+read *"E173's partial-derivative matcher is that shape and it is built"*. It
+also recomputes its automaton state at every byte: [[records/findings]] `FD-56` §1 and §4, 1,186.3 MB
+allocated in matching over the G9 corpus (`.planning/LANGUAGE-PROFILE-2026-09.md:132`).
+The shape that is all three is the derivative automaton, `text-tools/P5`, whose
+transition function is E173's own `pd` and `norm`. **What totality rules out is
+narrow** (`FD-56` §11): backtracking with no visited set, and eager subset
+construction over a run-time pattern with no state cap. Corrected 2026-09-29.
+
+⚑ **The 2.4x above is the pre-E173 figure, and the post-E173 ratio is
+measured.** This paragraph read that no run had re-measured it and that
+`docs/benchmarks/` had no file for it. [[benchmarks/text-matcher-prose-lint]]
+measured **9.35x** awk on 2026-09-04, and `.planning/LANGUAGE-PROFILE-2026-09.md:24`
+measured **15.2x** on 2026-09-29 over the grown corpus. REQUIREMENT 4 is met on
+output by G9; requirement 5 records this clock. Corrected 2026-09-29.
 
 ## Resume state
 
 Order is forced by dependency, not preference.
 
-1. **P2 score** — unblocked by anything, small, and turns prefix completion into
-   ranked select. Cheapest real progress in the arc.
-2. **P1 / E173** — **slice 1 is built**, 2026-09-01. The open fork this list used
+1. **P2 score**: small, and turns prefix completion into ranked select. ⚑ This
+   item read *"unblocked by anything"*. Its dynamic program and its bit-vector
+   table each need an in-place indexed write on an `I64` buffer (`FD-56` item
+   (k)), which no roster row holds. Corrected 2026-09-29.
+2. **P1 / E173**: **slice 1 is built**, 2026-09-01. The open fork this list used
    to carry is closed by the SPEC: a pattern is a runtime value, because a pattern
    in the corpus is built from `argv` and staticness buys no totality. What
    remains inside E173 is slice 2, the captures, whose first step is classifying
    the 77 capture sites into served-by-split-scan and needs-a-submatch.
-3. **P3 diff** — independent of P1; can run in parallel with it on another day.
-4. **P4 addressing** — wants a decision before an example, because it changes a
+3. **P3 diff**: independent of P1, and waiting on the same in-place indexed
+   write as P2 for Myers's V vectors (`FD-56` §9).
+4. **P4 addressing**: wants a decision before an example, because it changes a
    payload type that `Flow` already uses.
+5. **P5 automaton**: waits on the in-place indexed write and a one-load indexed
+   read (`FD-56` items (k) and (i)), and on the capacity call for its cache. Its
+   compile-time table waits on the quantity-0 lift call as well; its run-time
+   half does not. Its prefilter's word-wide form waits on a word load and
+   count-trailing-zeros (`FD-56` item (j)); the Shift-Or form waits on nothing.
 
 **That blocker is spent, 2026-09-06.** This section read "owed from the author: a
 reserved element block ... until then P2, P3 and P4 stay unnumbered and cannot be
