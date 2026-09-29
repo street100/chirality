@@ -29,7 +29,18 @@ The author gave a green light on 2026-09-29, *"dispatch next stages for all, gre
 
 | # | run | serves | writes |
 |---|---|---|---|
-| next | DT-03, then DT-03, DT-06 with DT-02, DT-05, DT-11, DT-09 with DT-08, DT-10 with DT-13, DT-12, one at a time, from `.planning/DOC-TOOLSET-REVIEW-2026-09.md`. DT-07 waits on the author | tooling | `tools/ledger-lint/ledger-lint.py` |
+| L0 | `revisit` `docs/arcs/lowering-and-emit-arc.md` against `.planning/LANGUAGE-PROFILE-2026-09.md`: rows for the compiler-pass fixes, so they can enter the pipeline | speed | the arc and its record |
+| R1 | research: the fastest proper algorithms for text primitives P1 to P4, and what each needs from the language (the author: text tools *"relevant because of like chirality native fzf and similar tools at best primitive. big optimization opportunities"*) | text tools, speed | pins, `FD-56` |
+
+## Next, in order
+
+The author asked on 2026-09-29 for the language fixes to go one by one through the full pipeline, vertically, *"until precomputing"*, which the author holds for discussion. Order by measured cost from the profile: erase once and `lower-defs` cons-then-reverse; name lookup through a map; constructor tags once; `str-split` by index and a linear byte builder; word-wide byte compare and copy (checked rewrite); constants once, region reset, inlining (waits on the author's `emitted-speed-arc.md` edits), register-resident values.
+
+| # | run | serves | waits on |
+|---|---|---|---|
+| R2 | research: compute primitives that play major roles, arithmetic, division and multiply lowering, bit operations, byte compare and copy, hashing for the lookup maps, integer to string | speed | R1 (both append to `records/findings.md`) |
+| R3 | `revisit` `docs/arcs/text-tools-arc.md` against R1: a cost requirement, P1 widened to a precompiled multi-pattern automaton, P2 and P3 re-scoped | text tools | R1 |
+| next | DT-06 with DT-02, then DT-03, DT-06 with DT-02, DT-05, DT-11, DT-09 with DT-08, DT-10 with DT-13, DT-12, one at a time, from `.planning/DOC-TOOLSET-REVIEW-2026-09.md`. DT-07 waits on the author | tooling | `tools/ledger-lint/ledger-lint.py` |
 
 ## Earlier running rows
 
