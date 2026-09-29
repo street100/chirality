@@ -31,23 +31,22 @@ of the arc in the wave. Wave 2, the mint, starts when each of those calls reads
 
 One call per run. Serial, like every stage.
 
-## Which calls a session may take
+## Which calls it runs on
 
-A call is eligible when its answer follows from things the tree already
-commits to. It is out of reach when the answer is a value the author holds.
+Every call that may be resolvable. There is no filter ahead of the method: a call
+enters, the method runs, and the verdict says whether it resolved. Some answers
+belong to the author, and when the method reaches one of these it stops there
+with a `STANDS` verdict.
 
-| out of reach | why |
+| the answer is the author's when it is | why |
 |---|---|
 | what a goal claims, or a new ambition | `docs/goals/README.md`: authoring an ambition is the author's |
 | a number that sets a bar: a target ratio, a budget, a deadline | the tree's own rule is that a bar with nothing under it is invented |
-| reopening anything under `docs/decisions/` with `status: settled` | `.planning/PERSONA.md`: a settled fork is closed unless the author reopens it |
+| reopening a `docs/decisions/` note with `status: settled` | `.planning/PERSONA.md`: a settled fork is closed unless the author reopens it |
 | scope and track: what is deferred, what is in | `docs/decisions/decision-scope.md` is the author's |
-| a call the author has already answered in words anywhere | follow the words and mark the row `ruled`, citing them |
 
-Everything else is eligible, including naming, placement, which arc owns a
-thing, and which of several technical shapes to take. The run states its
-eligibility finding first. An ineligible call stops there and gets its plain
-summary.
+A call the author already answered in words anywhere is `ruled` on those words,
+cited, and reported like any other outcome.
 
 ## The method, per call
 
@@ -82,12 +81,37 @@ summary.
 | verdict | when | what the run writes |
 |---|---|---|
 | `DISSOLVED` | exactly one option survives steps 2 to 5 | a `docs/decisions/decision-<slug>.md` note carrying the fork, the surviving option, the eliminations each with the principle line, constraint or measurement that removed it, and what it leaves open. The register row goes to `dissolved` and cites the note |
-| `NARROWED` | two or more survive, fewer than started | the row stays `unreviewed`, its options cut to the survivors, each elimination cited, and a plain summary for the author's batch |
-| `STANDS` | the principles and the sources do not tell the options apart | the row stays `unreviewed` with a plain summary. The fork is a value the author holds |
+| `NARROWED` | two or more survive, fewer than started | the call is left with the author. Its register row is rewritten in place: the fork as it now stands, the surviving options, each elimination with what removed it, and the plain summary |
+| `STANDS` | the principles and the sources do not tell the options apart, or the answer is one of the author's kinds above | the call is left with the author. Its register row is rewritten in place the same way, with what the run learned even when no option fell |
+
+## Leaving a call with the author
+
+A call the method cannot settle stays `unreviewed` and gets better. The run
+rewrites the row's text so it reads as the fork stands today: the question in
+one line, the options left, why each removed option went, what was measured and
+when, and the plain summary the author will read. History the row already
+carries is kept below the rewrite. The old text is never deleted, because a
+ruling it cites may still point at it. The row keeps the register's shape, one
+line with the token first and the call's name in bold, so `ledger-lint` check AK
+still reads it, and the run re-runs AK to confirm.
 
 A plain summary follows `.planning/DISPATCH-QUEUE.md` §How the author calls
 move: what the thing is, why it matters, the options in ordinary words, a
 recommendation, and the references after.
+
+## Reporting to the author
+
+Every call this stage touches is reported, whatever its verdict. The report goes
+in the author batch that follows the wave, in three groups:
+
+| group | what the author does with it |
+|---|---|
+| settled by derivation (`DISSOLVED`, after its check) | reads the one-line answer and the reason, and vetoes it or lets it stand |
+| narrowed | picks among fewer options, from the rewritten summary |
+| stands | decides, from the rewritten summary |
+
+Each entry leads with the plain summary. The register row and the decision note
+come after, as references.
 
 ## What keeps a dissolution honest
 
@@ -105,6 +129,7 @@ recommendation, and the references after.
 
 ## What it writes and never writes
 
-It writes: one decision note on `DISSOLVED`, one register row edit, and the
-check's findings. It never writes a goal, a roster row, a `ruled` token, or a
+It writes: one decision note on `DISSOLVED`, the rewrite of one register row,
+the check's findings, and the call's entry in the report. It writes a `ruled`
+token only on the author's own words. It never writes a goal, a roster row, or a
 settled decision's text.
