@@ -124,15 +124,6 @@
 (def program-lits (lam (defs) (dedup-str (clits-defs defs) (m-empty Str I64))))
 
 (data BR () (br-ok (fns (List NFn)) (lits (List Str)) (skips (List SkRec))) (br-err (msg Str)))
-(declare erase-list (-> (List Str) (List DData) (List TFn) BR))
-(def erase-list (lam (lits datas fns)
-  (case fns
-    (nil (br-ok nil lits nil))
-    ((cons f r) (case (erase-fn datas f)
-      ((xf-err m) (br-err (str-cat "erase: " m)))
-      ((xf-ok nf) (case (erase-list lits datas r)
-        ((br-err m)       (br-err m))
-        ((br-ok rest rl sk0)  (br-ok (cons nf rest) rl sk0)))))))))
 
 ; ---- lower + erase EVERY def, accumulating all emitted TFns -------------------
 ; Each def compiles under a CEnv carrying the WHOLE program's fn sigs (inter-def
@@ -168,22 +159,26 @@
 (def branches-calls (lam (brs) (case brs (nil nil) ((cons b r) (case b ((branch cn dsts body) (app-str (block-calls body) (branches-calls r))))))))
 (declare tfn-nm (-> TFn Str))
 (def tfn-nm (lam (f) (case f ((tfn nm ps ret body nr) nm))))
-(declare tfn-names (-> (List TFn) (List Str)))
-(def tfn-names (lam (fs) (case fs (nil nil) ((cons f r) (cons (tfn-nm f) (tfn-names r))))))
+; A kept function travels as its TFn paired with the NFn its one erase produced
+; (LE27): prune reads the TFn half, the emitter receives the NFn half.
+(declare fp-names (-> (List (Pair TFn NFn)) (List Str)))
+(def fp-names (lam (fs) (case fs (nil nil) ((cons p r) (case p ((pair f nf) (cons (tfn-nm f) (fp-names r))))))))
+(declare fp-nfns (-> (List (Pair TFn NFn)) (List NFn)))
+(def fp-nfns (lam (fs) (case fs (nil nil) ((cons p r) (case p ((pair f nf) (cons nf (fp-nfns r))))))))
 (declare cb-all-in (-> (List Str) (List Str) Bool))
 (def cb-all-in (lam (xs avail) (case xs (nil true) ((cons x r) (case (lits-mem avail x) (true (cb-all-in r avail)) (false false))))))
-(declare tfn-count (-> (List TFn) I64))
-(def tfn-count (lam (fs) (case fs (nil 0) ((cons f r) (+ 1 (tfn-count r))))))
+(declare fp-count (-> (List (Pair TFn NFn)) I64))
+(def fp-count (lam (fs) (case fs (nil 0) ((cons p r) (+ 1 (fp-count r))))))
 (declare prim-names (-> (List (Pair Str TalSig)) (List Str)))
 (def prim-names (lam (ps) (case ps (nil nil) ((cons p r) (case p ((pair k v) (cons k (prim-names r))))))))
 
 ; drop TFns the erase step cannot handle (e.g. a non-native prim like str->i64):
-; a dry-run erase-fn, keeping only the ones that succeed. Runs BEFORE prune, so
+; one erase-fn per TFn, keeping each success paired with its NFn. Runs BEFORE prune, so
 ; a dropped fn's callers cascade-drop too. The erase (not compile-fn) is the
 ; authority on the prim subset (op-parse / prim2lib are the authority) -- crossings (put/print) erase fine.
-; Returns kept TFns + skip records for each dropped fn with the offending op.
+; Returns kept (TFn, NFn) pairs + skip records for each dropped fn with the offending op.
 (declare first-nonlowering-op (-> TFn (Maybe Str)))
-(declare filter-erasable (-> (List DData) (List TFn) (Pair (List TFn) (List SkRec))))
+(declare filter-erasable (-> (List DData) (List TFn) (Pair (List (Pair TFn NFn)) (List SkRec))))
 (def filter-erasable (lam (datas fs)
   (case fs (nil (pair nil nil))
     ((cons f r) (case (erase-fn datas f)
@@ -192,7 +187,7 @@
         ((some op) (case (filter-erasable datas r) ((pair kept skips)
           (pair kept (cons (mk-skrec (tfn-nm f) (sk-extern op)) skips)))))))
       ((xf-ok nf) (case (filter-erasable datas r) ((pair kept skips)
-        (pair (cons f kept) skips)))))))))
+        (pair (cons (pair f nf) kept) skips)))))))))
 
 ; first call name in `calls` not present in `avail` (for callee-blame cascade)
 (declare first-missing (-> (List Str) (List Str) (Maybe Str)))
@@ -203,19 +198,19 @@
       (true (first-missing r avail))
       (false (some c)))))))
 
-(declare prune-pass (-> (List Str) (List TFn) (List SkRec) (Pair (List TFn) (List SkRec))))
+(declare prune-pass (-> (List Str) (List (Pair TFn NFn)) (List SkRec) (Pair (List (Pair TFn NFn)) (List SkRec))))
 (def prune-pass (lam (avail fs skips) (case fs (nil (pair nil skips))
-  ((cons f r) (case (cb-all-in (block-calls (case f ((tfn nm ps ret body nr) body))) avail)
+  ((cons p r) (case p ((pair f nf) (case (cb-all-in (block-calls (case f ((tfn nm ps ret body nr) body))) avail)
     (true (case (prune-pass avail r skips) ((pair kept more-skips)
-      (pair (cons f kept) more-skips))))
+      (pair (cons p kept) more-skips))))
     (false (case (first-missing (block-calls (case f ((tfn nm ps ret body nr) body))) avail)
       (none (prune-pass avail r skips))
-      ((some cn) (prune-pass avail r (cons (mk-skrec (tfn-nm f) (sk-callee cn)) skips))))))))))
+      ((some cn) (prune-pass avail r (cons (mk-skrec (tfn-nm f) (sk-callee cn)) skips))))))))))))
 
-(declare prune-fix (-> (List Str) (List TFn) (Pair (List TFn) (List SkRec))))
+(declare prune-fix (-> (List Str) (List (Pair TFn NFn)) (Pair (List (Pair TFn NFn)) (List SkRec))))
 (def prune-fix (lam (primnames fs)
-  (case (prune-pass (app-str primnames (tfn-names fs)) fs nil) ((pair kept skips)
-    (case (=i (tfn-count kept) (tfn-count fs))
+  (case (prune-pass (app-str primnames (fp-names fs)) fs nil) ((pair kept skips)
+    (case (=i (fp-count kept) (fp-count fs))
       (true (pair kept skips))
       (false (case (prune-fix primnames kept) ((pair kept2 skips2)
         (pair kept2 (lapp-skip skips skips2))))))))))
@@ -256,9 +251,7 @@
   (case defs
     (nil (case (filter-erasable datas (rev-tfn-onto acc nil)) ((pair filtered fskips)
       (case (prune-fix (prim-names prims) filtered) ((pair pruned pskips)
-        (case (erase-list lits datas pruned)
-          ((br-err m) (br-err m))
-          ((br-ok efns elits esk) (br-ok efns elits (lapp-skip skips (lapp-skip fskips (lapp-skip pskips esk)))))))))))
+        (br-ok (fp-nfns pruned) lits (lapp-skip skips (lapp-skip fskips pskips))))))))
     ((cons d r) (case d ((ndef name params ret erased body)
       (let (ptys (ntalty->talty-list params))
       (let (rty  (ntalty->talty ret))

@@ -29,7 +29,7 @@ The author gave a green light on 2026-09-29, *"dispatch next stages for all, gre
 
 | # | run | serves | writes |
 |---|---|---|---|
-| none | the queue resumes at `LE27` (erase once), design stage, then `LE25` | | |
+| none | the queue resumes at `LE25` (name lookup through maps), design stage. FD-57 leaves its design one question: whether per-pass `Map Str` is later replaced by id-keyed maps, which would make it an improper split | | |
 
 ## Next, in order
 
@@ -135,6 +135,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| LE27 | `E203`, each function erased once: designed, audited PASS, minted, built `direct`. `C1 == C2`, C2 on HEAD's blob reproduced the old binary, suite alone 441 and 96 roots, phases 29 and 30 with `CC`. Self-compile 0.79 s to 0.73 s, 358 to 331 MiB. Agents: 92k, 87k, 63k tokens | this commit |
 | R3 | text-tools RESCOPE against FD-56: requirement 5 (fastest published total algorithm), row `P5` (derivative automaton over a pattern list, literal prefilter, lazy fixed-capacity cache), record TT-02, one call registered (the cache capacity, a number only the author sets). AK 43 to 44, 252 violations unchanged | this commit |
 | R2 | compute primitives research, FD-57, 25 pins. Constant division by `mulhu` (`A22`), `INT64_MIN` through an unsigned magnitude (PRB-78), word-wide compare and copy inside the 8-byte cell rounding, bit ops waiting on a unary IR form and a stated x86-64 level no document names. Hashing: a pure pass holds no seed, so an ordered map keeps the log bound, and interning is the faster shape. Open for `LE25`'s design: whether per-pass `Map Str` is later replaced by id-keyed maps, which would make it an improper split | this commit |
 | R1 | text primitives research | `3022b41`, FD-56 |

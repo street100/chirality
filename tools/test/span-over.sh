@@ -105,7 +105,7 @@
 # ⚑ M3 PINS THE REFUSAL THE COMPILER ACTUALLY PRINTS, WHICH IS NOT THE SPEC'S.
 # The SPEC names `prim not in native subset: bover`, which erase.chiral:169
 # does construct. It never reaches stderr: `filter-erasable`
-# (lib/lowering/compile-back.chiral:188-191) discards `xf-err`'s message and
+# (lib/lowering/compile-back.chiral:185-188) discards `xf-err`'s message and
 # records `sk-extern op` instead, which skip-diag.chiral:85-88 formats as
 # `<fn>: extern does not lower: <op>`. Measured 2026-09-18. The row pins the
 # string that is load-bearing and names the other one here.
