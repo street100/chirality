@@ -27,7 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| E2 | `revisit` `docs/arcs/enforcement-arc.md` against `FD-55`: the speed rows as checked rewrites | enforcement | the arc, its `records/` row, author-call rows |
+| E3 | `element-design` on `enforcement/N23`, the per-rewrite value check | enforcement, wave 1 | `docs/arcs/parts/enforcement-N23.md` |
 
 ## Waves
 
@@ -63,8 +63,8 @@ bad"*, with speed rows added to the enforcement arc as checked rewrites.
 
 | # | run | waits on |
 |---|---|---|
-| E3 | `element-design` on each unminted, undesigned row, one run each: `N10`, `N11`, `N12`, `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22`, then every row E2 adds | E2 |
-| E4 | `revisit` folding every "needed and unrostered" discovery from E3 into the roster, then a design for each new row. Repeats until a pass adds nothing | E3 |
+| E3 | `element-design` on each unminted, undesigned row, one run each: `N23` (running), `N24`, `N10`, `N11`, `N12`, `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22` | E2 |
+| E4 | `revisit` folding every "needed and unrostered" discovery into its roster. Standing from E2: an interprocedural constant fact for `X10` (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`, emitted-speed condition 3 has no arc), a lift form for a quantity-0 value (waits on `records/author-calls.md:117`), and a region profiler (`records/findings.md:1527`). Then every row E3 surfaces, and a design for each new row. Repeats until a pass adds nothing | E3 |
 | E5 | reconcile the enforcement calls: the register rows at `records/author-calls.md` 83, 84, 85, 93, 95, 96, 97 and 98, then every call E3 and E4 raise | E4 |
 
 ## Held from before the waves
@@ -114,6 +114,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| E2 | enforcement RESCOPE: requirement 7, rows `N23` (per-rewrite value check) and `N24` (each fold arm checked once), `N7` amended so `dead` re-enters only under `N23`. Three calls registered, AK 40 to 43. `docs/arcs/README.md:165` is stale and sits in the author's dirty file | `95e8043` |
 | E1 | `FD-55`: every checked-rewrite design pays for its check per pass, once, or per compile, and each lands on a row the tree holds. Beating C by precomputing has evidence on general programs a generator specializes. Committed without the author's uncommitted FD-52 to FD-54 | `3bf4fa7` |
 | 3a | `E202` SPEC, phase 35, four census readings move | `dcb2b6d` |
 | fix | the suite was red from `4e9649f`, a gate committed without its phase. The gate now declares itself out until R2 is ruled | `90e9b4d` |
