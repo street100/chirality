@@ -2,7 +2,7 @@
 row: lowering-and-emit/LE27
 arc: lowering-and-emit
 title: each function erased once
-kind: primitive
+kind: law
 origin: connect
 req: 7
 status: draft
@@ -57,14 +57,12 @@ the comment at `tools/test/span-over.sh:107-108`, which pins the skip string
 
 ### The measurement
 
-The only figure is the joint prototype of this row and `LE28`
-(`.planning/LANGUAGE-PROFILE-2026-09.md:29`, the arc's G7 row at
-`docs/arcs/lowering-and-emit-arc.md:123`): compiler blob 0.827 / 0.814 / 0.816 s
-to 0.721 / 0.732 / 0.723 s, 385 MB to 331 MB peak, the erase 70 ms and 29.0 MB
-to 0.2 ms and 0 MB, output `cmp` equal to `bin/chirality-bin`'s on the compiler
-blob, `e170_infer_arms` and `e173_matcher`. The profile's pass table puts the
-dry-run erase at 69.2 ms and 29.2 MB, 9.5% of the compile
-(`.planning/LANGUAGE-PROFILE-2026-09.md:58`). `LE28` alone, built, measured
+The only figure is the joint prototype of this row and `LE28`, carried by the
+arc's G7 row at `docs/arcs/lowering-and-emit-arc.md:123` and this row's roster
+entry at `:269`: a self-compile 0.816 s to 0.723 s, 385 MB to 331 MB peak, the
+second erase 70 ms and 29.0 MB to 0.2 ms and nothing, output `cmp` equal to
+`bin/chirality-bin`'s on the compiler blob, `e170_infer_arms` and
+`e173_matcher`. `LE28` alone, built, measured
 0.81 s and 385 MiB to 0.79 s and 358 MiB (the arc's `LE28` row,
 `docs/arcs/lowering-and-emit-arc.md:270`). This row's own share is therefore
 about 0.79 s to 0.72 s and 358 to 331 MB, by subtraction, estimated; the two
@@ -75,8 +73,15 @@ figures mix MB and MiB.
 Two `TFn`s with one name reach `filter-erasable` and `prune-fix` today: the
 duplicate is caught only at emit, by `first-dup-go` at
 `lib/lowering/compile-emit.chiral:304-305`, the case requirement 5 of the arc
-measures. `prune-pass` judges each `TFn` by its own calls, so it can keep one of
-two same-named functions and drop the other.
+measures. Re-run 2026-09-29 at the design audit: a blob of two
+`(def helper (-> I64 I64) …)` with different bodies and a `compile-main`
+calling `helper`, fed to `bin/chirality-bin`, exits 1 with `duplicate label (an
+object def collides with the linked runtime): helper`. No front pass rejects a
+repeated `def`: `lib/module/loader.chiral`'s `r-redeclared` is raised for
+externs, atoms and data (`:460`, `:490`, `:551`, `:572`) and for no `def`.
+`prune-pass` judges each `TFn` by its own calls, so it can keep one of two
+same-named functions and drop the other, and emit then sees one label. Today
+the survivor's own `NFn` ships, because `erase-list` erases the survivor.
 
 ### Drift from the row's text
 
@@ -125,7 +130,8 @@ they are.
 - **Forbids:** nothing it should. With the name compare, two same-named `TFn`s
   where prune keeps the second pair the second's `TFn` with the first's `NFn`,
   and emit then sees one label and no duplicate, so the wrong body ships
-  silently. §2 shows the input exists today. The row's correctness argument
+  silently where today's code ships the survivor's own. §2 shows the input
+  exists today. The row's correctness argument
   (pure erase, in-order subsequence) holds; its match test does not carry it.
 
 ### Shape C: prune over the erased form
@@ -148,7 +154,7 @@ they are.
 |---|----------|-------------|-------------------|
 | 1 | pair through prune, or parallel lists matched after | RESOLVED | Shape A; the duplicate-name input is measured at `lib/lowering/compile-emit.chiral:304-305` and requirement 5 of the arc |
 | 2 | order of the emitted `NFn`s | RESOLVED | def order, unchanged: `filter-erasable` and `prune-pass` each rebuild by `cons` in input order (`compile-back.chiral:194-195`, `:209-210`), and the input is `LE28`'s single reverse at `:257` |
-| 3 | does enforcement requirement 7's checked rewrite apply | RESOLVED, no | `docs/arcs/enforcement-arc.md:471` reaches a rewrite the optimizer adopts. This row rewrites no function and moves no emitted byte, so the BUILD RULE converging at `C1 == C2` is the whole check (`docs/definitions/working-discipline.md:19-33`, `:35-41`) |
+| 3 | does enforcement requirement 7's checked rewrite apply | RESOLVED, no | `docs/arcs/enforcement-arc.md:471` reaches a rewrite the optimizer adopts. This row rewrites no function and moves no emitted byte: each kept `NFn` is the one `erase-list` would compute from the same `datas` and `TFn`, in the same order, and `erase-list` adds `nil` skips (`compile-back.chiral:130`), so the BUILD RULE converging at `C1 == C2` is the whole check (`docs/definitions/working-discipline.md:19-33`, `:35-41`) |
 | 4 | `erase-list`'s `br-err "erase: "` path | RESOLVED | it is dead under today's code, since every `TFn` it sees already erased once and `erase-fn` is pure (`erase.chiral:276-280`); deleted with the function |
 | 5 | does the row go `direct` | RESOLVED, yes | the shapes differ and §5 takes one here; what remains for a SPEC is the diff itself, one file, with the BUILD RULE as its gate, the same footing `LE28` built on |
 
@@ -162,7 +168,7 @@ No NEEDS-AUTHOR.
   (`docs/arcs/lowering-and-emit-arc.md:34`).
 - **Catalog row:**
   ```
-  | E<NN> | **Each function erased once**: `filter-erasable`'s dry-run erase keeps each `NFn` paired with its `TFn` through `prune-fix`, and the kept `NFn`s are emitted in def order; `erase-list` and the second `erase-fn` per function are deleted | Not built. `lib/lowering/compile-back.chiral`, `lower-defs`' `nil` arm | `lowering-and-emit/LE27`, `.planning/LANGUAGE-PROFILE-2026-09.md` rank 3 (internal) | SH |
+  | E<NN> | **Each function erased once**: `filter-erasable`'s dry-run erase keeps each `NFn` paired with its `TFn` through `prune-fix`, and the kept `NFn`s are emitted in def order; `erase-list` and the second `erase-fn` per function are deleted | Not built. `lib/lowering/compile-back.chiral`, `lower-defs`' `nil` arm | `lowering-and-emit/LE27`, the arc's G7 row, `docs/arcs/lowering-and-emit-arc.md:123` | SH |
   ```
 - **Ledger row:**
   ```
