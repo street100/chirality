@@ -27,7 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| E3 | `element-design` on `enforcement/N23`, the per-rewrite value check | enforcement, wave 1 | `docs/arcs/parts/enforcement-N23.md` |
+| E3 | `element-design` on `enforcement/N24`, each fold arm checked once | enforcement, wave 1 | `docs/arcs/parts/enforcement-N24.md` |
 
 ## Waves
 
@@ -63,8 +63,8 @@ bad"*, with speed rows added to the enforcement arc as checked rewrites.
 
 | # | run | waits on |
 |---|---|---|
-| E3 | `element-design` on each unminted, undesigned row, one run each: `N23` (running), `N24`, `N10`, `N11`, `N12`, `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22` | E2 |
-| E4 | `revisit` folding every "needed and unrostered" discovery into its roster. Standing from E2: an interprocedural constant fact for `X10` (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`, emitted-speed condition 3 has no arc), a lift form for a quantity-0 value (waits on `records/author-calls.md:117`), and a region profiler (`records/findings.md:1527`). Then every row E3 surfaces, and a design for each new row. Repeats until a pass adds nothing | E3 |
+| E3 | `element-design` on each unminted, undesigned row, one run each: `N23` (designed), `N24` (running), `N10`, `N11`, `N12`, `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22` | E2 |
+| E4 | `revisit` folding every "needed and unrostered" discovery into its roster. Standing from E2: an interprocedural constant fact for `X10` (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`, emitted-speed condition 3 has no arc), a lift form for a quantity-0 value (waits on `records/author-calls.md:117`), and a region profiler (`records/findings.md:1527`). From `N23`: `eval-prim` covering fold's ops and `dead`'s path, answering `r-err` for an unknown op, and a literal table in `tal-eval` (`lib/lowering/tal/eval.chiral:86-95`, `:131`), owed a row in this arc, and a condition holding the compiler's own time and memory (`goal-open` amendment of emitted-speed, the author's). Then every row E3 surfaces, and a design for each new row. Repeats until a pass adds nothing | E3 |
 | E5 | reconcile the enforcement calls: the register rows at `records/author-calls.md` 83, 84, 85, 93, 95, 96, 97 and 98, then every call E3 and E4 raise | E4 |
 
 ## Held from before the waves
@@ -107,6 +107,7 @@ resume when `K4` is built.
 | check H: the not-equal operator is spelled `<>` or `!=`, and whether `op->symop` refuses a token it does not know. `lib/module/loader.chiral:20` reads any unknown token as not-equal | repointing H |
 | check M: repoint it at one resolver root shadowing another, or delete it | M |
 | `E201` pin R2: it pins all fourteen readings whole, so almost any new `def` under `lib/` or `prog/` turns the suite red until someone re-reads the pin. Recommended: R2 pins only what a requirement gates, and the other readings print and are cited by date | registering phase 34 |
+| `95e8043` cites `FD-55` at working-tree line numbers in `records/findings.md`, which resolve only while the author's FD-52 to FD-54 are uncommitted. Repoint by id, or re-check once the author commits | nobody, clerical |
 | the reader's depth guard: `MAX-DEPTH` at `lib/surface/sexp.chiral:44` is read by nothing, so a file nested past it crashes the reader. A defect to route, owed a `PRB` row | nobody yet |
 | check AM: what counts as a quoted standard, any line naming it or only the pin-citation form. A standard written with a space is never gated today, `PRB-99` | closing `PRB-99` |
 
@@ -114,6 +115,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| E3a | `N23` designed, `status: blocked` on the placement call. `eval-prim` returns a made-up `0` for 35 of 40 lowered ops, so both sides of a rewrite agree on it. Self-compile 0.78 s, 394 MB | `ef3b1ba` |
 | E2 | enforcement RESCOPE: requirement 7, rows `N23` (per-rewrite value check) and `N24` (each fold arm checked once), `N7` amended so `dead` re-enters only under `N23`. Three calls registered, AK 40 to 43. `docs/arcs/README.md:165` is stale and sits in the author's dirty file | `95e8043` |
 | E1 | `FD-55`: every checked-rewrite design pays for its check per pass, once, or per compile, and each lands on a row the tree holds. Beating C by precomputing has evidence on general programs a generator specializes. Committed without the author's uncommitted FD-52 to FD-54 | `3bf4fa7` |
 | 3a | `E202` SPEC, phase 35, four census readings move | `dcb2b6d` |
