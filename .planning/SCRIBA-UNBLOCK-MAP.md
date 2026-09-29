@@ -92,7 +92,7 @@
 > "Asm grammar" blockers were ONE globally-balanced paren slip in prune-pass +
 > duplicate function generations (postmortem: commit 98b8c79) — phantom-B1-bug
 > diagnoses #5 and #6. E91 UNBLOCKED + implement-ready; fresh-session brief =
-> `.planning/handoffs/E91-IMPLEMENT-HANDOFF.md` (existing pieces, re-opened
+> `.planning/archive/handoffs/E91-IMPLEMENT-HANDOFF.md` (existing pieces, re-opened
 > SPEC decisions #2/#6, py-stub rax/rcx FLAG-4 still live, discipline). E89
 > stub-v3 chirality side + E81 growing instance + E100 remain behind it.
 

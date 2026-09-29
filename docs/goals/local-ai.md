@@ -206,7 +206,7 @@ exited 0; with the probe host and port overridden to a closed port it reported
 3 passed, 0 failed, 2 deferred and exited 0; with `CHIRALITY_COMPILE=/bin/true`
 it reported 0 passed, 5 failed and exited 1, every root refused as an empty
 artifact. That suite run happened once, on one box, on one day, with the
-endpoint up. The memory risk recorded in `.planning/HANDOFF-DOC-SESSION.md` is
+endpoint up. The memory risk recorded in `.planning/archive/handoffs/HANDOFF-DOC-SESSION.md` is
 real and other sessions here were OOM-killed by it. Phase 20 is written to run
 standalone for that reason, and that remains the reason.
 

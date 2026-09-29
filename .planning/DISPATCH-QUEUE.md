@@ -6,7 +6,7 @@ returned, been verified and been committed.
 
 Opened 2026-09-28 from the author's priority order for what makes an outside
 reader look at this tree, most important first: self-verification, error
-handling, crypto, text tools, file types. `.planning/CRYPTO-DISPATCH-QUEUE.md`
+handling, crypto, text tools, file types. `.planning/archive/handoffs/CRYPTO-DISPATCH-QUEUE.md`
 stays the history of the crypto runs, and its live runs are pulled in here so
 there is one queue.
 

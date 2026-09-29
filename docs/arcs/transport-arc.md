@@ -198,14 +198,14 @@ built chirality defs and the whole arc is about reaching them from a gate.
 **One file, two owners.**
 `docs/decisions/decision-lane-split.md:243` gives transport "a new phase in
 `tools/test/run-tests.sh`" as part of its measured file ownership.
-`.planning/HANDOFF-DOC-SESSION.md:16` gives `tools/test/` to the parallel
+`.planning/archive/handoffs/HANDOFF-DOC-SESSION.md:16` gives `tools/test/` to the parallel
 compiler session and says it edits those files while other work runs. Two live
 documents assign the same file to two lanes. The resume state below carries the
 author's ruling for the Phase 20 change and says what it leaves standing.
 
 **The suite does not run on this box.** `tools/test/run-tests.sh` needs more
 than the 3.85 GB available, there is no swap, and it has OOM-killed sessions
-(`.planning/HANDOFF-DOC-SESSION.md:34-36`). A new phase therefore has to be
+(`.planning/archive/handoffs/HANDOFF-DOC-SESSION.md:34-36`). A new phase therefore has to be
 runnable standalone, so that the root it compiles and executes can be judged
 without the whole suite. `tools/test/transport.sh` is written that way and runs
 as `bash tools/test/transport.sh`.
@@ -225,7 +225,7 @@ P4 wait on the same one.
 change.** The author gave the go-ahead directly on 2026-09-02 for Phase 20 to
 be written into that file, and that ruling covers this change. The two documents
 named above still disagree on paper: `docs/decisions/decision-lane-split.md:243`
-gives the phase to transport and `.planning/HANDOFF-DOC-SESSION.md:16` gives
+gives the phase to transport and `.planning/archive/handoffs/HANDOFF-DOC-SESSION.md:16` gives
 `tools/test/` to the parallel compiler session. Whoever holds those files owes
 the repair.
 

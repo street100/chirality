@@ -165,7 +165,7 @@ turns today's fail-closed refusal into a **silent miscompile**. Sizing is
 
 ### Handed off
 
-**The def-name naming system** is captured at `.planning/NAMING-SYSTEM-HANDOFF.md`
+**The def-name naming system** is captured at `.planning/archive/handoffs/NAMING-SYSTEM-HANDOFF.md`
 as preflight for whoever runs [[arcs/file-types-arc]] next. That arc is doing
 naming-system work one tier up and the author ruled its half on 2026-09-23
 (`records/author-calls.md:56`, a file kind is a compound suffix). Deciding the

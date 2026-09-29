@@ -2,7 +2,7 @@
 
 > ## ⚑ THIS ARC IS CLOSED — the live workset moved out, 2026-08-23
 >
-> **→ `.planning/HANDOFF-VERIFICATION-ARC.md`** is the handoff for the live work
+> **→ `.planning/archive/handoffs/HANDOFF-VERIFICATION-ARC.md`** is the handoff for the live work
 > (the verification arc: oracle repair → retirement, the C/CompCert legs,
 > E166–E169). It used to be a resume banner grafted here, which was the wrong
 > home: this arc is closed and that one is not.

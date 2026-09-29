@@ -10,7 +10,7 @@ Scope: everything currently open across the three lanes — core (`E#`), termina
 (`T#`), scriba (`S#`) — in the order it should actually be built, with the reason each
 item sits where it does.
 
-**⚡ LIVE WORKSET: `.planning/HANDOFF-VERIFICATION-ARC.md`** — the verification arc
+**⚡ LIVE WORKSET: `.planning/archive/handoffs/HANDOFF-VERIFICATION-ARC.md`** — the verification arc
 (E166/E167/E168/E169, the oracle retirement). It was reachable only from the CLOSED
 `HARNESS-REFACTOR-CHECKLIST.md` until 2026-08-24, which is the same altitude error §A4
 catalogues: a live handoff findable only through a dead checklist. Named here and in
@@ -734,7 +734,7 @@ curl -sSL -o v3.17.tar.gz https://github.com/AbsInt/CompCert/archive/refs/tags/v
 `make -j2 all` (259 Coq proof files re-checked, then OCaml extraction) returned
 RC=0 with a floor of **1,369,324 kB MemAvailable** — it fits this microVM
 comfortably, in ~20 minutes unattended. Recorded in three places on purpose:
-here (sequencing), `.planning/HANDOFF-VERIFICATION-ARC.md` (the live workset a
+here (sequencing), `.planning/archive/handoffs/HANDOFF-VERIFICATION-ARC.md` (the live workset a
 new chat opens), and `docs/banks/verification.md` §5 item 6 (the durable depth
 tier that outlives the arc's handoff). ⚑ **Never distribute a CompCert-built
 artifact** — INRIA's licence restricts *use* of CompCert and carries no output

@@ -103,7 +103,7 @@ authoring an ambition the project has never stated, so this run invents no goal.
 
 ```
 whether the surface is a held value or stays fd 0 and fd 1 by convention.
-⚑ Author call, carried and unanswered. `.planning/MINI-RUSH-HANDOFF.md:45`
+⚑ Author call, carried and unanswered. `.planning/archive/handoffs/MINI-RUSH-HANDOFF.md:45`
 refused the port in 2026-08, `E128`'s signature needs one, and `canvas/G2` asks
 for a host that places a display list without owning the surface
 ```

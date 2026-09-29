@@ -18,7 +18,7 @@ density	hits	lines	file
 40.21	271	674	docs/elements/specs/E166-mach-c-SPEC.md
 39.42	285	723	docs/elements/specs/E168-test-floor-SPEC.md
 39.41	214	543	docs/elements/specs/E170-corpus-migration-SPEC.md
-38.64	136	352	.planning/handoffs/SCOPING-WAVE-HANDOFF.md
+38.64	136	352	.planning/archive/handoffs/SCOPING-WAVE-HANDOFF.md
 38.46	180	468	docs/elements/specs/E158-doc-formatter-SPEC.md
 38.17	50	131	.planning/DETERMINISM-DEBTS.md
 38.04	62	163	.planning/archive/WEBCLAUDE-DOCS-AUDIT-2026-08-11.md
@@ -90,7 +90,7 @@ density	hits	lines	file
 26.19	110	420	docs/elements/specs/E52-certificate-split-SPEC.md
 26.09	12	46	.planning/SCRIBA-POLISH-BACKLOG.md
 26.02	32	123	docs/elements/specs/E93-lowering-multi-pass-SPEC.md
-25.98	205	789	.planning/HANDOFF-VERIFICATION-ARC.md
+25.98	205	789	.planning/archive/handoffs/HANDOFF-VERIFICATION-ARC.md
 25.93	35	135	docs/elements/specs/E14-pretty-printer-SPEC.md
 25.87	186	719	.planning/USER-LAYER-PIPELINE-PLAN.md
 25.86	45	174	docs/elements/specs/E16-lowering-SPEC.md
@@ -135,7 +135,7 @@ density	hits	lines	file
 23.67	40	169	docs/elements/specs/E26-alarm-control-flow-SPEC.md
 23.60	21	89	.planning/SCRIBA-PERSIST-PLAN.md
 23.53	92	391	docs/examples/E161-REQUIREMENTS.md
-23.53	12	51	.planning/handoffs/LANE-3-effectful-lowering.md
+23.53	12	51	.planning/archive/handoffs/LANE-3-effectful-lowering.md
 23.50	125	532	docs/banks/capability.md
 23.37	61	261	.planning/SCRIBA-STATE.md
 23.35	39	167	.planning/archive/CHATTER-DC-EGRESS-CONTRACT.md
@@ -199,7 +199,7 @@ density	hits	lines	file
 20.36	34	167	docs/elements/specs/E109-bput-u16-le-SPEC.md
 20.34	24	118	docs/examples/_CHEATSHEET.md
 20.23	215	1063	.planning/archive/audit/family-5-sys-and-formats.md
-20.17	72	357	.planning/MINI-RUSH-HANDOFF.md
+20.17	72	357	.planning/archive/handoffs/MINI-RUSH-HANDOFF.md
 20.17	70	347	.planning/DECISION-DOCKET.md
 20.10	42	209	docs/decisions/decision-lane-split.md
 20.10	39	194	docs/elements/specs/E80-cap-to-main-SPEC.md
@@ -258,7 +258,7 @@ density	hits	lines	file
 17.39	32	184	docs/examples/E38-graded-cost.md
 17.32	31	179	.planning/archive/FOUNDATION-FORKS.md
 17.24	25	145	.planning/E69-sig-mutation-PLAN.md
-17.24	10	58	.planning/handoffs/LANE-5-port-fixpoint.md
+17.24	10	58	.planning/archive/handoffs/LANE-5-port-fixpoint.md
 17.17	40	233	docs/examples/E98-honest-crossing-table.md
 17.14	78	455	.planning/archive/audit/FABLE-AUDIT-2026-07-20.md
 17.14	24	140	.planning/archive/handoffs/TOOL-doc-expansion.md
@@ -267,8 +267,8 @@ density	hits	lines	file
 17.09	101	591	docs/examples/E170-corpus-migration.md
 17.07	42	246	docs/examples/E106-linear-cap-collection.md
 17.03	108	634	docs/examples/E158-doc-formatter.md
-16.95	10	59	.planning/handoffs/LANE-prep-determinism-ddc.md
-16.89	25	148	.planning/handoffs/E91-IMPLEMENT-HANDOFF.md
+16.95	10	59	.planning/archive/handoffs/LANE-prep-determinism-ddc.md
+16.89	25	148	.planning/archive/handoffs/E91-IMPLEMENT-HANDOFF.md
 16.88	129	764	docs/examples/E181-pretty-term-doc.md
 16.82	36	214	docs/elements/specs/E81-alloc-seam-SPEC.md
 16.78	25	149	docs/implementation/rd-packed-cert.md
@@ -326,7 +326,7 @@ density	hits	lines	file
 14.13	53	375	.planning/archive/HANDOFF-RUNG1-FIXPOINT.md
 14.12	12	85	.planning/NATIVE-TOOLCHAIN-SLICES.md
 14.02	23	164	docs/examples/E109-bput-u16-le.md
-14.00	14	100	.planning/HANDOFF-SELF-WIELD.md
+14.00	14	100	.planning/archive/handoffs/HANDOFF-SELF-WIELD.md
 13.99	20	143	docs/benchmarks/language-performance.md
 13.76	30	218	docs/elements/specs/E130-http-native-SPEC.md
 13.74	87	633	docs/examples/U13-typed-document-seam.md
@@ -470,7 +470,7 @@ density	hits	lines	file
 5.21	5	96	docs/definitions/category-bridge.md
 5.17	3	58	docs/elements/README.md
 4.89	11	225	.planning/FINDING-let-bound-case-refinement-2026-08-31.md
-4.86	7	144	.planning/handoffs/TEST-AUDIT-AND-SCOPE-RECATALOG.md
+4.86	7	144	.planning/archive/handoffs/TEST-AUDIT-AND-SCOPE-RECATALOG.md
 4.73	13	275	docs/examples/S13-vim-modes.md
 4.56	15	329	docs/examples/E102-sexp-enhancements.md
 4.42	5	113	docs/arcs/presentability-arc.md

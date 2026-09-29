@@ -55,7 +55,7 @@ these rows stay unscheduled, is the author's. `docs/goals/README.md` forbids
 authoring an ambition the project has never stated, so this run invents no goal.
 
 ⚑ **FLAG, author tier: a dated ruling drops half of what this arc rosters.**
-`.planning/MINI-RUSH-HANDOFF.md:42-48`, verbatim:
+`.planning/archive/handoffs/MINI-RUSH-HANDOFF.md:42-48`, verbatim:
 
 ```
 A fresh session's biggest risk is rebuilding the abandoned terminal/OS arc. **Do not.**
@@ -82,7 +82,7 @@ two registries at that level. One level up they are two referents of one surface
 `Terminal` is a C-side name: the supervisor every use routes through, which is
 why it survives a substrate change. `lib/lowering/tal/target-linux.manifest:18`
 declares `(cat B)` and its header at `:4-5` says a rung-2 backend *"replaces THIS
-FILE alone"*. So `.planning/MINI-RUSH-HANDOFF.md:45` does not reach a C-side
+FILE alone"*. So `.planning/archive/handoffs/MINI-RUSH-HANDOFF.md:45` does not reach a C-side
 port. It refused B-level indirection over one facility with no supervisor, and
 that refusal stands on its own terms.
 
@@ -152,7 +152,7 @@ Six groups, in dependency order.
 
 | edge | direction | what crosses |
 |---|---|---|
-| `negotiation` to `port` | against the order | `E128`'s signature takes `(1 t Terminal)` and `.planning/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal. The negotiation decides how much of a port the arc needs, so `TM9` is settled by what `TM4` turns out to require |
+| `negotiation` to `port` | against the order | `E128`'s signature takes `(1 t Terminal)` and `.planning/archive/handoffs/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal. The negotiation decides how much of a port the arc needs, so `TM9` is settled by what `TM4` turns out to require |
 | `gate` to `disposal` | against the order | the gate sits last in dependency order and first in what the arc should do. `pty-close` has been declared and unlowered since E107 landed, and the reason nothing caught it is that no phase holds a pty. A gate built last measures a hole already closed |
 | `emulator` to `port` | against the order | whether the emulator draws through the C supervisor or writes fd 1 directly is `TM9`'s question arriving from the other side |
 
@@ -196,7 +196,7 @@ Six groups, in dependency order.
 | `terminal/TM6` | the grid and the parser reach a root outside `prog/scriba/samples/`. Both are built, both are SEEDED, and the four sample roots are reach into a gate | emulator | law | connect | 4 | open | `unminted` |
 | `terminal/TM7` | where the key decoder lives. `Key`, `KeySeq` and `Keymap` are declared at `lib/ports/tty.port:13-23` on the stated ground that a key is what the crossing yields, while the decode from `read-key`'s bytes sits in `prog/scriba/key-parser.chiral` | emulator | decision | connect | 4 | open | `unminted` |
 | `terminal/TM8` | every `→TUI:T#` cite resolves or retires. Nine ledger rows point into `TUI/CATALOG.md` and the directory is absent | record | decision | new | 5 | open | `unminted` |
-| `terminal/TM9` | what the signature names, once the supervisor is fixed. ⚑ **The supervisor half is answered, 2026-09-17.** `lib/ports/ports.chiral:55` declares `(module ports/ports (cat C) (alt upper))`, and `grep -rn '(cat C)' lib/ports/` returns that line alone, so the category C supervisor the terminal's B referents route through is `ports/ports` and no second candidate was ever on offer. [[decisions/decision-b-in-type]] at `:26-29` requires every B use to route through a category C supervisor and names none itself, so the vocabulary asks for one and the port tier declares exactly one. **What stays with this row.** A `Terminal` is nothing in this tree, measured under *What the tree already holds*, and `E128`'s `(1 t Terminal)` needs a name over the two referents that section separates: the tty fd, and the `Pty` master at `lib/ports/pty.port:14`. Declaring a module coordinate on `tty.port` and `pty.port` routes them through `ports/ports` and mints no `Terminal`, which is why requirement 6 still has nothing holding it. `.planning/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal in 2026-08 and reaches no C-side port, and `canvas/G2` asks for a host that places a display list without owning the surface. **The adoption work belongs elsewhere.** `sys-face/SF20` at `docs/arcs/sys-face-arc.md:197` takes the coordinate across all nine `.port` sheets, measured by `records/lenses/problems.md` PRB-94, and that row is carried as blocked on the placement author call this arc quotes under FLAGs | port | decision | new | 3, 6 | open | `unminted` |
+| `terminal/TM9` | what the signature names, once the supervisor is fixed. ⚑ **The supervisor half is answered, 2026-09-17.** `lib/ports/ports.chiral:55` declares `(module ports/ports (cat C) (alt upper))`, and `grep -rn '(cat C)' lib/ports/` returns that line alone, so the category C supervisor the terminal's B referents route through is `ports/ports` and no second candidate was ever on offer. [[decisions/decision-b-in-type]] at `:26-29` requires every B use to route through a category C supervisor and names none itself, so the vocabulary asks for one and the port tier declares exactly one. **What stays with this row.** A `Terminal` is nothing in this tree, measured under *What the tree already holds*, and `E128`'s `(1 t Terminal)` needs a name over the two referents that section separates: the tty fd, and the `Pty` master at `lib/ports/pty.port:14`. Declaring a module coordinate on `tty.port` and `pty.port` routes them through `ports/ports` and mints no `Terminal`, which is why requirement 6 still has nothing holding it. `.planning/archive/handoffs/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal in 2026-08 and reaches no C-side port, and `canvas/G2` asks for a host that places a display list without owning the surface. **The adoption work belongs elsewhere.** `sys-face/SF20` at `docs/arcs/sys-face-arc.md:197` takes the coordinate across all nine `.port` sheets, measured by `records/lenses/problems.md` PRB-94, and that row is carried as blocked on the placement author call this arc quotes under FLAGs | port | decision | new | 3, 6 | open | `unminted` |
 
 ### Coverage
 
@@ -248,7 +248,7 @@ is measured here as the transport `E128` negotiates. This arc rosters `E128`
 alone and cites the other two.
 
 **What the gather found beyond the material named at dispatch.**
-`.planning/MINI-RUSH-HANDOFF.md` §2 and `.planning/DISPLAY-LAYER-GAP.md:22-24`
+`.planning/archive/handoffs/MINI-RUSH-HANDOFF.md` §2 and `.planning/DISPLAY-LAYER-GAP.md:22-24`
 are the two dated author rulings over this territory, and neither was on the
 list. `docs/arcs/diagnostics-arc.md`, `docs/arcs/tool-authority-arc.md` and
 `docs/arcs/file-types-arc.md` each claim a terminal-adjacent row, and none of the
