@@ -27,13 +27,14 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| 2d | implement `E201`: register, instrument, fixtures, gate, phase 34 | error handling | `prog/shape-census.prog`, `tools/test/shape-census.sh`, `docs/definitions/shape-census.md` |
+| 2c | check AL: an `xlat check` exit with no parseable line becomes a finding | self-verification | `tools/ledger-lint/ledger-lint.py` |
 
 ## Queued, in order
 
 | # | run | serves | waits on |
 |---|---|---|---|
-| 2c | check AL: an `xlat check` exit with no parseable line becomes a finding, the rule AM took in `fa4461a` | self-verification | nothing |
+| 2e | register `E201` as phase 34, and flip `EV12` to `built`. The diff is built and held, saved outside the tree | error handling | the R2 call below |
+| 2f | `revisit` `docs/arcs/parts/errors-as-values-EV12.md` §4b: a file past `MAX-DEPTH` is read and counted, and the design says it errors | error handling | nothing |
 | 3 | audit `EV1`'s design, then design `EV2` | error handling | nothing |
 | 4 | gate `K2` before it mints (was crypto queue 4b) | crypto | nothing for the audit, the `CRY` band for the mint |
 | 5 | write the Keccak translation, off the gather `9a46243` ran (was crypto queue 6) | crypto, `crypto-primitives/K1` | nothing |
@@ -62,6 +63,7 @@ resume when `K4` is built.
 | the three file-types calls: facet mapping, mint shape, module key | `file-types/K1` to `K3` |
 | check H: the not-equal operator is spelled `<>` or `!=`, and whether `op->symop` refuses a token it does not know. `lib/module/loader.chiral:20` reads any unknown token as not-equal | repointing H |
 | check M: repoint it at one resolver root shadowing another, or delete it | M |
+| `E201` pin R2: it pins all fourteen readings whole, so almost any new `def` under `lib/` or `prog/` turns the suite red until someone re-reads the pin. Recommended: R2 pins only what a requirement gates, and the other readings print and are cited by date | registering phase 34 |
 | the reader's depth guard: `MAX-DEPTH` at `lib/surface/sexp.chiral:44` is read by nothing, so a file nested past it crashes the reader. A defect to route, owed a `PRB` row | nobody yet |
 | check AM: what counts as a quoted standard, any line naming it or only the pin-citation form. A standard written with a space is never gated today, `PRB-99` | closing `PRB-99` |
 
@@ -69,6 +71,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| 2d | `E201` built: register, instrument, fixtures and gate, 14 passed against the real index. Bare `Str` error arms read 33 where the arc said 30, a `Str` anywhere 49 where it said 47. Compiler blob unchanged. Not yet a suite phase | `4e9649f` |
 | 2b | `E201` SPEC audit: PASS, nine corrections, the three EV3 flags carried as non-blocking | `edd9a6c` |
 | 2 | `E201` SPEC: fifteen register rows, phase 34, six gate rows and eight mutants, the allowed count held as one ratchet-down value | `92a51b2` |
 | 1 | check AM: `xlat unpinned` 2m37s to 2.5s, byte-identical to the old output, a pipefail race that let an unpinned quote pass removed, and a run that cannot finish now fails. Full `ledger-lint` 4m10s to 1m14s. H and M stay Vacuous on author calls | `fa4461a`, `PRB-99` |
