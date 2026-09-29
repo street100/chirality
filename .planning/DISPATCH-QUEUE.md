@@ -27,12 +27,19 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| none | paused 2026-09-29 while the author picks the next direction | | |
+| E1 | research: checked-optimization designs (nanopass, `cp0`, partial evaluation and staging, translation validation, allocation fast paths), each with its correctness obligation in chirality | enforcement, speed as checked rewrites | pins, one `FD` row |
 
 ## Queued, in order
 
+The author redirected the queue on 2026-09-29: *"we need to be honest by actually
+building everything to support goals, and we need to optimize pretty bad"*, with
+speed rows added to the enforcement arc and framed as checked rewrites. The E
+runs go first. The earlier runs below them keep their order.
+
 | # | run | serves | waits on |
 |---|---|---|---|
+| E2 | `revisit` `docs/arcs/enforcement-arc.md` against that direction: add the speed rows as checked rewrites, reconciled with emitted-speed's `X10` to `X12`, which that arc keeps | enforcement | E1 |
+| E3 | the free enforcement rows through the pipeline, one stage at a time: `N2`, `N6`, `N7`, `N8`, `N9`, `N10`, `N11`, `N12`, `N14`, `N15`, `N16`, and `N20`'s census `E198` | enforcement | E2 for order |
 | 2e | register `E201` as phase 34, and flip `EV12` to `built`. The diff is built and held, saved outside the tree | error handling | the R2 call below |
 | 2f | `revisit` `docs/arcs/parts/errors-as-values-EV12.md` §4b: a file past `MAX-DEPTH` is read and counted, and the design says it errors | error handling | nothing |
 | 3c | `E202` SPEC audit, then implement. The SPEC's done-when names a red suite that `90e9b4d` repaired | error handling | nothing |
