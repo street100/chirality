@@ -27,7 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| E1 | research: checked-optimization designs (nanopass, `cp0`, partial evaluation and staging, translation validation, allocation fast paths), each with its correctness obligation in chirality | enforcement, speed as checked rewrites | pins, one `FD` row |
+| E2 | `revisit` `docs/arcs/enforcement-arc.md` against `FD-55`: the speed rows as checked rewrites | enforcement | the arc, its `records/` row, author-call rows |
 
 ## Waves
 
@@ -63,7 +63,6 @@ bad"*, with speed rows added to the enforcement arc as checked rewrites.
 
 | # | run | waits on |
 |---|---|---|
-| E2 | `revisit` `docs/arcs/enforcement-arc.md` against the 2026-09-29 direction: the speed rows as checked rewrites, reconciled with emitted-speed's `X10` to `X12`, which that arc keeps | E1 |
 | E3 | `element-design` on each unminted, undesigned row, one run each: `N10`, `N11`, `N12`, `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22`, then every row E2 adds | E2 |
 | E4 | `revisit` folding every "needed and unrostered" discovery from E3 into the roster, then a design for each new row. Repeats until a pass adds nothing | E3 |
 | E5 | reconcile the enforcement calls: the register rows at `records/author-calls.md` 83, 84, 85, 93, 95, 96, 97 and 98, then every call E3 and E4 raise | E4 |
@@ -115,6 +114,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| E1 | `FD-55`: every checked-rewrite design pays for its check per pass, once, or per compile, and each lands on a row the tree holds. Beating C by precomputing has evidence on general programs a generator specializes. Committed without the author's uncommitted FD-52 to FD-54 | `3bf4fa7` |
 | 3a | `E202` SPEC, phase 35, four census readings move | `dcb2b6d` |
 | fix | the suite was red from `4e9649f`, a gate committed without its phase. The gate now declares itself out until R2 is ruled | `90e9b4d` |
 | 3 | `EV1` design audit PASS, eleven corrections, every wide-rule figure reproduced off `E201`. Minted `E202`, `Result` | `70c0191` |
