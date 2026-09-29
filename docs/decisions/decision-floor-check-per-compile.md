@@ -221,3 +221,47 @@ validators that run inside a compiler are Tristan and Leroy's, proved inside
 CompCert, which rests on a proof assistant this tree does not carry. Alive2 and
 the nanopass driver run outside the shipping compile over a named corpus, which
 is the census gate's shape and places nothing per compile.
+
+## 9. Check run 2026-09-29
+
+The adversarial check `.planning/protocol/reconcile.md` §What keeps a
+dissolution honest requires. Nothing revived, so the verdict stays `DISSOLVED`.
+Two findings tighten the survivor's queued work.
+
+| attempt | result |
+|---|---|
+| 1 and 6, a gate read as the check | fail. A gate over 97 roots leaves every other compile unchecked, and `docs/arcs/enforcement-arc.md:89-92` already records the census running while *"no judgment of the floor runs on the shipping path"*. Amending condition 3 is a goal edit, the author's |
+| 2, read PRB-70's reasons as its conditions | fail. Two of its three measurements miss option 2: it calls `ck-prog`, and it withholds bytes on refusal. The third, the BUILD RULE charge on every edit of `check.chiral` and the scratch-`lib/` harness G18 licenses, reaches it. The ruling's words carry no condition (`records/lenses/problems.md:986`), so reopening it is the author's. This is the veto's strongest ground |
+| "the wiring" read wider or narrower | fail. The row names the three holds that kept `check.chiral` in the closure and says the last *"goes"*; `b613a8f` cut exactly those. The same row laments that `ck-prog` *"still has zero call sites"* and reopens requirement 4, so the ruling refuses the closure and asks for the checks. The note's reading holds |
+| 7, the wrapper moved | fail. Refused by name in the ruling |
+| 4, a flag | fail. P4's honest limit (`PRINCIPLES.md:137-139`) is the only ground for opt-in, and the conservative-checker tax is measured at 0 of 38,333 TFns |
+| 5 and 8 | fail. Scope is the author's; no proof assistant and external judgment cut (`docs/decisions/decision-self-verification.md:11`) |
+| unlisted: the checker as a second entry of the compiler binary | fail. It puts `check.chiral` in `prog/compiler.prog`'s closure, G18 reddens, and PRB-70 refuses it |
+| unlisted: the compiler binary spawns the checker through `proc-spawn` (`lib/runtime/proc.chiral:1`) and withholds its output | inside option 3's text, so no revival. It is the stronger form of §6 (b), below |
+
+**Finding 1. §6 (a)'s recompute arm does not qualify.** A checker that
+recomputes the program through a function it shares with `back-program` shares
+source and runs its own binary. It checks what `lib/` compiles to inside the
+checker, which equals what ships only while the shipping compiler was built from
+the same `lib/` and compiled it faithfully. `CHIRALITY_COMPILE`, the BUILD
+RULE's `C1` and `C2`, and any promoted binary that lags `lib/` break that. Reading
+3 of `docs/arcs/parts/enforcement-N12.md:83-88` built its probe from the mutant
+`lib/`, so it shows the recompute refusing a mutant source, which §5's claim
+about a mutant compiler's output reads too far. The arm checks a copy, and
+§Proper or not at all admits nothing that stands in. One form remains: the
+checker reads the TAL program the compile produced, written as an artifact.
+
+**Finding 2. §6 (b)'s bypass gate is a listing.** A gate that reddens on a
+direct call to `bin/chirality-bin` enumerates the bad call sites, which P4's
+first sentence (`PRINCIPLES.md:125`) and P1's seccomp example refuse. The form
+that covers the surface is the compiler binary withholding output until a
+checker process it spawns answers `tck-ok`. `check.chiral` stays out of the
+closure, so PRB-70 and G18 hold. The bootstrap, the checker compiled by the
+binary that must consult it, is the design stage's.
+
+**Against the value-check ruling** (`records/author-calls.md:116`). Consistent.
+Both put a check on every compile and a gate beside it, and neither text reaches
+the other's modules. One asymmetry is the author's to see: if the value check's
+in-compile half lands inside the closure, the tree holds the drawn-input
+evaluators, with Necula's false alarms on about 10% of functions (FD-55 §4),
+inside the compiler and the proof-strength floor check outside it.
