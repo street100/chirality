@@ -27,7 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| D1 | the documentation toolset reviewed for capability, correctness and ergonomics, report only, changes dispatched after the author reads it. Third live agent, by the author's one-off exception, 2026-09-29: *"i honestly wouldnt mind if you also dispatched a few documentation toolset improvements in another agent (must orient and research and report before we dispatch again for changes)"* | tooling | `.planning/DOC-TOOLSET-REVIEW-2026-09.md` |
+| D1 | **done**, see Done. The documentation toolset reviewed for capability, correctness and ergonomics, report only, changes dispatched after the author reads it. Third live agent, by the author's one-off exception, 2026-09-29: *"i honestly wouldnt mind if you also dispatched a few documentation toolset improvements in another agent (must orient and research and report before we dispatch again for changes)"* | tooling | `.planning/DOC-TOOLSET-REVIEW-2026-09.md` |
 | O1 | optimization gaps, **stopped 2026-09-29 by an API safeguard (`reasoning_extraction`) right after the orchestrator asked it to narrate as it worked**; it wrote nothing. A re-run would log dated results into its artifact in place of narration, and waits on the author. The brief: the highest-value day-sized items in the test and compile process, specified and missed. **Run alongside V1 by the author's one-off exception, 2026-09-29:** *"You can dispatch this one alongside current the usage is a bit better and i want to test how heavy 2 will be on my limits"*. The serial rule stands otherwise | speed | `.planning/OPTIMIZATION-GAPS-2026-09.md` |
 
 ## Waves
