@@ -29,8 +29,7 @@ The author gave a green light on 2026-09-29, *"dispatch next stages for all, gre
 
 | # | run | serves | writes |
 |---|---|---|---|
-| LE28 | built, uncommitted in `lib/lowering/compile-back.chiral`: `C1 == C2`, and C2 compiling HEAD's blob reproduces `bin/chirality-bin` byte for byte, so the change is speed alone (0.81 s to 0.79 s, 385 to 358 MiB). **The suite did not complete**: the VM hit the host's open-file limit (Error 24) under the suite's file churn with a research run live. The orchestrator re-runs the suite alone when R1 returns, then promotes | speed | `lib/lowering/compile-back.chiral` |
-| R1 | research: the fastest proper algorithms for text primitives P1 to P4, and what each needs from the language (the author: text tools *"relevant because of like chirality native fzf and similar tools at best primitive. big optimization opportunities"*) | text tools, speed | pins, `FD-56` |
+| none | the queue resumes at the six consolidation rows, then R2 | | |
 
 ## Next, in order
 
@@ -138,6 +137,8 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| R1 | text primitives research | `3022b41`, FD-56 |
+| LE28 | `lower-defs` conses and reverses once. `C1 == C2`, C2 on HEAD's blob reproduced the old binary, the suite passed alone on C2 (441, 96 roots), phases 29 and 30 passed with `CC` exported. Self-compile 0.81 s to 0.79 s, 385 to 358 MiB. Row set `direct` | this commit |
 | O1b | optimization gaps: 13 day-sized items, 11 never specified. `ledger-lint` F and AI memoized would take the lint from about 95 s to 10 s; Phase 7's subshell discards the resolver cache; items 2 to 6 take the suite from about 357 s to 265 s. The optimization items wait on the author's pick | `.planning/OPTIMIZATION-GAPS-2026-09.md` |
 | DT-04 | `ledger-lint` exit codes 4, 3, 1, 2, 0; a check that cannot run errors; T, P, U, AD, Z, AI, S and ten more read their real subject. 231 to 238, then 236 after two moved citations were repointed. ⚑ Two agents running at once hit the VM's open-file limit (Error 24); the DT-04 run cleared it with a VM-wide cache drop, and the optimization run tried the same and was denied | `16afd16` |
 | DT-01 | `pack.py` bundles are read-only, `--start` writes, one forward-only roster table, `--reopen` for REOPEN, unknown flags refused. Owed: `decision-design-before-mint.md:144-149` and `tools/README.md:16` describe the old default | `460ed88` |

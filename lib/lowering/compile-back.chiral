@@ -137,9 +137,11 @@
 ; ---- lower + erase EVERY def, accumulating all emitted TFns -------------------
 ; Each def compiles under a CEnv carrying the WHOLE program's fn sigs (inter-def
 ; calls) + the data env (con/case). compile-fn returns main + outlined extras;
-; all of them join one flat TFn list the emitter resolves labels across.
-(declare lapp-tfn (-> (List TFn) (List TFn) (List TFn)))
-(def lapp-tfn (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (lapp-tfn t ys))))))
+; all of them join one flat TFn list the emitter resolves labels across.  The
+; accumulator is held reversed: each def's TFns are pushed onto its front and the
+; `nil` arm reverses it once, so the list keeps def order and in-def order (LE28).
+(declare rev-tfn-onto (-> (List TFn) (List TFn) (List TFn)))
+(def rev-tfn-onto (lam (xs acc) (case xs (nil acc) ((cons h t) (rev-tfn-onto t (cons h acc))))))
 ; nprim transport -> a prim-table entry; the whole extern table for the program.
 (declare nprim->ts (-> NPrim (Pair Str TalSig)))
 (def nprim->ts (lam (np) (case np ((nprim nm params ret)
@@ -252,7 +254,7 @@
 (declare lower-defs (-> (List Str) (List (Pair Str TalSig)) (List (Pair Str TalSig)) (List DData) (List NDef) (List TFn) (List SkRec) BR))
 (def lower-defs (lam (lits prims fnsigs datas defs acc skips)
   (case defs
-    (nil (case (filter-erasable datas acc) ((pair filtered fskips)
+    (nil (case (filter-erasable datas (rev-tfn-onto acc nil)) ((pair filtered fskips)
       (case (prune-fix (prim-names prims) filtered) ((pair pruned pskips)
         (case (erase-list lits datas pruned)
           ((br-err m) (br-err m))
@@ -269,7 +271,7 @@
           ; missing label at emit, not a whole-program abort.
           ((le-skip er)        (lower-defs lits prims fnsigs datas r acc
                                 (cons (mk-skrec name (sk-extern er)) skips)))
-          ((le-ok main extra)  (lower-defs lits prims fnsigs datas r (lapp-tfn acc (opt-tfns (cons main extra))) skips))))))))))))
+          ((le-ok main extra)  (lower-defs lits prims fnsigs datas r (rev-tfn-onto (opt-tfns (cons main extra)) acc) skips))))))))))))
 
 ; ---- skip-chain diagnostics pure helpers (E97) ------------------------------
 ; Check if an op name is in the erasure-lowerable set (op-parse ∪ prim2lib ∪ inline cases)
