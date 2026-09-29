@@ -1,0 +1,124 @@
+; shape-census-fixture -- the hand-counted input of tools/test/shape-census.sh R3.
+;
+; Every declaration below carries its classification in the comment beside it,
+; made by hand against docs/definitions/shape-census.md. The gate's WANT_FIX is
+; the tally of those comments, and the instrument's reading over this file has
+; to equal it. A predicate read against itself agrees with itself; this file is
+; what a wrong predicate disagrees with.
+;
+; The census reads it and nothing compiles it. It defines no compile-main, so
+; the Phase 7 sweep does not take it for a root, and nothing imports it.
+;
+; ---- the hand counts, the order the instrument prints them -------------------
+;
+;   SC-data-decl          10   D1 to D10
+;   SC-result-sum          6   D2 D3 D4 D5 D6 D7
+;   SC-result-sum-2arm     5   D2 D3 D4 D5 D6
+;   SC-result-sum-nplus    1   D7
+;   SC-err-arm-bare-str    1   D2
+;   SC-err-arm-str-plus    1   D3
+;   SC-err-arm-declared    2   D4 D6
+;   SC-rebuild-unchanged   2   relay (same), widen (cross)
+;   SC-passthrough-case    1   relay
+;   SC-hand-traverse       1   parse-all
+;   SC-def-name            7   banner relay widen swap parse-one parse-all count-all
+;   SC-data-name          10   one per declaration, no name repeats
+;   SC-ctor-head          20   21 heads, `circle` twice
+;   SC-ctor-head-sites    21
+;
+; The raw text holds 12 occurrences of the data keyword followed by a space: the
+; ten declarations, the comment trap and the string trap. M1 reads 12 for
+; SC-data-decl.
+
+; ---- the traps a comment and a string set ------------------------------------
+
+; comment trap, which the reader drops: (data Ghost () (ghost-ok) (ghost-err (m Str)))
+
+; string trap: the literal holds a data form and a def form, and neither counts.
+; banner is itself one def name.
+(def banner Str "(data Fake () (fake-ok) (fake-err (m Str))) and (def fake-def 0)")
+
+; ---- the declarations --------------------------------------------------------
+
+; D1: no ok-side head and no err-side head. Not a result sum.
+(data Reason () (r-parse) (r-io))
+
+; D2: two arms, the err arm one `Str` field. result, 2arm, bare-str.
+(data ParseR () (parse-ok (v I64)) (parse-err (msg Str)))
+
+; D3: the err arm a `Str` beside (pos I64). result, 2arm, str-plus.
+(data LexR () (lex-ok (v I64)) (lex-err (msg Str) (pos I64)))
+
+; D4: the err arm one field typed by a declared data name. result, 2arm, declared.
+(data LoadR () (load-ok (v I64)) (load-err (why Reason)))
+
+; D5: the -r/-err spelling. time-r is ok-side only because time-err stands
+; beside it. result, 2arm; the err field is I64, so none of the three field rows.
+(data TimeR () (time-r (t I64)) (time-err (e I64)))
+
+; D6: the ok!/bad! spelling, with a quantity on the field: (1 why Reason) reads
+; as Reason. result, 2arm, declared.
+(data ChkR () (ok!) (bad! (1 why Reason)))
+
+; D7: one ok arm and two err arms. result, nplus.
+(data StepR () (step-ok (v I64)) (step-err (msg Str)) (step-fail (code I64)))
+
+; D8: an err arm spelled -invalid, which the rule declines. Not a result sum.
+; M2 admits it, and then it is result, 2arm, bare-str.
+(data CheckR () (check-ok (v I64)) (check-invalid (msg Str)))
+
+; D9 and D10: two types sharing the head `circle`. Two sites, one distinct head.
+(data Shape () (circle (r I64)) (square (s I64)))
+(data Figure () (circle (r I64)) (polygon (n I64)))
+
+; ---- the case arms -----------------------------------------------------------
+
+; relay: parse-err rebuilt from the same binder, same head. rebuild (same).
+; Every arm outside the ok side is that rebuild, so the case is a passthrough.
+(def relay (-> ParseR ParseR)
+  (lam (r)
+    (case r
+      ((parse-ok v) (parse-ok (+ v 1)))
+      ((parse-err m) (parse-err m)))))
+
+; widen: a different err head built from the same binder. rebuild (cross).
+; The wildcard arm is outside the ok side and rebuilds nothing, so the case is
+; not a passthrough.
+(def widen (-> ParseR StepR)
+  (lam (r)
+    (case r
+      ((parse-err m) (step-err m))
+      (_ (step-ok 0)))))
+
+; swap: binders reordered, which the rule declines. M4 compares them as sets and
+; counts it. The load-err arm is an err arm that rebuilds nothing, so the case
+; stays outside SC-passthrough-case under M4 as well.
+(def swap (-> LexR LexR)
+  (lam (r)
+    (case r
+      ((lex-err m p) (lex-err p m))
+      ((load-err w) (lex-err "load" 0))
+      ((lex-ok v) (lex-ok v)))))
+
+; parse-one: no case at all.
+(def parse-one (-> I64 ParseR)
+  (lam (h) (parse-ok h)))
+
+; parse-all: recurses over a cons list, a fallible step per element, and
+; returns on the err arm without recursing. hand-traverse. The err arm wraps
+; its binder, so it is no rebuild and the inner case is no passthrough.
+(def parse-all (-> (List I64) ParseR)
+  (lam (xs)
+    (case xs
+      (nil (parse-ok 0))
+      ((cons h t)
+        (case (parse-one h)
+          ((parse-err m) (parse-err (str-cat "at: " m)))
+          ((parse-ok v) (parse-all t)))))))
+
+; count-all: recurses over a cons list with no fallible step. Not a traverse.
+(def count-all (-> (List I64) I64)
+  (lam (xs)
+    (case xs
+      (nil 0)
+      ((cons h t) (+ 1 (count-all t))))))

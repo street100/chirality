@@ -1,0 +1,671 @@
+; shape-census.prog -- the shape census: named counts over the declarations in
+; lib/ and prog/, each one a row of docs/definitions/shape-census.md. E201.
+;
+; ⚑ IT EXISTS BECAUSE THE FIGURES IT PRINTS WERE NOT REPRODUCIBLE. Five scans
+; of the two-arm ok/err sums returned five answers in one session, and one of
+; them reached records/author-calls.md's EV3 row, which names this element as
+; its precondition. records/findings.md FD-48 §11 hit the same wall from the
+; other side. prog/optimizer-census.prog:18 is the precedent, written for the
+; same cause.
+;
+; ⚑ IT ASSERTS NOTHING AND ALWAYS EXITS 0. Every comparison lives in bash, in
+; tools/test/shape-census.sh, over these bytes. A gate that re-derives its own
+; verdict is green under any mutant that changes what the verdict says, which
+; is the rule prog/optimizer-census.prog:24-28 states.
+;
+; ⚑ IT IS A LEAF OUTSIDE THE COMPILER CLOSURE. Nothing under lib/ imports it
+; and prog/compiler.prog does not reach it, so building it owes no compiler
+; generation. The gate checks that its key is absent from the compiler blob.
+;
+; ⚑ IT DOES NOT ENUMERATE AND IT DOES NOT RESOLVE. Directory enumeration is
+; E148 and is unbuilt, so the caller hands over the path list, the way
+; prog/paren-audit.prog and prog/prose-lint.prog take theirs. Import closure is
+; the resolver's (bin/chirality-resolve.sh), so the caller also marks which
+; paths are in prog/compiler.prog's closure.
+;
+; ---- the input, on stdin, one path per line ---------------------------------
+;
+;   <path>                 a file outside the compiler closure
+;   <path> <TAB> closure   a file inside it
+;
+; ---- the output ---------------------------------------------------------------
+;
+;   inst SC-<id> <path> <name>                one per instance, as found
+;   skip <path> <reason>                      a file unopenable or unreadable
+;   text data n=<n>                           raw "(data " occurrences, no row
+;   pred SC-<id> n=<all> closure=<in>         one per register reading, in order
+;   census files=<n> read=<n> skipped=<n> forms=<n>
+;
+; The pred lines come after the last file. A run that dies on some file prints
+; no reading at all, and the gate reads every row absent.
+;
+; ⚑ THE READER IS THE COMPILER'S OWN. lib/surface/sexp.chiral's read-all-forms
+; parses each file, so a comment or a string literal is gone before anything is
+; counted. `text data` is the one figure read off the raw bytes, printed so the
+; difference FD-48 §11 measured stays visible beside SC-data-decl.
+;
+; ⚑ lib/surface/sexp.chiral:44's MAX-DEPTH is read by nothing, so a deep file is
+; read rather than refused, and a nesting past the stack crashes this process.
+; Run it under `ulimit -s unlimited`, as the tree runs the compiler.
+
+(import "prelude/prelude")            ; str-*, i64->str, and/or/not
+(import "prelude/list")               ; reverse
+(import "prelude/string")             ; str-split
+(import "ports/ports")                ; put
+(import "lowering/compile-all")       ; read-fd-all
+(import "surface/sexp")               ; read-all-forms, Sexp, FormPos, AllFR
+
+(extern openat (=> Bytes I64))
+
+(def nul-byte Bytes (bslice (pack-u32 0) 0 1))
+
+; ---- reading a Sexp ----------------------------------------------------------
+
+(def sx-items (-> Sexp (List Sexp))
+  (lam (s) (case s ((s-list xs) xs) (_ nil))))
+
+(def sx-sym (-> Sexp Str)
+  (lam (s) (case s ((s-sym n) n) (_ ""))))
+
+(def sx-is-sym (-> Sexp Bool)
+  (lam (s) (case s ((s-sym n) true) (_ false))))
+
+; the head symbol of a list form, or "" for anything else
+(def sx-head (-> Sexp Str)
+  (lam (s)
+    (case s
+      ((s-list xs) (case xs (nil "") ((cons h t) (sx-sym h))))
+      (_ ""))))
+
+; everything after the head
+(def sx-rest (-> Sexp (List Sexp))
+  (lam (s) (case (sx-items s) (nil nil) ((cons h t) t))))
+
+(def sx-drop (-> I64 (List Sexp) (List Sexp))
+  (lam (k xs)
+    (case (<=i k 0)
+      (true xs)
+      (false (case xs (nil nil) ((cons h t) (sx-drop (- k 1) t)))))))
+
+(def sx-nth (-> I64 (List Sexp) Sexp)
+  (lam (k xs) (case (sx-drop k xs) (nil (s-list nil)) ((cons h t) h))))
+
+(def sx-len (-> (List Sexp) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (sx-len t))))))
+
+(def all-syms (-> (List Sexp) Bool)
+  (lam (xs) (case xs (nil true) ((cons h t) (and (sx-is-sym h) (all-syms t))))))
+
+; the name a top-level form declares: its second element, when a symbol
+(def form-name (-> Sexp Str)
+  (lam (s) (sx-sym (sx-nth 1 (sx-items s)))))
+
+; ---- the arm-name rule (register: SC-result-sum) ------------------------------
+; EV1's wide predicate, docs/arcs/parts/errors-as-values-EV1.md:75. M2 widens
+; err-side? by one substitution; the author's EV3 ruling may narrow both.
+
+(def ends (-> Str Str Bool)
+  (lam (suf s)
+    (let (ls (str-len s))
+      (let (lf (str-len suf))
+        (and (<=i lf ls) (str-eq (str-sub s (- ls lf) ls) suf))))))
+
+; an err-side head ends -err, -bad or -fail, or is bad!
+(def err-side? (-> Str Bool)
+  (lam (h) (or (ends "-err" h) (or (ends "-bad" h) (or (ends "-fail" h) (str-eq h "bad!"))))))
+
+; an ok-side head ends -ok or is ok!, or ends -r where an err-side head stands
+; beside it: `ctx` is whether the sum, or the case, carries one
+(def ok-side? (-> Str Bool Bool)
+  (lam (h ctx) (or (ends "-ok" h) (or (str-eq h "ok!") (and ctx (ends "-r" h))))))
+
+; ---- the per-file hits -------------------------------------------------------
+; A classifier returns hits; the file loop prints and tallies them. `name` is
+; what an inst line names, and `note` a trailing word or "".
+(data Hit () (hit (id Str) (name Str) (note Str)))
+
+(def hit1 (-> Str Str (List Hit))
+  (lam (id name) (cons (hit id name "") nil)))
+
+(def hits-cat (-> (List Hit) (List Hit) (List Hit))
+  (lam (a b) (case a (nil b) ((cons h t) (cons h (hits-cat t b))))))
+
+; ---- data declarations -------------------------------------------------------
+
+(def arms-only (-> (List Sexp) (List Sexp))
+  (lam (xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case (str-eq (sx-head h) "")
+          (true (arms-only t))
+          (false (cons h (arms-only t))))))))
+
+; the arms of a (data Name (params) arm ...) form: list items with a symbol head
+(def data-arms (-> Sexp (List Sexp))
+  (lam (form)
+    (arms-only (sx-drop 3 (sx-items form)))))
+
+(def arm-heads (-> (List Sexp) (List Str))
+  (lam (arms) (case arms (nil nil) ((cons a r) (cons (sx-head a) (arm-heads r))))))
+
+(def count-err (-> (List Str) I64)
+  (lam (hs) (case hs (nil 0) ((cons h t) (+ (case (err-side? h) (true 1) (false 0)) (count-err t))))))
+
+(def count-ok (-> (List Str) Bool I64)
+  (lam (hs ctx) (case hs (nil 0) ((cons h t) (+ (case (ok-side? h ctx) (true 1) (false 0)) (count-ok t ctx))))))
+
+; SC-ctor-head and SC-ctor-head-sites: the constructor heads a top-level form
+; declares. A def name is a label and a constructor head is a tag
+; (lib/lowering/tal/ir.chiral:9-10), so a def contributes none. M3 sums them.
+(def ctor-heads-of (-> Sexp (List Str))
+  (lam (form)
+    (case (str-eq (sx-head form) "data")
+      (true (arm-heads (data-arms form)))
+      (false
+        (case (str-eq (sx-head form) "def")
+          (true nil) ; def-names-are-not-ctor-heads
+          (false nil))))))
+
+; SC-result-sum: exactly one ok-side arm and at least one err-side arm
+(def result-sum? (-> (List Str) Bool)
+  (lam (hs)
+    (let (ne (count-err hs))
+      (and (<=i 1 ne) (=i (count-ok hs (<=i 1 ne)) 1)))))
+
+; the first err-side arm
+(def err-arm (-> (List Sexp) Sexp)
+  (lam (arms)
+    (case arms
+      (nil (s-list nil))
+      ((cons a r) (case (err-side? (sx-head a)) (true a) (false (err-arm r)))))))
+
+(def last-of (-> (List Sexp) Sexp Sexp)
+  (lam (xs d) (case xs (nil d) ((cons h t) (last-of t h)))))
+
+; a field's type is the last element of its field form: (1 c Clock) is Clock
+(def field-type (-> Sexp Sexp)
+  (lam (f)
+    (case f
+      ((s-list xs) (last-of xs f))
+      (_ f))))
+
+(def type-is (-> Str Sexp Bool)
+  (lam (n f) (str-eq (sx-sym (field-type f)) n)))
+
+(def any-str (-> (List Sexp) Bool)
+  (lam (fs) (case fs (nil false) ((cons f r) (or (type-is "Str" f) (any-str r))))))
+
+; SC-err-arm-bare-str / -str-plus over a two-arm result sum's err arm. Returns
+; the hits; SC-err-arm-declared needs the whole data-name set, so its
+; candidate is a `decl` hit that the file loop resolves after the last file.
+(def err-arm-hits (-> Str Sexp (List Hit))
+  (lam (dname arm)
+    (let (fs (sx-rest arm))
+      (let (nf (sx-len fs))
+        (case (=i nf 1)
+          (true
+            (case (type-is "Str" (sx-nth 0 fs))
+              (true (hit1 "SC-err-arm-bare-str" dname))
+              (false (cons (hit "decl" dname (sx-sym (field-type (sx-nth 0 fs)))) nil))))
+          (false
+            (case (and (<=i 2 nf) (any-str fs))
+              (true (hit1 "SC-err-arm-str-plus" dname))
+              (false nil))))))))
+
+(def sum-hits (-> Str (List Sexp) (List Hit))
+  (lam (dname arms)
+    (case (result-sum? (arm-heads arms))
+      (false nil)
+      (true
+        (let (na (sx-len arms))
+          (case (=i na 2)
+            (true (cons (hit "SC-result-sum" dname "")
+                    (cons (hit "SC-result-sum-2arm" dname "")
+                      (err-arm-hits dname (err-arm arms)))))
+            (false (cons (hit "SC-result-sum" dname "")
+                     (hit1 "SC-result-sum-nplus" dname)))))))))
+
+(def data-hits (-> Sexp (List Hit))
+  (lam (form)
+    (let (dname (form-name form))
+      (cons (hit "SC-data-decl" dname "")
+        (cons (hit "SC-data-name" dname "")
+          (sum-hits dname (data-arms form)))))))
+
+(def ctor-hits (-> (List Str) (List Hit))
+  (lam (hs) (case hs (nil nil) ((cons h t) (cons (hit "SC-ctor-head" h "") (ctor-hits t))))))
+
+; ---- case arms ---------------------------------------------------------------
+
+; binder lists compared in order, which is what SC-rebuild-unchanged means
+(def same-seq (-> (List Sexp) (List Sexp) Bool)
+  (lam (a b)
+    (case a
+      (nil (case b (nil true) (_ false)))
+      ((cons x r)
+        (case b
+          (nil false)
+          ((cons y s) (and (str-eq (sx-sym x) (sx-sym y)) (same-seq r s))))))))
+
+(def sym-in (-> Str (List Sexp) Bool)
+  (lam (n xs) (case xs (nil false) ((cons h t) (or (str-eq (sx-sym h) n) (sym-in n t))))))
+
+(def sub-set (-> (List Sexp) (List Sexp) Bool)
+  (lam (a b) (case a (nil true) ((cons x r) (and (sym-in (sx-sym x) b) (sub-set r b))))))
+
+; binder lists compared as sets. Nothing in the census calls it; M4 does.
+(def same-set (-> (List Sexp) (List Sexp) Bool)
+  (lam (a b) (and (=i (sx-len a) (sx-len b)) (and (sub-set a b) (sub-set b a)))))
+
+(def case-arm-pat (-> Sexp Sexp)
+  (lam (arm) (sx-nth 0 (sx-items arm))))
+
+(def case-arm-body (-> Sexp Sexp)
+  (lam (arm) (sx-nth 1 (sx-items arm))))
+
+; a pattern's head: the constructor of (H b ...), or the bare symbol itself
+(def pat-head (-> Sexp Str)
+  (lam (p) (case p ((s-sym n) n) (_ (sx-head p)))))
+
+; SC-rebuild-unchanged: pattern (H b1 .. bn), H err-side, n >= 1, every bi a
+; symbol; body exactly (K b1 .. bn), K err-side
+(def rebuild-arm? (-> Sexp Bool)
+  (lam (arm)
+    (let (p (case-arm-pat arm))
+      (let (b (case-arm-body arm))
+        (let (bs (sx-rest p))
+          (let (ks (sx-rest b))
+            (and (=i (sx-len (sx-items arm)) 2)
+              (and (err-side? (sx-head p))
+                (and (err-side? (sx-head b))
+                  (and (<=i 1 (sx-len bs))
+                    (and (all-syms bs)
+                      (same-seq bs ks))))))))))))
+
+(def rebuild-note (-> Sexp Str)
+  (lam (arm)
+    (case (str-eq (sx-head (case-arm-pat arm)) (sx-head (case-arm-body arm)))
+      (true "same")
+      (false "cross"))))
+
+(def rebuild-hits (-> (List Sexp) (List Hit))
+  (lam (arms)
+    (case arms
+      (nil nil)
+      ((cons a r)
+        (case (rebuild-arm? a)
+          (true (cons (hit "SC-rebuild-unchanged"
+                        (str-cat (sx-head (case-arm-pat a)) (str-cat "->" (sx-head (case-arm-body a))))
+                        (rebuild-note a))
+                  (rebuild-hits r)))
+          (false (rebuild-hits r)))))))
+
+(def any-err-pat (-> (List Sexp) Bool)
+  (lam (arms) (case arms (nil false) ((cons a r) (or (err-side? (pat-head (case-arm-pat a))) (any-err-pat r))))))
+
+; every arm outside the ok side rebuilds unchanged
+(def rest-rebuild (-> (List Sexp) Bool)
+  (lam (arms)
+    (case arms
+      (nil true)
+      ((cons a r)
+        (and (or (ok-side? (pat-head (case-arm-pat a)) true) (rebuild-arm? a))
+             (rest-rebuild r))))))
+
+; SC-passthrough-case
+(def passthrough? (-> (List Sexp) Bool)
+  (lam (arms) (and (any-err-pat arms) (rest-rebuild arms))))
+
+; every case form under s, at any depth: its rebuild arms, and whether it is a
+; passthrough. `owner` is the enclosing top-level form's name.
+(declare case-hits-list (-> Str (List Sexp) (List Hit)))
+(def case-hits (-> Str Sexp (List Hit))
+  (lam (owner s)
+    (case s
+      ((s-list xs)
+        (let (inner (case-hits-list owner xs))
+          (case (str-eq (sx-head s) "case")
+            (false inner)
+            (true
+              (let (arms (sx-drop 2 xs))
+                (hits-cat (rebuild-hits arms)
+                  (case (passthrough? arms)
+                    (true (cons (hit "SC-passthrough-case" owner "") inner))
+                    (false inner))))))))
+      (_ nil))))
+
+(def case-hits-list
+  (lam (owner xs)
+    (case xs
+      (nil nil)
+      ((cons h t) (hits-cat (case-hits owner h) (case-hits-list owner t))))))
+
+; ---- SC-hand-traverse --------------------------------------------------------
+
+; does s hold a call to f: a list form headed by the symbol f
+(declare calls-list? (-> Str (List Sexp) Bool))
+(def calls? (-> Str Sexp Bool)
+  (lam (f s)
+    (case s
+      ((s-list xs) (or (str-eq (sx-head s) f) (calls-list? f xs)))
+      (_ false))))
+
+(def calls-list?
+  (lam (f xs) (case xs (nil false) ((cons h t) (or (calls? f h) (calls-list? f t))))))
+
+; an err-side pattern arm whose body does not call f
+(def err-exit-arm? (-> Str (List Sexp) Bool)
+  (lam (f arms)
+    (case arms
+      (nil false)
+      ((cons a r)
+        (or (and (err-side? (pat-head (case-arm-pat a))) (not (calls? f (case-arm-body a))))
+            (err-exit-arm? f r))))))
+
+(def recur-arm? (-> Str (List Sexp) Bool)
+  (lam (f arms) (case arms (nil false) ((cons a r) (or (calls? f (case-arm-body a)) (recur-arm? f r))))))
+
+; a case under s carrying both: an err exit and a recursive arm
+(declare fallible-list? (-> Str (List Sexp) Bool))
+(def fallible-step? (-> Str Sexp Bool)
+  (lam (f s)
+    (case s
+      ((s-list xs)
+        (or (and (str-eq (sx-head s) "case")
+                 (let (arms (sx-drop 2 xs)) (and (err-exit-arm? f arms) (recur-arm? f arms))))
+            (fallible-list? f xs)))
+      (_ false))))
+
+(def fallible-list?
+  (lam (f xs) (case xs (nil false) ((cons h t) (or (fallible-step? f h) (fallible-list? f t))))))
+
+(def cons-pat? (-> Sexp Bool)
+  (lam (p)
+    (and (str-eq (sx-head p) "cons")
+      (and (=i (sx-len (sx-rest p)) 2) (all-syms (sx-rest p))))))
+
+(def cons-step? (-> Str (List Sexp) Bool)
+  (lam (f arms)
+    (case arms
+      (nil false)
+      ((cons a r)
+        (or (and (cons-pat? (case-arm-pat a)) (fallible-step? f (case-arm-body a)))
+            (cons-step? f r))))))
+
+; a case arm with pattern (cons h t) whose body holds a fallible step
+(declare traverse-list? (-> Str (List Sexp) Bool))
+(def traverse? (-> Str Sexp Bool)
+  (lam (f s)
+    (case s
+      ((s-list xs)
+        (or (and (str-eq (sx-head s) "case") (cons-step? f (sx-drop 2 xs)))
+            (traverse-list? f xs)))
+      (_ false))))
+
+(def traverse-list?
+  (lam (f xs) (case xs (nil false) ((cons h t) (or (traverse? f h) (traverse-list? f t))))))
+
+(def def-hits (-> Sexp (List Hit))
+  (lam (form)
+    (let (f (form-name form))
+      (cons (hit "SC-def-name" f "")
+        (case (traverse-list? f (sx-drop 2 (sx-items form)))
+          (true (hit1 "SC-hand-traverse" f))
+          (false nil))))))
+
+; ---- one top-level form, and one file ----------------------------------------
+
+(def form-hits (-> Sexp (List Hit))
+  (lam (form)
+    (let (own (form-name form))
+      (let (cs (case-hits own form))
+        (let (hd (sx-head form))
+          (case (str-eq hd "data")
+            (true (hits-cat (data-hits form) (hits-cat (ctor-hits (ctor-heads-of form)) cs)))
+            (false
+              (case (str-eq hd "def")
+                (true (hits-cat (def-hits form) (hits-cat (ctor-hits (ctor-heads-of form)) cs)))
+                (false cs)))))))))
+
+(def file-hits (-> (List FormPos) (List Hit))
+  (lam (fs)
+    (case fs
+      (nil nil)
+      ((cons p r) (case p ((fp off f) (hits-cat (form-hits f) (file-hits r))))))))
+
+(def count-forms (-> (List FormPos) I64)
+  (lam (fs) (case fs (nil 0) ((cons h t) (+ 1 (count-forms t))))))
+
+(def count-data-forms (-> (List FormPos) I64)
+  (lam (fs)
+    (case fs
+      (nil 0)
+      ((cons p r)
+        (case p ((fp off f)
+          (+ (case (str-eq (sx-head f) "data") (true 1) (false 0)) (count-data-forms r))))))))
+
+(def text-data-go (-> Str I64 I64)
+  (lam (body from)
+    (let (i (str-find-from body "(data " from))
+      (case (<i i 0)
+        (true 0)
+        (false (+ 1 (text-data-go body (+ i 6))))))))
+
+; the raw "(data " occurrences in a file's bytes, comments and strings included
+(def text-data-count (-> Str I64)
+  (lam (body) (text-data-go body 0)))
+
+; SC-data-decl's reading for one file. M1 swaps it for text-data-count.
+(def sc-data-decl (-> (List FormPos) Str I64)
+  (lam (fs body) (count-data-forms fs)))
+
+; ---- the tallies -------------------------------------------------------------
+; one per register reading, in register order: all, and inside the closure
+(data Tally () (tally (id Str) (n I64) (c I64)))
+
+(def register-ids (List Str)
+  (cons "SC-data-decl" (cons "SC-result-sum" (cons "SC-result-sum-2arm"
+  (cons "SC-result-sum-nplus" (cons "SC-err-arm-bare-str" (cons "SC-err-arm-str-plus"
+  (cons "SC-err-arm-declared" (cons "SC-rebuild-unchanged" (cons "SC-passthrough-case"
+  (cons "SC-hand-traverse" (cons "SC-def-name" (cons "SC-data-name" (cons "SC-ctor-head"
+  (cons "SC-ctor-head-sites" nil)))))))))))))))
+
+(def zero-tallies (-> (List Str) (List Tally))
+  (lam (ids) (case ids (nil nil) ((cons i r) (cons (tally i 0 0) (zero-tallies r))))))
+
+(def bump (-> Str I64 Bool (List Tally) (List Tally))
+  (lam (id k inc ts)
+    (case ts
+      (nil nil)
+      ((cons t r)
+        (case t
+          ((tally i n c)
+            (case (str-eq i id)
+              (true (cons (tally i (+ n k) (case inc (true (+ c k)) (false c))) r))
+              (false (cons t (bump id k inc r))))))))))
+
+; a distinct-name set: every name, and the names seen inside the closure
+(data NSet () (nset (all (List Str)) (in (List Str))))
+
+(def str-in (-> Str (List Str) Bool)
+  (lam (n xs) (case xs (nil false) ((cons h t) (or (str-eq h n) (str-in n t))))))
+
+(def str-count (-> (List Str) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (str-count t))))))
+
+; a deferred SC-err-arm-declared candidate: its sum, its field type, its file
+(data Cand () (cand (dname Str) (ty Str) (path Str) (inc Bool)))
+
+(data Acc ()
+  (acc (files I64) (read I64) (skipped I64) (forms I64) (text I64)
+       (ts (List Tally)) (defs NSet) (datas NSet) (ctors NSet) (cands (List Cand))))
+
+(def acc0 Acc
+  (acc 0 0 0 0 0 (zero-tallies register-ids)
+       (nset nil nil) (nset nil nil) (nset nil nil) nil))
+
+(def inst-line (-> Str Str Str Str Str)
+  (lam (id path name note)
+    (str-cat "inst " (str-cat id (str-cat " " (str-cat path (str-cat " " (str-cat name
+      (case (str-eq note "") (true "\n") (false (str-cat " " (str-cat note "\n"))))))))))))
+
+; add a name to a set, printing its inst line the first time it is seen
+(def ns-add (=> Str Str Str Bool NSet NSet)
+  (lam (id path name inc s)
+    (case s
+      ((nset all in)
+        (let (in2 (case (and inc (not (str-in name in))) (true (cons name in)) (false in)))
+          (case (str-in name all)
+            (true (nset all in2))
+            (false (do (put (inst-line id path name "")) (nset (cons name all) in2)))))))))
+
+; fold one hit into the accumulator
+(def take-hit (=> Str Bool Hit Acc Acc)
+  (lam (path inc h a)
+    (case h
+      ((hit id name note)
+        (case a
+          ((acc fl rd sk fm tx ts ds dt cs cd)
+            (case (str-eq id "SC-def-name")
+              (true (acc fl rd sk fm tx ts (ns-add id path name inc ds) dt cs cd))
+              (false
+                (case (str-eq id "SC-data-name")
+                  (true (acc fl rd sk fm tx ts ds (ns-add id path name inc dt) cs cd))
+                  (false
+                    (case (str-eq id "SC-ctor-head")
+                      (true (acc fl rd sk fm tx (bump "SC-ctor-head-sites" 1 inc ts)
+                              ds dt (ns-add id path name inc cs) cd))
+                      (false
+                        (case (str-eq id "decl")
+                          (true (acc fl rd sk fm tx ts ds dt cs (cons (cand name note path inc) cd)))
+                          (false
+                            (case (str-eq id "SC-data-decl")
+                              ; tallied per file by sc-data-decl, so M1 can move it alone
+                              (true (do (put (inst-line id path name note)) a))
+                              (false
+                                (do (put (inst-line id path name note))
+                                  (acc fl rd sk fm tx (bump id 1 inc ts) ds dt cs cd))))))))))))))))))
+
+(def take-hits (=> Str Bool (List Hit) Acc Acc)
+  (lam (path inc hs a)
+    (case hs
+      (nil a)
+      ((cons h t) (take-hits path inc t (take-hit path inc h a))))))
+
+; a file that could not be read or parsed is named and counted. It stays in the census.
+(def note-skip (=> Str Str Acc Acc)
+  (lam (path why a)
+    (case a
+      ((acc fl rd sk fm tx ts ds dt cs cd)
+        (do (put (str-cat "skip " (str-cat path (str-cat " " (str-cat why "\n")))))
+          (acc fl rd (+ sk 1) fm tx ts ds dt cs cd))))))
+
+(def took-file (-> I64 I64 Str Bool Acc Acc)
+  (lam (nforms ndata body inc a)
+    (case a
+      ((acc fl rd sk fm tx ts ds dt cs cd)
+        (acc fl (+ rd 1) sk (+ fm nforms) (+ tx (text-data-count body))
+             (bump "SC-data-decl" ndata inc ts) ds dt cs cd)))))
+
+(def parsed (=> Str Bool Str AllFR Acc Acc)
+  (lam (path inc body r a)
+    (case r
+      ((af-err m p) (note-skip path m a))
+      ((af-ok fs)
+        (take-hits path inc (file-hits fs)
+          (took-file (count-forms fs) (sc-data-decl fs body) body inc a))))))
+
+(def bump-files (-> Acc Acc)
+  (lam (a) (case a ((acc fl rd sk fm tx ts ds dt cs cd) (acc (+ fl 1) rd sk fm tx ts ds dt cs cd)))))
+
+(def line-path (-> (List Str) Str)
+  (lam (ps) (case ps (nil "") ((cons h t) h))))
+
+(def line-inc (-> (List Str) Bool)
+  (lam (ps) (case ps (nil false) ((cons h t) (case t (nil false) ((cons k r) (str-eq k "closure")))))))
+
+(def do-file (=> Str Acc Acc)
+  (lam (line a)
+    (let (parts (str-split "\t" line))
+      (let (path (line-path parts))
+        (case (=i (str-len path) 0)
+          (true a)
+          (false
+            (let (a1 (bump-files a))
+              (let (fd (openat (bcat (str->bytes path) nul-byte)))
+                (case (<i fd 0)
+                  (true (note-skip path "unopenable" a1))
+                  (false
+                    (let (body (bytes->str (read-fd-all fd)))
+                      (parsed path (line-inc parts) body (read-all-forms body) a1))))))))))))
+
+(def do-files (=> (List Str) Acc Acc)
+  (lam (ls a)
+    (case ls
+      (nil a)
+      ((cons h t) (do-files t (do-file h a))))))
+
+; ---- after the last file -----------------------------------------------------
+
+; SC-err-arm-declared: a candidate whose field type is a declared data name
+(def take-cands (=> (List Cand) (List Str) (List Tally) (List Tally))
+  (lam (cs names ts)
+    (case cs
+      (nil ts)
+      ((cons c r)
+        (case c
+          ((cand d ty path inc)
+            (case (str-in ty names)
+              (true (do (put (inst-line "SC-err-arm-declared" path d ty))
+                      (take-cands r names (bump "SC-err-arm-declared" 1 inc ts))))
+              (false (take-cands r names ts)))))))))
+
+(def set-n (-> Str I64 I64 (List Tally) (List Tally))
+  (lam (id n c ts)
+    (case ts
+      (nil nil)
+      ((cons t r)
+        (case t
+          ((tally i n0 c0)
+            (case (str-eq i id)
+              (true (cons (tally i n c) r))
+              (false (cons t (set-n id n c r))))))))))
+
+(def set-tally (-> Str NSet (List Tally) (List Tally))
+  (lam (id s ts)
+    (case s
+      ((nset all in) (set-n id (str-count all) (str-count in) ts)))))
+
+(def put-preds (=> (List Tally) Unit)
+  (lam (ts)
+    (case ts
+      (nil unit)
+      ((cons t r)
+        (case t
+          ((tally i n c)
+            (do (put (str-cat "pred " (str-cat i (str-cat " n=" (str-cat (i64->str n)
+                  (str-cat " closure=" (str-cat (i64->str c) "\n")))))))
+              (put-preds r))))))))
+
+(def kv (-> Str I64 Str)
+  (lam (k v) (str-cat " " (str-cat k (str-cat "=" (i64->str v))))))
+
+(def report (=> Acc I64)
+  (lam (a)
+    (case a
+      ((acc fl rd sk fm tx ts ds dt cs cd)
+        (case dt
+          ((nset dall din)
+            (let (t1 (take-cands (reverse Cand cd) dall ts))
+              (let (t2 (set-tally "SC-def-name" ds (set-tally "SC-data-name" dt (set-tally "SC-ctor-head" cs t1))))
+                (do (put (str-cat "text data n=" (str-cat (i64->str tx) "\n")))
+                  (do (put-preds t2)
+                    (do (put (str-cat "census" (str-cat (kv "files" fl) (str-cat (kv "read" rd)
+                          (str-cat (kv "skipped" sk) (str-cat (kv "forms" fm) "\n"))))))
+                      0)))))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (lines (str-split "\n" (bytes->str (read-fd-all 0))))
+      (report (do-files lines acc0)))))
