@@ -41,14 +41,16 @@ One stage at a time, one agent at a time.
 ## Step 1: get the input bundle (ONE command)
 
 ```
-python3 tools/pack/pack.py --arc <name>
+python3 tools/pack/pack.py --arc <name> --start
 ```
 
 This prints the goal file and the condition being scheduled, the banks naming
 this concept, the `docs/definitions/status-ledger.md` rungs in range, every
 existing arc that overlaps, and the reserved element bands from
-`docs/decisions/decision-lane-split.md`. It **scaffolds**
-`docs/arcs/<name>-arc.md` with the section headers and the roster table ready.
+`docs/decisions/decision-lane-split.md`. `--start` is the write: it
+**scaffolds** `docs/arcs/<name>-arc.md` with the section headers and the roster
+table ready, and leaves an existing file as it is. Without `--start` the command
+writes nothing.
 
 **Read the overlapping arcs.** Two arcs owning one row is the collision this
 stage exists to catch, and `docs/arcs/README.md` records that two sessions once

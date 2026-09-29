@@ -53,17 +53,23 @@ prevents.
 
 | stage | command | writes | flip |
 |---|---|---|---|
-| goal | `pack.py --goal <name>` | `docs/goals/<name>.md` | the `goals/README.md` row |
-| arc | `pack.py --arc <name>` | `docs/arcs/<name>-arc.md` | the `arcs/README.md` row |
-| design | `pack.py <arc>/<id>` | `docs/arcs/parts/<arc>-<id>.md` | roster `state: designed` |
+| goal | `pack.py --goal <name> --start` | `docs/goals/<name>.md` | the `goals/README.md` row |
+| arc | `pack.py --arc <name> --start` | `docs/arcs/<name>-arc.md` | the `arcs/README.md` row |
+| design | `pack.py <arc>/<id> --start` | `docs/arcs/parts/<arc>-<id>.md` | roster `state: designed` |
 | audit | `pack.py <arc>/<id> --audit design` | the design, in place | `--mint` on PASS |
-| spec | `pack.py E<#> --spec` | `docs/elements/specs/E<NN>-<slug>-SPEC.md` | roster `state: specced` |
+| spec | `pack.py E<#> --spec --start` | `docs/elements/specs/E<NN>-<slug>-SPEC.md` | roster `state: specced` |
 | audit | `pack.py E<#> --audit spec` | the SPEC, in place | `--mark audited` on PASS |
 | implement | none. See below | `lib/`, `prog/`, a gate | the roster row, by hand |
-| revisit | `pack.py <target> --revisit <trigger>` | the artifact, and a `records/` row | per verdict |
+| revisit | `pack.py <target> --revisit <trigger>` | the artifact, and a `records/` row | per verdict; REOPEN is `--reopen <state>` |
 
 Every bundle is the complete input for its stage. Read it, and grep only for a
 specific fact it leaves out.
+
+**A bundle writes nothing. `--start` is the write**: the same bundle, then the
+scaffold and the flip in the table. Every roster move goes through the
+transition table in `pack.py`, which refuses a backward move and a skipped one
+by name before a file is written; a revisit REOPEN is the one backward move.
+`pack.py --help` prints the table.
 
 **Each skill is one run, one unit of work, one artifact, then stop.** Rolling
 from a stage into the next inside a single run is the failure each skill exists

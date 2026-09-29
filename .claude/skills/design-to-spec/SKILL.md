@@ -49,14 +49,17 @@ One stage at a time, one agent at a time.
 ## Step 1: get the input bundle (ONE command)
 
 ```
-python3 tools/pack/pack.py E<#> --spec
+python3 tools/pack/pack.py E<#> --spec --start
 ```
 
 This prints your **entire** input bundle: the catalog row, the full design
 artifact, this element's `docs/definitions/status-ledger.md` rung, structural
 outlines of every `lib/`/`prog/` file the design names, and the current test
-baseline. It **scaffolds** `docs/elements/specs/E<NN>-<slug>-SPEC.md` and flips
-the roster row's state to `specced`.
+baseline. `--start` is the write: it **scaffolds**
+`docs/elements/specs/E<NN>-<slug>-SPEC.md` and moves the roster row's state from
+`designed` or `minted` to `specced`. A row already past `specced` is refused by
+name with nothing written. Without `--start` the command prints the same bundle
+and writes nothing.
 
 **Read that bundle and little else.** The outlines replace reading the target
 files. If an outline lacks a body you genuinely need, a few *narrow* greps are

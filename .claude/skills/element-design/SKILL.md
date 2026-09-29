@@ -45,14 +45,18 @@ every parallel-waves protocol in this tree, this file included.
 ## Step 1: get the input bundle (ONE command)
 
 ```
-python3 tools/pack/pack.py <arc>/<id>
+python3 tools/pack/pack.py <arc>/<id> --start
 ```
 
 This prints your **entire** input bundle: the row itself, the arc's goal and
 requirements, the arc's other rows, the banks that name this concept, the
 `docs/definitions/status-ledger.md` rung for anything the row touches, and
-structural outlines of the `lib/`/`prog/` files the row names. It **scaffolds**
-`docs/arcs/parts/<arc>-<id>.md` with the six section headers ready.
+structural outlines of the `lib/`/`prog/` files the row names. `--start` is the
+write: it **scaffolds** `docs/arcs/parts/<arc>-<id>.md` with the six section
+headers ready and moves the roster row's `state` from `open` to `designed`. A row
+already past `open` is refused by name with nothing written, and the refusal
+names the revisit REOPEN that would drop it back. Without `--start` the command
+prints the same bundle and writes nothing.
 
 **Read that bundle and little else.** If an outline lacks a body you genuinely
 need, a few *narrow* greps for a specific symbol or fact are allowed. Each extra

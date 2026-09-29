@@ -43,14 +43,15 @@ goal path and its unopened conditions, then **STOP**.
 ## Step 1: get the input bundle (ONE command)
 
 ```
-python3 tools/pack/pack.py --goal <name>
+python3 tools/pack/pack.py --goal <name> --start
 ```
 
 This prints every repo-text hit for the ambition (the root spine, `docs/`,
 `records/`), the goals that neighbour or overlap it, the banks naming the
 concept, the `docs/definitions/status-ledger.md` rungs in range, and any
-`records/author-calls.md` row that blocks it. It **scaffolds**
-`docs/goals/<name>.md` with the section headers ready.
+`records/author-calls.md` row that blocks it. `--start` is the write: it
+**scaffolds** `docs/goals/<name>.md` with the section headers ready, and leaves
+an existing file as it is. Without `--start` the command writes nothing.
 
 **Read the neighbouring goals.** Two goals claiming one thing is the collision
 this stage catches. `docs/goals/README.md` records why `module-split` is

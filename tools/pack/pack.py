@@ -8,28 +8,13 @@ re-bills the whole accumulated context. This script does the deterministic
 foraging (catalog row, OURS source slices, chirality reference, template) as a
 single Bash turn, so the agent goes from ~17 tool calls to ~3.
 
-Usage, PRE-MINT (no element number exists yet — decision-design-before-mint):
-    tools/pack/pack.py --goal local-ai        # goal bundle + scaffold docs/goals/local-ai.md
-    tools/pack/pack.py --arc unit-lane        # arc bundle + scaffold docs/arcs/unit-lane-arc.md
-    tools/pack/pack.py unit-lane/N24          # design bundle + scaffold arcs/parts/unit-lane-N24.md
-    tools/pack/pack.py unit-lane/N24 --audit  # read-only design gate bundle
-    tools/pack/pack.py unit-lane/N24 --mint   # THE GRADUATION: allocate the E#,
-                                              #   write the catalog and ledger rows from §6
-Usage, POST-MINT:
-    tools/pack/pack.py E13 --spec        # spec stage -> docs/elements/specs/E13-<slug>-SPEC.md
-    tools/pack/pack.py E13 --spec <slug> # ... naming the slug instead of deriving it
-    tools/pack/pack.py E13 --audit spec  # read-only audit bundle for the SPEC
-    tools/pack/pack.py E13 --audit       # audits the furthest artifact that exists
-    tools/pack/pack.py E13 --kb          # standalone scoped kb slices for any run
-    tools/pack/pack.py E13 --mark audited    # post-audit flip: specced -> audited
-Usage, RECONSIDERING:
-    tools/pack/pack.py --revisit              # worklist: records rows whose evidence
-                                              #   moved after they were last checked
-    tools/pack/pack.py <target> --revisit <trigger>   # one artifact beside one trigger
+Usage: the USAGE string below, printed by `--help` and by every refused
+invocation. A bundle writes nothing; `--start` is the write for its stage, and
+every roster move goes through ROSTER_FORWARD or ROSTER_REOPEN.
 
-The example stage is RETIRED. `pack.py E13 <slug>` still scaffolds a
+The example stage is RETIRED. `pack.py E13 <slug> --start` still scaffolds a
 docs/examples/ artifact and that path is kept only for the 132 files already
-there; new work runs the design stage above.
+there; new work runs the design stage.
 
 The POST-MINT modes read whichever tier holds the element's rationale — see
 pipeline_artifact(). An element worked up before 2026-09-05 has an example; one
@@ -367,6 +352,73 @@ def superseded_stop(eid, tag):
 def die(m):
     print(m, file=sys.stderr)
     sys.exit(1)
+
+
+# ------------------------------------------------------------ roster transitions
+# The roster's `state` vocabulary is docs/arcs/README.md §"The roster", and its
+# order is the pipeline in .planning/protocol/workflow.md: design, mint, spec,
+# build. `direct` and `closed` are terminal and sit after `built`.
+#
+# Every roster write goes through set_roster_state(), and set_roster_state()
+# goes through roster_check(). A writer also calls roster_check() before its
+# first write of any file, so an illegal move stops with the tree untouched.
+ROSTER_ORDER = ("open", "designed", "minted", "specced", "building", "built",
+                "direct", "closed")
+
+# The forward moves this tool makes: target -> (legal predecessors, command).
+# `building`, `built`, `direct` and `closed` are set by hand, by the implement
+# run and by an audit's CLOSED, and no command here writes them.
+ROSTER_FORWARD = {
+    "designed": (("open",), "pack.py <arc>/<id> --start"),
+    "minted": (("designed",), "pack.py <arc>/<id> --mint"),
+    "specced": (("designed", "minted"), "pack.py E<#> --spec --start"),
+}
+
+# The one backward move: a revisit REOPEN drops a row to an earlier state, named
+# on the command line. It never rides on a bundle.
+ROSTER_REOPEN = ("open", "designed", "minted", "specced", "building")
+REOPEN_CMD = "pack.py <arc>/<id> --reopen <state>"
+
+
+def roster_check(arc, rid, state, reopen=False):
+    """The row's current state, when moving it to `state` is legal. Dies with a
+    named refusal otherwise. Returns None for a row that predates the 8-column
+    schema, whose state set_roster_state() leaves to a hand edit."""
+    ap = arc_path(arc)
+    if not os.path.exists(ap):
+        die(f"REFUSED: no arc at {os.path.relpath(ap, ROOT)}. Nothing written")
+    line, cells = roster_row(open(ap).read(), arc, rid)
+    if not line:
+        die(f"REFUSED: {arc}/{rid} is not in the roster of "
+            f"{os.path.relpath(ap, ROOT)}. Nothing written")
+    if len(cells) < 8:
+        return None
+    cur = cells[-2]
+    if cur not in ROSTER_ORDER:
+        die(f"REFUSED: roster {arc}/{rid} state {cur!r} is outside the vocabulary "
+            f"{' · '.join(ROSTER_ORDER)}. Repair the cell by hand. Nothing written")
+    if reopen:
+        if state not in ROSTER_REOPEN or \
+                ROSTER_ORDER.index(state) >= ROSTER_ORDER.index(cur):
+            die(f"REFUSED (reopen): roster {arc}/{rid} is `{cur}`. A reopen moves a "
+                f"row back to a state before its current one, from "
+                f"{' · '.join(ROSTER_REOPEN)}. Nothing written")
+        return cur
+    if state == cur:
+        return cur
+    preds, cmd = ROSTER_FORWARD[state]
+    if cur not in preds:
+        back = ROSTER_ORDER.index(cur) > ROSTER_ORDER.index(state)
+        die(f"REFUSED ({'backward' if back else 'skipped'} move): roster {arc}/{rid} "
+            f"is `{cur}`, and `{state}` follows only "
+            f"{' or '.join(f'`{p}`' for p in preds)} (`{cmd}`). "
+            + (f"Dropping a row back is a revisit REOPEN: "
+               f"`{REOPEN_CMD.replace('<arc>/<id>', f'{arc}/{rid}').replace('<state>', state)}`. "
+               if back else
+               f"Run `{ROSTER_FORWARD[preds[0]][1].replace('<arc>/<id>', f'{arc}/{rid}')}` "
+               f"first. ")
+            + "Nothing written")
+    return cur
 
 
 def conf_rows(eid):
@@ -774,17 +826,20 @@ def mark_mode(eid, tag, state, no_index):
     die(f"INDEX row for {eid} not found")
 
 
-def spec_mode(eid, tag, title, row, row_kind, no_index, slug_arg=""):
-    """rationale -> spec: print the spec input bundle, scaffold the SPEC
-    artifact, flip the element's registry row to `specced`. Which registry is
-    which tier's: the INDEX row for an element worked up in an example, the arc
-    roster row for one designed under docs/arcs/parts/."""
+def spec_mode(eid, tag, title, row, row_kind, no_index, slug_arg="", start=False):
+    """rationale -> spec: print the spec input bundle. With `start`, also
+    scaffold the SPEC artifact and flip the element's registry row to
+    `specced`. Which registry is which tier's: the INDEX row for an element
+    worked up in an example, the arc roster row for one designed under
+    docs/arcs/parts/."""
     kind, rel, art, origin = pipeline_artifact(eid, tag)
     if not kind:
         die(f"no rationale artifact for {eid}: no example examples/{tag}-*.md and no "
             f"design at docs/arcs/parts/<arc>-<id>.md reached from a roster row whose "
             f"element cell reads {eid}. A SPEC is written from one of the two")
     slug = slug_arg or spec_slug(tag, kind, rel, title)
+    if start and origin:
+        roster_check(*origin, "specced")
     label = "The drafted example" if kind == "example" else "The design"
 
     out = [f"# SPEC BUNDLE — {cat_label(eid)}: {title}",
@@ -803,11 +858,18 @@ def spec_mode(eid, tag, title, row, row_kind, no_index, slug_arg=""):
                + ("\n\n".join(sec) or "(no lib/, prog/ or tools/ paths named in the artifact)"))
     out.append("## 5. Test baseline — your §5 green line starts here\n" + test_baseline())
 
-    out.append("## 6. Next\nYour SPEC is scaffolded (frontmatter filled) at "
-               f"`docs/elements/specs/{tag}-{slug}-SPEC.md`. Open THAT file and fill sections "
-               "1–6. §3 decisions are dispositioned (RESOLVED with a cited settled doc / "
+    out.append(("## 6. Next\nYour SPEC is scaffolded (frontmatter filled) at "
+                f"`docs/elements/specs/{tag}-{slug}-SPEC.md`. Open THAT file and fill sections "
+                if start else
+                "## 6. Next\nThis run wrote nothing. `python3 tools/pack/pack.py "
+                f"{eid} --spec{' ' + slug_arg if slug_arg else ''} --start` prints this "
+                f"bundle, scaffolds `docs/elements/specs/{tag}-{slug}-SPEC.md` and moves "
+                "the registry row to `specced`. In that file, fill sections ")
+               + "1–6. §3 decisions are dispositioned (RESOLVED with a cited settled doc / "
                "DEFERRED to a named home / NEEDS-AUTHOR) — never silently resolved.")
     print("\n\n".join(out))
+    if not start:
+        return
 
     # ---- scaffold the SPEC artifact ----
     os.makedirs(SPECDIR, exist_ok=True)
@@ -836,7 +898,11 @@ def spec_mode(eid, tag, title, row, row_kind, no_index, slug_arg=""):
         # retired tier's registry and the roster is this one's. ledger-lint check
         # AH pairs a `specced` row against a SPEC on disk, so the flip belongs to
         # the run that writes the SPEC.
-        roster_flip(origin, ("designed", "minted"), "specced", no_index)
+        if no_index:
+            print(f"[roster] --no-index: NOT editing the roster. {origin[0]}/{origin[1]} "
+                  f"owes -> specced", file=sys.stderr)
+        else:
+            set_roster_state(*origin, "specced")
         return
     # ---- INDEX row: status -> specced, artifact cell gains the SPEC link ----
     idx = open(INDEX).read().splitlines()
@@ -1063,10 +1129,10 @@ def _arc_head(atext, arc):
     ])
 
 
-def design_mode(arc, rid, scaffold=True):
+def design_mode(arc, rid, start=False):
     ap = arc_path(arc)
     if not os.path.exists(ap):
-        die(f"no arc at {os.path.relpath(ap, ROOT)} — open it with --arc {arc} first")
+        die(f"no arc at {os.path.relpath(ap, ROOT)} — open it with `pack.py --arc {arc} --start` first")
     atext = open(ap).read()
     line, cells = roster_row(atext, arc, rid)
     if not line:
@@ -1074,6 +1140,8 @@ def design_mode(arc, rid, scaffold=True):
             f"a design run works a row that exists")
     # The element cell is LAST in every roster shape, the 6-column rows written
     # before the schema landed included. Index 7 misses those.
+    if start:
+        roster_check(arc, rid, "designed")
     minted = row_elements(cells[-1]) if cells else []
     if minted:
         print(f"[note] {arc}/{rid} already carries {', '.join(minted)}. The design "
@@ -1136,13 +1204,17 @@ def design_mode(arc, rid, scaffold=True):
     if outl:
         out.append("## 9. Live target outlines\n" + "\n\n".join(outl))
 
-    out.append("## 10. Next\nYour artifact is scaffolded at "
-               f"`docs/arcs/parts/{arc}-{rid}.md`. Fill §1-§6. §3 may close the row "
+    out.append(("## 10. Next\nYour artifact is scaffolded at "
+                f"`docs/arcs/parts/{arc}-{rid}.md`. Fill §1-§6." if start else
+                "## 10. Next\nThis run wrote nothing. `python3 tools/pack/pack.py "
+                f"{arc}/{rid} --start` prints this bundle, scaffolds "
+                f"`docs/arcs/parts/{arc}-{rid}.md` and moves the roster row `open` -> "
+                "`designed`. Fill §1-§6.") + " §3 may close the row "
                "with an empty delta, which mints nothing and is a success. §6 is the "
                "packet `--mint` executes.")
     print("\n\n".join(out))
 
-    if scaffold:
+    if start:
         os.makedirs(PARTSDIR, exist_ok=True)
         dest = os.path.join(PARTSDIR, f"{arc}-{rid}.md")
         if os.path.exists(dest):
@@ -1159,9 +1231,15 @@ def design_mode(arc, rid, scaffold=True):
         set_roster_state(arc, rid, "designed")
 
 
-def set_roster_state(arc, rid, state, element=None):
+def set_roster_state(arc, rid, state, element=None, reopen=False):
     """Rewrite the row's state cell (and element cell) in place. The roster is
-    the pipeline's authority for a row."""
+    the pipeline's authority for a row, and this is its only writer: the move is
+    checked against the transition table first."""
+    cur = roster_check(arc, rid, state, reopen)
+    if cur == state and not element:
+        print(f"[roster] {arc}/{rid} is already `{state}`. Nothing to move",
+              file=sys.stderr)
+        return
     ap = arc_path(arc)
     atext = open(ap).read()
     line, cells = roster_row(atext, arc, rid)
@@ -1174,24 +1252,8 @@ def set_roster_state(arc, rid, state, element=None):
         cells[-1] = f"`{element}`"
     new = "| " + " | ".join(cells) + " |"
     open(ap, "w").write(atext.replace(line, new, 1))
-    print(f"[roster] {arc}/{rid} -> state {state}"
+    print(f"[roster] {arc}/{rid} state {cur} -> {state}"
           + (f", element {element}" if element else ""), file=sys.stderr)
-
-
-def roster_flip(origin, want, state, no_index):
-    """Advance a roster row's state cell, refusing a predecessor that is not one
-    of `want` — the roster's half of what mark_mode does to an INDEX row."""
-    arc, rid = origin
-    line, cells = roster_row(open(arc_path(arc)).read(), arc, rid)
-    st = cells[-2] if len(cells) >= 2 else ""
-    if st not in want:
-        print(f"[roster] {arc}/{rid} state {st!r} not {'/'.join(want)} — artifact "
-              f"written, state left", file=sys.stderr)
-    elif no_index:
-        print(f"[roster] --no-index: NOT editing the roster. {arc}/{rid} owes "
-              f"{st} -> {state}", file=sys.stderr)
-    else:
-        set_roster_state(arc, rid, state)
 
 
 def part_audit_mode(arc, rid):
@@ -1309,6 +1371,7 @@ def mint_mode(arc, rid):
             "each starting `| E<NN> |`. Found "
             f"{len(led)}. Fill the packet before minting.")
     catrow, ledrow = led[0].replace("E<NN>", eid), led[1].replace("E<NN>", eid)
+    roster_check(arc, rid, "minted")
 
     with open(CATALOG, "a") as f:
         f.write(catrow.rstrip() + "\n")
@@ -1322,12 +1385,12 @@ def mint_mode(arc, rid):
     print(f"[mint] APPENDED at end of file. Move each row into its section by hand: "
           f"the catalog sorts by kind and the ledger by category.", file=sys.stderr)
     print(f"\nMinted **{eid}** for {arc}/{rid}. Next: "
-          f"`python3 tools/pack/pack.py {eid} --spec`, which reads THIS row's design "
+          f"`python3 tools/pack/pack.py {eid} --spec --start`, which reads THIS row's design "
           f"at docs/arcs/parts/{arc}-{rid}.md — the element has no worked example and "
           f"never gets one.")
 
 
-def goal_mode(name):
+def goal_mode(name, start=False):
     dest = os.path.join(GOALDIR, f"{name}.md")
     hits = []
     for d in ("", "docs", "records"):
@@ -1366,6 +1429,8 @@ def goal_mode(name):
            "the goal from reading as a pitch."]
     print("\n\n".join(out))
 
+    if not start:
+        return
     if os.path.exists(dest):
         print(f"\n[scaffold] goals/{name}.md already exists — left as-is", file=sys.stderr)
     else:
@@ -1375,7 +1440,7 @@ def goal_mode(name):
         print(f"\n[scaffold] wrote docs/goals/{name}.md", file=sys.stderr)
 
 
-def arc_mode(name):
+def arc_mode(name, start=False):
     stem = name[:-4] if name.endswith("-arc") else name
     dest = arc_path(stem)
     bands = ""
@@ -1404,6 +1469,8 @@ def arc_mode(name):
            "requirement, every `origin` defensible from §3."]
     print("\n\n".join(out))
 
+    if not start:
+        return
     if os.path.exists(dest):
         print(f"\n[scaffold] {os.path.basename(dest)} already exists — left as-is", file=sys.stderr)
     else:
@@ -1538,44 +1605,164 @@ including a HOLDS: a check that leaves no trace gets redone.""",
     ]))
 
 
+def reopen_mode(arc, rid, state):
+    """A revisit's REOPEN verdict, applied: the roster row drops back to the
+    named state. The one backward move, and the element cell is left as it is."""
+    set_roster_state(arc, rid, state, reopen=True)
+
+
+def _roster_moves():
+    fwd = "\n".join(f"  {' | '.join(preds)} -> {to}   {cmd}"
+                     for to, (preds, cmd) in ROSTER_FORWARD.items())
+    return (f"{fwd}\n  any later state -> {' | '.join(ROSTER_REOPEN)}   {REOPEN_CMD}\n"
+            "  Any other move is refused by name before a file is written.")
+
+
+USAGE = f"""usage: python3 tools/pack/pack.py <target> [mode] [--start] [--no-index]
+
+A bundle writes nothing. `--start` is each stage's write: the same bundle, then
+the scaffold and the registry move. `--mint`, `--mark` and `--reopen` are
+writes by name.
+
+pre-mint, no element number yet
+  --goal <name>                   goal bundle
+  --goal <name> --start             + scaffolds docs/goals/<name>.md
+  --arc <name>                    arc bundle
+  --arc <name> --start              + scaffolds docs/arcs/<name>-arc.md
+  <arc>/<id>                      design bundle
+  <arc>/<id> --start                + scaffolds docs/arcs/parts/<arc>-<id>.md and
+                                      moves the roster row open -> designed
+  <arc>/<id> --audit [design]     design gate bundle
+  <arc>/<id> --mint               allocates the E#, appends the catalog and ledger
+                                    rows from the design's §6, roster -> minted
+post-mint
+  E<#> --spec [slug]              spec bundle
+  E<#> --spec [slug] --start        + scaffolds docs/elements/specs/E<NN>-<slug>-SPEC.md
+                                      and moves the roster row -> specced (an
+                                      example-tier element: its INDEX row)
+  E<#> --audit [design|example|spec]  audit bundle, the furthest artifact by default
+  E<#> --kb                       scoped kb slices
+  E<#> --mark reviewed|audited    post-audit flip: the SPEC frontmatter, or the INDEX row
+  E<#> [slug]                     the retired example stage's bundle
+  E<#> <slug> --start               + scaffolds docs/examples/<tag>-<slug>.md and an
+                                      INDEX row
+reconsidering
+  --revisit                       worklist of records rows whose evidence moved
+  <target> --revisit [trigger]    one artifact beside one trigger
+  <arc>/<id> --reopen <state>     a revisit REOPEN: the one backward roster move
+modifier
+  --no-index                      with --start or --mark: print the registry
+                                    write owed and leave the registry alone
+
+roster moves
+{_roster_moves()}
+
+An unknown flag, a second mode, a modifier the mode does not take, or a wrong
+argument is refused before anything is read or written."""
+
+CAT_EID = re.compile(r"^[A-Za-z]{2,4}[·./]E?(\d+)$")
+MODE_FLAGS = ("--goal", "--arc", "--revisit", "--audit", "--mint", "--reopen",
+              "--spec", "--kb", "--mark")
+MODIFIERS = ("--start", "--no-index")
+# (mode flag, target form) -> (fewest, most positionals, modifiers, pos[1] choices)
+ARGSPEC = {
+    ("--goal", "name"): (1, 1, ("--start",), None),
+    ("--arc", "name"): (1, 1, ("--start",), None),
+    ("--revisit", "none"): (0, 0, (), None),
+    ("--revisit", "any"): (1, 2, (), None),
+    (None, "row"): (1, 1, ("--start",), None),
+    ("--audit", "row"): (1, 2, (), ("design",)),
+    ("--mint", "row"): (1, 1, (), None),
+    ("--reopen", "row"): (2, 2, (), ROSTER_REOPEN),
+    ("--spec", "eid"): (1, 2, MODIFIERS, None),
+    ("--audit", "eid"): (1, 2, (), ("design", "example", "spec")),
+    ("--kb", "eid"): (1, 1, (), None),
+    ("--mark", "eid"): (2, 2, ("--no-index",), ("reviewed", "audited")),
+    (None, "eid"): (1, 2, MODIFIERS, None),
+}
+
+
+def parse_args(argv):
+    """(mode, form, positionals, modifiers), or a refusal. Runs before any mode,
+    so a mistyped invocation never reaches a write."""
+    if any(a in ("-h", "--help") for a in argv):
+        print(USAGE)
+        sys.exit(0)
+
+    def refuse(why):
+        die(f"REFUSED: {why}. Nothing written.\n\n{USAGE}")
+
+    dashed = [a for a in argv if a.startswith("-")]
+    pos = [a for a in argv if not a.startswith("-")]
+    unknown = [a for a in dashed if a not in MODE_FLAGS + MODIFIERS]
+    if unknown:
+        refuse(f"unknown flag {', '.join(unknown)}")
+    if len(set(dashed)) != len(dashed):
+        refuse("a flag is given twice")
+    modes = [a for a in dashed if a in MODE_FLAGS]
+    if len(modes) > 1:
+        refuse(f"one mode per run, and this names {len(modes)}: {' '.join(modes)}")
+    mode = modes[0] if modes else None
+    mods = [a for a in dashed if a in MODIFIERS]
+    if mode in ("--goal", "--arc"):
+        form = "name"
+    elif mode == "--revisit":
+        form = "any" if pos else "none"
+    elif not pos:
+        refuse("no target")
+    elif "/" in pos[0] and not pos[0].startswith("E") and not CAT_EID.match(pos[0]):
+        form = "row"
+    else:
+        form = "eid"
+    spec = ARGSPEC.get((mode, form))
+    if not spec:
+        refuse(f"{mode} does not take a {'<arc>/<id>' if form == 'row' else 'E#'} target")
+    lo, hi, allowed, choices = spec
+    what = mode or ("the design bundle" if form == "row" else "the example bundle")
+    if not lo <= len(pos) <= hi:
+        refuse(f"{what} takes {lo}{'' if lo == hi else f' to {hi}'} argument(s) and "
+               f"got {len(pos)}: {' '.join(pos) or '(none)'}")
+    bad = [m for m in mods if m not in allowed]
+    if bad:
+        refuse(f"{what} does not take {', '.join(bad)}")
+    if choices and len(pos) > 1 and pos[1] not in choices:
+        refuse(f"{what} takes {' | '.join(choices)}, and got {pos[1]!r}")
+    if "--no-index" in mods and "--start" not in mods and mode != "--mark":
+        refuse("--no-index qualifies a write, and without --start this run writes nothing")
+    if mode is None and form == "eid" and "--start" in mods and len(pos) < 2:
+        refuse("the example stage scaffolds only under a slug: E<#> <slug> --start")
+    return mode, form, pos, mods
+
+
 def main():
-    no_index = "--no-index" in sys.argv  # skip INDEX append (safe for parallel runs)
-    pos = [a for a in sys.argv[1:] if not a.startswith("--")]
-    flags = [a for a in sys.argv[1:] if a.startswith("--")]
+    mode, form, pos, mods = parse_args(sys.argv[1:])
+    start = "--start" in mods
+    no_index = "--no-index" in mods  # print the registry write owed instead
 
     # ---- the pre-mint tier dispatches BEFORE the element-id parse, because none
     # ---- of its targets has an element number yet. decision-design-before-mint.
-    if "--goal" in flags:
-        if not pos:
-            die("usage: pack.py --goal <name>")
-        goal_mode(pos[0]); return
-    if "--arc" in flags:
-        if not pos:
-            die("usage: pack.py --arc <name>")
-        arc_mode(pos[0]); return
-    if "--revisit" in flags and not pos:
-        revisit_scan(); return
-    if pos and "/" in pos[0] and not pos[0].startswith("E"):
+    if mode == "--goal":
+        goal_mode(pos[0], start); return
+    if mode == "--arc":
+        arc_mode(pos[0], start); return
+    if mode == "--revisit":
+        if form == "none":
+            revisit_scan(); return
+        revisit_mode(pos[0], pos[1] if len(pos) > 1 else "(unnamed)"); return
+    if form == "row":
         arc, _, rid = pos[0].partition("/")
         arc = arc[:-4] if arc.endswith("-arc") else arc
-        if "--revisit" in flags:
-            revisit_mode(pos[0], pos[1] if len(pos) > 1 else "(unnamed)"); return
-        if "--mint" in flags:
+        if mode == "--mint":
             mint_mode(arc, rid); return
-        if "--audit" in flags:
+        if mode == "--audit":
             part_audit_mode(arc, rid); return
-        design_mode(arc, rid, scaffold="--no-scaffold" not in flags); return
-    if "--revisit" in flags and pos:
-        revisit_mode(pos[0], pos[1] if len(pos) > 1 else "(unnamed)"); return
+        if mode == "--reopen":
+            reopen_mode(arc, rid, pos[1]); return
+        design_mode(arc, rid, start); return
 
-    if not pos:
-        die("usage: tools/pack/pack.py E<#> [slug] [--no-index]\n"
-            "       tools/pack/pack.py --goal <name> | --arc <name>\n"
-            "       tools/pack/pack.py <arc>/<id> [--audit | --mint]\n"
-            "       tools/pack/pack.py --revisit | <target> --revisit <trigger>")
     # accept the CAT·E# display form (MEM·E120, SYS.E121, mem/E120) as input and
     # strip to the bare stable E# key — the category prefix is a label, not the id.
-    m = re.match(r"^[A-Za-z]{2,4}[·./]E?(\d+)$", pos[0])
+    m = CAT_EID.match(pos[0])
     eid = f"E{m.group(1)}" if m else pos[0]
     m2 = re.match(r"^([EeUuSsNn])(\d+)([A-Za-z]?)$", eid)
     if not m2:
@@ -1626,16 +1813,16 @@ def main():
         refcol = cols[3]
         refclass = "/".join(dict.fromkeys(re.findall(r"OURS|SPEC|PAPER|IMPL", refcol))) or "?"
 
-    if "--spec" in sys.argv:
-        spec_mode(eid, tag, title, row, row_kind, no_index, slug)
+    if mode == "--spec":
+        spec_mode(eid, tag, title, row, row_kind, no_index, slug, start)
         return
-    if "--audit" in sys.argv:
+    if mode == "--audit":
         audit_mode(eid, tag, title, row, row_kind, pos[1] if len(pos) > 1 else "")
         return
-    if "--kb" in sys.argv:
+    if mode == "--kb":
         kb_mode(eid, tag, title)
         return
-    if "--mark" in sys.argv:
+    if mode == "--mark":
         mark_mode(eid, tag, pos[1] if len(pos) > 1 else "", no_index)
         return
 
@@ -1717,12 +1904,17 @@ def main():
                + open(CHEAT).read().strip())
     out.append("## 5. Next\nYour artifact is scaffolded (frontmatter filled) at "
                f"`docs/examples/{tag}-{slug}.md` with the six section headers. Open THAT file "
-               "and fill sections 1–6. Do not re-read the template — it is already in your file.")
+               "and fill sections 1–6. Do not re-read the template — it is already in your file."
+               if start else
+               "## 5. Next\nThis run wrote nothing. The example stage is retired; "
+               f"`python3 tools/pack/pack.py {eid} <slug> --start` still scaffolds "
+               f"`docs/examples/{tag}-<slug>.md` and its INDEX row for the corpus already "
+               "there.")
 
     print("\n\n".join(out))
 
-    # ---- scaffold the artifact + INDEX row (only when a slug is given) ----
-    if slug:
+    # ---- scaffold the artifact + INDEX row (only under --start, with a slug) ----
+    if start:
         dest = os.path.join(ROOT, "docs", "examples", f"{tag}-{slug}.md")
         today = datetime.date.today().isoformat()
         if os.path.exists(dest):

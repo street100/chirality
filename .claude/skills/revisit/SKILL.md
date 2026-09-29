@@ -65,6 +65,16 @@ source text, the specific claims of the artifact the trigger reaches, and the
 live state of every `file:line` the artifact cited. Nothing is scaffolded and no
 status changes.
 
+A REOPEN is the one backward roster move, and it has its own command:
+
+```
+python3 tools/pack/pack.py <arc>/<id> --reopen <state>
+```
+
+It takes a state earlier than the row's current one, from `open`, `designed`,
+`minted`, `specced` and `building`, and leaves the element cell as it is. No
+bundle command moves a row backwards; `pack.py` refuses that by name.
+
 ## Step 2: reach the verdict
 
 Work only the claims the trigger reaches. For each, the artifact's claim beside
@@ -75,7 +85,7 @@ what is true now.
 | **HOLDS** | the trigger changes nothing | the `checked:` date on the records row, and the artifact stays as it is |
 | **AMEND** | the shape is right, a detail is wrong | the correction, in place |
 | **RESCOPE** | the row's boundary moved | the arc's roster row, and a new row where the work divides |
-| **REOPEN** | the artifact's stage is invalidated | the roster row's `state` drops back to the named stage |
+| **REOPEN** | the artifact's stage is invalidated | the roster row's `state` drops back to the named stage, with `pack.py <arc>/<id> --reopen <state>` |
 | **SUPERSEDE** | the row stops being what gets built | the successor. **Author call, so it is flagged and not taken** |
 
 **HOLDS is a real result and it is written down.** A check that found nothing

@@ -117,11 +117,16 @@ Work the checks in order. For every defect:
 
 ```
 python3 tools/pack/pack.py <arc>/<id> --mint    # DESIGN level: allocates the E#,
-                                                # writes catalog + ledger + the roster row
+                                                # appends catalog + ledger rows, and moves
+                                                # the roster row designed -> minted
 python3 tools/pack/pack.py E<#> --mark audited  # SPEC level
 # TRANSLATE level: set the artifact's frontmatter status to `current`. It mints
 # nothing, because a translation is upstream of any roster row.
 ```
+
+`--mint` refuses a roster row that is not `designed`, by name and before it
+writes anything. `--mark audited` edits the SPEC's frontmatter and leaves the
+roster row at `specced`.
 
 **CLOSED**, design level only. The design's §3 found an empty delta and §6 mints
 nothing. Verify the close: open the shards §2 named and confirm they cover the
