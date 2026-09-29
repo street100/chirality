@@ -2399,7 +2399,10 @@ def check_al() -> list[str]:
     reports it, and a missing invariant core is what separates a translation
     from a redesign.
 
-    Vacuous when docs/translations/ holds no artifact."""
+    Vacuous when docs/translations/ holds no artifact, or when the tool is
+    absent. A run that times out, crashes, exits outside 0 and 1, or exits 1
+    with no row this parse reads is a finding, the rule check AM takes: xlat
+    exits 2 when it cannot run, and that run reached no verdict on the artifact."""
     import subprocess
     tool = ROOT / "tools" / "xlat" / "xlat.sh"
     if not tool.exists():
@@ -2421,6 +2424,12 @@ def check_al() -> list[str]:
             continue
         if r.returncode == 0:
             continue
+        if r.returncode != 1:
+            why = (r.stderr.strip() or r.stdout.strip() or "no output")[-300:]
+            out.append(f"[AL] {rel}: xlat check exited {r.returncode}, so no "
+                       f"verdict was reached: {why}")
+            continue
+        n = len(out)
         for ln in (x.strip() for x in r.stdout.splitlines()):
             if ln.startswith(("NOT FOUND", "UNPINNED", "MOVED", "ABSENT",
                               "AMBIGUOUS", "MALFORMED")):
@@ -2428,6 +2437,9 @@ def check_al() -> list[str]:
             elif ln.startswith("NO CITATIONS"):
                 out.append(f"[AL] {rel} carries no pinned citation, so it rests "
                            f"on a reading nobody can check")
+        if len(out) == n:
+            out.append(f"[AL] {rel}: xlat check exited 1 and named no row this "
+                       f"check can parse")
     return out
 
 
