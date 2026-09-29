@@ -27,7 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| 3a | `design-to-spec` on `E202`, `Result` | error handling | `docs/elements/specs/E202-*-SPEC.md` |
+| none | paused 2026-09-29 while the author picks the next direction | | |
 
 ## Queued, in order
 
@@ -35,7 +35,8 @@ row the same turn.
 |---|---|---|---|
 | 2e | register `E201` as phase 34, and flip `EV12` to `built`. The diff is built and held, saved outside the tree | error handling | the R2 call below |
 | 2f | `revisit` `docs/arcs/parts/errors-as-values-EV12.md` §4b: a file past `MAX-DEPTH` is read and counted, and the design says it errors | error handling | nothing |
-| 3c | `E202` SPEC audit, then implement | error handling | run 3a |
+| 3c | `E202` SPEC audit, then implement. The SPEC's done-when names a red suite that `90e9b4d` repaired | error handling | nothing |
+| 3e | `revisit` `E201`'s register so its arm-name rule reads `res-val` and `res-why` before any boundary adopts `Result` | error handling | before run 8 |
 | 3b | design `EV2`, `bind` and `map-err` over `E202`'s type | error handling | nothing |
 | 3d | amend `docs/arcs/errors-as-values-arc.md` to the `E201` readings: its 76, 47, 30 and 202 are hand counts, and requirement 5 reads 30 where the committed predicate reads 33 | error handling | nothing |
 | 4 | gate `K2` before it mints (was crypto queue 4b) | crypto | nothing for the audit, the `CRY` band for the mint |
@@ -73,6 +74,8 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| 3a | `E202` SPEC, phase 35, four census readings move | `dcb2b6d` |
+| fix | the suite was red from `4e9649f`, a gate committed without its phase. The gate now declares itself out until R2 is ruled | `90e9b4d` |
 | 3 | `EV1` design audit PASS, eleven corrections, every wide-rule figure reproduced off `E201`. Minted `E202`, `Result` | `70c0191` |
 | 2c | check AL fails when `xlat check` reaches no verdict, three mutants run | `fe5fd88` |
 | 2d | `E201` built: register, instrument, fixtures and gate, 14 passed against the real index. Bare `Str` error arms read 33 where the arc said 30, a `Str` anywhere 49 where it said 47. Compiler blob unchanged. Not yet a suite phase | `4e9649f` |
