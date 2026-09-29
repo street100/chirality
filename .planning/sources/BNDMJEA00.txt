@@ -1,0 +1,2912 @@
+F ast and Flexible String Matching
+b y Combining Bit/-pa rall el i sm and Su/x Automata
+Gonzalo Nava rro
+Dept/. of Computer Science/, Universit y of Chile
+and
+Mathieu Ra/not
+Equip e g / enome/, cellul e et info rmatique/, Universit y of V ersaille s
+The most imp ortan t features of a string matc hing algorithm are its e/ciency and its /exibilit y /.
+E/ciency has traditional ly receiv ed more atten tion/, while /exibilit y in the searc h pattern is b e/-
+coming a more and more imp ortan t issue/. Most classical string matc hing algorithms are aimed at
+quic kly /nding an exact pattern in a text/, b eing Kn uth/-Morris/-Pratt /(KMP/) and the Bo y er/-Mo ore
+/(BM/) family the most famous ones/. A recen t dev elopme n t uses deterministic /\su/x automata/"
+to design new optimal string matc hing algorithms/, e/.g/. BDM and T urb oBDM/. Flexibilit y has
+b een addressed quite separately b y the use of /\bit/-parallel ism/" /, whic h sim ulates automata in their
+nondetermi nisti c form b y using bits and exploiting the in trinsic parallelism inside the computer
+w ord/, e/.g/. the Shift/-Or algorithm/. Those algorithms are extended to handle classes of c haracters
+and errors in the pattern and//or in the text/, their dra wbac k b eing their inabilit y to skip text
+c haracters/. In this pap er w e merge bit/-paralleli sm and su/x automata/, so that a nondeterm in/-
+istic su/x automaton is sim ulated using bit/-paralleli sm/. The resulting algorithm/, called BNDM/,
+obtains the b est from b oth w orlds/. It is m uc h simpler to implemen t than BDM and nearly as
+simple as Shift/-Or/. It inherits from Shift/-Or the abilit y to handle /exible patterns and from BDM
+the abilit y to skip c haracters/. BNDM is /3/0/%/-/4/0/% faster than BDM and up to /7 times faster than
+Shift/-Or/. When compared to the fastest existing algorithms on exact patterns /(whic h b elong to
+the BM family/)/, BNDM is from /2/0/% slo w er to /3 times faster/, dep ending on the alphab et size/.
+With resp ect to /exible pattern searc hing/, BNDM is b y far the fastest tec hnique to deal with
+classes of c haracters and is comp etitiv e to searc h allo wing errors/. In particular/, BNDM seems
+v ery adequate for computati ona l biology application s/, since it is the fastest algorithm to searc h
+on DNA sequences and /exible searc hing is an imp ortan t problem in that area/. As a theoretical
+dev elopmen t related to /exible pattern matc hing/, w e in tro duce a new automaton to recognize
+su/xes of patterns with classes of c haracters/. T o the b est of our kno wledge/, this automaton has
+not b een studied b efore/.
+P artially supp orted b y Chilean F ondecyt Gran t /1/-/9/9/0/6/2/7 /(/rst author/) and ECOS//Conicyt action
+C/9/9E/0/4 /(b oth authors/)/.
+Authors/' address/: Gonzalo Na v arro/, Dept/. of Computer Science/, Univ ersit y of Chile/, Blanco
+Encalada /2/1/2/0/, San tiago/, Chile/. gnavarro/@d cc/. uch il e/.c l /. Mathieu Ra/not/, Equip e g / enome/,
+cellule et informatique /, Univ ersit / e de V ersailles/, /4/5 a v en ue des Etats/-Unis/, /7/8/0/3/5 V ersailles Cedex/,
+raffinot/@g ene tiq ue/. uv sq/. fr /.
+P ermission to mak e digital or hard copies of part or all of this w ork for p ersonal or classro om use is
+gran ted without fee pro vided that copies are not made or distributed for pro/t or direct commercial
+adv an tage and that copies sho w this notice on the /rst page or initial screen of a displa y along
+with the full citation/. Cop yrigh ts for comp onen ts of this w ork o wned b y others than A CM m ust
+b e honored/. Abstracting with credit is p ermitted/. T o cop y otherwise/, to republish/, to p ost on
+serv ers/, to redistribute to lists/, or to use an y comp onen t of this w ork in other w orks/, requires prior
+sp eci/c p ermission and//or a fee/. P ermissions ma y b e requested from Publications Dept/, A CM
+Inc/./, /1/5/1/5 Broadw a y /, New Y ork/, NY /1/0/0/3/6 USA/, fax /+/1 /(/2/1/2/) /8/6/9/-/0/4/8/1/, or permissions /@ac m/.o rg /.
+/2 / G/. Nava rro and M/. Ra/not
+Categories and Sub ject Descriptors/: F/./2/./2 /[ Analysis of algorithms and problem complexit y /]/:
+Nonn umerical algorithms and problems/| Pattern matching/, Computations on discr ete structur es /;
+H/./3/./3 /[ Information storage and retriev al /]/: Information searc h and retriev al/| Se ar ch pr o c ess
+/1/. INTRODUCTION
+The string/-matc hing problem is to /nd all the o ccurrences of a giv en pattern p /=
+p
+/1
+p
+/2
+/: /: /: p
+m
+in a large text T /= t
+/1
+t
+/2
+/: /: /: t
+n
+/, b oth b eing sequences of c haracters dra wn
+from a /nite c haracter set //. This problem is fundamen tal in computer science and
+is a basic need of man y applications/, suc h as text retriev al/, sym b ol manipulation/,
+computational biology /, data mining/, net w ork securit y /, etc/.
+Sev eral algorithms exist to solv e this problem/. One of the most famous/, and the
+/rst ha ving linear w orst/-case b eha vior/, is Kn uth/-Morris/-Pratt /(KMP/) /[Kn uth et al/.
+/1/9/7/7/]/. The searc h in KMP is done b y scanning the text c haracter b y c haracter/, and
+for eac h text p osition i remem b ering the longest pre/x of the pattern whic h is also
+a su/x of t
+/1
+/: /: /: t
+i
+/. This approac h is O /( n /) w orst/-case time but it needs to scan all
+c haracters in the text/, indep enden tly of the pattern/. A second algorithm/, as famous
+as KMP and whic h allo ws skipping c haracters/, is Bo y er/-Mo ore /(BM/) /[Bo y er and
+Mo ore /1/9/7/7/]/. The searc h in BM is done inside a windo w of length m /, ending at
+p osition i in the text/. BM searc hes bac kw ards the longest su/x of t
+/1
+/: /: /: t
+i
+whic h is
+also a su/x of the pattern/. If the su/x is the whole pattern a matc h is rep orted/.
+Then the windo w is shifted to the next o ccurrence of the su/x in the pattern/. This
+algorithm leads to sev eral v ariations/, lik e Horsp o ol /[Horsp o ol /1/9/8/0/] and Sunda y
+/[Sunda y /1/9/9/0/]/, considered the fastest string/-matc hing algorithms in practice/.
+A large part of the researc h in e/cien t algorithms for string matc hing can b e
+regarded as the quest for automata whic h are e/cien t in some sense/. F or instance/,
+KMP is simply a deterministic automaton that searc hes the pattern/, b eing its main
+merit that it is O /( m /) in space and construction time/. Man y v ariations of the BM
+family are supp orted b y an automaton to o/.
+Another automaton/, called a /\su/x automaton/"/, is used in /[Cro c hemore et al/.
+/1/9/9/3/; Cro c hemore and Rytter /1/9/9/4/; Czuma j et al/. /1/9/9/4/; Lecro q /1/9/9/2/; Ra/not
+/1/9/9/7b/]/, where the idea is to searc h a substring instead of a pre/x /(as KMP/)/, or a
+su/x /(as BM/)/. Optimal sublinear algorithms on a v erage/, lik e BDM or T urb oBDM
+/[Cro c hemore and Rytter /1/9/9/4/; Czuma j et al/. /1/9/9/4/]/, ha v e b een obtained with this
+approac h/, whic h has also b een extended to m ultipattern matc hing /[Cro c hemore
+et al/. /1/9/9/3/; Cro c hemore and Rytter /1/9/9/4/; Ra/not /1/9/9/7b/] /(i/.e/. lo oking for the
+o ccurrences of an y pattern from a giv en set/)/.
+Besides sp eed/, /exibilit y in the t yp es of patterns that can b e searc hed is b ecoming
+a more and more relev an t issue in recen t y ears/, motiv ated b y text retriev al/, compu/-
+tational biology and signal pro cessing applications /(see/, e/.g/./, /[Na v arro /2/0/0/0a/]/)/. In
+these applications the pattern needs not b e just a sequence of c haracters that is to
+b e found v erbatim in the text/, but it can include
+Classes of c haracters/, whic h are p ositions that matc h a set of c haracters of the
+alphab et/, rather than just on c haracter/. This p ermits in particular searc hing
+with don /'t c ar e c haracters /(whic h matc h ev ery c haracter/) and case insensitiv e
+F ast and Flexible String Matching / /3
+searc hing/. This mo dels t ypical needs of text retriev al applications /(suc h as case
+insensitiv e searc hing/) and computational biology /(where some pattern p ositions
+are not completely determined/)/. In computational biology is also p ossible that
+the text con tains classes of c haracters/.
+Bounded length gaps/, whic h are pattern p ositions that matc h an arbitrary string
+whose length is b et w een a minim um and a maxim um sp eci/ed v alue/. This is
+t ypically of in terest/, for example/, in protein searc hing/.
+Optional and rep eatable c haracters/, whic h are pattern c haracters or classes
+that ma y or ma y not app ear in a text o ccurrence/; or that ma y app ear /0/, /1/, or
+more times/; resp ectiv el y /. This is of in terest in text retriev al/./1
+Net w ork and regular expressions/, whic h p ermit building patterns comp osed
+from simple letters and the empt y string/, as w ell as union and concatenation
+of other patterns/, and /(in the case of regular expressions/) an arbitrary n um b er
+of rep etitions of another pattern/. These patterns are extremely p o w erful to
+sp ecify complex searc hing/.
+Appro ximate searc hing/, whic h p ermits a limited n um b er of di/erences b et w een
+the pattern and its o ccurrences in the text/. Dep ending on the mo del/, the di/er/-
+ences p ermitted ma y b e c haracter substitutions /(Hamming mo del/)/; c haracter
+insertions/, deletions and substitutions /(Lev ensh tein mo del/)/; etc/. Appro ximate
+searc hing is of great in terest when the text is of bad qualit y /(e/.g/. text obtained
+b y optical c haracter recognition or just p o orly written as in the W eb/, DNA
+sequences whic h con tain exp erimen tal errors/, signals that ha v e b een corrupted
+during transmission/, etc/./)/, or there is no absolute certain t y ab out the searc h
+pattern /(e/.g/. searc hing for foreign names/)/.
+A related line of researc h in string matc hing/, called /\bit/-parallelism/" /[Baeza/-
+Y ates /1/9/9/2/]/, has yielded the b est algorithms for /exible searc hing/. The general
+tec hnique is to use the automata in their nondeterministic form instead of making
+them deterministic/. Usually the nondeterministic v ersions are v ery simple and
+regular/. This p ermits mapping the state of the searc h on to the bits of a computer
+w ord and using the in trinsic parallelism of the bit manipulations of the pro cessor to
+parallelize the op erations necessary to up date the state of the searc h/. Comp etitiv e
+algorithms ha v e b een obtained for exact string matc hing /(e/.g/./, Shift/-Or /[Baeza/-
+Y ates and Gonnet /1/9/9/2/; W u and Man b er /1/9/9/2/]/)/, as w ell as for appro ximate string
+matc hing /[Baeza/-Y ates and Gonnet /1/9/9/2/; Baeza/-Y ates and Na v arro /1/9/9/9/; My ers
+/1/9/9/9/; W u and Man b er /1/9/9/2/; W u et al/. /1/9/9/6/]/. Although these algorithms generally
+w ork w ell only on patterns of mo derate length/, they are simpler/, more /exible
+/(e/.g/. they can easily handle classes of c haracters/)/, and ha v e v ery lo w memory
+requiremen ts/.
+In this pap er w e merge some asp ects of the t w o approac hes in order to obtain a
+fast string matc hing algorithm/, called Bac kw ard Nondeterministic Da wg Matc hing
+/(BNDM/)/, whic h can b e seen as a cross b et w een BDM and Shift/-Or/. BNDM can b e
+extended to searc h classes of c haracters/, to m ultipattern searc h and to appro ximate
+searc h/, just lik e Shift/-Or/. BNDM uses a nondeterministic su/x automaton that is
+sim ulated using bit/-parallelism/, and it has the adv an tage of b eing faster than the
+previous algorithms that could b e extended in suc h a w a y /(up to /7 times faster than
+Shift/-Or/)/, b eing faster than BDM /(/3/0/%/-/4/0/% faster/)/, and for small alphab ets b eing
+/4 / G/. Nava rro and M/. Ra/not
+up to /3 times faster than the b est algorithms of the BM family /. Indeed/, BNDM
+is the fastest searc h algorithm for small alphab ets and mo derate length patterns/.
+F or larger alphab ets the BM/-Sunda y algorithm is up to /2/0/% faster/. Additionally
+BDNM uses few space in comparison with the BDM or T urb oBDM algorithms /(it
+do es not need to construct the deterministic su/x automaton/)/, and it is v ery simple
+to implemen t /(e/.g/. complex v ariations of BDM lik e T urb oBDM and BM BDM are
+easy to implemen t/)/.
+In particular/, the abilit y to searc h for classes of c haracters has nev er b een stud/-
+ied in relation to the BDM family /. W e giv e a new de/nition of an automaton
+designed to recognize su/xes of patterns with classes of c haracters/) and sim ulate
+its nondeterministic v ersion using bit/-parallelism/.
+This pap er is organized as follo ws/. In section /2 w e presen t the su/x automaton
+and the BDM algorithm/. In section /3 w e presen t the bit/-parallelism approac h/. In
+section /4 w e presen t our new algorithms for short and long patterns/. W e presen t
+more complex and impro v ed v ersions in section /5/. The extension to classes of
+c haracters is presen ted in section /6/, to m ultipattern matc hing in section /7 and to
+appro ximate string matc hing in section /8/. W e then presen t exp erimen tal results
+in section /9/. Finally /, w e giv e our conclusions and future w ork directions in section
+/1/0/. Earlier partial v ersions of this w ork app eared in /[Na v arro /1/9/9/8/; Na v arro and
+Ra/not /1/9/9/8/]/.
+W e use the follo wing de/nitions throughout the pap er/.
+A w ord x /2 /
+/
+is a factor /(or substring/) of p if p can b e written p /= uxv /, u/; v /2 /
+/
+/.
+W e denote F act/( p /) the set of factors of p /. A factor x of p is called a su/x of p is p /=
+ux /, u /2 /
+/
+/. The set of su/xes of p is called Su//( p /)/. When w e w an t to emphasize
+the in ter/-letter p ositions in the pattern/, w e write p /=
+/0
+p
+/1
+/1
+p
+/2
+/2
+/:/:/:p
+m /? /1
+m /? /1
+p
+m
+m
+/.
+W e denote as b
+/`
+/:/:/:b
+/1
+the bits of a computer w ord of length /` /. W e use exp o/-
+nen tiation to denote bit rep etition /(e/.g/. /0
+/3
+/1 /= /0/0/0/1/)/. Since the length w of the
+computer w ord is /xed/, w e are hiding the details on where w e store the /` bits in/-
+side it/. W e giv e suc h details when they are relev an t/. Finally /, w e use C/-lik e syn tax
+for op erations on the bits of computer w ords/: /\ j /" is the bit wise/-or/, /\/&/" is the
+bit wise/-and/, /\ b /" is the bit wise/-xor and /\ / /" complemen ts all the bits/. The shift/-
+left op eration/, /\ /</< /"/, mo v es the bits to the left and en ters zeros from the righ t/, i/.e/.
+b
+m
+b
+m /? /1
+/:/:/:b
+/2
+b
+/1
+/</< r /= b
+m /? r
+/:/:/:b
+/2
+b
+/1
+/0
+r
+/. The shift/-righ t/, /\ />/> /" mo v es the bits in the
+other direction/. Finally /, w e can p erform arithmetic op erations on the bits/, suc h as
+addition and subtraction/, whic h op erate the bits as if they formed a n um b er/. F or
+instance/, b
+/`
+/:/:/:b
+x
+/1/0/0/0/0 /? /1 /= b
+/`
+/:/:/:b
+x
+/0/1/1/1/1/.
+/2/. SEARCHING WITH SUFFIX A UTOMA T A
+W e describ e in this section the BDM pattern matc hing algorithm /[Cro c hemore and
+Rytter /1/9/9/4/; Czuma j et al/. /1/9/9/4/]/. This algorithm is based on a su/x automaton/.
+W e /rst describ e suc h automaton and then explain ho w it is used in the searc h
+algorithm
+/2/./1 Su/x Automata
+A su/x automaton on a pattern p /= p
+/1
+p
+/2
+/: /: /: p
+m
+/(frequen tly called D A W G/( p /) /-
+for Deterministic Acyclic W ord Graph/) is the minimal /(incomplete/) deterministic
+/nite automaton that recognizes all the su/xes of this pattern/. By /\incomplete/"
+F ast and Flexible String Matching / /5
+w e mean that unnecessary transitions are not presen t/.
+The nondeterministic v ersion of this automaton has a v ery regular structure and
+is sho wn in Figure /1/. W e sho w no w ho w the corresp onding deterministic automaton
+is built/.
+I
+/0 /1 /2 /3 /4 /5 /6 /7
+b a a b b a a
+/ / / / / / /
+/
+Fig/. /1/. A nondetermi nist ic su/x automaton for the pattern p /= baabbaa /. Dashed lines represen t
+/ /-transitions /(i/.e/. they o ccur without consuming an y input/)/. I is the initial state of the automaton/.
+Giv en a factor x of the pattern p /, endp os/( x /) is the set of all the pattern p ositions
+where an o ccurrence of x ends /(there is at least one/, since x is a factor of the pattern/,
+and there are as man y as rep etitions of x inside p /)/. F ormally /, giv en x /2 F act/( p /)/, w e
+de/ne endp os/( x /) /= f i /= /9 u/; p
+/1
+p
+/2
+/:/:/:p
+i
+/= ux g /. W e call eac h suc h in teger a p osition /.
+F or example/, endp os /( baa /) /= f /3 /; /7 g in the w ord baabbaa /. Notice that endp os /( / /) is
+the complete set of p ossible p ositions /(recall that / is the empt y string/)/. Notice
+that for an y u/; v /, endpos /( u /) and endpos /( v /) are either disjoin t or one con tained in
+the other/.
+W e de/ne an equiv alence relation / b et w een factors of the pattern/. F or u/; v /2
+F act/( p /)/, w e de/ne
+u / v if and only if endp os /( u /) /= endp os /( v /)
+/(notice that one of the factors m ust b e a su/x of the other for this equiv alence
+to hold/, although the con v erse is not true/)/. F or instance/, in our example pattern
+p /= baabbaa /, w e ha v e that baa / aa b ecause in all the places where aa ends in the
+pattern/, baa ends to o /(and vice/-v ersa/)/.
+The no des of the D A W G corresp ond to the equiv alence classes of / /, i/.e/. to sets
+of p ositions/. A state/, therefore/, can b e though t of as a factor of the pattern already
+recognized/, except that w e do not distinguish b et w een some factors/. Another w a y
+to see this is that the set of p ositions is in fact the set of activ e states in the
+nondeterministic automaton/.
+There is an edge lab eled / from the set of p ositions f i
+/1
+/; i
+/2
+/; /: /: /: i
+k
+g to /
+p
+/( i
+/1
+/+ /1 /; / /) /[
+/
+p
+/( i
+/2
+/+ /1 /; / /) /[ /: /: /: /[ /
+p
+/( i
+k
+/; / /)/, where
+/
+p
+/( i/; / /) /=
+/(
+f i g if i / m and p
+i
+/= /
+/; otherwise
+whic h is the same to sa y that w e try to extend the factor that w e recognized with the
+next text c haracter / /, and k eep the p ositions that still matc h/. If w e are left with no
+matc hing p ositions/, w e do not build the transition/. The initial state corresp onds to
+the set f /0 /:/:m g /. A state is terminal if its corresp onding subset of p ositions con tains
+the last p osition m /(i/.e/. w e matc hed a su/x of the pattern/)/. As an example/, the
+deterministic su/x automaton of the w ord baabbaa is giv en in Figure /2/.
+The /(deterministic /) su/x automaton is a w ell kno wn structure /[Blumer et al/.
+/1/9/8/9/; Cro c hemore /1/9/8/6/; Cro c hemore and Rytter /1/9/9/4/; Ra/not /1/9/9/7a/]/, and w e do
+/6 / G/. Nava rro and M/. Ra/not
+/0/,/1/,/2/,/3/,/4/,/5/,/6/,/7 /1/,/4/,/5 /2/,/6 /3/,/7
+/2/,/3/,/6/,/7
+/4 /5 /6 /7
+b a a
+b
+b a a
+b
+a
+b
+a
+Fig/. /2/. Deterministic su/x automaton of the w ord
+/0
+b
+/1
+a
+/2
+a
+/3
+b
+/4
+b
+/5
+a
+/6
+a
+/7
+not pro v e an y of its prop erties here /(nor the correctness of the previous construc/-
+tion/)/. The size of D A W G/( p /) is linear in m /(coun ting b oth no des and edges/)/, and a
+linear on/-line construction algorithm exists /[Cro c hemore /1/9/8/6/]/. A v ery imp ortan t
+fact for our algorithm is that this automaton can not only b e used to recognize the
+su/xes of p /, but also factors of p /. By the su/x automaton de/nition/, there is a
+path lab eled x form the initial no de of D A W G/( p /) if and only if x is a factor of p /.
+/2/./2 Sea rch Algo rithm
+The su/x automaton structure is used in /[Cro c hemore and Rytter /1/9/9/4/; Czuma j
+et al/. /1/9/9/4/] to design a simple pattern matc hing algorithm called BDM/. This al/-
+gorithm is O /( mn /) time in the w orst case/, but optimal on a v erage /( O /( n log m/=m /)
+time
+/1
+/)/. Other more complex v ariations suc h as T urb oBDM/[Czuma j et al/. /1/9/9/4/]
+and MultiBDM/[Cro c hemore and Rytter /1/9/9/4/; Ra/not /1/9/9/7b/] ac hiev e linear time
+in the w orst case/. T o searc h a pattern p /= p
+/1
+p
+/2
+/: /: /: p
+m
+in a text T /= t
+/1
+t
+/2
+/: /: /: t
+n
+/, the
+su/x automaton of p
+r
+/= p
+m
+p
+m /? /1
+/: /: /: p
+/1
+/(i/.e the pattern read bac kw ards/) is built/.
+A windo w of length m is slid along the text/, from left to righ t/. The algorithm
+searc hes bac kw ards inside the windo w for a factor of the pattern p using the suf/-
+/x automaton/. During this searc h/, if a terminal state is reac hed whic h do es not
+corresp ond to the en tire pattern p /, the windo w p osition is recorded /(in a v ariable
+last /)/. This corresp onds to /nding a pr e/x of the pattern starting at p osition last
+inside the windo w and ending at the end of the windo w /(since the su/xes of p
+r
+are
+the rev erse pre/xes of p /)/. Since w e remem b er the last pre/x recognized bac kw ards/,
+w e ha v e the longest pre/x of p in the windo w/. This bac kw ard searc h ends in t w o
+p ossible forms/:
+/(/1/) W e fail to recognize a factor/, i/.e w e reac h a letter / that do es not corresp ond to
+a transition in D A W G/( p
+r
+/)/. Figure /3 illustrates this case/. In this case w e shift
+the windo w to the righ t/, its starting p osition corresp onding to the p osition last
+/(w e cannot miss an o ccurrence b ecause in that case the su/x automaton w ould
+ha v e found its pre/x in the windo w/)/.
+/(/2/) W e reac h the b eginning of the windo w/, therefore recognizing the pattern p /. W e
+rep ort the o ccurrence/, and shift the windo w exactly as in the previous case
+/(notice that w e ha v e the previous last v alue/)/.
+/1
+The lo w er b ound of /
+/( n log m/=m /) a v erage time for an y pattern matc hing algorithm under a
+Bernouilli mo del with uniform c haracter distribution and a RAM complexit y mo del is from A/. C/.
+Y ao /[Y ao /1/9/7/9/]/.
+F ast and Flexible String Matching / /7
+/
+last
+Windo w
+Record in last the windo w p osition where a terminal state is reac hed
+Searc h for a factor with the D A W G
+last
+The maxim um pre/x starts at last
+F ail to recognize a factor at / /: the pattern can not start b efore / /.
+/
+safe shift New windo w
+Fig/. /3/. Basic searc h with the su/x automaton
+The pseudo/-co de of the BDM algorithm is giv en in Figure /2/./2/. W e note /
+D AW G
+/( q /; / /)
+the transition function of the su/x automaton/. /
+D AW G
+/( q /; / /) is the no de that w e
+reac h if w e mo v e along the edge lab eled b y / from the no de q /. If suc h an edge do es
+not exist/, then /
+D AW G
+/( q /; / /) is nul l /.
+BDM/( p /= p
+/1
+p
+/2
+/: /: /: p
+m
+/, T /= t
+/1
+t
+/2
+/: /: /: t
+n
+/)
+/1/. Prepro cessing
+/2/. Build D A W G/( p
+r
+/)
+/3/. Searc h
+/4/. p os / /0
+/5/. While p os / n /? m do
+/6/. j / m/; l ast / m
+/7/. state / initial state of D A W G/( p
+r
+/)
+/8/. While state /6/= nul l do
+/9/. state / /
+D AW G
+/( state /; t
+pos /+ j
+/)
+/1/0/. j / j /? /1
+/1/1/. If state is terminal then
+/1/2/. If j /> /0 then last / j
+/1/3/. Else rep ort an o ccurrence at pos /+ /1
+/1/4/. End of if
+/1/5/. End of while
+/1/6/. p os / p os /+ last
+/1/7/. End of while
+Fig/. /4/. Pseudo/-co de of the BDM algorithm/. The v ariable pos p oin ts at the c haracter just b efore
+the windo w/, j is used to tra v erse the windo w bac kw ards and last to record the last pre/x matc hed/.
+/8 / G/. Nava rro and M/. Ra/not
+/2/./2/./0/./1 Se ar ch example/:/. w e searc h the pattern aabb aab in the text
+T /= a b b a b a a b b a a b/:
+W e /rst build D A W G/( p
+r
+/= b aabb aa /)/, whic h is giv en in Figure /2/. W e note the curren t
+windo w b et w een square brac k ets and the recognized pre/x in a b o x/. W e b egin with
+T /= /[ a b b a b a a /] b b a a b /, m /= /7/, last /= /7/.
+/(/1/) T /= /[ a b b a b a a /] b b a a b /. a is
+a factor of p
+r
+and a rev erse pre/x of
+p /. last /= /6/.
+/(/2/) T /= /[ a b b a b a a /] b b a a b /. aa is
+a factor of p
+r
+and a rev erse pre/x of
+p /. last /= /5/.
+/(/3/) T /= /[ a b b a b a a /] b b a a b /. aab
+is a factor of p
+r
+/.
+/(/4/) T /= /[ a b b a b a a /] b b a a b /.
+W e fail to recognize the next a /. So
+w e shift the windo w to last /. W e
+searc h again in the p osition/: T /=
+a b b a b /[ a a b b a a b /]/, last /= /7/.
+/(/5/) T /= a b b a b /[ a a b b a a b /]/. b is
+a factor of p
+r
+/.
+/(/6/) T /= a b b a b /[ a a b b a a b /]/. ba is
+a factor of p
+r
+/.
+/(/7/) T /= a b b a b /[ a a b b a a b /]/. baa
+is a factor of p
+r
+/, and a rev erse pre/x
+of p /. last /= /4/.
+/(/8/) T /= a b b a b /[ a a b b a a b /]/. baab
+is a factor of p
+r
+/.
+/(/9/) T /= a b b a b /[ a a b b a a b /]/.
+baabb is a factor of p
+r
+/.
+/(/1/0/) T /= a b b a b /[ a a b b a a b /]/.
+baabba is a factor of p
+r
+/.
+/(/1/1/) T /= a b b a b /[ a a b b a a b /]/.
+W e recognize the w ord aabbaab and
+rep ort an o ccurrence/.
+/3/. BIT/-P ARALLELISM
+In /[Baeza/-Y ates and Gonnet /1/9/9/2/]/, a new approac h to text searc hing w as prop osed/.
+It is based on bit/-p ar al lelism /[Baeza/-Y ates /1/9/9/2/]/, a tec hnique consisting in taking
+adv an tage of the in trinsic parallelism of the bit op erations inside a computer w ord/.
+By using clev erly this fact/, the n um b er of op erations that an algorithm p erforms
+can b e cut do wn b y a factor of at most w /, where w is the n um b er of bits in the
+computer w ord/. Since in curren t arc hitectures w is /3/2 or /6/4/, the sp eedup is v ery
+signi/can t in practice/.
+The Shift/-Or algorithm uses bit/-parallelism to sim ulate the op eration of a nonde/-
+terministic automaton that searc hes the pattern in the text /(see Figure /5/)/. As this
+automaton is sim ulated in time O /( mn /)/, the Shift/-Or algorithm ac hiev es O /( mn/=w /)
+w orst/-case time /(optimal sp eedup/)/. Notice that if w e con v ert the nondeterministic
+automaton to a deterministic one so as to ha v e O /( n /) searc h time/, w e get a v ersion of
+the KMP algorithm /[Kn uth et al/. /1/9/7/7/] /(KMP /, ho w ev er/, is t wice as slo w as Shift/-Or
+for m / w /)/.
+W e explain no w the Shift/-And algorithm/, whic h is an easier/-to/-explain /(though a
+little less e/cien t/) v arian t of Shift/-Or/. The algorithm /rst builds a table B whic h
+for eac h c haracter stores a bit mask b
+m
+/:/:/:b
+/1
+/. The mask in B /[ c /] has the i /-th bit set if
+and only if p
+i
+/= c /. The state of the searc h is k ept in a mac hine w ord D /= d
+m
+/:/:/:d
+/1
+/,
+where d
+i
+is set whenev er p
+/1
+p
+/2
+/:/:/:p
+i
+matc hes the end of the text read up to no w
+/(another w a y to see it is to consider that d
+i
+tells whether the state n um b ered i in
+Figure /5 is activ e/)/. Therefore/, w e rep ort a matc h whenev er d
+m
+is set/.
+F ast and Flexible String Matching / /9
+/0 /1 /2 /3 /4 /5 /6 /7
+/
+b
+a a
+b b
+a a
+Fig/. /5/. A nondetermin istic automaton to searc h the pattern p /= baabbaa in a text/. The initial
+state is /0/.
+W e set D /= /0
+m
+originally and/, for eac h new text c haracter t
+j
+/, up date D using
+the form ula
+D
+/0
+/ /(/( D /</< /1/) j /0
+m /? /1
+/1/) /& B /[ t
+j
+/]
+The form ula is correct b ecause the i /-th bit is set if and only if the /( i /? /1/)/-th bit w as
+set for the previous text c haracter and the new text c haracter matc hes the pattern
+at p osition i /. In other w ords/, t
+j /? i /+/1
+/:/:t
+j
+/= p
+/1
+/:/:p
+i
+if and only if t
+j /? i /+/1
+/:/:t
+j /? /1
+/= p
+/1
+/:/:p
+i /? /1
+and t
+j
+/= p
+i
+/. Again/, it is p ossible to relate this form ula to the mo v emen t that o ccurs
+in the nondeterministic automaton for eac h new text c haracter/: eac h state gets the
+v alue of the previous state/, but this happ ens only if the text c haracter matc hes the
+corresp onding arro w/. Finally /, the /\ j /0
+m /? /1
+/1/" after the shift allo ws a matc h to b egin
+at the curren t text p osition/. This corresp onds to the self/-lo op at the b eginning of
+the automaton and is sa v ed in Shift/-Or/, where all the bits are complemen ted/.
+The cost of this algorithm is O /( n /)/. Although w e consider only masks of length m
+here/, in practice the masks are of length w /(as explained earlier/) and some pro visions
+ma y b e necessary to handle the un w an ted extra bits/. F or patterns longer than the
+computer w ord /(i/.e/. m /> w /)/, the algorithm uses d m/=w e computer w ords for the
+sim ulation /(not all them are activ e all the time/)/, with a w orst/-case cost of O /( mn/=w /)
+and an a v erage case cost of O /( n /)/.
+The Shift/-And algorithm is v ery simple/, and has some further adv an tages/. The
+most immediate one is that it is v ery easy to extend so as to handle classes of
+c haracters/. That is/, eac h pattern p osition do es not matc h just a single c haracter
+but a set of c haracters/. If C
+i
+is the set of c haracters at p osition i in the pattern/,
+then w e set the i /-th bit of B /[ c /] for all c /2 C
+i
+/. In /[Baeza/-Y ates and Gonnet /1/9/9/2/]
+they sho w also ho w to allo w a limited n um b er k of mismatc hes in the o ccurrences/,
+at O /( nm log /( k /) /=w /) cost/.
+Later /[W u and Man b er /1/9/9/2/] enhanced this paradigm to supp ort extended pat/-
+terns/, whic h allo w wild cards /(i/.e/. gaps of un b ounded length/)/, regular expressions/,
+appro ximate searc h with non uniform costs/, and com binations/. F urther dev elopmen t
+of the bit/-parallelism approac h for appro ximate string matc hing led to some of the
+fastest algorithms for short patterns /[Baeza/-Y ates and Na v arro /1/9/9/9/; My ers /1/9/9/9/]/.
+In most cases/, the k ey idea w as to sim ulate a nondeterministi c /nite automaton/. It
+is in teresting also to men tion /[El/-Mabrouk and Cro c hemore /1/9/9/6/]/, whic h searc hes
+allo wing mismatc hes b y using a com bination of bit/-parallelism and Bo y er/-Mo ore/.
+Bit/-parallelism has b ecome a general w a y to sim ulate simple nondeterministic
+automata instead of con v erting them to deterministic /. This is ho w w e use it in this
+pap er/.
+/1/0 / G/. Nava rro and M/. Ra/not
+/4/. BIT/-P ARALLELISM ON SUFFIX A UTOMA T A
+W e sim ulate the BDM algorithm using bit/-parallelism/. The result is an algorithm
+whic h is simpler/, uses less memory /, has more lo calit y of reference/, and is easily
+extended to handle more complex patterns/, as sho wn in the next sections/. W e /rst
+assume that m / w and later sho w ho w to extend the algorithm for longer patterns/.
+/4/./1 The Basic Algo rithm
+W e sim ulate the automaton of Figure /1 on the rev ersed pattern/. Just as for Shift/-
+And/, w e k eep the state of the searc h using m bits of a computer w ord D /= d
+m
+/:/:/:d
+/1
+/.
+The BDM algorithm mo v es a windo w o v er the text/. Eac h time the windo w is
+p ositioned at a new text p osition just after pos /, it searc hes bac kw ards the windo w
+t
+pos /+/1
+/:/:t
+pos /+ m
+using the D A W G automaton/, un til either m iterations are p erformed
+/(whic h implies a matc h in the curren t windo w/) or the automaton cannot follo w an y
+transition/. In our case/, the bit d
+i
+at iteration k is set if and only if p
+m /? i /+/1
+/:/:
+m /? i /+ k
+/=
+t
+pos /+/1/+ m /? k
+/:/:t
+pos /+ m
+/. Some observ ations follo w
+/|Since w e b egin at iteration /0/, the initial v alue for D is /1
+m
+/(recall that w e use
+exp onen tiation to denote bit rep etition/)/.
+/|There is a matc h if and only if after iteration m it holds d
+m
+/= /1/.
+/|Whenev er d
+m
+/= /1/, w e ha v e matc hed a pre/x of the pattern in the curren t windo w/.
+The longest pre/x matc hed /(excluding the complete pattern/) corresp onds to the
+next windo w p osition /(v ariable last /)/.
+/|Since there is no initial self/-lo op/, this automaton ev en tually runs out of activ e
+states/. Moreo v er/, states /( m /? k /) /: /: /: m are inactiv e at iteration k /.
+The algorithm w orks as follo ws/. Eac h time w e p osition the windo w in the text
+w e initialize D and scan the windo w bac kw ards/. F or eac h new text c haracter w e
+up date D /. Eac h time w e /nd a pre/x of the pattern /( d
+m
+/= /1/) w e remem b er the
+p osition in the windo w/. If w e run out of /1/'s in D then there cannot b e a matc h and
+w e susp end the scanning /(this corresp onds to not ha ving an y transition to follo w
+in the automaton/)/. If w e can p erform m iterations then w e rep ort a matc h/.
+W e use a mask B whic h for eac h c haracter c stores a bit mask/. This mask
+sets the bits corresp onding to the p ositions i where p
+i
+/= c /(just as in Shift/-And/)/.
+In terestingly enough/, the form ula to up date D turns out to b e v ery similar to that
+of the Shift/-Or algorithm/:
+D
+/0
+/ /( D /& B /[ t
+j
+/]/) /</< /1
+whic h should not b e surprising giv en the similarit y b et w een b oth automata/. The
+algorithm is summarized in Figure /6/. Some optimizations done on the real co de/,
+related to impro v ed /o w of con trol and bit manipulation tric ks/, are not sho wn for
+clarit y /.
+/4/./1/./0/./2 Se ar ch example/:/. w e searc h the pattern aabb aab in the text
+T /= a b b a b a a b b a a b/:
+W e note the curren t windo w b et w een square brac k ets and the recognized pre/x in
+a b o x/. W e b egin with
+F ast and Flexible String Matching / /1/1
+BNDM /( p /= p
+/1
+p
+/2
+/:/:/:p
+m
+/; T /= t
+/1
+t
+/2
+/:/:/:t
+n
+/)
+/1/. Preprocess in g
+/2/. F or c /2 / do B /[ c /] / /0
+m
+/3/. F or i /2 /1 /:/:/:m do B /[ p
+m /? i /+/1
+/] / B /[ p
+m /? i /+/1
+/] j /0
+m /? i
+/1/0
+i /? /1
+/4/. Search
+/5/. pos / /0
+/6/. While pos / n /? m do
+/7/. j / m/; l ast / m
+/8/. D /= /1
+m
+/9/. While D /6/= /0
+m
+do
+/1/0/. D / D /& B /[ t
+pos /+ j
+/]
+/1/1/. j / j /? /1
+/1/2/. If D /& /1/0
+m /? /1
+/6/= /0
+m
+then
+/1/3/. If j /> /0 then l ast / j
+/1/4/. Else rep ort an o ccurrence at pos /+ /1
+/1/5/. End of if
+/1/6/. D / D /</< /1
+/1/7/. End of while
+/1/8/. pos / pos /+ l ast
+/1/9/. End of while
+Fig/. /6/. Bit/-parallel co de for BDM /. Some optimizati ons are not sho wn for clarit y /.
+T /= /[ a b b a b a a /] b b a a b /, D /= /1 /1 /1 /1 /1 /1 /1/, B /=
+a /1 /1 /0 /0 /1 /1 /0
+b /0 /0 /1 /1 /0 /0 /1
+/, m /= /7/, last
+/= /7/, j /= /7/.
+/(/1/) T /= /[ a b b a b a a /] b b a a b /.
+/1 /1 /1 /1 /1 /1 /1
+/& /1 /1 /0 /0 /1 /1 /0
+D /= /1 /1 /0 /0 /1 /1 /0
+j /= /6
+last /= /6
+/(/2/) T /= /[ a b b a b a a /] b b a a b /.
+/1 /0 /0 /1 /1 /0 /0
+/& /1 /1 /0 /0 /1 /1 /0
+D /= /1 /0 /0 /0 /1 /0 /0
+j /= /5
+last /= /5
+/(/3/) T /= /[ a b b a b a a /] b b a a b /.
+/0 /0 /0 /1 /0 /0 /0
+/& /0 /0 /1 /1 /0 /0 /1
+D /= /0 /0 /0 /1 /0 /0 /0
+j /= /4
+last /= /5
+/(/4/) T /= /[ a b b a b a a /] b b a a b /.
+/0 /0 /1 /0 /0 /0 /0
+/& /1 /1 /0 /0 /1 /1 /0
+D /= /0 /0 /0 /0 /0 /0 /0
+j /= /3
+last /= /5
+W e fail to recognize the next a /. So
+w e shift the windo w to last /. W e
+searc h again in the p osition/: T /=
+a b b a b /[ a a b b a a b /]/, last /= /7/,
+j /= /7/.
+/(/5/) T /= a b b a b /[ a a b b a a b /]/.
+/1 /1 /1 /1 /1 /1 /1
+/& /0 /0 /1 /1 /0 /0 /1
+D /= /0 /0 /1 /1 /0 /0 /1
+j /= /6
+last /= /7
+/(/6/) T /= a b b a b /[ a a b b a a b /]/.
+/0 /1 /1 /0 /0 /1 /0
+/& /1 /1 /0 /0 /1 /1 /0
+D /= /0 /1 /0 /0 /0 /1 /0
+j /= /5
+last /= /7
+/1/2 / G/. Nava rro and M/. Ra/not
+/(/7/) T /= a b b a b /[ a a b b a a b /]/.
+/1 /0 /0 /0 /1 /0 /0
+/& /1 /1 /0 /0 /1 /1 /0
+D /= /1 /0 /0 /0 /1 /0 /0
+j /= /4
+last /= /4
+/(/8/) T /= a b b a b /[ a a b b a a b /]/.
+/0 /0 /0 /1 /0 /0 /0
+/& /0 /0 /1 /1 /0 /0 /1
+D /= /0 /0 /0 /1 /0 /0 /0
+j /= /3
+last /= /4
+/(/9/) T /= a b b a b /[ a a b b a a b /]/.
+/0 /0 /1 /0 /0 /0 /0
+/& /0 /0 /1 /1 /0 /0 /1
+D /= /0 /0 /1 /0 /0 /0 /0
+j /= /2
+last /= /4
+/(/1/0/) T /= a b b a b /[ a a b b a a b /]/.
+/0 /1 /0 /0 /0 /0 /0
+/& /1 /1 /0 /0 /1 /1 /0
+D /= /0 /1 /0 /0 /0 /0 /0
+j /= /2
+last /= /4
+/(/1/1/) T /= a b b a b /[ a a b b a a b /]/.
+/1 /0 /0 /0 /0 /0 /0
+/& /1 /1 /0 /0 /1 /1 /0
+D /= /1 /0 /0 /0 /0 /0 /0
+j /= /0
+last /= /4
+W e rep ort an o ccurrence at /6/.
+/4/./2 Handling Longer P atterns
+W e can cop e with longer patterns b y setting up an arra y of w ords D
+t
+and sim ulating
+the w ork of a long computer w ord /(w e call this a /\m ulti/-w ord sim ulation/" of the
+simple algorithm/)/. W e prop ose a di/eren t alternativ e whic h w as exp erimen tally
+found to b e faster/.
+If m /> w /, w e partition the pattern in M /= d m/=w e consecutiv e subpatterns s
+i
+/,
+p /= s
+/1
+s
+/2
+/:/:/: s
+M
+/, so that eac h subpattern s
+i
+is of length m
+i
+/= w if i /< M and the last
+one has the remaining c haracters /(i/.e/. m
+M
+/= m /? w /( M /? /1/)/)/. Those subpatterns
+can therefore b e searc hed with the basic algorithm/.
+W e no w searc h s
+/1
+in the text with the basic algorithm/. If s
+/1
+is found at a
+text p osition j /, w e c hec k whether s
+/2
+follo ws it/. That is/, w e p osition a windo w
+at t
+j /+ m
+/1
+/:/:t
+j /+ m
+/1
+/+ m
+/2
+/? /1
+and use the basic algorithm for s
+/2
+in that windo w/. If s
+/2
+is
+in the windo w/, w e con tin ue similarly with s
+/3
+and so on/. This pro cess ends either
+b ecause w e /nd the complete pattern and rep ort it/, or b ecause w e fail to /nd some
+subpattern s
+i
+in its windo w/.
+W e ha v e to shift the windo w no w/. An easy alternativ e is to use the shift l ast
+/1
+that corresp onds to the searc h of s
+/1
+/. Ho w ev er/, if w e ha v e tested the subpatterns
+s
+/1
+to s
+i
+/, then eac h one giv es a p ossible shift l ast
+i
+/, and w e use the maxim um of all
+those shifts/.
+Although this algorithm searc hes on a shorter windo w /(i/.e/. of length w /< m /) and
+therefore it p erforms shifts shorter than the m ulti/-w ord sim ulation/, this m ulti/-w ord
+sim ulation has to w ork on M computer w ords to tra v erse the windo w/, in general
+cancelling an y p ossible b ene/t from p erforming a longer shift/. Finally /, the m ulti/-
+w ord sim ulation switc hes v ery fast the D
+t
+w ord it op erates on/, while our algorithm
+op erates a long time o v er a single D
+t
+w ord/, therefore making it pro/table to put
+D
+t
+in a computer register for faster op eration/.
+/4/./3 Analysis
+The prepro cessing time for our algorithm is O /( m /+ j / j /) if m / w /, and O /( m /(/1 /+
+j / j /=w /)/) otherwise/.
+In the simple case m / w /, the analysis of the searc h time is the same as for the
+BDM algorithm/. That is/, O /( mn /) in the w orst case /(e/.g/. T /= a
+n
+/; p /= a
+m /? /1
+b /)/,
+F ast and Flexible String Matching / /1/3
+O /( n/=m /) in the b est case /(e/.g/. T /= a
+n
+/; p /= b
+m
+/)/, and O /( n log
+j / j
+m/=m /) on a v erage/.
+Our algorithm/, ho w ev er/, b ene/ts from more lo calit y of reference/, since w e do not
+access an automaton but only a few v ariables whic h can b e put in registers /(with
+the exception of the B table/)/. As w e sho w in the exp erimen ts/, this di/erence mak es
+our algorithm the fastest one/.
+When m /> w /, our algorithm is O /( nm
+/2
+/=w /) time in the w orst case /(since eac h of
+the O /( mn /) steps of the BDM algorithm forces to w ork on d m/=w e computer w ords/)/.
+The b est case o ccurs when the text tra v ersal using s
+/1
+alw a ys p erforms its maxim um
+shift after lo oking one c haracter/, whic h leads to O /( n/=w /) time/. W e sho w/, /nally /,
+that the a v erage case is O /( n log
+j / j
+w /=w /)/. Clearly these complexities are w orse than
+those of the simple BDM algorithm for long enough patterns/. W e sho w in the
+exp erimen ts up to whic h length our v ersion is faster in practice/.
+The searc h cost for s
+/1
+is O /( n log
+j / j
+w /=w /)/. With probabilit y /1 /= j / j
+w
+/, w e /nd s
+/1
+and c hec k for the rest of the pattern/. The searc h for s
+/2
+in the windo w costs O /( w /)
+at most/. With probabilit y /1 /= j / j
+w
+w e /nd s
+/2
+and searc h for s
+/3
+/, and so on/. The
+total cost incurred b y the existence of s
+/2
+/:/:/:s
+M
+is at most
+M
+X
+i /=/1
+w
+j / j
+w i
+/ /" /=
+w
+j / j
+w
+/= O /(/1/)
+whic h therefore do es not a/ect the main cost to searc h s
+/1
+/(neither in theory since the
+extra cost is O /(/1/) nor in practice since /" is v ery small/)/. W e consider the shifts no w/.
+The searc h of eac h subpattern s
+i
+pro vides a shift l ast
+i
+/, and w e tak e the maxim um
+shift/. No w/, the shift l ast
+i
+participates in this maxim um with probabilit y /1 /= j / j
+w i
+/.
+The longest p ossible shift is w /. Hence/, if w e sum /(instead of taking the maxim um/)
+the longest p ossible shifts w w eigh ted with their probabilit y of participating/, w e
+get in to the same sum ab o v e/, whic h is /" /= O /(/1/)/. Therefore/, the a v erage shift is
+l ast
+/1
+/+ /" /= l ast
+/1
+/+ O /(/1/)/, and hence the cost is that of searc hing s
+/1
+plus lo w er order
+terms/.
+Notice that/, on the other hand/, the m ulti/-w ord sim ulation has w orse complexit y /,
+namely O /( n log
+j / j
+/( m /) /=w /)/, since it p erforms the same n um b er of op erations as BDM
+/(i/.e/. O /( n log
+j / j
+/( m /) /=m /)/) but for eac h op eration it has to up date O /( m/=w /) mac hine
+w ords/.
+/5/. FURTHER IMPRO VEMENTS
+/5/./1 A Linea r Time Algo rithm
+Although our algorithm has an optimal a v erage case/, it is not linear in the w orst
+case ev en for m / w /, since w e can tra v erse the complete windo w bac kw ards and
+adv ance it b y one c haracter /(e/.g/. T /= a
+n
+/; p /= a
+m /? /1
+b /)/. In the w orst case/, the
+algorithm is O /( nm
+/2
+/=w /)/. Our aim no w is to reduce its w orst case to O /( nm/=w /)/, i/.e/.
+O /( n /) when m /= O /( w /)/.
+In the last few y ears/, studies ha v e b een undertak en to obtain/, using D A W Gs/,
+algorithms whic h are linear in the w orst case and still sublinear on a v erage/, for
+instance T urb oRF
+/2
+in /[Czuma j et al/. /1/9/9/4/]/, T urb oBDM in /[Czuma j et al/. /1/9/9/4/;
+Lecro q /1/9/9/2/]/. The main idea is to a v oid retra v ersing the same c haracters in the
+/2
+T urb oRF uses a su/x tree/, but it can b e adapted to D A W Gs/.
+/1/4 / G/. Nava rro and M/. Ra/not
+bac kw ard windo w v eri/cation/. When w e determine that the windo w m ust b e ad/-
+v anced in l ast p ositions/, for l ast /< m /, w e already kno w that t
+j /+ last
+/:/:t
+j /+ m /? /1
+is a
+pre/x of the pattern/, and therefore it is p ossible to use this kno wledge to a v oid tra/-
+v ersing bac kw ards the complete windo w t
+j /+ last
+/:/:t
+j /+ last /+ m /? /1
+/. The ending p osition
+/( j /+ l ast /+ m /? /1/) of the pre/x in the windo w is usually called the critic al p osition /.
+Therefore/, w e w an t to a v oid that the bac kw ard windo w v eri/cation con tin ues after
+reac hing the critical p osition/.
+The main problem is ho w to determine the next shift if w e are not going to
+tra v erse again the area t
+j /+ last
+/:/:t
+j /+ m /? /1
+/. Recall that w e ha v e not stored information
+ab out the next p ossible shifts follo wing l ast /(w e only remem b ered the shortest
+shift/)/.
+Tw o main strategies exist/. The /rst one is to use a KMP algorithm to read again
+the c haracters w e read with the D A W G once w e reac h the critical p osition/. W e
+k eep in memory the longest pre/x of the pattern that is also a su/x of the text w e
+read/. W e stop using the KMP algorithm when the maximal pre/x w e found is less
+than half the size of the pattern/. This strategy is used in /[Cro c hemore and Rytter
+/1/9/9/4/; Lecro q /1/9/9/2/; Ra/not /1/9/9/7b/]/. The algorithm obtained is linear in the w orst
+case/, but the D A W G is used just to /\help/" KMP to skip some c haracters/.
+The second strategy mak es a b etter use of the p o w er of D A W Gs b y adding a
+kind of BM mac hine to the BDM algorithm/. T o explain the algorithm w e need the
+de/nition of a b or der /: the b order of a string u is the set of pre/xes of u whic h are
+also su/xes/.
+The algorithm w orks as follo ws/: if w e reac h the critical p osition after reading a
+factor z with the D A W G/, it is p ossible to kno w whether z
+r
+is a su/x of the pattern
+p /.
+/|If z
+r
+is a su/x/, then w e ha v e recognized the whole pattern p /, and the next shift
+corresp onds to the longest pre/x of p that is also a su/x of p /, i/.e the longest
+b order of p /, whic h can b e computed in adv ance/.
+/|If z
+r
+is not a su/x/, then it app ears in the pattern in a set of p ositions whic h is
+giv en b y the state w e reac hed in the su/x automaton/. If w e shift to the righ tmost
+o ccurrence of z
+r
+in the pattern/, lik e in the BM algorithm/, then the shift is safe/.
+It is not di/cult to sim ulate this idea in our BNDM algorithm/. T o kno w whether
+the factor z w e read with the D A W G is a su/x/, w e just ha v e to test whether
+there is a /1 at the j z j /-th bit in D /, i/.e/. d
+j z j
+/. T o get the righ tmost o ccurrence/,
+w e seek the righ tmost /1 in D /, whic h w e can get /(if it exists/) in constan t time with
+log
+/2
+/( D /& / /( D /? /1/)/)
+/3
+/. W e implemen ted this algorithm under the name BM BNDM
+in the exp erimen tal part of this pap er/, but the plain BNDM is faster in practice/.
+Still this algorithm remains quadratic/, b ecause w e do not k eep a pre/x of the
+pattern after the BM shift/. T o mak e it linear time/, w e m ust k eep this pre/x/. This
+situation is sho wn in Figure /7/.
+Let u b e the pre/x /nishing at the critical p osition/. The T urb oRF algorithm
+/(second v ariation/) /[Czuma j et al/. /1/9/9/4/] uses a complicated prepro cessing phase to
+/3
+In practice/, it is faster and cleaner to implemen t this log
+/2
+b y shifting the mask to the righ t un til
+it b ecomes zero/. Using this tec hnique w e can use the simpler expression D /^ /( D /? /1/) and get the
+same result/. Ho w ev er/, the log
+/2
+expression is imp ortan t in theory b ecause it can b e computed in
+constan t time/.
+F ast and Flexible String Matching / /1/5
+Windo w
+Searc h for a factor with the D A W G
+critic al p osition
+z
+r
+w e reac hed the critical p osition/, but uz
+r
+is not the pattern p /.
+critic al p osition
+u
+i
+u
+i
+safe shift
+b order
+of u
+i
+z
+r
+New critical p osition
+Fig/. /7/. Sk eleton of the BM shift if w e reac h the critical p osition/.
+asso ciate in linear time an o ccurrence of z
+r
+in the pattern to a b order b
+u
+of u /, in
+order to obtain the maximal pre/x of the pattern that is a su/x of uz
+r
+/. Moreo v er/,
+the T urb oRF uses a su/x tree/, and it is quite di/cult /(though not imp ossible/) to
+use this prepro cessing phase on D A W Gs/. With our sim ulation/, this prepro cessi ng
+phase b ecomes simple/. T o eac h pre/x u
+i
+of the pattern p /, w e asso ciate a mask
+B or d /[ i /] that registers the starting p ositions of the b orders of u
+i
+/( / included/)/. This
+table can b e precomputed in O /( m /) time/. No w/, to join one o ccurrence of z
+r
+with
+a b order of u /, w e w an t the p ositions whic h start a b order of u and con tin ue with
+an o ccurrence of z
+r
+/. The /rst set of p ositions is B or d /[ i /]/, and the second one is
+precisely the curren t D v alue /(i/.e/. p ositions in the pattern where the recognized
+factor z ends/)/. Hence/, the bits of X /= B or d /[ i /] /& D are the p ositions satisfying
+b oth criteria/. As w e w an t the righ tmost suc h o ccurrence /(i/.e/. the maximal pre/x/)/,
+w e tak e again log
+/2
+/( X /& / /( X /? /1/)/)/. W e implemen ted this algorithm under the
+name T urb oBNDM in the exp erimen tal part of this pap er/.
+/5/./2 A Constant/-Space Algo rithm
+It is also in teresting to notice that/, although the algorithm needs O /( j / j m/=w /) extra
+space/, w e can mak e it constan t space on a binary alphab et /
+/2
+/= f /0 /; /1 g /. The tric k
+is that in this case/, B /[/1/] /= p and B /[/0/] /= / B /[/1/]/. Therefore/, w e need no extra
+storage apart from the pattern itself to p erform all the op erations/. In theory /, an y
+text o v er a /nite alphab et / could b e searc hed in constan t space b y represen ting
+the sym b ols of / with bits and w orking on the bits /(the misaligned matc hes ha v e
+to b e discarded later/)/. This in v olv es an a v erage searc h time of
+O
+/
+n log
+/2
+j / j
+m log
+/2
+j / j
+log
+/2
+/( m log
+/2
+j / j /)
+/
+/= Normal time / log
+/2
+j / j /
+/
+/1 /+
+log
+/2
+log
+/2
+j / j
+log
+/2
+m
+/
+whic h if the alphab et is considered of constan t size is of the same order of the
+normal searc h time/.
+W e presen t no w some extensions applicable to our basic sc heme/, whic h form a
+successful com bination of e/ciency and /exibilit y /. The general concept is that all
+/1/6 / G/. Nava rro and M/. Ra/not
+the extensions devised for the Shift/-Or algorithm can b e enric hed with our approac h
+in order to sp eed them up/.
+/6/. HANDLING CLASSES OF CHARA CTERS
+As in the Shift/-Or algorithm/, w e allo w that eac h p osition in the pattern matc hes
+not only a single c haracter but an arbitrary set of c haracters/. Some solutions for the
+case of don/'t care c haracters /(i/.e/. pattern p ositions that matc h an y c haracter/) ha v e
+b een presen ted in /[Abrahamson /1/9/8/7/; Fisc her and P aterson /1/9/7/4/; Pin ter /1/9/8/5/]/, but
+these ha v e b een sho wn to b e only of theoretical in terest in /[Baeza/-Y ates and Gonnet
+/1/9/9/2/]/. Simple attempts to extend classical algorithms suc h as KMP or BM do not
+w ork w ell/. T o the b est of our kno wledge/, the fastest algorithm for this problem is
+Shift/-Or/.
+This t yp e of patterns is called /\limited expressions/" in /[W u et al/. /1/9/9/6/]/, and it is
+a subset of the w ealth of alternativ es for /\extended patterns/" presen ted in /[Baeza/-
+Y ates and Gonnet /1/9/9/2/; W u and Man b er /1/9/9/2/]/. Although formally it is enough to
+sa y that eac h pattern p osition can matc h a set of c haracters/, it is useful to giv e an
+in tuitiv e idea of the p o w er allo w ed/. The follo wing patterns are examples of limited
+expressions/:
+/| word in case insensitiv e/, i/.e/. f w /; W gf o /; O gf r /; R gf d /; D g /.
+/| wo/.d /, where the /'/./' means an y c haracter/, i/.e/. f w gf o g / f d g /.
+/| wor/[a/-z/] /, where /[a/-z/] means an y c haracter in the range from /'a/' to /'z/' /, i/.e/.
+f w gf o gf r gf a /:/: z g /.
+/| wo/[abx/]d /, where /[abx/] means /'a/' /, /'b/' or /'x/' /, i/.e/. f w gf o gf a /; b /; x gf d g /.
+/| w/[ / ou/]rd /, where /[ / o/] means an y c haracter except /'o/' and /'u/' /, i/.e/. f w g /(/ /?
+f o /; u g /) f r gf d g /.
+W e denote a limited expression p /= C
+/1
+C
+/2
+/: /: /: C
+m
+/. A w ord x /= x
+/1
+x
+/2
+/: /: /: x
+r
+in /
+/
+is a factor of a limited expression p /= C
+/1
+C
+/2
+/: /: /: C
+m
+if there exists an i
+suc h that x
+/1
+/2 C
+i /? r /+/1
+/; x
+/2
+/2 C
+i /? r /+/2
+/; /: /: /: /; x
+r
+/2 C
+i
+/. Suc h an i is called a p o/-
+sition of x in p /. A factor x /= x
+/1
+x
+/2
+/: /: /: x
+r
+of p /= C
+/1
+C
+/2
+/: /: /: C
+m
+is a su/x if
+x
+/1
+/2 C
+m /? r /+/1
+/; x
+/2
+/2 C
+i /? r /+/2
+/; /: /: /: /; x
+r
+/2 C
+m
+/.
+Similarly to the /rst part of this w ork/, w e design an automaton whic h recognizes
+all the su/xes of a limited expression p /= C
+/1
+C
+/2
+/: /: /: C
+m
+/. This automaton is not
+an ymore a D A W G/. W e call it Extende d D A WG /. T o our kno wledge/, this kind of
+automaton has nev er b een studied/. W e /rst giv e a formal construction/, and then
+pro v e its correctness/.
+/6/./1 Construction
+The construction w e use is quite similar to the one giv en for the D A W G/, but with
+the new de/nition of su/xes/. F or an y x factor of p /, w e denote L/-endp os/( x /) the
+set of p ositions of x in p /. F or example/, L/-endp os /( baa /) /= f /3 /; /7 g in the limited
+expression b/[a/,b/]abb aa /, and L/-endp os /( bba /) /= f /3 /; /6 g /(notice that/, unlik e b efore/, the
+sets of p ositions ma y b e non/-disjoin t and no one a subset of the other/)/. W e de/ne
+the equiv alence relation /
+E
+for u/; v factors of p b y
+u /
+E
+v if and only if L/-endp os /( u /) /= L/-endp os /( v /) /:
+F ast and Flexible String Matching / /1/7
+W e de/ne /
+p
+/( i/; / /) with i /2 f /0 /; /1 /; /: /: /: /; m/; m /+ /1 g /; / /2 / b y
+/
+p
+/( i/; / /) /=
+/(
+f i g if i / m and / /2 C
+i
+/; otherwise
+Lemma /1/. L et p b e a limite d expr ession and /
+E
+the e quivalenc e r elation on its
+factors /(as pr eviously de/ne d/)/. The e quivalenc e r elation /
+E
+is c omp atible with the
+c onc atenation of wor ds/.
+Pr oof/. Let u and v b e t w o di/eren t factors of p that b elong to the same equiv a/-
+lence class q /, and let / /2 //. S /= f i
+/1
+/; i
+/2
+/; /: /: /: /; i
+k
+g is the set of p ositions corresp onding
+to q /. Tw o cases app ear/:
+/|if u/ /(resp/. v / /) is not a factor of p /, neither is v / /(resp/. u/ /)/. Supp ose u/ is not
+a factor/, but v / is/. Then there exists a p osition /2 / i / m where v / ends in p /.
+Hence v ends at i /? /1/. But/, as u and v are at the same p ositions/, u app ears also
+at p osition i /? /1 in p /, and u/ app ears in i /. A con tradiction/.
+/|if u/ /(resp/. v / /) is a factor of p /, v / /(resp/. u/ /) is also a factor of p and u/ /
+E
+v / /.
+Assume that u/ is a factor/, then u/ ends in p at p ositions S
+/
+/= / /( i
+/1
+/; / /) /[ /: /: /: /[
+/ /( i
+k
+/; / /)/. As v ends at the same set of p ositions S as u /, v / ends at S
+/
+to o/.
+Therefore u/ and v / b elong to the same equiv alence class/.
+Hence/, the equiv alence /
+E
+is compatible with the concatenation/.
+This lemma allo ws us to de/ne an automaton from our equiv alence class/. The
+states of the automaton are the equiv alence classes of /
+E
+/. There is an edge lab eled
+b y / from the set of p ositions f i
+/1
+/; i
+/2
+/; /: /: /: i
+k
+g to /
+p
+/( i
+/1
+/+ /1 /; / /) /[ /
+p
+/( i
+/2
+/+ /1 /; / /) /[ /: /: /: /[
+/
+p
+/( i
+k
+/+ /1 /; / /)/, if this is not empt y /. The initial no de of the automaton is the set that
+con tains all the p ositions/. T erminal no des of the automaton are the sets of p ositions
+that con tain m /. As an example/, the su/x automaton of the w ord /[a/,b/]aa/[a/,b/]b aa is
+giv en in Figure /8/.
+/0/,/1/,/2/,/3/,/4/,/5/,/6/,/7
+/1/,/4/,/5 /2/,/6 /3/,/7
+/4/,/5
+/1/,/2/,/3/,/4/,/6/,/7 /2/,/3/,/4/,/7 /3/,/4 /4 /5 /6 /7
+a a a
+a
+b a a
+a ab
+b
+b
+b
+a
+a/,b
+b
+b
+Fig/. /8/. Extended D A W G of the limited expression
+/0
+/[ a/; b /]
+/1
+a
+/2
+a
+/3
+/[ a/; b /]
+/4
+b
+/5
+a
+/6
+a
+/7
+/.
+Lemma /2/. The Extende d D A WG of a limite d expr ession p /= C
+/1
+C
+/2
+/: /: /: C
+m
+r e c o g/-
+nizes the set of su/xes of p /.
+Pr oof/. /(/1/) Let u /= u
+/1
+u
+/2
+/: /: /: u
+r
+b e a su/x of p /. W e sho w that u is recognized
+b y Extended D A W G/( p /)/. W e call E
+r
+/= f i
+/1
+/; i
+/2
+/; /: /: /: i
+k
+g the set of ending p ositions
+of u in p /, whic h is not empt y since it at least con tains m /. W e denote/:
+E
+/0
+/= f /0 /; /1 /; /2 /; /: /: /: /; m g and E
+j
+/= f i
+/1
+/? r /+ j/; i
+/2
+/? r /+ j/; /: /: /: /; i
+k
+/? r /+ j g /:
+/1/8 / G/. Nava rro and M/. Ra/not
+E
+/0
+is the initial set of Extended D A W G/( p /)/. There is a path from E
+/0
+to a state
+E
+/0
+/1
+/ E
+/1
+lab eled u
+/1
+/, b ecause E
+/0
+/1
+/= /
+p
+/(/1 /; u
+/1
+/) /[ /
+p
+/(/2 /; u
+/1
+/) /[ /: /: /: /[ /
+p
+/( m/; u
+/1
+/)/, and
+there is at least one u
+/1
+in the p ositions E
+/1
+/(set of b eginning p ositions of u in p /)/.
+Assume no w there is a path from the initial state lab eled u
+/1
+u
+/2
+/: /: /: u
+j
+arriving
+at the set of no des E
+/0
+j
+/, j /< r and E
+/0
+j
+/ E
+j
+/. Let E
+/0
+j /+/1
+the state w e reac hed b y
+using the edge lab eled u
+j /+/1
+from E
+/0
+j
+/. This state exists/, b ecause E
+j
+/ E
+/0
+j
+/, E
+j
+is
+not empt y and u
+j /+/1
+app ears at least at p osition E
+j /+/1
+/. More than that/, for the
+same reason/, E
+j /+/1
+/ E
+/0
+j /+/1
+/. By induction/, w e pro v ed that there is a path from
+the initial no de lab eled u arriving at the set of no des E
+/0
+r
+/, whic h con tains E
+r
+/.
+As E
+r
+con tains m /, E
+/0
+r
+also do es/. Therefore/, E
+/0
+r
+is mark ed as a terminal state
+in Extended D A W G/( p /) and the su/x u is recognized/.
+/(/2/) If there is a path from the initial state to a /nal state lab eled b y the w ord u
+in Extended D A W G/( p /)/, then w e sho w that u is a su/x of p /. Let no w E
+j
+b e the
+state w e reac h with u
+/1
+/: /: /: u
+j
+/. E
+r
+con tains m /. T o arriv e at this state b y reading
+u
+r
+/, u
+r
+m ust at least b elong to C
+m
+/, and the previous state/, E
+r /? /1
+/, con tains
+m /? /1/. By induction/, it is clear that u
+r
+/2 C
+m
+/; u
+r /? /1
+/2 C
+m /? /1
+/; /: /: /: u
+/1
+/2 C
+m /? r /+/1
+/,
+and hence u is a su/x of p /.
+Therefore/, Extended D A W G/( p /) recognizes the set of su/xes of p /.
+W e can use this new automaton to recognize the set of su/xes of a limited ex/-
+pression p /. W e do not giv e an algorithm to build this Extended D A W G in its deter/-
+ministic form/, but w e sim ulate the deterministic automaton using bit/-parallelis m/.
+/6/./2 A Bit/-pa rallel Implementation
+from the ab o v e construction/, the only mo di/cation that our algorithm needs is
+that the B table has the i /-th bit set for all c haracters b elonging to the set of
+the i /-th p osition of the pattern/. Therefore w e simply c hange line /3 /(part of the
+prepro cessing/) in the algorithm of Figure /6 to
+F or i /2 /1 /:/:/:m/; c /2 / do If c /2 C
+i
+then B /[ c /] / B /[ c /] j /0
+m /? i
+/1/0
+i /? /1
+suc h that no w the prepro cessing tak es O /( j / j m /) time but the searc h algorithm do es
+not c hange/.
+W e com bine the /exibilit y of limited expressions with the e/ciency of a Bo y er/-
+Mo ore/-lik e algorithm/. It should b e clear/, ho w ev er/, that the e/ciency of the shifts
+can b e degraded if the classes of c haracters are signi/can tly large and prev en t long
+shifts/. Ho w ev er/, as w e sho w later in the exp erimen ts/, BNDM is m uc h more resistan t
+than some simple v ariations of Bo y er/-Mo ore since it uses more kno wledge ab out
+the matc hed c haracters/.
+W e p oin t out no w another extension related to classes of c haracters/: the text
+itself ma y ha v e basic c haracters as w ell as other sym b ols denoting sets of basic
+c haracters/. This is common/, for instance/, in DNA databases/. W e can easily handle
+suc h texts/. Assume that the sym b ol C represen ts the set f c
+/1
+/; /:/:/:/; c
+r
+g /. Then w e set
+B /[ C /] /= B /[ c
+/1
+/] j /:/:/: j B /[ c
+r
+/]/. This is m uc h more di/cult to ac hiev e with algorithms
+not based on bit/-parallelism/.
+F ast and Flexible String Matching / /1/9
+/7/. SEARCHING F OR MUL TIPLE P A TTERNS
+Supp ose w e are in terested in searc hing a set of patterns P
+/1
+/:/:/:P
+r
+/(where P
+i
+/=
+p
+i
+/1
+/:/:p
+i
+m
+i
+/)/, i/.e/. rep orting the o ccurrences of all P
+i
+/'s/. Assume that they are all of the
+same length m /, otherwise truncate them to the length of the shortest one/. This
+ma y b e ine/ectiv e for patterns of v ery di/eren t lengths but it is a common practice
+in all the algorithms of the Bo y er/-Mo ore family as w ell/.
+If the total length of the patterns do es not exceed the size of a computer w ord/,
+i/.e/. r / m / w /, w e can v ery e/cien tly searc h all the patterns in parallel/, exploiting
+again the in trinsic parallelism inside computer w ords/. This tec hnique/, based on
+an arrangemen t describ ed in /[Baeza/-Y ates and Gonnet /1/9/9/2/]/, concatenates the r
+patterns P
+/1
+/:/:/:P
+r
+as follo ws
+P /= p
+/1
+/1
+p
+/2
+/1
+/:/:/:p
+r
+/1
+p
+/1
+/2
+p
+/2
+/2
+/:/:/:p
+r
+/2
+/:/:/:/:/: p
+/1
+m
+p
+/2
+m
+/:/:/:p
+r
+m
+/(i/.e/. all the /rst letters/, then all the second letters/, etc/./) and searc hes P just as
+a single pattern/. The only di/erence in the algorithm of Figure /6 is that the shift
+is not b y one bit but b y r bits in line /1/6 /(since w e ha v e r bits p er m ultipattern
+p osition/) and that instead of lo oking for the highest bit d
+m
+of the computer w ord
+w e consider all the r bits corresp onding to the highest p osition/. That is/, w e replace
+the old /1/0
+m /? /1
+test mask b y /1
+r
+/0
+r /( m /? /1/)
+in line /1/2/.
+This metho d will automatically searc h for w ords of length m and k eep all the bits
+needed for eac h w ord/. Moreo v er/, it will rep ort the matc hes of an y of the patterns
+and will not allo w shifting more than what all patterns allo w to shift/.
+An alternativ e arrangemen t is as follo ws/:
+P /= P
+/1
+P
+/2
+/:/:/: P
+r
+/(i/.e/. just concatenate the patterns/)/. In this case the shift in line /1/6 is b y one bit/,
+and the mask for line /1/2 is /(/1/0
+m /? /1
+/)
+r
+/. On some pro cessors a shift in one p osition
+is faster than a shift in r /> /1 p ositions/, whic h could b e an adv an tage for this
+arrangemen t/. On the other hand/, in this case w e m ust clear the bits that are
+carried from the highest p osition of a pattern to the next one/, replacing line /1/6
+b y D /= /( D /</< /1/) /& /(/1
+m /? /1
+/0/)
+r
+/. This in v olv es an extra op eration/. Finally /, this
+arrangemen t allo ws us to ha v e patterns of di/eren t lengths for the algorithm of
+/[Baeza/-Y ates and Gonnet /1/9/9/2/] whic h is not p ossible in their curren t prop osal/.
+Clearly this tec hnique cannot b e applied to the case m /> w /. Ho w ev er/, if /2 m / w
+and r / m /> w w e divide the set of patterns in to d r /= b w /=m ce groups/, so that the
+patterns in eac h group /t in w bits/. Therefore the cost to searc h r patterns of
+length m can b e made O /( r m
+/2
+n/=w /) in the w orst case/, and O /( r n/=w /) in the b est
+case/. This is resp ectiv el y b etter than O /( r mn /) and O /( r n/=m /) /(whic h corresp onds to
+sequen tially searc hing the r patterns with BDM/)/.
+/8/. APPRO XIMA TE STRING MA TCHING
+Appro ximate string matc hing is the problem of /nding all text factors whic h are
+at a /\distance/" of at most k to the pattern/. This has a n um b er of applications
+in text retriev al/, computational biology /, pattern recognition/, signal pro cessing/, etc/.
+Of course/, the nature of the problem dep ends directly on the distance function w e
+use/. Man y distances exist/, and among them t w o are commonly used/: the Hamming
+/2/0 / G/. Nava rro and M/. Ra/not
+and the Lev ensh tein /(or edit/) distance/. W e explain no w ho w to use our algorithm
+for appro ximate matc hing with these t w o distances/.
+/8/./1 Hamming Distance
+The Hamming distanc e b et w een t w o w ords is the minimal n um b er of substitu/-
+tions of c haracters that ha v e to b e p erformed to mak e them equal/. F or example/,
+d /( /"test/" /, /"text/" /) /= /1/. A n um b er of algorithms exist to solv e this problem /[Baeza/-
+Y ates and Gonnet /1/9/9/4/; El/-Mabrouk and Cro c hemore /1/9/9/6/; T arhio and Ukk onen
+/1/9/9/3/]/.
+T o adapt our algorithm to this problem/, w e still mo v e a windo w of length m
+on the text/, and searc h bac kw ard a su/x u of the windo w that matc hes a pattern
+factor after at most k substitutions/. Instead of just storing one bit to kno w whether
+u
+r
+ends at eac h p osition i in the rev erse pattern p
+r
+/, w e use L /= b log
+/2
+/( k /) c /+ /1 bits
+to enco de the distance b et w een u
+r
+and the factor of length j u j that ends at p osition
+i in p
+r
+/. If this distance is larger than k w e just enco de k /+ /1/. W e record in the
+v ariable last the longest su/x of the windo w that is at distance at most k to a
+pattern pre/x/.
+When reading a new c haracter of the windo w/, w e up date the state of the searc h
+b y adding a prop erly spaced B mask to the curren t set of distances/, so that eac h
+mismatc h adds /1 to the distances/. Some pro visions are needed to prev en t the
+distances to gro w o v er k /+ /1 /(basically clearing o v er/o w bits/)/. W e can kno w in
+O /(/1/) time whether or not to up date last b y examining the L highest bits of the
+computer w ord and determining whether the n um b er is larger than k or not/. If
+all the distances in the computer w ord are greater than k /, then w e can shift the
+windo w to last since no pattern factor matc hes the windo w with k errors or less/.
+This fact can b e tested in constan t time b y storing the distances plus /2
+L
+/? k /? /1/, so
+when the distance reac hes k /+ /1 the highest bit is set/. Hence when all the highest
+bits are set w e kno w that w e can shift the windo w/.
+Figure /9 illustrates this algorithm/. W e note that most of the bit manipulation
+part comes from /[Baeza/-Y ates and Gonnet /1/9/9/4/]/.
+/8/./2 Edit Distance
+The L evenshtein distanc e /(or just e dit distanc e /) b et w een t w o w ords is the minimal
+n um b er of substitutions/, insertions and deletions of c haracters needed to mak e them
+equal/. F or instance/, d /( /"survey/" /, /"surgery /" /) /= /2/. A n um b er of solutions to this
+problem exist /[Na v arro /2/0/0/0a/]/, b eing /[Baeza/-Y ates and Na v arro /1/9/9/9/; Na v arro and
+Baeza/-Y ates /1/9/9/9/; Jokinen et al/. /1/9/9/6/; My ers /1/9/9/9/; Na v arro /1/9/9/7/; W u et al/. /1/9/9/6/]
+the fastest in practice/.
+W e presen t t w o extensions of our algorithm for appro ximate string matc hing/.
+Just lik e the original prop osals they are based on/, our solutions can b e extended
+to handle extensions of the edit distance/, e/.g/. p ermitting eac h op eration to ha v e a
+di/eren t cost/.
+/8/./2/./1 Partitioning into Exact Se ar ching/. In /[W u and Man b er /1/9/9/2/]/, a simple but
+v ery e/ectiv e /lter is prop osed for appro ximate string matc hing/. It is based on
+the observ ation that if a pattern of length m app ears with at most k errors in a
+text p osition/, and w e divide the pattern in k /+ /1 pieces/, then at least one of the
+F ast and Flexible String Matching / /2/1
+a b b a b b b b b baba bP attern
+a b b a b b b b b baba bP attern
+bbb
+safe shift New windo w
+abaabbb
+last
+D
+abaa
+/1 /4 /2 /2 /2 /4 /1 /3 /2 /2 /3 /- /- /-
+Record in last the longest pre/x that matc hes with at most /1 error
+Searc h bac kw ard for a factor with at most /1 error
+last
+D /- /- /-/- /-/-/5/3/3/3/2/5/3/3
+F ail to recognize a factor with at most /1 error
+abaa
+Fig/. /9/. Basic searc h for appro ximate pattern matc hing with the Hamming distance/.
+pieces will app ear with no errors in the o ccurrence /(since k errors cannot alter k /+ /1
+pieces/)/. Therefore/, they prop ose to split the pattern in to k /+ /1 pieces of equal length
+b m/= /( k /+ /1/) c /(discarding some c haracters at the end if necessary/) and searc hing all
+the pieces in parallel/. A classical algorithm is run on the text areas surrounding
+the o ccurrences of pattern pieces/, therefore /ltering out all the rest of the text/.
+The m ultipattern searc h mec hanism they prop ose is v ery similar to our setup
+of Section /7 /(although the bit arrangemen t is di/eren t/)/. Ho w ev er/, they use the
+Shift/-Or algorithm to searc h and therefore their e/ciency is limited/. On the other
+hand/, they k eep their abilit y to handle classes of c haracters and other extensions/.
+Later/, /[Na v arro and Baeza/-Y ates /1/9/9/9/] used a m ultipattern Bo y er/-Mo ore strategy
+to p erform the ab o v e searc h/, whic h at the cost of not allo wing limited expressions
+giv es a m uc h more e/cien t algorithm/. This algorithm w as sho wn to b e the fastest
+in practice when the n um b er of errors is lo w enough /(this is/, k /=m / /1 /= /(/3 log
+j / j
+m /)
+on random text and k /=m / /1 /= /4 on natural language/)/.
+Our m ultipattern searc h tec hnique presen ted in Section /7 com bines the b est of
+b oth w orlds/: our p erformance is comparable to that of the algorithms of the Bo y er/-
+Mo ore family /, and w e k eep the /exibilit y of the Shift/-Or approac h to handle classes
+of c haracters/. In this case the Sunda y extension to m ultipattern searc h used in
+/[Na v arro and Baeza/-Y ates /1/9/9/9/] is sligh tly faster in general b ecause the searc h
+patterns are rather short/. W e sho w later their relativ e p erformance/.
+/8/./2/./2 A New Bit/-Par al lel A lgorithm/. Another algorithm for appro ximate string
+matc hing is presen ted in /[W u and Man b er /1/9/9/2/]/. It is based on the bit/-parallel
+sim ulation of an NF A built from the pattern/, whic h recognizes its appro ximate
+o ccurrences in the text/. In /[Baeza/-Y ates and Na v arro /1/9/9/9/] this automaton is
+sim ulated using a di/eren t tec hnique/.
+Our approac h is based on the same automaton/. W e mo dify the NF A so that it
+/2/2 / G/. Nava rro and M/. Ra/not
+ε ε
+εε
+y e
+y
+y e
+e
+ε
+ε
+r
+r
+r
+ε
+ε
+v
+v
+v
+ε
+ε
+u
+u
+no errors
+2 errors
+1 error
+ε
+ε
+s
+s
+s
+  
+I
+ε ε ε ε ε ε ε
+u
+Fig/. /1/0/. Our NF A to recognize su/xes of the pattern /"survey/" rev ersed/. Unlab eled arro ws matc h
+an y c haracter/.
+recognizes not only the whole pattern but also an y su/x of the pattern/, allo wing
+up to k errors/.
+Figure /1/0 illustrates the mo di/ed NF A/. First disregard the state lab eled /\I/" and
+the / /-transitions lea ving it/. Eac h ro w denotes the n um b er of errors seen/. The
+/rst one /0/, the second one /1/, and so on/. Ev ery column represen ts matc hing the
+pattern up to a giv en p osition/. Horizon tal arro ws represen t matc hing a c haracter/,
+v ertical arro ws represen t insertions in the pattern/, solid diagonal arro ws represen t
+substitutions/, and dashed diagonal arro ws represen t deletions in the pattern /(they
+are / /-transitions/)/. The automaton accepts a text p osition as the end of a matc h
+with k errors whenev er the righ tmost state of the last ro w is activ e/.
+Consider no w the initial state /\I/" w e added/. The / /-transitions lea ving from the
+initial state allo w the automaton to recognize/, allo wing k errors/, not only the whole
+pattern but also an y su/x of it/. Our second mo di/cation on the original automaton
+of /[Baeza/-Y ates and Na v arro /1/9/9/9/; W u and Man b er /1/9/9/2/] is the remo v al of a self/-
+lo op at the top/-left state/, whic h allo w ed it to start a matc h at an y text p osition/.
+In the case of edit distance/, the size of a text o ccurrence ranges from m /? k to
+m /+ k /. W e mo v e a windo w of length m /? k on the text/, and searc h bac kw ard a su/x
+u of the windo w whic h matc hes the pattern with at most k errors/. This searc h is
+done using the NF A explained ab o v e/, whic h is built on the rev ersed pattern/. W e
+record in the v ariable last the longest su/x of the windo w that is at distance at
+most k to a pattern pre/x/. W e can kno w in constan t time when to up date last b y
+c hec king whether the righ tmost b ottom state of the NF A is activ e/. On the other
+hand/, if the NF A runs out of activ e states w e kno w that a matc h is not p ossible in
+the windo w and w e can shift to the last p osition where w e found a pre/x/, as in the
+exact matc hing algorithm/.
+Eac h time w e mo v e the windo w to a new p osition w e restart the automaton with
+all its states activ e/, whic h represen ts setting the initial state to activ e and letting
+the / /-transitions /ush this activ ation to all the automaton /(the states in the lo w er/-
+left triangle are also activ ated to allo w initial insertions/)/. If after reading the whole
+F ast and Flexible String Matching / /2/3
+windo w the automaton still has activ e states/, then it is p ossible that the curren t
+windo w starts an o ccurrence/, so w e use the traditional automaton to compute the
+edit distance from the initial windo w p osition in the text/. After reading at most
+m /+ k c haracters w e ha v e either found a matc h starting at the windo w p osition or
+left the automaton without activ e states/.
+The rationale for this algorithm is as follo ws/. W e are in terested only in o ccur/-
+rences that start at the curren t windo w p osition/. An y o ccurrence has a length
+b et w een m /? k and m /+ k /. If there is an o ccurrence of the pattern p starting at
+the windo w p osition with k errors/, then a pre/x of p m ust matc h the /rst m /? k
+c haracters with k errors or less/. Hence/, w e cannot miss an o ccurrence if w e k eep
+coun t of the matc hes of all the pattern pre/xes in a windo w of length m /? k /. If the
+automaton runs out of activ e states/, then w e cannot miss the start of an o ccurrence
+and w e shift the windo w to the next candidate/. Finally /, if the automaton has activ e
+states after reading the complete windo w/, then a matc h starting at the windo w is
+p ossible and w e ha v e to c hec k it explicitly since w e can only ensure that a factor of
+the pattern matc hes in the windo w/.
+The automaton can b e sim ulated in a n um b er of w a ys/. W u and Man b er /[W u
+and Man b er /1/9/9/2/] do it ro w/-wise /(eac h ro w of the automaton is pac k ed in a com/-
+puter w ord/)/, while Baeza/-Y ates and Na v arro /[Baeza/-Y ates and Na v arro /1/9/9/9/] do it
+diagonal/-wise/. In this case w e prefer the tec hnique of W u and Man b er/, since in the
+other the initial diagonals of length / k are discarded and they are needed here/.
+/9/. EXPERIMENT AL RESUL TS
+W e ran extensiv e exp erimen ts on random and real/-w orld texts in order to sho w
+ho w e/cien t are our algorithms in practice/. The exp erimen ts w ere run on a Sun
+UltraSparc/-/1 of /1/6/7 MHz/, with /6/4 Mb of RAM and a mac hine w ord of /3/2 bits/,
+under Solaris /2/./5/./1/. W e measured CPU times and rep eated the exp erimen ts man y
+times so that the relativ e error of the results is / /2/% with /9/5/% con/dence /(this
+in v olv ed thousands of rep etitions/)/.
+All the algorithms w ere implemen ted b y ourselv es with a uniform I//O in terface/.
+The text is read in c h unks of /6/4 Kb/, whic h giv es the b est tradeo/ b et w een lo calit y of
+reference and disk accesses in our mac hine/. W e use open instead of fopen b ecause it
+is m uc h faster/. The pattern is placed at the end of the text bu/er to a v oid c hec king
+for the end p oin t all the times/. W e made our b est co ding e/ort to implemen t all
+the algorithms/, carefully optimizing the register usage and turning on the compiler
+optimizations/.
+W e used texts of /1/0 Mb of size o v er whic h w e searc hed man y patterns/. W e ran
+exp erimen ts on random text with uniformly distributed alphab ets of sizes from /2 to
+/6/4/, as w ell as non/-random text/, suc h as English text /(from the TREC W all Street
+Journal collection/) and DNA sequences /(from /\h/.in/uenzae/"/)/. F or random text
+the patterns w ere randomly generated on the same alphab et/, while for non/-random
+texts the patterns w ere selected randomly from the same text /(at w ord b eginnings
+in the case of natural language/)/.
+/9/./1 Structural Measures
+Before measuring real CPU times/, w e will study the n um b er of op erations of dif/-
+feren t kinds executed b y our algorithms in comparison to the rest/. These measures
+/2/4 / G/. Nava rro and M/. Ra/not
+help explain wh y the simple BNDM v ersion is b etter than the other algorithms in
+a wide range of cases/. W e ha v e included BDM/, the simple BNDM/, our t w o v arian ts
+BM BNDM and T urb oBNDM/, the classical Bo y er/-Mo ore/, its Horsp o ol and Sun/-
+da y v ersions and the linear time algorithms that do not impro v e with the pattern
+length/: the naiv e algorithm/, KMP and Shift/-Or/.
+Figure /1/1 sho ws the n um b er of c haracters insp ected on random texts of di/eren t
+alphab et sizes/. In these plots BDM and BNDM are indistinguishable /. As can
+b e seen/, the theoretical impro v emen ts of BM BNDM and T urb oBNDM ha v e a
+practical e/ect only for binary alphab ets and short patterns /( m / /1/0/)/. Only Bo y er/-
+Mo ore comes close to BDM//BNDM for small alphab et sizes/, but it gets farther and
+farther as the pattern length gro ws/. F rom the linear time algorithms/, Shift/-Or
+p erforms exactly one access to eac h text c haracter/, follo w ed b y KMP and Naiv e/.
+As the alphab et size gro ws/, all the Bo y er/-Mo ore algorithms b ecome closer to
+BDM//BNDMs/. The classical Bo y er/-Mo ore b ecomes indistinguishable from BDM
+for an alphab et of size /1/6 /(whic h is similar to natural language/)/, while Horsp o ol
+and Sunda y nev er get close enough/. The linear time algorithms also get closer to
+Shift/-Or/, but they nev er reac h it/.
+This sho ws that our new algorithms are the b est in terms of n um b er of text
+c haracters insp ected/, but they are not b etter than BDM and /(sometimes/) than
+Bo y er/-Mo ore in this resp ect/.
+T o get more insigh t on the reasons b ehind the di/eren t b eha vior of the algorithms/,
+Figure /1/2 sho ws the n um b er of table accesses p erformed b y the algorithms/. By a
+/\table access/" w e mean an y access to an indexed arra y /(including the pattern itself /)/.
+W e do not pa y atten tion to the sizes of the tables/, since all are of size O /( m /+ j / j /)
+and v ery small in practice/. In all cases the tables /t ev en in v ery small cac hes/, so
+their sizes should not a/ect the relativ e p erformance of the algorithms/.
+As can b e seen/, BDM and Bo y er/-Mo ore pa y their few accesses to the text with a
+high n um b er of table accesses/. In this resp ect/, the BNDM algorithm and its v arian ts
+are b y far sup erior/. The relativ e p erformances b et w een our three algorithms remain
+unc hanged when considering table accesses/. Ab out the linear time algorithms/, w e
+see that KMP also pa ys a high price for its guaran teed linear time/, b eing w orse than
+the naiv e algorithm in terms of table accesses/. F or non binary alphab ets w e do not
+sho w KMP an ymore/. It is stabilized around /3 table accesses p er text c haracter/.
+F or higher alphab et sizes/, BDM gets closer to the BNDM family /, while Bo y er/-
+Mo ore sta ys far a w a y /, ev en farther than Horsp o ol and Sunda y /.
+The third part of the cost is giv en b y the n um b er of register accesses/. W e un/-
+derstand that ev ery non/-indexed v ariable is stored in a register/, whic h is realistic
+in mo dern arc hitectures with man y registers and for our algorithms that normally
+ha v e a few imp ortan t v ariables/. W e observ e that/, despite that the register accesses
+are m uc h c heap er than the previous op erations considered/, the n um b er of accesses
+is an order of magnitude higher/, so they should ha v e an e/ect on the p erformance/.
+Only here w e see the price paid b y BM BNDM and T urb oBNDM/. These more
+complex algorithms insp ect /(sligh tly/) less text c haracters and table cells than the
+simple BNDM/, but they pa y this with m uc h more accesses to register v ariables/.
+BDM and Bo y er/-Mo ore also sta y far a w a y from BNDM/. On the other hand/, KMP
+and the naiv e algorithm are m uc h more exp ensiv e than Shift/-Or/, KMP stabilizing
+at a higher cost for larger alphab ets /(they are not sho wn in all the plots/, but they
+F ast and Flexible String Matching / /2/5
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+1.4
+1.6
+1.8
+2
+2.2
+0 5 10 15 20 25 30 35
+Text accesses per text character
+Pattern length (m)
+Alphabet size = 2
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+1.4
+1.6
+0 5 10 15 20 25 30 35
+Text accesses per text character
+Pattern length (m)
+Alphabet size = 4
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+1.4
+0 5 10 15 20 25 30 35
+Text accesses per text character
+Pattern length (m)
+Alphabet size = 8
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+0 5 10 15 20 25 30 35
+Text accesses per text character
+Pattern length (m)
+Alphabet size = 16
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1
+1.1
+0 5 10 15 20 25 30 35
+Text accesses per text character
+Pattern length (m)
+Alphabet size = 32
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1
+1.1
+0 5 10 15 20 25 30 35
+Text accesses per text character
+Pattern length (m)
+Alphabet size = 64
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+Horspool
+KMP
+Naive
+Shift-Or
+Fig/. /1/1/. F raction of text c haracters insp ected/, for random text and increasing pattern length/, on
+di/eren t alphab et sizes/.
+/2/6 / G/. Nava rro and M/. Ra/not
+0
+0.5
+1
+1.5
+2
+2.5
+3
+0 5 10 15 20 25 30 35
+Table accesses per text character
+Pattern length (m)
+Alphabet size = 2
+0
+0.5
+1
+1.5
+2
+0 5 10 15 20 25 30 35
+Table accesses per text character
+Pattern length (m)
+Alphabet size = 4
+0
+0.5
+1
+1.5
+2
+0 5 10 15 20 25 30 35
+Table accesses per text character
+Pattern length (m)
+Alphabet size = 8
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+1.4
+1.6
+0 5 10 15 20 25 30 35
+Table accesses per text character
+Pattern length (m)
+Alphabet size = 16
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+1.4
+1.6
+0 5 10 15 20 25 30 35
+Table accesses per text character
+Pattern length (m)
+Alphabet size = 32
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2
+1.4
+1.6
+0 5 10 15 20 25 30 35
+Table accesses per text character
+Pattern length (m)
+Alphabet size = 64
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+Horspool
+KMP
+Naive
+Shift-Or
+Fig/. /1/2/. Num b er of table accesses p er text c haracter/, for random text and increasing pattern
+length/, on di/eren t alphab et sizes/.
+F ast and Flexible String Matching / /2/7
+sta y ab out the same as for j / j /= /4/)/.
+F or higher alphab ets/, w e see that BDM gets closer to BNDM /(but it is alw a ys
+w orse than BM BNDM and T urb oBNDM/)/, while Bo y er/-Mo ore sta ys de/nitely more
+exp ensiv e/. A m uc h more in teresting e/ect is ac hiev ed b y Sunda y /, whic h progres/-
+siv ely gets b etter than BNDM as the alphab et size gro ws/.
+As w e ha v e seen/, BNDM has imp ortan t algorithmic adv an tages o v er its comp eti/-
+tors/. It insp ects far less text c haracters than Horsp o ol and Sunda y /, it pa ys far less
+table accesses than Bo y er/-Mo ore and BDM/, and it pa ys far less register accesses
+than BM BNDM and T urb oBNDM/. Hence/, BNDM pro vides the b est com bination
+when all the costs are considered together/.
+In whic h follo ws w e see see ho w these algorithmic adv an tages map in to real
+impro v emen ts in the CPU time/. There are man y reasons that mak e this mapping
+non trivial to predict/. F or example/, di/eren t mac hines will ha v e di/eren t access
+costs in their memory hierarc h y /. But more imp ortan t/, the pip elining mec hanism of
+the pro cessor ma y p ermit p erforming some op erations in parallel /(e/.g/. a memory
+fetc h can b e done in parallel with some register accesses/)/, so it is not just a matter
+of coun ting accesses m ultiplied b y their relativ e costs/.
+/9/./2 Exact Matching
+W e consider real CPU times from no w on/. W e included in this comparison all the
+algorithms of the previous exp erimen ts/. T o mak e the plots more readable/, w e re/-
+mo v ed the least in teresting algorithms/: Horsp o ol is discarded b ecause it is strictly
+w orse than Sunda y and also slo w er in practice/, the naiv e algorithm is alw a ys slo w er
+than Shift/-Or /(/4/{/1/0 milliseconds p er megab yte/)/, KMP is ev en slo w er /(/1/1/{/1/4 mil/-
+liseconds p er megab yte/) and/, in some cases/, Shift/-Or /(alw a ys around /4 milliseconds
+p er megab yte/) is outside the range of in teresting v alues/.
+Figure /1/4 sho ws the results for random text/. F or small alphab et sizes /(up to /4/)
+BNDM is the fastest algorithm/, pro vided the pattern is not to o short/. In particular/,
+simple BNDM is sligh tly faster than the BM BNDM and T urb oBNDM v ariations
+b ecause of the n um b er of register accesses/.
+BNDM is esp eciall y go o d for small alphab ets since it uses more information than
+others on the matc hed text/, and pa ys less table and register accesses to do it/.
+BDM and Bo y er/-Mo ore also use enough information on the matc hed text/, but they
+pa y more pro cessing time/. Sunda y pa ys little pro cessing but it accesses more text
+c haracters/.
+As the alphab et size gro ws/, the di/erences in terms of text accesses with the
+Sunda y algorithm start to blur/, and Sunda y starts to dominate for short patterns/.
+The area where BNDM is the fastest starts to shrink/, totally disapp earing for
+j / j / /3/2/. Only Sunda y b eats BNDM/, nev er b y more than /2/0/%/.
+W e do not sho w the results for longer patterns but commen t the main result/:
+BNDM ceases to impro v e for patterns longer than w /= /3/2 letters/, so BDM ev en tu/-
+ally b ecomes faster/. This cut p oin t is close to m /= /5/0/.
+Figure /1/5 sho ws the results on non/-random text/: English and DNA/. The results
+are v ery similar to random text for j / j /= /1/6 and j / j /= /4/, resp ectiv el y /. That is/,
+BNDM is reasonably comp etitiv e on English and the fastest for DNA/. On F renc h
+and Spanish texts w e obtained results similar as on English/.
+/2/8 / G/. Nava rro and M/. Ra/not
+0
+2
+4
+6
+8
+10
+12
+14
+0 5 10 15 20 25 30 35
+Register accesses per text character
+Pattern length (m)
+Alphabet size = 2
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+0 5 10 15 20 25 30 35
+Register accesses per text character
+Pattern length (m)
+Alphabet size = 4
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+0 5 10 15 20 25 30 35
+Register accesses per text character
+Pattern length (m)
+Alphabet size = 8
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+0 5 10 15 20 25 30 35
+Register accesses per text character
+Pattern length (m)
+Alphabet size = 16
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+0 5 10 15 20 25 30 35
+Register accesses per text character
+Pattern length (m)
+Alphabet size = 32
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+0 5 10 15 20 25 30 35
+Register accesses per text character
+Pattern length (m)
+Alphabet size = 64
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+Horspool
+KMP
+Naive
+Shift-Or
+Fig/. /1/3/. Num b er of register accesses p er text c haracter/, for random text and increasing pattern
+length/, on di/eren t alphab et sizes/.
+F ast and Flexible String Matching / /2/9
+20
+30
+40
+50
+60
+70
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+Random text, alphabet size = 2
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Shift-Or
+10
+20
+30
+40
+50
+60
+70
+80
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+Random text, alphabet size = 4
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+Shift-Or
+5
+10
+15
+20
+25
+30
+35
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+Random text, alphabet size = 8
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+5
+10
+15
+20
+25
+30
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+Random text, alphabet size = 16
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+5
+10
+15
+20
+25
+30
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+Random text, alphabet size = 32
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+5
+10
+15
+20
+25
+30
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+Random text, alphabet size = 64
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+Fig/. /1/4/. Times in milliseconds p er megab yte/, for random text and increasing pattern length/, on
+di/eren t alphab et sizes/.
+/3/0 / G/. Nava rro and M/. Ra/not
+5
+10
+15
+20
+25
+30
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+English text
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+10
+20
+30
+40
+50
+60
+70
+80
+0 5 10 15 20 25 30 35
+Msec / Mb
+Pattern length (m)
+DNA text
+BDM
+BNDM
+BM_BNDM
+TurboBNDM
+Boyer-Moore
+Sunday
+Shift-Or
+Fig/. /1/5/. Times in milliseconds p er megab yte/, for non/-random text and increasing pattern length/.
+/9/./3 Classes of Cha racters
+W e sho w some illustrativ e results using classes of c haracters/, whic h w ere generated
+as follo ws/: w e generated random texts of alphab et sizes j / j /= /4 /; /1/6 and /6/4/, inside
+whic h w e searc hed random patterns of length /1/5 /(resp/. /3/0/)/. In those patterns w e
+in tro duced from /1 to /7 /(resp/. /1 to /1/5/) don /'t c ar es randomly placed/. By a don /'t c ar e
+w e mean a class of c haracters that matc hes all the alphab et/. The results are sho wn
+in Figure /1/6/. Our algorithm is the fastest in all cases/, far b elo w Shift/-Or /(whic h
+sta ys almost constan t whatev er the n um b er of don /'t c ar es is/)/, Sunda y and Bo y er/-
+Mo ore extended to classes of c haracters
+/4
+/. As the length of the patterns gro ws/, the
+di/erence b et w een our algorithm and the others increases sharply /.
+/9/./4 Multipattern Sea rch
+W e presen t in Figure /1/7 some results on our m ultipattern algorithm/, to sho w that
+although w e tak e the minim um shift among all the patterns/, w e can still do b etter
+than searc hing eac h pattern separately /. W e tak e random groups of /v e patterns
+of length /6 and sho w ho w our m ultipattern algorithm /(Multi/-BNDM/, in its /rst
+and second v ersions/) p erforms against /v e sequen tial searc hes with our sequen tial
+algorithm /(BNDM/)/, and against the parallel v ersion prop osed in /[Baeza/-Y ates and
+Gonnet /1/9/9/2/] /(Multi/-Shift/-Or/)/.
+As it can b e seen/, our second arrangemen t is sligh tly more e/cien t than the
+/rst one/, b oth are alw a ys more e/cien t than a sequen tial searc h /(although the
+impro v emen t is not /v e/-fold but t w o/- or three/-fold b ecause of shorter shifts/)/, and
+b oth more e/cien t than the prop osal of /[Baeza/-Y ates and Gonnet /1/9/9/2/] pro vided
+j / j / /8/.
+/9/./5 Sea rching Allo wing Substitutions
+W e sho w no w the p erformance of our appro ximate string matc hing algorithm for
+Hamming distance/. Figure /1/8 sho ws the results for m /= /1/0/. W e sho w random
+/4
+These extensions consist simply in rede/ning the equalit y among c haracters when a don /'t c ar e is
+in v olv ed/.
+F ast and Flexible String Matching / /3/1
+20
+40
+60
+80
+100
+120
+140
+160
+1 2 3 4 5 6 7
+Msec / Mb
+Number of don't cares
+Pattern length 15, alphabet size = 4
+BNDM
+Boyer-Moore
+Sunday
+Shift-Or
+0
+20
+40
+60
+80
+100
+120
+140
+160
+0 2 4 6 8 10 12 14 16
+Msec / Mb
+Number of don't cares
+Pattern length 30, alphabet size = 4
+BNDM
+Boyer-Moore
+Sunday
+Shift-Or
+0
+20
+40
+60
+80
+100
+120
+1 2 3 4 5 6 7
+Msec / Mb
+Number of don't cares
+Pattern length 15, alphabet size = 16
+BNDM
+Boyer-Moore
+Sunday
+Shift-Or
+0
+20
+40
+60
+80
+100
+120
+140
+0 2 4 6 8 10 12 14 16
+Msec / Mb
+Number of don't cares
+Pattern length 30, alphabet size = 16
+BNDM
+Boyer-Moore
+Sunday
+Shift-Or
+10
+20
+30
+40
+50
+60
+70
+80
+90
+100
+110
+120
+1 2 3 4 5 6 7
+Msec / Mb
+Number of don't cares
+Pattern length 15, alphabet size = 64
+BNDM
+Boyer-Moore
+Sunday
+Shift-Or
+0
+20
+40
+60
+80
+100
+120
+140
+0 2 4 6 8 10 12 14 16
+Msec / Mb
+Number of don't cares
+Pattern length 30, alphabet size = 64
+BNDM
+Boyer-Moore
+Sunday
+Shift-Or
+Fig/. /1/6/. Times to searc h with classes of c haracters/, in milliseconds p er megab yte/, for random
+text and increasing n um b er of don /'t c ar es /, on di/eren t alphab et sizes/.
+/3/2 / G/. Nava rro and M/. Ra/not
+0
+50
+100
+150
+200
+250
+300
+350
+2 4 8 16 32 64
+Msec / Mb
+Alphabet size
+Random text, 5 patterns of length 6
+Multi-BNDM (1)
+Multi-BNDM (2)
+Multi-Shift-Or
+BNDM
+Fig/. /1/7/. Times in milliseconds p er megab yte/, for m ultipattern searc h on random text of di/eren t
+alphab et sizes/.
+text with j / j /= /8 as w ell as English text/. W e included in the comparison all the
+algorithms w e are a w are of/: Shift/-Add /[Baeza/-Y ates and Gonnet /1/9/9/4/; W u and
+Man b er /1/9/9/2/]/, BY/-/lter /[Baeza/-Y ates and Gonnet /1/9/9/4/]/, EMC/-/lter /[El/-Mabrouk
+and Cro c hemore /1/9/9/6/]/, TU/-/lter /[T arhio and Ukk onen /1/9/9/3/]/, and Coun ting /[Baeza/-
+Y ates and Gonnet /1/9/9/4/]/. W e also included some algorithms that w ere designed
+for edit distance and that w e adapted for this simpler case/: NF A /[Baeza/-Y ates
+and Na v arro /1/9/9/9/]/, P art/.Ex/. /[Na v arro and Baeza/-Y ates /1/9/9/9/] and DF A /[Na v arro
+/1/9/9/7/]/. Our algorithm is called simply BNDM in the plots/, and w e include the
+Naiv e algorithm as w ell /(the trivial extension of the naiv e exact string matc hing
+algorithm/)/.
+In this case our algorithm is the fastest for mo derate error lev els /(i/.e/. k / /3/)/.
+The same happ ens for /4 / j / j / /1/6 and pattern lengths b et w een /1/0 and /1/6/.
+It is in teresting to notice that for Hamming distance our algorithm b eats exact
+partitioning /[Na v arro and Baeza/-Y ates /1/9/9/9/]/, whic h is the fastest kno wn algorithm
+for edit distance/.
+In the areas where exact partitioning is faster/, our algorithm is still reasonably
+comp etitiv e/. Moreo v er/, w e can e/cien tly handle classes of c haracters/, while exact
+partitioning quic kly degrades if it uses the Sunda y searc h algorithm/. On the other
+hand/, exact partitioning can b e made more resistan t to errors b y using our extension
+of BNDM to m ultipattern searc h/.
+/9/./6 Sea rching Allo wing Erro rs
+W e sho w no w the p erformance of our extensions to deal with errors/. W e /rst sho w
+ho w our m ultipattern algorithm p erforms when used for appro ximate string matc h/-
+ing/. This algorithm is called Ex/.P art/.//BNDM/. W e include also the fastest kno wn
+algorithms in the comparison/: Ex/.P art/.//Sunda y is the same algorithm except that
+Sunda y is used for the m ultipattern searc h /[Na v arro and Baeza/-Y ates /1/9/9/9/] /(this
+is the fastest kno wn algorithm for lo w error lev els/)/; Ex/.P art/.//Shift/-Or is the same
+using Shift/-Or for the m ultipattern searc h /[W u and Man b er /1/9/9/2/]/; Bit/.P ar/.NF A
+/[Baeza/-Y ates and Na v arro /1/9/9/9/] and Bit/.P ar/.Matrix /[My ers /1/9/9/9/] are bit/-parallel
+F ast and Flexible String Matching / /3/3
+0
+100
+200
+300
+400
+500
+600
+1 1.5 2 2.5 3 3.5 4 4.5 5
+Msec / Mb
+Number of errors (k)
+Random text, alphabet size 8, pattern length 10
+0
+100
+200
+300
+400
+500
+600
+1 1.5 2 2.5 3 3.5 4 4.5 5
+Msec / Mb
+Number of errors (k)
+English text, pattern length 10
+BNDM
+Shift-Add
+BY-filter
+TU-filter
+EMC-filter
+Counting
+NFA
+DFA
+Ex.Part.
+Naive
+Fig/. /1/8/. Times in milliseconds p er megab yte/, for appro ximate searc h under Hamming distance
+on random and English text/. W e use m /= /1/0 and the x axis is the n um b er of errors allo w ed/.
+algorithms/; and /nally w e include algorithms based on Coun ting /[Jokinen et al/.
+/1/9/9/6/]/, DF A /[Na v arro /1/9/9/7/] and /4/-Russians /[W u et al/. /1/9/9/6/]/.
+Figure /1/9 sho ws the results for t w o alphab et sizes and m /= /2/0 /(w e obtained
+similar results for m /= /1/0 and /3/0/)/. As it can b e seen/, our implemen tation of exact
+partitioning is quite close to Ex/.P art/.//Sunda y /(sometimes ev en faster/) and therefore
+our algorithm is a comp etitiv e y et more /exible replacemen t/, while it is faster than
+the other /exible candidate Ex/.P art/.//Shift/-Or /[W u and Man b er /1/9/9/2/]/.
+Since BNDM is not v ery go o d for v ery short patterns/, our algorithm w orks b etter
+for m /= /2/0 and /3/0/. Moreo v er/, it ceases to b e comp etitiv e for higher error lev els
+since the length of the patterns to searc h for is O /( m/=k /)/.
+0
+200
+400
+600
+800
+1000
+1 2 3 4 5 6 7 8 9 10
+Msec / Mb
+Number of errors (k)
+Random text, alphabet size 16, pattern length 20
+Ex.Part./BNDM
+Ex.Part./Sunday
+Ex.Part./Shift-Or
+Bit.Par.NFA
+Bit.Par.Matrix
+Counting
+DFA
+4-Russians
+0
+100
+200
+300
+400
+500
+600
+1 2 3 4 5 6 7 8 9 10
+Msec / Mb
+Number of errors (k)
+Random text, alphabet size 64, pattern length 20
+Ex.Part./BNDM
+Ex.Part./Sunday
+Ex.Part./Shift-Or
+Bit.Par.NFA
+Bit.Par.Matrix
+Counting
+DFA
+4-Russians
+Fig/. /1/9/. Times in milliseconds p er megab yte/, for random text on patterns of length /2/0/, and j / j /=
+/1/6 and /6/4/, using edit distance/. The x axis is the n um b er of errors allo w ed/.
+Finally /, w e sho w the p erformance of our new algorithm for appro ximate string
+matc hing based on the NF A sim ulation /(NF A//BNDM/)/. Figure /2/0 sho ws the results/.
+/3/4 / G/. Nava rro and M/. Ra/not
+As the algorithm w orks w ell for v ery lo w error lev els/, w e sho w only the case k /= /1/,
+for random /( j / j /= /4/) and English text/. In the /rst case /(v ery similar to DNA/) our
+algorithm outp erforms all the others /(this happ ens also for k /= /2 and k /= /3/)/. F or
+English text/, it can b e seen that for v ery lo w error lev els and in termediate pattern
+lengths/, our algorithm b ecomes v ery close to /[Na v arro and Baeza/-Y ates /1/9/9/9/]/, whic h
+is the fastest kno wn algorithm for lo w error lev els/, b eating all the other algorithms
+/(w e ha v e sho wn only those that are the fastest for these cases/)/.
+0
+50
+100
+150
+200
+250
+300
+350
+400
+450
+5 10 15 20 25 30
+Msec / Mb
+Pattern length (m)
+Random text, alphabet size 4, k=1 error
+NFA/BNDM
+Ex.Part./Sunday
+Bit.Par.NFA
+Bit.Par.Matrix
+DFA
+20
+40
+60
+80
+100
+120
+140
+160
+5 10 15 20 25 30
+Msec / Mb
+Pattern length (m)
+English text, k=1 error
+NFA/BNDM
+Ex.Part./Sunday
+Bit.Par.NFA
+Bit.Par.Matrix
+DFA
+Fig/. /2/0/. Times in milliseconds p er megab yte/, for random and English and k /= /1 error under edit
+distance/.
+/1/0/. CONCLUSIONS AND FUTURE W ORK
+W e ha v e presen ted a new text searc hing algorithm called BNDM/, whic h is based on
+the bit/-parallel sim ulation of a nondeterministic su/x automaton/. This automaton
+has b een previously used in deterministic form in an algorithm called BDM/. Bit/-
+parallelism is a general w a y to sim ulate nondeterministic automata using the bits
+of the computer w ord/, whic h has up to no w led to /exible but slo w algorithms for
+exact searc hing and to comp etitiv e algorithms for appro ximate searc hing/. Hence/,
+BNDM obtains the b est of b oth w orlds/: the sp eed of BDM and the /exibilit y of
+bit/-parallelism/.
+W e presen t also some v ariations called T urb oBNDM and BM BNDM whic h are
+deriv ed from the corresp onding v arian ts of BDM/. These v arian ts are m uc h more
+simply implemen ted using bit/-parallelis m and b ecome practical algorithms/. T ur/-
+b oBNDM has an a v erage p erformance v ery close to BNDM and O /( n /) w orst case/.
+W e ha v e also extended BNDM in simple w a ys to solv e a large set of extensions o v er
+the basic string matc hing problem/, suc h as matc hing classes of c haracters/, m ultiple
+pattern matc hing and appro ximate pattern matc hing/.
+Our new algorithm is exp erimen tally sho wn to b e v ery fast in practice/. F or ex/-
+act patterns it is the fastest on small alphab ets and remains comp etitiv e for larger
+ones/. It is also comp etitiv e when dealing with extended patterns/, b eing in particu/-
+lar the fastest to handle classes of c haracters and some cases of appro ximate pattern
+F ast and Flexible String Matching / /3/5
+matc hing/. In particular/, BNDM seems to b e a v ery attractiv e c hoice in computa/-
+tional biology applications/, since it is the fastest to searc h DNA text for patterns
+of lengths b et w een /7 and /5/0/, and its /exibilit y is necessary in man y applications of
+that /eld/.
+Recen tly /, BNDM has b een successfull y extended to deal with other extensions of
+the searc h problem/, suc h as regular expression searc hing /[Na v arro and Ra/not /1/9/9/9/]
+and PR OSITE patterns for protein searc hing /(i/.e/. p ermitting classes of c haracters
+and b ounded length gaps/) /[Na v arro and Ra/not /2/0/0/0/]/. A soft w are called nr gr ep
+/[Na v arro /2/0/0/0b/] able of exact and appro ximate searc hing of patterns con taining
+classes of c haracters/, optional and rep eatable c haracters and regular expressions/,
+has b een built based on the ideas presen ted in this pap er/.
+The new su/x automaton w e in tro duce and sim ulate for classes of c haracters has
+nev er b een studied/. A study of this new automaton /(maximal n um b er of no des and
+edges/, minimalit y /, algorithms to build it/, a v erage n um b er of no des and edges/) w ould
+b e in teresting b y itself and should p ermit us to extend the BDM and T urb oRF to
+handle classes of c haracters/.
+REFERENCES
+Abrahamson/, K/. /1/9/8/7/. Generalized string matc hing/. SIAM Journal on Computing /1/6 /, /6/,
+/1/0/3/9/{/1/0/5/1 /.
+Baeza/-Y a tes/, R/. /1/9/9/2/. T ext retriev al/: Theory and practice/. In /1/2th IFIP World Computer
+Congr ess /, V olume I /(Sept/. /1/9/9/2/)/, pp/. /4/6/5/{/4/7/6/. Elsevier Science/.
+Baeza/-Y a tes/, R/. and Gonnet/, G/. /1/9/9/2/. A new approac h to text searc hing/. CA CM /3/5 /, /1/0
+/(Oct/./)/, /7/4/{/8/2/.
+Baeza/-Y a tes/, R/. and Gonnet/, G/. /1/9/9/4/. F ast string matc hing with mismatc hes/. Informa/-
+tion and Computation /1/0/8 /, /2/, /1/8/7/{/1/9/9/.
+Baeza/-Y a tes/, R/. and Na v arr o/, G/. /1/9/9/9/. F aster appro ximat e string matc hing/. A lgorith/-
+mic a /2/3 /, /2/, /1/2/7/{/1/5/8/.
+Baeza/-Y a tes/, R/. and Perleber g/, C/. /1/9/9/2/. F ast and practical appro ximate pattern matc h/-
+ing/. In Pr o c/. CPM/'/9/2 /(/1/9/9/2/)/, pp/. /1/8/5/{/1/9/2/. Springer/-V erla g/. LNCS /6/4/4/.
+Blumer/, A/./, Ehrenfeucht/, A/./, and Ha ussler/, D/. /1/9/8/9/. Av erage sizes of su/x trees and
+da wgs/. Discr ete Applie d Mathematics /2/4 /, /1/, /3/7/{/4/5/.
+Bo yer/, R/. S/. and Moore/, J/. S/. /1/9/7/7/. A fast string searc hing algorithm/. Commun/.
+A CM /2/0 /, /1/0/, /7/6/2/{/7/7/2/.
+Cr ochemore/, M/. /1/9/8/6/. T ransducers and rep etitions/. The or etic al Computer Scienc e /4/5 /, /1/,
+/6/3/{/8/6/.
+Cr ochemore/, M/./, Czumaj/, A/./, Gasieniec/, L/./, Jar ominek/, S/./, Lecr oq/, T/./, Plando wski/, W/./,
+and R ytter/, W/. /1/9/9/3/. F ast practical m ulti/-patt ern matc hing/. Rapp ort /9/3/{/3/, Institut
+Gaspard Monge/, Univ ersit / e de Marne la V all / ee/.
+Cr ochemore/, M/. and R ytter/, W/. /1/9/9/4/. T ext algorithms /. Oxford Univ ersit y Press/.
+Czumaj/, A/./, Cr ochemore/, M/./, Gasieniec/, L/./, Jar ominek/, S/./, Lecr oq/, T/./, Plando wski/, W/./,
+and R ytter/, W/. /1/9/9/4/. Sp eeding up t w o string/-matc hin g algorithms /. A lgorithmic a /1/2 /,
+/2/4/7/{/2/6/7/.
+El/-Mabr ouk/, N/. and Cr ochemore/, M/. /1/9/9/6/. Bo y er/-Mo ore strategy to e/cien t appro xi/-
+mate string matc hing/. In Pr o c/. of CPM/'/9/6 /, Num b er /1/0/7/5 in Lecture Notes in Computer
+Science /(/1/9/9/6/)/, pp/. /2/4/{/3/8/. Springer/-V erlag /, Berlin/.
+Fischer/, M/. J/. and P a terson/, M/. /1/9/7/4/. String matc hing and other pro ducts/. In R/. M/.
+Karp Ed/./, Pr o c e e ding s SIAM/-AMS Complexity of Computation /(Pro vidence /, RI/, /1/9/7/4/)/,
+pp/. /1/1/3/{/1/2/5/.
+Horspool/, R/. N/. /1/9/8/0/. Practical fast searc hing in strings/. Softwar e Pr actic e and Exp eri/-
+enc e /1/0 /, /5/0/1/{/5/0/6/.
+/3/6 / G/. Nava rro and M/. Ra/not
+Jokinen/, P/./, T arhio/, J/./, and Ukk onen/, E/. /1/9/9/6/. A comparison of appro ximat e string
+matc hing algorithms /. Softwar e Pr actic e and Exp erienc e /2/6 /, /1/2/, /1/4/3/9/{/1/4/5/8/.
+Knuth/, D/. E/./, Morris/, J/. H/./, and Pra tt/, V/. R/. /1/9/7/7/. F ast pattern matc hing in strings/.
+SIAM Journal on Computing /6 /, /1/, /3/2/3/{/3/5/0/.
+Lecr oq/, T/. /1/9/9/2/. R e cher ches de mot /. Ph/. D/. thesis/, Univ ersit / e d/'Orl / eans/, F rance/.
+Myers/, G/. /1/9/9/9/. A fast bit/-v ector algorithm for appro ximate string matc hing based on
+dynamic programmi ng/. Journal of the A CM /4/6 /, /3/, /3/9/5/{/4/1/5/.
+Na v arr o/, G/. /1/9/9/7/. A partial deterministi c automaton for appro ximate string matc hing/. In
+Pr o c/. of WSP/'/9/7 /(/1/9/9/7/)/, pp/. /1/1/2/{/1/2/4/. Carleton Univ ersit y Press/.
+Na v arr o/, G/. /1/9/9/8/. Appr oximate T ext Se ar ching /. Ph/. D/. thesis/, Departmen t of Computer
+Science/, Univ ersit y of Chile/. T ec h/. Rep ort TR//DCC/-/9/8/-/1/4/. ftp/:////ftp/.d cc/. uch ile /.c l///-
+pub//users //gn ava rro //t hes is/9 /8/.p s/.g z /.
+Na v arr o/, G/. /2/0/0/0a/. A guided tour to appro xima te string matc hing/. A CM Computing Sur/-
+veys /. T o app ear/.
+Na v arr o/, G/. /2/0/0/0b/. Nrgrep/: a fast and /exible pattern matc hing to ol/. T ec hni/-
+cal Rep ort TR//DCC/-/2/0/0/0/-/3 /(Aug/./)/, Dept/. of Computer Science/, Univ/. of Chile/.
+ftp/:////ftp /.dc c/.u chi le /.cl //pu b//u ser s// gna var ro// nrg re p/.p s/.g z /.
+Na v arr o/, G/. and Baeza/-Y a tes/, R/. /1/9/9/9/. V ery fast and simple appro ximate string matc h/-
+ing/. Information Pr o c essing L etters /7/2 /, /6/5/{/7/0/.
+Na v arr o/, G/. and Raffinot/, M/. /1/9/9/8/. A bit/-parallel approac h to su/x automata/: F ast
+extended string matc hing/. In Pr o c/. CPM/'/9/8 /, LNCS v/. /1/4/4/8 /(/1/9/9/8/)/, pp/. /1/4/{/3/3/. Springer/-
+V erlag/.
+Na v arr o/, G/. and Raffinot/, M/. /1/9/9/9/. F ast regular expression searc h/. In J/. Vitter and
+C/. Zar olia gis Eds/./, Pr o c e e dings of the /3r d Workshop on A lgorithm Engine ering /, Num b er
+/1/6/6/8 in Lecture Notes in Computer Science /(/1/9/9/9/)/, pp/. /1/9/9/{/2/1/3/. Springer/-V erla g/, Berlin/.
+Na v arr o/, G/. and Raffinot/, M/. /2/0/0/0/. F ast and simple c haracter classes and b ounded gaps
+pattern matc hing/, with application to protein searc hing/. In A CM RECOMB /2/0/0/1 /(/2/0/0/0/)/.
+T o app ear/.
+Pinter/, R/. Y/. /1/9/8/5/. E/cien t string matc hing with don/'t care pattern/. In A/. Apostolico
+and Z/. Galil Eds/./, Combinatorial A lgorithms on Wor ds /, pp/. /1/1/{/2/9/. Springer/-V erlag/,
+Berlin/.
+Raffinot/, M/. /1/9/9/7a/. Asymptotic estimation of the a v erage n um b er of terminal states in
+da wgs/. In Pr o c/. WSP/'/9/7 /(/1/9/9/7/)/, pp/. /1/4/0/{/1/4/8/. Carleton Univ ersit y Press/.
+Raffinot/, M/. /1/9/9/7b/. On the m ulti bac kw ard da wg matc hing algorithm /(MultiBDM/)/. In
+Pr o c/. WSP/'/9/7 /(/1/9/9/7/)/, pp/. /1/4/9/{/1/6/5/. Carleton Univ ersit y Press/.
+Sund a y/, D/. /1/9/9/0/. A v ery fast substring searc h algorithm/. CA CM /3/3 /, /8 /(Aug/./)/, /1/3/2/{/1/4/2/.
+T arhio/, J/. and Ukk onen/, E/. /1/9/9/3/. Appro ximate Bo y er/-Mo ore string matc hing/. SIAM J/.
+on Computing /2/2 /, /2/, /2/4/3/{/2/6/0/.
+Wu/, S/. and Manber/, U/. /1/9/9/2/. F ast text searc hing allo wing errors/. CA CM /3/5 /, /1/0 /(Oct/./)/,
+/8/3/{/9/1/.
+Wu/, S/./, Manber/, U/./, and Myers/, E/. /1/9/9/6/. A sub/-quadratic algorithm for appro ximate
+limited expression matc hing/. A lgorithmic a /1/5 /, /1/, /5/0/{/6/7/.
+Y a o/, A/. /1/9/7/9/. The complexit y of pattern matc hing for a random string/. SIAM J/. on Com/-
+puting /8 /, /3/6/8/{/3/8/7/.
