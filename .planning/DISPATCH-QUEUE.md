@@ -29,7 +29,7 @@ The author gave a green light on 2026-09-29, *"dispatch next stages for all, gre
 
 | # | run | serves | writes |
 |---|---|---|---|
-| none | the queue resumes at the six consolidation rows, then R2 | | |
+| none | the queue resumes at R3, the text-tools revisit against FD-56 | | |
 
 ## Next, in order
 
@@ -39,7 +39,6 @@ The author asked on 2026-09-29 for the language fixes to go one by one through t
 
 | # | run | serves | waits on |
 |---|---|---|---|
-| R2 | research: compute primitives that play major roles, arithmetic, division and multiply lowering, bit operations, byte compare and copy, hashing for the lookup maps, integer to string | speed | R1 (both append to `records/findings.md`) |
 | R3 | `revisit` `docs/arcs/text-tools-arc.md` against R1: a cost requirement, P1 widened to a precompiled multi-pattern automaton, P2 and P3 re-scoped | text tools | R1 |
 | next | DT-06 with DT-02, then DT-03, DT-06 with DT-02, DT-05, DT-11, DT-09 with DT-08, DT-10 with DT-13, DT-12, one at a time, from `.planning/DOC-TOOLSET-REVIEW-2026-09.md`. DT-07 waits on the author | tooling | `tools/ledger-lint/ledger-lint.py` |
 
@@ -137,6 +136,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| R2 | compute primitives research, FD-57, 25 pins. Constant division by `mulhu` (`A22`), `INT64_MIN` through an unsigned magnitude (PRB-78), word-wide compare and copy inside the 8-byte cell rounding, bit ops waiting on a unary IR form and a stated x86-64 level no document names. Hashing: a pure pass holds no seed, so an ordered map keeps the log bound, and interning is the faster shape. Open for `LE25`'s design: whether per-pass `Map Str` is later replaced by id-keyed maps, which would make it an improper split | this commit |
 | R1 | text primitives research | `3022b41`, FD-56 |
 | LE28 | `lower-defs` conses and reverses once. `C1 == C2`, C2 on HEAD's blob reproduced the old binary, the suite passed alone on C2 (441, 96 roots), phases 29 and 30 passed with `CC` exported. Self-compile 0.81 s to 0.79 s, 385 to 358 MiB. Row set `direct` | this commit |
 | O1b | optimization gaps: 13 day-sized items, 11 never specified. `ledger-lint` F and AI memoized would take the lint from about 95 s to 10 s; Phase 7's subshell discards the resolver cache; items 2 to 6 take the suite from about 357 s to 265 s. The optimization items wait on the author's pick | `.planning/OPTIMIZATION-GAPS-2026-09.md` |

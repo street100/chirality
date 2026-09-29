@@ -1,0 +1,1127 @@
+1
+Improved division by invariant integers
+Niels M ¨oller and Torbj ¨orn Granlund
+Abstract—This paper considers the problem of dividing a
+two-word integer by a single-word integer, together with a few
+extensions and applications. Due to lack of efﬁcient division
+instructions in current processors, the division is performed as a
+multiplication using a precomputed single-word approximation
+of the reciprocal of the divisor, followed by a couple of adjustment
+steps. There are three common types of unsigned multiplication
+instructions; we deﬁne full word multiplication ( umul) which
+produces the two-word product of two single-word integers, low
+multiplication (umullo) which produces only the least signiﬁcant
+word of the product, and high multiplication ( umulhi), which
+produces only the most signiﬁcant word. We describe an algo-
+rithm which produces a quotient and remainder using one umul
+and one umullo. This is an improvement over earlier methods,
+since the new method uses cheaper multiplication operations.
+It turns out we also get some additional savings from simpler
+adjustment conditions. The algorithm has been implemented in
+version 4.3 of the GMP library. When applied to the problem
+of dividing a large integer by a single word, the new algorithm
+gives a speedup of roughly 30%, benchmarked on AMD and Intel
+processors in the x86 64 family.
+I. I NTRODUCTION
+Integer division instructions are either not present at all
+in current microprocessors, or if they are present, they are
+considerably slower than the corresponding multiplicatio n
+instructions. Multiplication instructions in turn are at l east a
+few times slower than addition instructions, both in terms o f
+throughput and latency. The situation was similar a decade
+ago [1], and the trend has continued so that division latency
+is now typically 5-15 times higher than multiplication late ncy,
+and division throughput is up to 50 times worse than multipli-
+cation throughput. Another trend is that branches cost grad u-
+ally more, except for branches that the hardware can predict
+correctly. But some branches are inherently unpredictable .
+Division can be implemented using multiplication, by ﬁrst
+computing an approximate reciprocal, e.g., by Newton iter-
+ation, followed by a multiplication that results in a candi-
+date quotient. Finally, the remainder corresponding to thi s
+candidate quotient is computed, and if the remainder is too
+small or too large, the quotient is adjusted. This procedure
+is particularly attractive when the same divisor is used sev -
+eral times; then the reciprocal need to be computed only
+once. Somewhat surprisingly, a well-tuned Newton reciproc al
+followed by multiplication and adjustments wins over the
+hardware division instructions even for a single non-invar iant
+division on modern 64-bit PC processors.
+This paper considers the problem of dividing a two-word
+number by a single-word number, using a single-word approx-
+N. M ¨oller is a long time member of the GMP research team. Email:
+nisse@lysator.liu.se
+T. Granlund is with the Centre for Industrial and Applied Mat hematics,
+KTH, Stockholm. Granlund’s work was sponsored by the Swedish Foundation
+for Strategic Research. Email: tege@nada.kth.se
+imate reciprocal. The main contributions are a new algorith m
+for division using such a reciprocal and new algorithms for
+computing a suitable reciprocal for 32-bit and 64-bit word
+size.
+The key idea in our new division algorithm is to compute
+the candidate remainder as a single word rather than a double
+word, even though it does not quite ﬁt. We then use a fraction
+associated with the candidate quotient to resolve the ambiguity.
+The new method is more efﬁcient than previous methods for
+two reasons.
+• It uses cheaper multiplication operations, omitting the
+most signiﬁcant half one of the two products. Computing
+the least signiﬁcant word of a product is a cheaper
+operation than computing the most signiﬁcant word (e.g.,
+on AMD Opteron, the difference in latency is one cycle,
+while on Intel Core 2, the difference is three cycles).
+• The needed adjustment conditions are simpler.
+When the division algorithms in this paper are used as build-
+ing blocks for algorithms working with large numbers, our
+improvements typically affect the linear term of the execut ion
+time. This is of particular importance for applications usi ng
+integers of size up to a few dozen words, e.g., on a 64-bit
+CPU, 2048-bit RSA corresponds to computations on 32-word
+numbers.
+The new algorithms have been implemented in the GMP li-
+brary [2]. As an example of the resulting speedup, for divisi on
+of a large integer by a single word, the new method gives a
+speedup of 31% compared to earlier methods, benchmarked
+on AMD Opteron and Intel Core 2.
+The outline of this paper is as follows. The rest of this
+section deﬁnes the notation we use. Section II explains how
+the needed reciprocal approximation is deﬁned, and how it is
+useful. In Sec. III, we describe new algorithms for computin g
+the reciprocal, and we present our main result, a new algorithm
+for dividing a two-word number by a single word. Analysis of
+the probability for the adjustment steps in the latter algor ithm
+is provided in Appendix A. Section IV describes a couple of
+extensions, primarily motivated by schoolbook division, t he
+most important one being a method for dividing a three-word
+number by a two-word number. In Sec. V, we consider an
+algorithm that can take direct advantage of the new division
+method: Dividing a large integer by a single-word. We describe
+the x86 64 implementation of this algorithm using the new
+method, and compare it to earlier results. Finally, Sec. VI
+summarises our conclusions.
+A. Notation and conventions
+Let ℓ denote the computer word size, and let β = 2 ℓ denote
+the base implied by the word size. Lower-case letters denote
+single-word numbers, and upper-case letters represent numbers
+2
+of any size. We use the notation X =⟨xn−1, . . . , x1, x0⟩=
+xn−1βn−1 +···+ x1β + x0, where the n-word integer X is
+represented by the words xi, for 0≤ i < n .
+We use the following multiplication operations:
+⟨p1, p0⟩←umul(a, b) = ab Double word product
+p0←umullo(a, b) = ( ab) mod β Low word
+p1←umulhi(a, b) =
+⌊ ab
+β
+⌋
+High word
+Our algorithms depend on the existence and efﬁciency of
+these basic multiplication operations, but they do not requ ire
+both umul and umulhi. These are common operations in
+all processors, and very few processors lack both umul and
+umulhi 1.
+II. D IVISION USING AN APPROXIMATE RECIPROCAL
+Consider the problem of dividing a two-word number U =
+⟨u1, u0⟩by a single-word number d, computing the quotient
+and remainder
+q =
+⌊ U
+d
+⌋
+r = U− qd.
+Clearly, r is a single-word number. We assume that u1 < d,
+to ensure that also the quotient q ﬁts in a single word. We also
+restrict attention to the case that d is a “normalised” single-
+word number, i.e., β/2≤ d < β . This is equivalent to the word
+d having its most signiﬁcant bit set. It follows that u0/d < 2,
+and one can get a reasonable quotient approximation from u1
+alone, without considering u0.
+We have 1/β < 1/d≤ 2/β. We represent the reciprocal
+1/d using a ﬁxed-point representation, with a single word and
+an additional implicit one bit at the most signiﬁcant end. We
+deﬁne the precomputed reciprocal of d as the integer
+v =
+⌊ β2− 1
+d
+⌋
+− β. (1)
+The constraints on d imply that 0 < v < β , in particular, v is
+a single word number. We have (β + v)/β2≈ 1/d, or more
+precisely,
+1
+d− 1
+β2≤ β + v
+β2 < 1
+d . (2)
+For the borderline case d = β/2, we have the true reciprocal
+1/d = 2/β, which equals (β +v)/β2 for v = β. Our deﬁnition
+instead gives the single-word number v = β− 1 in this case.
+The usefulness of v comes from Eq. (2) which implies
+U
+d ≈ (u1β + u0) β + v
+β2 = u1 + u1v
+β + u0
+β + u0v
+β2 . (3)
+Since (β + v)/β2 < 1/d, the integer part of the right hand
+side is at most q, and hence a single word. Since the terms on
+the right hand side are non-negative, this bound is still val id
+if some of the terms are omitted or truncated.
+1The SPARC v9 architecture is a notable exception, making high perfor-
+mance arithmetic on large numbers very challenging.
+A. Previous methods
+The trick of using a precomputed reciprocal to replace
+integer division by multiplication is well-known. The simp lest
+variant is Alg. 1, which uses a quotient approximation based
+on the ﬁrst two terms of Eq. (3).
+(q, r)← DIV 2BY1(⟨u1, u0⟩, d, v)
+In: β/2≤ d < β , u1 < d, v =⌊(β2− 1)/d⌋− β
+1 q←⌊ vu1/β⌋ + u1 / /Candidate quotient (umulhi)
+2 ⟨p1, p0⟩←qd / /umul
+3 ⟨r1, r0⟩←⟨u1, u0⟩−⟨p1, p0⟩/ /Candidate remainder
+4 while r1 > 0 or r0≥ d / /Repeated at most 3 times
+5 q← q + 1
+6 ⟨r1, r0⟩←⟨r1, r0⟩−d
+7 return q, r0
+Algorithm 1: Simple division of two-word number by a single-
+word number, using a precomputed single-word reciprocal.
+To see how it works, let U =⟨u1, u0⟩and let q denote
+the true quotient ⌊U/d⌋. We have (β + v) d = β2− k, where
+1≤ k≤ d. Let q′ denote the candidate quotient computed
+at line 1, and let q0 = vu1 mod β denote the low, ignored,
+half of the product. Let R′ denote the corresponding candidate
+remainder, computed on line 3. Then
+R′ = U− q′d
+= u0 + u1β− u1(β + v)− q0
+β d
+= u0 + u1k + q0d
+β
+We see that R′≥ 0, which corresponds to q′≤ q. Since k≤ d,
+we also get the upper bound R′ < β +2d≤ 4d, which implies
+that q′≥ q− 3. Since R′ may be larger than β, it must be
+computed as a two-word number at line 3 and in the loop, at
+line 5, which is executed at most three times.
+The problem is that in the two-word subtraction U− q′d,
+most, but not all, bits in the most signiﬁcant word cancel.
+Hence, we must use the expensive umul operation rather than
+the cheaper umullo.
+The quotient approximation can be improved. By checking
+if u0≥ d, and if so, incrementing q′ before computing r′, one
+gets R′ < 3d and q′≥ q− 2. The method in [1], Sec. 8, is
+more intricate, guaranteeing that R′ < 2d, so that q′≥ q− 1.
+However, it still computes the full product q′d, so this method
+needs one umul and one umulhi.
+III. N EW ALGORITHMS
+In this section, we describe our new algorithms. We ﬁrst
+give efﬁcient algorithms for computing the approximate re-
+ciprocal, and we then describe our new algorithm for divisio n
+of a double-word number by a single word.
+A. Computing the reciprocal
+From the deﬁnition of v, we have
+v =
+⌊ β2− 1
+d
+⌋
+− β =
+⌊⟨β− 1− d, β− 1⟩
+d
+⌋
+3
+so for architectures that provide an instruction for dividi ng a
+two-word number by a single word, that instruction can be
+used to compute the reciprocal straightforwardly.
+If such a division instruction is lacking or if it is slow, the
+reciprocal can be computed using the Newton iteration
+xk+1 = xk + xk(1− xkd). (4)
+This equation implies that
+1− xk+1d = (1− xkd)2. (5)
+Consider one iteration, and assume that the accuracy of xk is
+roughly n bits. Then the desired accuracy of xk+1 is about 2n
+bits, and to achieve that, only about 2n bits of d are needed in
+Eq. (4). If xk is represented using n bits, matching its accuracy,
+then the computation of the right hand side yields 4n bits. In
+a practical implementation, the result should be truncated to
+match the accuracy of 2n bits. The resulting error in xk+1 is
+the combination of the error according to Eq (5), the truncation
+of the result, and any truncation of the d input.
+v← RECIPROCAL WORD (d)
+In: 263≤ d < 264
+1 d0← d mod 2 / /Least signiﬁcant bit
+2 d9←⌊ 2−55d⌋ / /Most signiﬁcant 9 bits
+3 d40←⌊ 2−24d⌋ + 1 / /Most signiﬁcant 40 bits
+4 d63←⌈ d/2⌉ / /Most signiﬁcant 63 bits
+5 v0←⌊ (219− 3× 28)/d9⌋ / /By table lookup
+6 v1← 211v0−⌊ 2−40v2
+0d40⌋− 1 / /2 umullo
+7 v2← 213v1 +⌊2−47v1 (260− v1d40)⌋ / /2 umullo
+8 e← 296− v2d63 +⌊v2/2⌋d0 / /umullo
+9 v3← (231v2 +⌊2−65v2e⌋) mod 2 64 / /umulhi
+10 v4← (v3−⌊ 2−64(v3 + 264 + 1) d⌋) mod 2 64 / /umul
+11 return v4
+Algorithm 2: Computing the reciprocal ⌊(β2− 1)/d⌋− β, for
+64-bit machines ( β = 2 64).
+Algorithm 2 gives one variant, for β = 2 64. Here, v0 is
+represented as 11 bits, v1 as 21 bits, v2 as 34 bits, and v3 and
+v4 as 65-bit values where the most signiﬁcant bit, which is
+always one, is implicit. Note that sinced40 and d63 are rounded
+upwards, they may be equal to 240 and 263 respectively, and
+hence not quite ﬁt in 40 and 63 bits.
+Theorem 1 (64-bit reciprocal): With β = 2 64, the output v
+of Alg. 2 satisﬁes 0 < β 2− (β + v) d≤ d.
+Proof: We will prove that the errors in each iteration are
+bounded as follows:
+e0 = 2 50− v0d40 |e0| < 5
+8× 242 (6)
+e1 = 2 60− v1d40 0≤ e1 < 29
+32× 243 (7)
+e2 = 2 97− v2d 0 < e 2 < 873
+1024× 263 + d (8)
+e3 = 2 128− (264 + v3) d 0 < e 3 < 2d (9)
+e4 = 2 128− (264 + v4) d 0 < e 4≤ d (10)
+Each step involves a truncation, and we let 0≤ δk < 1 denote
+the truncation error in each step. Start with (6). Let d′ =
+d40− 231d9, then 1≤ d′≤ 231. We have
+v0 = 219− 3× 28
+d9
+− δ0
+e0 = 2 50− 219− 3× 28
+d9
+(231d9 + d′) + δ0d40
+= 3× 239 + δ0d40− 219− 3× 28
+d9
+d′
+From this, we get
+e0≤ 3× 239 + δ0d40
+< 3× 239 + 240 = 5× 239
+e0≥ 3× 239− 219− 3× 28
+d9
+d′
+> 3× 239− 242 =−5× 239
+For (7), we get
+v1 = 2 11v0− 2−40v2
+0d40− (1− δ1)
+e1 = 2 60− (211v0− 2−40v2
+0d40) d40 + (1− δ1)d40
+= 2 −40e2
+0 + (1− δ1)d40
+It follows that e1 > 0 and that
+e1 <
+(5
+8
+) 2
+× 244 + 240 = 29
+32× 243
+For (8), we ﬁrst note that the product v1(260− v1d40) ﬁts in
+64 bits, since the ﬁrst factor is 21 bits and the second factor is
+e1, which ﬁts in 43 bits. Let d′ = 2 24d40− d, then 1≤ d′≤
+224. We get
+v2 = 2 13v1 + 2−47v1(260− v1d40)− δ2
+e2 = 2 97− v2(224d40− d′)
+= 2 97− 224(213v1 + 2−47v1(260− v1d40))d40 + v2d′ + δ2d
+= 2 −23e2
+1 + v2d′ + δ2d
+It follows that e2 > 0 and that
+e2 <
+(29
+32
+) 2
+× 263 + 258 + d = 873
+1024× 263 + d
+For (9), ﬁrst note that the value e, computed at line 8, equals
+⌊e2/2⌋. Then (8) implies that this value ﬁts in 64 bits. Let ǫ
+denote the least signiﬁcant bit of e2, so that e = ( e2− ǫ)/2.
+Deﬁne
+v′
+3 = 2 31v2 +⌊2−66v2(e2− ǫ)⌋
+e′
+3 = 2 128− v′
+3d
+(We will see in a moment that v′
+3 = 2 64 + v3, and hence also
+e′
+3 = e3). We get
+e′
+3 = 2 128− (231v2 + 2−66v2(297− v2d− ǫ)) d + δ3d
+= 2 −66e2
+2 + (2−66v2ǫ + δ3) d
+It follows that e′
+3 > 0 and that
+e′
+3 <
+( 873
+1024
+) 2
+× 260 +
+( 873
+4096 + 1
+4 + 1
+232 + 1
+)
+d < 2d
+4
+v← RECIPROCAL WORD (d)
+In: 231≤ d < 232
+1 d0← d mod 2
+2 d10←⌊ 2−22d⌋ / /Most signiﬁcant 10 bits
+3 d21←⌊ 2−11d⌋ + 1 / /Most signiﬁcant 21 bits
+4 d31←⌈ d/2⌉ / /Most signiﬁcant 31 bits
+5 v0←⌊ (224− 214 + 29)/d10⌋ / /By table lookup
+6 v1← 24v0−⌊ 2−32v2
+0d21⌋− 1 / /umullo + umulhi
+7 e← (248− v1d31 +⌊v1/2⌋d0) / /umullo
+8 v2← 215v1 +⌊2−33v1e⌋ / /umulhi
+9 v3← (v2−⌊ 2−32(v2 + 232 + 1) d⌋) mod 2 32 / /umul
+10 return v3
+Algorithm 3: Computing the reciprocal ⌊(β2− 1)/d⌋− β, for
+32-bit machines ( β = 2 32).
+It remains to show that 264≤ v′
+3 < 2× 264. The upper bound
+follows from e′
+3 > 0. For the borderline case d = 2 64− 1, one
+can verify that v′
+3 = 2 64, and for d≤ 264− 2, we get
+v′
+3 = 2128− e′
+3
+d ≥ 2128− e′
+3
+264− 2
+= 2 64 + 2× 264− e3
+264− 2 > 264.
+For the ﬁnal adjustment step, we have
+⌊2−64(v3 + 264 + 1)d⌋ =⌊2−64(2128− e3 + d)⌋
+= 2 64 +⌊2−64(d− e3)⌋
+=
+{
+264 e3≤ d
+264− 1 e3 > d
+Hence, the effect of the adjustment is to increment the recip -
+rocal approximation if and only if e3 > d. The desired bound,
+Eq. (10), follows.
+Algorithm 3 is a similar algorithm for β = 2 32. In this
+algorithm, v0 is represented as 15 bits, v1 as 18 bits, and v2
+and v3 as 33-bit values where the most signiﬁcant bit, always
+one, is implicit. The correctness proof is analogous, with t he
+following error bounds:
+e0 = 2 35− v0d21 |e0| < 33
+64× 226
+e1 = 2 49− v1d 0 < e 1 < 2113
+4096× 231 + d
+e2 = 2 64− (232 + v2)d 0 < e 2 < 2d
+e3 = 2 64− (232 + v3)d 0 < e 2≤ d
+Remarks:
+• The ﬁnal step in the algorithm is not a Newton iteration,
+but an adjustment step which adds zero or one to the
+reciprocal approximation.
+• We gain precision in the ﬁrst Newton iteration by choos-
+ing the initial value v0 so that the range for the error e0
+is symmetric around zero.
+• In the Newton iteration x+x(1−xd), there is cancellation
+in the subtraction (1− xd), since xd is close to 1. In
+Alg. 2 and 3 we arrange so that the errors ek, for k≥ 1,
+(q, r)← DIV 2BY1(⟨u1, u0⟩, d, v)
+In: β/2≤ d < β , u1 < d, v =
+⌊
+(β2− 1)/d
+⌋
+− β
+1 ⟨q1, q0⟩←vu1 / /umul
+2 ⟨q1, q0⟩←⟨q1, q0⟩+⟨u1, u0⟩
+3 q1← (q1 + 1) mod β
+4 r← (u0− q1d) mod β / /umullo
+5 if r > q 0 / /Unpredictable condition
+6 q1← (q1− 1) mod β
+7 r← (r + d) mod β
+8 if r≥ d / /Unlikely condition
+9 q1← q1 + 1
+10 r← r− d
+11 return q1, r
+Algorithm 4: New algorithm for dividing a two-word number
+by a single-word number, using a precomputed single-word
+reciprocal.
+are non-negative, and exploit that a certain number of the
+high bits of vkd are know a-priori to be all ones.
+• The execution time of Alg. 2 is roughly 48 cycles on
+AMD Opteron, and 70 cycles on Intel Core 2.
+B. Dividing a two-word number by a single word
+To improve performance of division, it would be nice if we
+could get away with using umullo for the multiplication q′d
+in Alg. 1 (line 2), rather than a full umul. Then the candidate
+remainder U− q′d will be computed only modulo β, even
+though the full range of possible values is too large to be
+represented by a single word. We will need some additional
+information to be able to make a correct adjustment. It turns
+out that this is possible, if we take the fractional part of th e
+quotient approximation into account. Intuitively, we expect the
+candidate remainder to be roughly proportional to the quoti ent
+fraction.
+Our new and improved method is given in Alg. 4. It is based
+on the following theorem.
+Theorem 2: Assume β/2 ≤ d < β , 0 ≤ u1 < d , and
+0≤ u0 < β . Put v =⌊(β2− 1)/d⌋− β. Form the two-word
+number
+⟨q1, q0⟩= (β + v) u1 + u0.
+Form the candidate quotient and remainder
+~q = q1 + 1
+~r =⟨u1, u0⟩−~qd.
+Then ~r satisﬁes
+max(β− d, q0 + 1)− β≤ ~r < max(β− d, q0)
+Hence ~r is uniquely determined given ~r mod β, d and q0.
+Proof: We have (β + v) d = β2− k, where 1≤ k≤ d.
+Substitution in the expression for ~r gives
+~r = u1β + u0− q1d− d = u1k + u0(β− d) + q0d
+β − d.
+5
+For the lower bound, we clearly have
+~r≥ q0d
+β − d.
+This bound implies that both these inequalities hold:
+~r≥− d
+~r≥ (q0− β) d
+β > q 0− β.
+The desired lower bound on ~r now follows.
+For the upper bound, we have
+~r < d2 + β(β− d) + q0d
+β − d
+= β− d
+β (β− d) + d
+β q0≤ max(β− d, q0)
+where the ﬁnal inequality follows from recognising the ex-
+pression as a convex combination.
+Remark: The lower bound for ˜r is attained if and only if
+u0 = u1 = 0 . Then q1 = q0 = 0 , and ~r =−d. The upper
+bound is attained if and only if u0 = u1 = β−1 and d = β/2.
+Then v = β− 1, q1 = β− 2, q0 = β/2, and ~r = β/2− 1.
+In Alg. 4, denote the value computed at line 4 by r′. Then
+r′ = ~r mod β. A straightforward application of Theorem 2
+would compare this value to max(β− d, q0). In Alg. 4, we
+instead compare r′ to q0. To see why this gives the correct
+result, consider two cases:
+• Assume ~r≥ 0. Then r′ = ~r < max(β− d, q0). Hence,
+whenever the condition at line 5 is true, we have r′ < β−
+d, so that the addition at the next line does not overﬂow.
+The second adjustment condition, at line 8, reduces the
+remainder to the proper range 0≤ r < d .
+• Otherwise, ~r < 0. Then r′ = ~r + β≥ max(β− d, q0 + 1).
+Since r′ > q 0, the condition at line 5 is true, and since
+r′≥ β− d, the addition (r′ + d) mod β = r′ + d− β =
+~r + d yields a correct remainder in the proper range. The
+condition at line 8 is false.
+Of the two adjustment conditions, the ﬁrst one is inherently
+unpredictable, with a non-negligible probability for eith er
+outcome. This means that branch prediction will not be
+effective. For good performance, the ﬁrst adjustment must b e
+implemented in a branch-free fashion, e.g., using a conditi onal
+move instructions. The second condition, r′≥ d, is true with
+very low probability (see Appendix A for analysis of this
+probability), and can be handled by a predicated branch or
+using conditional move.
+IV. E XTENSIONS FOR SCHOOLBOOK DIVISION
+The key idea in Alg. 4 can be applied to other small
+divisions, not just two-word divided by single word (which
+we call a “2/1” division). This leads to a family of algorithm s,
+all which compute a quotient approximation by multiplica-
+tion by a precomputed reciprocal, then omit computing the
+high, almost cancelling, part of the corresponding candida te
+remainder, and ﬁnally, they perform an adjustment step usin g
+a fraction associated with the quotient approximation.
+We will focus on extensions that are useful for schoolbook
+division with a large divisor. The most important extension
+(q,⟨r1, r0⟩)← DIV 3BY2(⟨u2, u1, u0⟩,⟨d1, d0⟩, v)
+In: β/2≤ d1 < β ,⟨u2, u1⟩<⟨d1, d0⟩,
+v =⌊(β2− 1)/d⌋− β
+1 ⟨q1, q0⟩←vu2 / /umul
+2 ⟨q1, q0⟩←⟨q1, q0⟩+⟨u2, u1⟩
+3 r1← (u1− q1d1) mod β / /umullo
+4 ⟨t1, t0⟩←d0q1 / /umul
+5 ⟨r1, r0⟩←(⟨r1, u0⟩−⟨t1, t0⟩−⟨d1, d0⟩) mod β2
+6 q1← (q1 + 1) mod β
+7 if r1≥ q0
+8 q1← (q1− 1) mod β
+9 ⟨r1, r0⟩←(⟨r1, r0⟩+⟨d1, d0⟩) mod β2
+10 if⟨r1, r0⟩≥⟨d1, d0⟩ / /Unlikely condition
+11 q1← q1 + 1
+12 ⟨r1, r0⟩←⟨r1, r0⟩−⟨d1, d0⟩
+13 return q1,⟨r1, r0⟩
+Algorithm 5: Dividing a three-word number by a two-word
+number, using a precomputed single-word reciprocal.
+is 3/2-division, i.e., dividing a three-word number by a two -
+word number. This is described next. Later on in this section ,
+we will also look into variations that produce more than one
+quotient word.
+A. Dividing a three-word number by a two-word number
+For schoolbook division with a large divisor, the simplest
+method is to compute one quotient word at a time by divid-
+ing the most signiﬁcant two words of the dividend by the
+single most signiﬁcant word of the divisor, which is a direct
+application of Alg. 4. Assuming the divisor is normalised, t he
+resulting quotient approximation is at most two units too large.
+Next, the corresponding remainder candidate is computed an d
+adjusted if necessary. A drawback with this method is that
+the probability of adjustment is signiﬁcant, and that each
+adjustment has to do an addition or a subtraction of large
+numbers. To improve performance, it is preferable to comput e
+a quotient approximation based on one more word of both
+dividend and divisor, three words divided by two words. With
+a normalised divisor, the quotient approximation is at most one
+off, and the probability of error is small. For more details o n
+the schoolbook division algorithm, see [3, Sec. 4.3.1, Alg. D]
+and [4].
+We therefore consider the following problem: Divide
+⟨u2, u1, u0⟩by⟨d1, d0⟩, computing the quotient q and remain-
+der⟨r1, r0⟩. To ensure that q ﬁts in a single word, we assume
+that⟨u2, u1⟩<⟨d1, d0⟩, and like for 2/1 division, we also
+assume that the divisor is normalised, d1≥ β/2.
+Algorithm 5 is a new algorithm for 3/2 division. The adjust-
+ment condition at line 7 is inherently unpredictable, and should
+therefore be implemented in a branch-free fashion, while th e
+second one, at line 10, is true with very low probability. The
+algorithm is similar in spirit to Alg. 4. The correctness of t he
+algorithm follows from the following theorem.
+Theorem 3: Consider the division of the three-word number
+U = ⟨u2, u1, u0⟩by the two-word number D = ⟨d1, d0⟩.
+6
+Assume that β/2≤ d1 < β and⟨u2, u1⟩<⟨d1, d0⟩Put
+v =
+⌊ β3− 1
+D
+⌋
+− β
+which is in the range 0≤ v < β . Form the two-word number
+⟨q1, q0⟩= (β + v)u2 + u1.
+Form the candidate quotient and remainder
+~q = q1 + 1
+~r =⟨u2, u1, u0⟩−~q⟨d1, d0⟩.
+Then ~r satisﬁes
+c− β2≤ ~r < c
+with
+c = max(β2− D, q0β).
+Proof: We have (β + v) D = β3− K, for some K in the
+range 1≤ K≤ D. Substitution gives
+~r = U− ~qD
+= u2K + u1(β2− D) + u0β + q0D
+β − D.
+The lower bounds ~r≥− D and ~r > q 0β− β2 follow in the
+same way as in the proof of Theorem 2, proving the lower
+bound ~r≥ c− β2. For the upper bound, the borderline cases
+make the proof more involved. We need to consider several
+cases.
+• If u2≤ d1− 1, then
+~r < (d1− 1)D + (β− 1)(β2− D) + β2− βD + q0D
+β
+= (β2− D)2 + q0βD− d0D
+β2
+= β2− D
+β2 (β2− D) + D
+β2 q0β− d0D
+β2
+≤ c.
+• If u2 = d1, then u1≤ d0− 1, by assumption. In this
+case, we get
+~r < d1D + (d0− 1)(β2− D) + β2− βD + q0D
+β
+= β2− D
+β2 (β2− D) + D
+β2 q0β
++ (β− d0)
+(
+(β + 1)D− β3)
+β2
+≤ c + (β− d0)
+(
+(β + 1)D− β3)
+β2 .
+Under the additional assumption that D≤ β(β− 1), we
+get (β + 1)D− β3≤− β < 0, and it follows that ~r < c .
+• Finally, the remaining borderline case is u2 = d1 and
+D > β (β− 1). We then have u2 = d1 = β− 1, 0≤
+u1 < d 0, and v = 0 since (β3− 1)/D− β < 1. It follows
+that q1 = u2 = β− 1. We get
+~r = u− βD = β (u1− d0) + u0 < 0 < c.
+Hence the upper bound ~r < c is valid in all cases.
+v← RECIPROCAL WORD 3BY2(⟨d1, d0⟩)
+In: β/2≤ d1 < β
+1 v← RECIPROCAL WORD (d1)
+/ /We have β2− d1≤ (β + v) d1 < β 2.
+2 p← d1v mod β / /umullo
+3 p← (p + d0) mod β
+4 if p < d 0 / /Equivalent to carry out
+5 v← v− 1
+6 if p≥ d1
+7 v← v− 1
+8 p← p− d1
+9 p← (p− d1) mod β
+/ /We have β2− d1≤ (β + v) d1 + d0 < β 2.
+10 ⟨t1, t0⟩←vd0 / /umul
+11 p← (p + t1) mod β
+12 if p < t 1 / /Equivalent to carry out
+13 v← v− 1
+14 if⟨p, t0⟩≥⟨d1, d0⟩
+15 v← v− 1
+16 return v
+Algorithm 6: Computing the reciprocal which DIV 3BY2 ex-
+pects, v =⌊(β3− 1)/⟨d1, d0⟩⌋−β. This is a single word
+reciprocal based on a two-word divisor.
+B. Computing the reciprocal for 3/2 division
+The reciprocal needed by Alg. 5, even though still a single
+word, is slightly different from the reciprocal that is need ed
+by Alg 4. One can use Alg. 2 or Alg. 3 (depending on word
+size) to compute the reciprocal of the most signiﬁcant word
+d1, followed by a couple of adjustment steps to take into
+account the least signiﬁcant word d0. We suggest the following
+strategy:
+Start with the initial reciprocal v, based on d1 only, and
+the corresponding product (β + v) d1β, where only the middle
+word is represented explicitly (the high word is β− 1, and the
+low word is zero). We then add ﬁrst βd0 and then vd0 to this
+product. For each addition, if we get a carry out, we cancel
+that carry by appropriate subtractions of d1 and d0 to get an
+underﬂow. The details are given in Alg. 6.
+Remark: The product d1v mod β, computed in line 2, may
+be available cheaply, without multiplication, from the int er-
+mediate values used in the ﬁnal adjustment step of RECIPRO -
+CAL WORD (Alg. 2 or Alg. 3).
+C. Larger quotients
+The basic algorithms for 2/1 division and 3/2 division can
+easily be extended in two ways.
+• One can substitute double-words or other ﬁxed-size units
+for the single words in Alg. 4 and Alg. 5. This way, one
+can construct efﬁcient algorithms that produce quotients
+of two or more words. E.g., with double-word units, we
+get algorithms for division of sizes 4/2 and 6/4.
+• In any of the algorithms constructed as above, one can
+ﬁx one or more of the least signiﬁcant words of both
+7
+(Q, r)← DIV NBY 1(U, d)
+In: U =⟨un−1 . . . u0⟩, β/2≤ d < β
+Out: Q =⟨qn−1 . . . q0⟩
+1 v← RECIPROCAL WORD (d)
+2 r← 0
+3 for j = n− 1, . . . ,0
+4 (qj, r)← DIV 2BY1(⟨r, uj⟩, d, v)
+5 return Q, r
+Algorithm 7: Dividing a large integer U =⟨un−1 . . . u0⟩by a
+normalised single-word integer d.
+dividend and divisor to zero. This gives us algorithms
+for division of sizes such as 3/1 and 5/3 (and applying
+this procedure to 3/2 would recover the good old 2/1
+division).
+Details and applications for some of these variants are de-
+scribed in [4].
+V. C ASE STUDY : X86 64 IMPLEMENTATION OF n/1
+DIVISION
+Schoolbook division is the main application of 3/2 division ,
+as was described brieﬂy in the previous section. We now turn
+to a more direct application of 2/1 division using Alg. 4.
+In this section, we describe our implementation of
+DIV NBY 1, dividing a large number by a single word number,
+for current processors in the x86 64 family. We use condi-
+tional move ( cmov) to avoid branches that are difﬁcult to
+handle efﬁciently by branch-prediction. Besides cmov, the
+most crucial instructions used are mul, imul, add, adc,
+sub andlea. Detailed latency and throughput measurements
+of these instructions, for 32-bit and 64-bit processors in t he
+x86 family, are given in [5].
+We discuss the timing only for AMD Opteron (“K8/K9”)
+and Intel Core 2 (65 nm “Conroe”) in this section. The AMD
+Opteron results are valid also for processors with the brand
+names Athlon and Phenom2. Other recent Intel processors give
+results slightly different from the 65 nm Core 2 results we
+describe3.
+Our results focus mainly on AMD chips since they are better
+optimised for scientiﬁc integer operations, i.e., the ones we
+depend on. If we don’t specify host architecture, we are talking
+about AMD Opteron.
+A. Dividing a large integer by a single word
+Consider division of an n-word number U by a single word
+number d. The result of the division is an n-word quotient
+and a single-word remainder. This can be implemented by
+repeatedly replacing the two most signiﬁcant words of U
+by their single-word remainder modulo d, and recording the
+2Phenom has the same multiplication latencies, but slightly higher(!) latency
+for division.
+3The 45 nm Core 2 has somewhat lower division latency, and the sa me
+multiplication latencies. The Core i x processors ( x = 3, 5, 7, 9) have lower
+division latency, and for umul, they have lower latency for the low product
+word, but higher(!) latency for the high product word.
+loop: mov (np, un, 8), %rax
+div d
+mov %rax, (qp, un, 8)
+dec un
+jnz loop
+Example 1: Basic division loop using the div instruction,
+running at 71 cycles per iteration on AMD Opteron, and 116
+cycles on Intel Core 2. Note that rax and rdx are implicit
+input and output arguments to the div instruction.
+corresponding quotient word [3, Sec. 4.3.1, exercise 16]. T he
+variant shown in Alg. 7 computes a reciprocal of d (and hence
+requires that d is normalised), and applies our new 2/1 division
+algorithm in each step.
+To use Alg. 7 directly, d must be normalised. To also handle
+unnormalised divisors, we select a shift count k such that
+β/2≤ 2kd < β . Alg. 7 can then be applied to the shifted
+operands 2kU and 2kd. The quotient is unchanged by this
+transformation, while the resulting remainder has to be shi fted
+k bits right at the end. Shifting of U can be done on the ﬂy
+in the main loop. In the code examples, register cl holds the
+normalisation shift count k.
+B. Na ¨ıve implementation
+The main loop of an implementation in x86 64 assembler is
+shown in Example. 1. Note that the div instruction in the x86
+family appear to be tailor-made for this loop: This instruct ions
+takes a divisor as the explicit argument. The two-word input
+dividend is placed with the most signiﬁcant word in the rdx
+register and the least signiﬁcant word in the rax register. The
+output quotient is produced in rax and the remainder in rdx.
+No other instruction in the loop need to touch rdx as the
+remainder is produced by each iteration and consumed in the
+next.
+However, the dependency between iterations, via the re-
+mainder in rdx, means that the execution time is lower
+bounded by the latency of the div instruction, which is
+71 cycles on AMD Opteron [5] (and even longer, 116 cycles,
+on Intel Core 2). Thanks to parallelism and out-of-order
+execution, the rest of the instructions are executed while
+waiting for the result from the division. This loop is more th an
+an order of magnitude slower than the loop for multiplying a
+large number by a single-word number.
+C. Old division method
+The earlier division method from [1] can be implemented
+with the main loop in Example 2. The dependency between op-
+erations, via the rax register, is still crucial to understand the
+performance. Consider the sequence of dependent instructi ons
+in the loop, from the ﬁrst use of rax until the output value of
+the iteration is produced. This is what we call the recurrency
+chain of the loop. The assembler listing is annotated with cycle
+numbers, for AMD Opteron and Intel Core 2. We let cycle 0 be
+the cycle when the ﬁrst instructions on the recurrency chain
+starts executing, and the following instructions in the cha in
+are annotated with the cycle number of the earliest cycle the
+8
+loop: mov (up,un,8), %rdx
+shld %cl, %rdx, %r14
+lea (d,%r14), %r12
+bt $63, %r14
+cmovnc %r14, %r12
+0 0 mov %rax, %r10
+0 0 adc $0, %rax
+1 2 mul dinv
+5 10 add %r12, %rax
+mov d, %rax
+6 11 adc %r10, %rdx
+7 13 not %rdx
+8 14 mov %rdx, %r12
+8 14 mul %rdx
+12 22 add %rax, %r14
+13 23 adc %rdx, %r10
+14 25 sub d, %r10
+13 23 lea (d,%r14), %rax
+14 26 cmovnc %r14, %rax
+AMD Intel sub %r12, %r10
+mov (up,un,8), %r14
+mov %r10, 8(qp,un,8)
+dec un
+jnz loop
+Example 2: Previous method using a precomputed reciprocal,
+running at 17 cycles per iteration on AMD Opteron, and 32
+cycles on Intel Core 2.
+instruction can start executing, taking its input dependen cies
+into account.
+To create the annotations, one needs to know the latencies
+of the instructions. Most arithmetic instructions, includ ing
+cmov and lea have a latency of one cycle. The crucial mul
+instruction has a latency of four cycles until the low word of
+the product is available in rax, and one more cycle until the
+high word is available in rdx. The imul instructions, which
+produces the low half only, also has a latency of four cycles.
+These numbers are for AMD , the latencies are slightly longer
+on Intel Core 2 (2 cycles for adc and cmov, 5 cycles for
+imul and 8 for mul). See [5] for extensive empirical timing
+data.
+Using these latency ﬁgures, we ﬁnd that the latency of the
+recurrency chain in Example 2 is 15 cycles. This is a lower
+bound on the execution time. It turns out that the loop runs in
+17 cycles per iteration; the instructions not on the recurre ncy
+chain are mostly scheduled for execution in parallel with th e
+recurrency instructions, and there’s plenty of time, 8 cycl es,
+when the CPU is otherwise just waiting for the results from
+the multiplication unit. This is a four time speedup compare d
+to the 71-cycle loop based on the div instruction. For Intel
+Core 2, the latency of the recurrency chain is 28 cycles, whil e
+the actual running time is 32 cycles per iteration.
+D. New division method
+The main loop of an implementation of the new division
+method is given in Example 3. Annotating the listing with
+loop: nop
+mov (up,un,8), %r10
+0 0 lea 1(%rax), %r11
+shld %cl, %r10, %rbp
+0 0 mul dinv
+4 8 add %rbp, %rax
+5 9 adc %r11, %rdx
+mov %rax, %r11
+mov %rdx, %r13
+6 11 imul d, %rdx
+10 16 sub %rdx, %rbp
+mov d, %rax
+11 17 add %rbp, %rax
+11 17 cmp %r11, %rbp
+12 18 cmovb %rbp, %rax
+AMD Intel adc $-1, %r13
+cmp d, %rax
+jae fix
+ok: mov %r13, (qp)
+sub $8, qp
+dec un
+mov %r10, %rbp
+jnz loop
+jmp done
+fix: sub d, %rax
+inc %r13
+jmp ok
+done:
+Example 3: Division code (from GMP -4.3) with the new
+division method, based on Alg. 4. Running at 13 cycles per
+iteration on AMD Opteron, and 25 cycles on Intel Core 2.
+cycle numbers in the same way, we see that the latency of the
+recurrency chain is 13 cycles. Note that the rarely taken branch
+does not belong to the recurrency chain. The loop actually also
+runs at 13 cycles per iteration; all the remaining instructi ons
+are scheduled for execution in parallel with the recurrency
+chain4. For Intel Core 2, the latency of the recurrency chain
+is 20 cycles, with an actual running time of 25 cycles per
+iteration.
+Comparing the old and the new method, ﬁrst make the
+assumption (which is conservative in the Opteron case) that all
+the loops can be tuned to get their running times down to the
+respective latency bounds. We then get a speedup of 15% on
+AMD Opteron and 40% on Intel Core 2. If we instead compare
+actual cycle counts, we see a speedup of 31% on both Opteron
+and Core 2. On Opteron, we gain one cycle from replacing
+one of the mul instructions by the faster imul, the other
+cycle shaved off the recurrency chain are due to the simpler
+adjustment conditions.
+In this application, the code runs slower on Intel Core 2
+than on AMD Opteron. The Intel CPU loses some cycles due
+4It’s curious that if the nop instruction at the top of the loop is removed,
+the loop runs one cycle slower. It seems likely that similar ran dom changes
+to the instruction sequence in Example 2 can reduce its runnin g time by one
+or even two cycles, to reach the lower bound of 15 cycles.
+9
+Implementation Recurrency chain latency
+and real cycle counts
+AMD Opteron Intel Core 2
+Na¨ıvediv loop (Ex. 1) 71 71 116 116
+Old method (Ex. 2) 15 17 28 32
+New method (Ex. 3) 13 13 20 25
+TABLE I
+SUMMARY OF THE LATENCY OF THE RECURRENCY CHAIN , AND ACTUAL
+CYCLE COUNTS , FOR TWO X 86 64 PROCESSORS . THE LATENCY NUMBERS
+ARE LOWER BOUNDS FOR THE ACTUAL CYCLE COUNTS .
+to higher latencies for multiplication and carry propagati on,
+resulting in a higher overall latency of the recurrency chai n.
+And then it loses some additional cycles due to the fact that
+the code was written and scheduled with Opteron in mind.
+VI. C ONCLUSIONS
+We have described and analysed a new algorithm for
+dividing a two-word number by a single-word number (“2/1”
+division). The key idea is that when computing a candidate
+remainder where the most signiﬁcant word almost cancels, we
+omit computing the most signiﬁcant word. To enable correct
+adjustment of the quotient and the remainder, we work with a
+slightly more precise quotient approximation than in previ ous
+algorithms, and an associated fractional word.
+Like previous methods, we compute the quotient via an
+approximate reciprocal of the divisor. We describe new, mor e
+efﬁcient, algorithms for computing this reciprocal for the most
+common cases of a word size of 32 or 64 bits.
+The new algorithm for 2/1 division directly gives a speedup
+of roughly 30% on current processors in the x86 64 family,
+for the application of dividing a large integer by a single word.
+It is curious that on these processors, the combination of ou r
+reciprocal algorithm (Alg. 2) and division algorithm (Alg. 4)
+is signiﬁcantly faster than the built in assembler instruct ion
+for 2/1 division. This indicates that the algorithms may be o f
+interest for implementation in CPU microcode.
+We have also described a couple of extensions of the
+basic algorithm, primarily to enable more efﬁcient schoolb ook
+division with a large divisor.
+Most of the algorithms we describe have been implemented
+in the GMP library [2].
+ACKNOWLEDGEMENTS
+The authors wish to thank Stephan Tolksdorf, Bj ¨orn Tere-
+lius, David Harvey and Johan H ˚astad for valuable feedback
+on draft versions of this paper. As always, the responsibili ty
+for any remaining errors stays with the authors.
+REFERENCES
+[1] T. Granlund and P. L. Montgomery, “Division by invariant i ntegers using
+multiplication,” in Proceedings of the SIGPLAN PLDI’94 Conference ,
+June 1994.
+[2] T. Granlund, “GNU multiple precision arithmetic library, version 4.3,”
+May 2009, http://gmplib.org/.
+[3] D. E. Knuth, Seminumerical Algorithms, 3rd ed., ser. The Art of Computer
+Programming. Reading, Massachusetts: Addison-Wesley, 1998 , vol. 2.
+[4] T. Granlund and N. M ¨oller, “Division of integers large and small,” August
+2009, to appear.
+[5] T. Granlund, “Instruction latencies and throughput for AMD and Intel
+x86 processors,” 2009, http://gmplib.org/ ∼tege/x86-timing.pdf.
+APPENDIX A
+PROBABILITY OF THE SECOND ADJUSTMENT STEP
+In this appendix, we analyse the probability of the second
+adjustment step (line 8 in Alg. 4), and substantiate our clai m
+that the second adjustment is unlikely. We use the notation
+from Sec. III-B. We also use the notation that P[event] is the
+probability of a given event, and E[X] is the expected value
+of a random variable X.
+We will treat ~r as a random variable, but we ﬁrst need to
+investigate for which values of ~r that the second adjustment
+step is done. There are two cases:
+• If ~r≥ d, then ~r < max(β− d, q0) and d≥ β− d imply
+that ~r < q 0. The ﬁrst adjustment is skipped, the second
+is done.
+• If ~r > q 0, then ~r < max(β−d, q0) implies that ~r < β−d
+and d≤ ~r + d < β . The ﬁrst adjustment is done, then
+undone by the second adjustment.
+The inequalities ~r≥ d and ~r≥ q0 are thus mutually exclusive,
+the former possible only when q0 > d and the latter possible
+only when q0 < β− d.
+One example of each kind, for β = 2 5 = 32:
+U d q r v k ~q q 0 ~r
+414 18 23 0 24 16 22 30 18
+504 18 28 0 24 16 28 0 0
+To ﬁnd the probabilities, in this section, we treat ~r as a
+random variable. Consider the expression for ~r,
+~r = u1k + u0(β− d) + q0d
+β − d.
+We assume we have a ﬁxed d = ξβ, with 1/2≤ ξ < 1,
+and consider u1 and u0 as independent uniformly distributed
+random variables in the ranges 0≤ u1 < d and 0≤ u0 < β .
+We also make the simplifying assumptions that k and q0 are
+independent and uniformly distributed, in the ranges 0 < k≤
+d and 0≤ q0 < β , and that all these variables are continuous
+rather than integer-valued. 5
+Lemma 4: Assume that 1/2≤ ξ < 1, that u1, u0, k and q0
+are independent random variables, continuously and uniformly
+distributed with ranges 0≤ u1, k≤ ξβ, 0≤ u0, q0≤ β. Let
+~r = u1k + u0(1− ξ)β + q0ξβ
+β − ξβ.
+Then
+P[~r≥ ξβ or ~r≥ q0]
+= (2− 1/ξ)3
+6(1− ξ)2 log 2− 1/ξ
+ξ + 1
+6
++ (1− ξ)
+(
+− 1
+18 + 1
+2ξ− 11
+12ξ2 + 11
+36ξ3
+)
+(11)
+5These assumptions are justiﬁed for large word-size. Strictl y speaking, with
+ﬁxed d, the variable k is of course not random at all. To make this argument
+strict, we would have to treat d as a random variable with values in a small
+range around ξβ , e.g., uniformly distributed in the range ξβ ± β 3/ 4, and
+consider the limit as β → ∞ . Then the modulo operations involved in
+q0 and k make these variables behave as almost independent and uniforml y
+distributed.
+10
+Furthermore, if we deﬁne
+f (ξ) = 1− 297
+64 (1− ξ) + 15
+2 (1− ξ)2− 17
+4 (1− ξ)3
+then
+P[~r≥ ξβ or ~r≥ q0]≈ (1− ξ)6
+24f (ξ) (12)
+with an absolute error less than 0.01 percentage points, and a
+relative error less than 5%.
+Proof: Deﬁne the stochastic variables
+X = u1k
+ξβ 2 R = u1k + u0(1− ξ)β
+ξβ 2 Q = q0
+β .
+Now,
+~r
+ξβ = R + Q− 1.
+By assumption, Q is uniformly distributed, while R has a more
+complicated distribution. Conditioning on Q = s, we get the
+probabilities
+P[~r≥ ξβ] =
+∫ 1
+3−ξ−1/ξ
+P[R≥ 2− s] ds
+=
+∫ ξ+1/ξ−2
+0
+P[R≥ 1 + s] ds
+P[~r≥ q0] =
+∫ 1−ξ
+0
+P[R≥ 1 + (1/ξ− 1)s] ds
+= 1
+1/ξ− 1
+∫ ξ+1/ξ−2
+0
+P[R≥ 1 + s] ds.
+Adding the probabilities (recall that the events are mutual ly
+exclusive), we get the probability of adjustment as
+1
+1− ξ
+∫ ξ+1/ξ−2
+0
+P[R≥ 1 + s] ds. (13)
+We next need the probabilities P[R ≥ s] for 1 ≤ s ≤
+ξ + 1/ξ− 1. By somewhat tedious calculations, we ﬁnd
+P [X≤ s] = βs
+d
+(
+1− log βs
+d
+)
+P[R≥ s] = ξ
+1− ξ E[max(0, X− (s− (1/ξ− 1)))]
+=− (s + 1− 1/ξ)2
+2(1− ξ) log s + 1− 1/ξ
+ξ
++ ξ2− 4(s + 1− 1/ξ) + 3(s + 1− 1/ξ)2
+4(1− ξ) ,
+where the latter equation is valid only for s in the interval
+of interest. Substituting in Eq. (13) and integrating yield s
+Eq. (11). To approximate this complicated expression, we ﬁr st
+derive its asymptotics:
+(1− ξ)6/24 + O
+(
+(1− ξ)7)
+for ξ close to 1, and
+1/36− 13/18(ξ− 1/2) + 34/3(ξ− 1/2)2
++ O
+(
+(ξ− 1/2)3 log(ξ− 1/2)
+)
+ 0
+ 0.5
+ 1
+ 1.5
+ 2
+ 2.5
+ 0.5  0.6  0.7  0.8  0.9  1
+Probability [%]
+ξ
+Fig. 1. Probability of the unlikely adjustment step, as a func tion of the ratio
+ξ = d/β .
+for ξ close to 1/2. The coefﬁcients of f are chosen to give
+the same asymptotics. The error bounds for Eq. (12) are found
+numerically.
+In Fig. 1, the adjustment probability of Eq. (11) is plotted
+as a function of the ratio ξ = d/β. This is a rapidly decreasing
+function, with maximum value for ξ = 1 /2, which gives the
+worst case probability of 1/36 for d close to β/2. This curve
+is based on the assumptions on continuity and independence
+of the random variables. For a ﬁxed d and word size, the
+adjustment probability for random u1 and u0 will deviate some
+from this continuous curve. In particular, the borderline c ase
+d = β/2 actually gives an adjustment probability of zero, so
+it is not the worst case.

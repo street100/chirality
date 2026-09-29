@@ -1,0 +1,1312 @@
+USENIX Association
+Proceedings of the
+12th USENIX Security Symposium
+Washington, D.C., USA
+August 4–8, 2003
+THE ADVANCED COMPUTING SYSTEMS ASSOCIATION
+© 2003 by The USENIX Association All Rights Reserved For more information about the USENIX Association:
+Phone: 1 510 528 8649 FAX: 1 510 548 5738 Email: office@usenix.org WWW: http://www.usenix.org
+Rights to individual papers remain with the author or the author's employer.
+ Permission is granted for noncommercial reproduction of the work for educational or research purposes.
+This copyright notice must be included in the reproduced paper. USENIX acknowledges all trademarks herein.
+12th USENIX Security Symposium USENIX Association 29
+Denial of Service via Algorithmic Complexity Attacks
+Scott A. Crosby Dan S. Wallach
+scrosby@cs.rice.edu dwallach@cs.rice.edu
+Department of Computer Science, Rice University
+Abstract
+We present a new class of low-bandwidth denial of
+service attacks that exploit algorithmic deﬁciencies
+inmanycommonapplications’datastructures. Fre-
+quently used data structures have “average-case”
+expected running time that’s far more efﬁcient than
+the worst case. For example, both binary trees and
+hash tables can degenerate to linked lists with care-
+fully chosen input. We show how an attacker can
+effectivelycomputesuchinput,andwedemonstrate
+attacks against the hash table implementations in
+two versions of Perl, the Squid web proxy, and the
+Bro intrusion detection system. Using bandwidth
+less than a typical dialup modem, we can bring a
+dedicated Bro server to its knees; after six min-
+utesofcarefullychosenpackets,ourBroserverwas
+droppingasmuchas71%ofitstrafﬁcandconsum-
+ing all of its CPU. We show how modern universal
+hashing techniques can yield performance compa-
+rable to commonplace hash functions while being
+provably secure against these attacks.
+1 Introduction
+When analyzing the running time of algorithms,
+a common technique is to differentiate best-case,
+common-case,andworst-castperformance. Forex-
+ample, an unbalanced binary tree will be expected
+to consume O(nlogn) time to insert n elements,
+but if the elements happen to be sorted beforehand,
+then the tree would degenerate to a linked list, and
+it would takeO(n2) time to insert alln elements.
+Similarly, a hash table would be expected to con-
+sume O(n) time to insertn elements. However, if
+each element hashes to the same bucket, the hash
+tablewillalsodegeneratetoalinkedlist,anditwill
+take O(n2)time to insertn elements.
+While balanced tree algorithms, such as red-black
+trees [11], AVL trees [1], and treaps [17] can avoid
+predictable input which causes worst-case behav-
+ior, and universal hash functions [5] can be used
+to make hash functions that are not predictable by
+anattacker,manycommonapplicationsusesimpler
+algorithms. If an attacker can control and predict
+the inputs being used by these algorithms, then the
+attacker may be able to induce the worst-case exe-
+cution time, effectively causing a denial-of-service
+(DoS) attack.
+Such algorithmic DoS attacks have much in com-
+monwithotherlow-bandwidthDoSattacks,suchas
+stacksmashing[2]ortheping-of-death 1,whereina
+relativelyshortmessagecausesanInternetserverto
+crash or misbehave. While a variety of techniques
+can be used to address these DoS attacks, com-
+mon industrial practice still allows bugs like these
+to appear in commercial products. However, unlike
+stacksmashing,attacksthattargetpoorlychosenal-
+gorithms can function even against code written in
+safe languages. One early example was discovered
+by Garﬁnkel [10], who described nested HTML
+tables that induced the browser to perform super-
+linear work to derive the table’s on-screen layout.
+More recently, Stubbleﬁeld and Dean [8] described
+attacks against SSL servers, where a malicious
+web client can coerce a web server into perform-
+ing expensive RSA decryption operations. They
+1http://www.insecure.org/sploits/
+ping-o-death.html has a nice summary.
+12th USENIX Security Symposium USENIX Association30
+Bucket
+0
+1
+2
+3
+4
+5
+Figure 1: Normal operation of a hash table.
+suggested the use of crypto puzzles [9] to force
+clientstoperformmoreworkbeforetheserverdoes
+its work. Provably requiring the client to con-
+sume CPU time may make sense for fundamen-
+tallyexpensiveoperationslikeRSAdecryption,but
+it seems out of place when the expensive opera-
+tion (e.g., HTML table layout) is only expensive
+because a poor algorithm was used in the system.
+Another recent paper [16] is a toolkit that allows
+programmers to inject sensors and actuators into a
+program. When a resource abuse is detected an ap-
+propriate action is taken.
+This paper focuses on DoS attacks that may be
+mounted from across a network, targeting servers
+with the data that they might observe and store in
+a hash table as part of their normal operation. Sec-
+tion 2 details how hash tables work and how they
+can be vulnerable to malicious attacks. Section 3
+describes vulnerabilities in the Squid web cache,
+the DJB DNS server, and Perl’s built-in hash ta-
+bles. Section 4 describes vulnerabilities in the Bro
+intrusiondetectionsystem. Section5presentssome
+possible solutions to our attack. Finally, Section 6
+gives our conclusions and discusses future work.
+2 Attacking hash tables
+Hash tables are widely used throughout computer
+systems. They are used internally in compilers to
+tracksymboltables. Theyareusedinternallyinop-
+eratingsystemsforeverythingfromIPfragmentre-
+assembly to ﬁlesystem directory lookup. Hash ta-
+Bucket
+0
+1
+2
+3
+4
+5
+Figure 2: Worst-case hash table collisions.
+bles are so common that programming languages
+like Perl provide syntactic sugar to represent hash
+tablesas“associativearrays,”makingthemeasyfor
+programmers to use. Programmers clearly prefer
+hash tables for their constant-time expected behav-
+ior,despitetheirworst-case O(n)per-operationrun-
+ning time. After all, what are the odds that a hash
+table will degenerate to its worst case behavior?
+In typical usage, objects to be inserted into a
+hashtable are ﬁrst reduced to a 32-bithash value.
+Strings might be hashed using a checksum oper-
+ator like CRC32 or MD5, but are usually hashed
+by much simpler algorithms. More complex ob-
+jects might have custom-written hash-value oper-
+ators. The hash table then takes this hash value,
+modulo the bucket count, the size of the array of
+pointers to data being stored in the hash table, de-
+termining the bucket that will hold the reference to
+the object being inserted. When two inputs map
+the the same bucket, acollision has occurred. To
+deal with this case, eachhash bucketholds a linked
+list of all inserted objects whose hash value, mod-
+ulo the bucket count, maps to that particular bucket
+(see Figure 1). These linked lists are referred to
+as hash chains. When the total number of objects
+in the hash table grows too large, resulting in long
+average chain length, the size of the array of hash
+buckets is typically increased, perhaps multiplied
+by a constant factor, and the entries in the table are
+reinserted, takingtheirhashvaluesmodulothenew
+bucket count.
+There are other methods of implementing hash ta-
+bles, including open addressing, where collisions
+are not resolved using hash chains. Instead, the
+12th USENIX Security Symposium USENIX Association 31
+system follows a deterministic strategy to probe for
+an empty hash bucket, where the object is then in-
+serted. Although this paper focuses on hash chain-
+ing, the attacks described here will be at least as
+effective on open addressing hash tables.
+Theworsecase(seeFigure2)canoccurfortworea-
+sons: either the 32-bit hash values are identical, or
+the hash values modulo the bucket count becomes
+identical. Ofcourse,forrandomlychoseninput,the
+odds of every object hashing to the same bucket is
+vanishinglysmall—
+(1
+b
+)n−1
+for bbucketsand nob-
+jects. For maliciously chosen input, however, it be-
+comes entirely feasible. If the hash table is check-
+ing for duplicates when a new object is inserted,
+perhaps to guarantee that it acts as a mapping from
+object keys to values, then it will need to scan ev-
+ery entry in the hash bucket. This will induce the
+worst-case O(n)behavior for each insert.
+There are only a few requirements in order to en-
+gage in such an attack. First, the hash function be-
+ingusedmustbedeterministicandknowntotheat-
+tacker. Second,theattackerneedstheabilitytopre-
+dictorsupplyalloftheinputbeingusedbythehash
+function. Third, the attacker needs to ensure that a
+sufﬁcient volume of attack input gets to the victim
+such that they experience a performance degrada-
+tion.
+The attacker must understand how raw data, ini-
+tially read by the application from the network,
+is processed before it is inserted into the hash ta-
+ble. Knowing this, the attacker must compute ob-
+jectsthatwilleventuallycollide,eitherinthe32-bit
+hash-valuespace,oronlyintheeventualhashbuck-
+ets. Section 2.1 will describe how these collisions
+can be efﬁciently computed for some hash func-
+tions. At worst, computing hash collisions requires
+an attacker to exhaustively search within the space
+of possible inputs. While expensive, the attacker
+can do this work ahead of time. Ultimately, the
+question is whether the victim will accept enough
+attack-input for the O(n2) worst-case behavior to
+manifestitself. Furthermore,somevictimsmayen-
+force various limits on the growth of their hash ta-
+bles, making them robust against this class of at-
+tack. We describe such limits in Section 2.2.
+2.1 Constructing a speciﬁc attack
+The ﬁrst step in analyzing a program’s vulnerabil-
+ities to this attack is to determine where hash ta-
+bles are being used and identifying whether exter-
+nal, untrusted input can be fed directly into the ta-
+ble. This can be time consuming. As an example,
+theBindDNSserverplacessomefourdifferentab-
+straction layers between the network and the ulti-
+mate hash table storing DNS bindings. Tracing this
+can be tedious work for an attacker unfamiliar with
+the source code.
+2.1.1 Hash collision versus bucket collision
+An attacker may not know the bucket count ex-
+actly; many implementations change the bucket
+count based on the number of objects stored in the
+hash table. However, given the application’s source
+code,anattackermaybeabletoguesspossibleval-
+ues for the bucket count. This leads to two avenues
+of attack: those where youdon’t care abou t the
+bucket count and those where you know or guess
+the bucket count.
+Ifcollisionscanbecomputedinthefull32-bithash-
+value space, then the bucket count is irrelevant;
+the hash table will exhibit worst-case behavior re-
+gardless of how many buckets it has. More for-
+mally,wewishtoderiveinputs k1,k2,... ki suchthat
+Hash(k1)= Hash(k2)= ... = Hash(ki). We refer
+to these ashash collisions. If the inputs have dif-
+ferent hash values, but still collide into the same
+bucket (e.g., after a modulo operation has taken
+place), we refer to these asbucket collisions. For-
+mally, a bucket collision is when we derive inputs
+k1,k2,... ki such that f (k1)= f (k2)= ... = f (ki)
+where f is the the function mapping from inputs to
+buckets. In many cases,f (k)= Hash(k)( mod n) ,
+with n being the number of buckets.
+While hash collisions would seem straightforward,
+they do not always result in a feasible attack. For
+12th USENIX Security Symposium USENIX Association32
+example, consider an attacker who wishes to at-
+tack an intrusion detection system (IDS) scanning
+TCP/IP SYN packets to detect SYN ﬂooding ac-
+tivity. If the IDS is remembering packets based
+purely on the source and destination IP addresses
+and port numbers, this would give the attacker a
+96-bit search space. However, the destination ad-
+dress must be close enough to the IDS for the IDS
+to observe the trafﬁc. Likewise, the attacker’s ser-
+vice provider may do egress ﬁltering that prevents
+forged source IP addresses. This could reduce the
+attackertoaslittleas48-bitsoffreedominselecting
+packets. If the hash function reduces these packets
+to 32-bit hash values, then there will be, on aver-
+age, 216 packets that an attacker can possibly send
+which will collide in the 32-bit hash-value space.
+216 values stored in the same hash bucket may or
+may not be enough to noticeably degrade the IDS’s
+performance.
+Conversely, suppose the attacker wishes to com-
+pute bucket collisions rather than hash collisions.
+Because the bucket count is much smaller than the
+sizeofthehash-valuespace, itwillbeeasiertoﬁnd
+bucket collisions. Thus, if the attacker can predict
+the precise bucket count, then many more possible
+collisions can be computed. This ﬂexiblity may al-
+loweffectiveattacksonapplicationshashinginputs
+as short as 32-bits. However, if there are several
+possible bucket counts, then the attacker has sev-
+eral options:
+• Guess the bucket count.
+• Compute collisions that work for several dif-
+ferent bucket counts.
+• Send several streams of attack data, where
+each stream is designed to collide for one par-
+ticular bucket count.
+Computing collisions that work for multiple bucket
+counts is not practical; the search space grows pro-
+portionallytotheleastcommonmultipleofthecan-
+didate bucket counts. This can easily exceed the
+32-bit space of hash values, making hash collisions
+more attractive to compute than bucket collisions.
+However, if the number of candidate bucket counts
+(c) is small enough, then the attacker can com-
+pute separate attack streams focused on each po-
+tential bucket count. If the attacker sends n ob-
+jects of attack data, then most of the attack data(
+n
+(
+1 −1
+c
+))
+will be distributed throughout the hash
+table, with an expectedO(1) insert per object. The
+remaining n
+c objects, however, will cause an ex-
+pected O
+((n
+c
+)2)
+total running time. Furthermore,
+if the hash table happens to be resized and one of
+the attack streams corresponds to the new bucket
+count, then the resulting hash table will still exhibit
+quadratic performance problems.
+For simplicity, the remainder of this paper focuses
+on computing hash collisions. Later, when we de-
+scribeattacksagainstanactualIDS(seeSection4),
+we will show that 216 collisions in one bucket are
+more than sufﬁcient to mount an effective attack.
+2.1.2 Ef ﬁciently deriving hash collisions
+The hash functions used by typical programs for
+theirhashtablesaregenerallynotcryptographically
+strong functions like MD5 or SHA-1. Instead, they
+tend to be functions with 32 bits of internal state,
+designed primarily for speed. Because this state is
+limited, we need only ﬁnd inputs such that the in-
+ternal state after hashing is the same as the initial
+state.
+Consider a hash function with the initial state of
+0. Imagine we can ﬁnd generators, or inputs
+k1,k2,... ki such that 0= Hash(k1)= Hash(k2)=
+... = Hash(ki). Thentheconcatenationofanynum-
+ber of these generators in any combination and any
+order also hashes to 0. So,k1k2 also hashes to 0,
+as willk1k1 or k2k1k3k2. Thus, by ﬁnding three in-
+puts k1, k2, k3 viaexhaustivesearchandconcatenat-
+ing them combinatorially, we can generate a large
+number of collisions without requiring any addi-
+tional searching. The number of possible collisions
+is bounded only by the maximum length to which
+we are willing to allow concatenated generators to
+grow. This process can be generalized by ﬁnding
+12th USENIX Security Symposium USENIX Association 33
+a set of generators closed over a small number of
+hash states (i.e., searching for generators that take
+hash states less than a small integer to other hash
+states less than the same small integer).
+In simple tests, attacking the Perl 5.6.1 hash func-
+tions on a 450MHz Pentium-2 processor, 30 min-
+utes of CPU time enumerating and hashing all 8
+character alphabetic strings was sufﬁcient to ﬁnd
+46 generators that hash to zero. By concatenating
+three of them combinatorially, we derive 463 (97k)
+alphabetic inputs, 24 characters long, that will all
+hash to the same 32-bit hash value.
+Hash collisions can be efﬁciently computed for a
+number of other common applications. The Linux
+protocol stack and the Bro intrusion detection sys-
+tem simply XOR their input together, 32 bits at a
+time. Thus, collisions may be directly computed
+from the algebraic structure of the hash function.
+2.2 Application limits on hash tables
+Many applications are sensitive about their over-
+all memory usage, and thus have limits designed
+to control how large their hash tables might grow.
+Ifahashtablecanneverhaveenoughelementsinit
+fortheworst-case O(n2)behaviortodominate,then
+our attack will fail.
+2.2.1 Explicit limits
+Someapplicationshaveexplicitlimitsontheirhash
+tables. We ﬁrst consider the Linux IP fragment re-
+assemblycode. Inresponsetoearlierattacks,Linux
+currently allows at most 256 kbytes of storage to-
+ward reassembling incomplete packets. If we wish
+to attack the hash table being used to store these
+packetfragments,thelongesthashchainwecanin-
+duce will still be under 256 kbytes in total. We can
+still force Linux to repeatedly scan this chain, in-
+creasing the CPU load on the kernel, but we are
+unsure whether we can cause enough slowdown to
+be interesting.
+(Florian Weimer reports that he found an ex-
+ploitable hashing vulnerability in the Linux route
+cache, allowing 400 packets per second from an at-
+tacker to overload a quad-processor Pentium Xeon
+server, despite the size limits present in the route
+cache’s hash table [20].)
+The Apache web server collects ﬁelds from HTTP
+request headers into a vector (auto-sizing array). If
+there are multiple header ﬁelds with the same type,
+Apache concatenates them with an O(n2) opera-
+tion. This was a target for attack [19], however
+Apachenowimposesalimitonthenumberofﬁelds
+that can appear in an HTTP request (100 ﬁelds, by
+default). Even with 100 entries naming the same
+ﬁeld, aO(n2) worst-case running time will still be
+small, becausen is too small for the quadratic per-
+formance to become noticeable.
+2.2.2 Implicit limits
+There are many other places where there are lim-
+its on the attacker’s ability to inﬂuence a hash ta-
+ble. For instance, as discussed in Section 2.1.1, the
+freedom of an attacker to construct arbitrary inputs
+may be limited. In the case of network packets in-
+tended to attack a network sniffer, the attacker is
+limited both by the packet ﬁelds being watched by
+the sniffer, and by the packet headers necessary to
+routethepackettowardthetargetedmachine. More
+generally, many applications operate on restricted
+datatypes,orotherwiseplacelimitsonanattacker’s
+ability to generate arbitrary input for the targeted
+hash table. In some sense, these applications are
+lucky, but they could be vulnerable to attack in the
+future if their environment changes (e.g., moving
+from IPv4 to IPv6 will increase the size of IP ad-
+dresses, giving more freedom to attack tables that
+hash IP addresses).
+12th USENIX Security Symposium USENIX Association34
+3 Application analysis: Squid, DJBDNS,
+and Perl
+We did a short analysis of three programs to ana-
+lyzehowvulnerabletheyaretoattack. Weanalyzed
+and attacked the hash tables used by two versions
+of the the Perl interpreter. We also analyzed and at-
+tackedtheSquidwebproxycache. Weinvestigated
+the DJB DNS cache and found it less vulnerable to
+these attacks.
+3.1 Squid
+The Squid Internet object cache [14] is intended to
+reduce network bandwidth by caching frequently
+used objects [7]. We analyzed the hash tables used
+within version 2.5STABLE1.
+While we have not performed an exhaustive audit
+of Squid, we did discover a hash table used to track
+objects cached in memory. The hash table is keyed
+with an integer counter, the HTTP request method
+(i.e., GET, HEAD, etc.), and the URL in question.
+When Squid is operating as part of a caching clus-
+ter, it omits the integer counter and only hashes the
+HTTP request method and URL. (For reasons that
+escape us, Squid calls this “private key” vs. “pub-
+lic key” mode; this seems to have nothing to do
+with the traditional cryptographic senses of those
+terms.) An MD5 cryptographic checksum is per-
+formed over these values, and the resulting 128-bit
+value is truncated to 13 bits, identifying the hash
+bucket.
+As an attacker, we cannot necessarily predict the
+value of the counter, making it difﬁcult to compute
+hash collisions. However, Squid can be tricked into
+believing that it is part of a cluster by sending it
+a single UDP packet, an Internet Caching Proto-
+col (ICP) MISSNO FETCH message [21]. This
+packet is accepted by the default conﬁguration, and
+it’s unclear whether this packet could be easily ﬁl-
+tered, even using Squid’s access control features.
+Regardless,anySquidclusterwouldalreadybefor-
+going the use of the “private key” mode, and thus
+would be vulnerable to attack.
+A full benchmarking environment for Squid would
+requiremultiplewebserversandclientstosimulate
+the load experienced by the Squid web cache. To
+simplify things, we ran Squid on a stand-alone ma-
+chine, where the URL requests were parsed from a
+localﬁleandweresatisﬁedwithconstant-sizedweb
+page results, served by a local proxy server. This
+environment is undeniably not suitable for mak-
+ing general remarks about Squid’s general-purpose
+throughput,butitallowsustoplacepressureonthis
+particular hash table and observe the effects.
+We measured the wall-clock time necessary for
+Squid, in our restrictive conﬁguration, to load ap-
+proximately 143k URLs. We compared the per-
+formance of loading randomly chosen URLs with
+URLscarefullychosentocollidewithSquid’shash
+function. Squid took 14.57 minutes to process the
+attack URLs versus 10.55 minutes to process the
+randomly chosen URLs. Thus, our attack added,
+onaverage,approximately1.7msoflatencytoeach
+request serviced by the Squid cache.
+This attack does not represent a “smoking gun” for
+algorithmic complexity attacks, but it does illus-
+trate how common network services may be sen-
+sitive to these attacks. Furthermore, this attack
+demonstrates how seemingly innocuous features
+(e.g., Squid’s “private key” mechanism, whatever
+it actually does) may have an effect on an applica-
+tion’s resistance to these attacks.
+3.2 DJBDNS
+Dan Bernstein’s DNS server is designed to have
+several independent programs serving different du-
+ties. His DNS cache is one program in this collec-
+tion. If we can pollute the cache with requests for
+domains under our control (e.g., “x1.attacker.org”,
+“x2.attacker.org”, etc.), we may be able to mount
+an algorithmic complexity attack against the DNS
+cache’s hash table.
+Upon code inspection, DJBDNS uses a determin-
+12th USENIX Security Symposium USENIX Association 35
+istic hash function in its implementation of a DNS
+cache. Interestingly,thelookupcodehasanexplicit
+check for being subject to “hash ﬂooding;” after
+following a chain for 100 entries, it gives up and
+treats the request as a cache miss. We presume this
+design is intended to prevent the DNS cache from
+burning an excessive amount of CPU on any given
+request. Bernstein essentially anticipated a version
+of our attack, although, as we discuss in Section 5,
+his ﬁx could be improved.
+3.3 Perl
+Perl is a widely-used programming language with
+built-in support for hash tables (called “associative
+arrays”). While attacking a large number of Perl
+scripts is behind the scope of this paper, we expect
+that many deployed Perl scripts take untrusted in-
+put and store it directly in associative arrays. We
+demonstrate attacks against the associative arrays
+in Perl, versions 5.6.1 and 5.8.0; the hash function
+was changed between these two versions.
+The hash functions in both versions of Perl form
+state machines. The internal state is the 32 bit ac-
+cumulated hash value. The input being hashed is
+mixedin,onebyteatatime,usingacombinationof
+addition, multiplication, and shift operations. The
+structure of the hash functions in both Perl 5.6.1
+and5.8.0allowustoefﬁcientlycomputegenerators
+(seeSection2.1.2). SpendingaroundoneCPUhour
+attacking both hash functions, we were able to ﬁnd
+46 generators for Perl 5.6.1 and 48 generators for
+Perl5.8.0, yielding97k-110kcollidinginputsof24
+characters in length. We then loaded these strings
+directly into associative arrays in both interpreters.
+The results are presented in Table 1. When an in-
+terpreterisfedtheinputdesignedtocollidewithits
+hash function, the running time was three orders of
+magnitude worse (2 seconds vs. almost two hours)
+than when fed the data designed to attack the other
+Perlversion. Thisrepresentshowdevastatinganal-
+gorithmic complexity attack can be. One hour of
+pre-computed CPU work, on the client, can cause
+almost two hours of online work for a server. Dou-
+bling the number of inputs by either ﬁnding new
+Perl 5.6.1 Perl 5.8.0
+File version program program
+Perl 5.6.1 6506 seconds <2 seconds
+Perl 5.8.0 <2 seconds 6838 seconds
+Table1: CPUtimeinserting90kshortattackstrings
+into two versions of Perl.
+generators or using longer inputs would quadruple
+the victim’s work. The exponent in the victim’s
+O(n2)worst-case behavior is clearly dominant.
+4 Application analysis: Bro
+Bro[15]isageneral-purposenetworkintrusionde-
+tection system (IDS) that can be conﬁgured to scan
+for a wide variety of possible attacks. Bro is open-
+source and is used in production at a number of
+commercial and academic sites. This makes it an
+attractive target, particularly because we can di-
+rectly study its source code. Also, given that Bro’s
+job is to scan and record network packets, correlat-
+ing events in real time to detect attacks, we imag-
+ine it has numerous large hash tables with which it
+tracks these events. If we could peg Bro’s CPU us-
+age, we potentially knock the IDS off the air, clear-
+ing the way for other attacks to go undetected.
+In order to keep up with trafﬁc, Bro uses packet ﬁl-
+ters [13] to select and capture desired packets, as
+a function of its conﬁguration. Following this, Bro
+implementsanevent-basedarchitecture. Newpack-
+ets raise events to be processed. Synthetic events
+can also be timed to occur in the future, for exam-
+ple, to track the various time-outs that occur in the
+TCP/IP protocol. A number of Bro modules ex-
+ist to process speciﬁc protocols, such as FTP, DNS,
+SMTP, Finger, HTTP, and NTP.
+4.1 Analysis
+Bro contains approximately 67,000 lines of C++
+code that implement low-level mechanisms to ob-
+12th USENIX Security Symposium USENIX Association36
+serve network trafﬁc and generate events. Bro also
+providesawideselectionofscripts,comprisingap-
+proximately 9000 lines of code in its own inter-
+preted language that use the low-level mechanisms
+to observe network behavior and react appropri-
+ately. While we have not exhaustively studied the
+source code to Bro, we did observe that Bro uses
+a simple hash table whose hash function simply
+XORstogetheritsinputs. Thismakescollisionsex-
+ceptionally straightforward to derive. The remain-
+ing issue for an attack any is to determine how and
+when incoming network packets are manipulated
+before hash table entries are generated.
+We decided to focus our efforts on Bro’s port
+scanning detector, primarily due to its simplicity.
+For each source IP address, Bro needs to track
+how many distinct destination ports have been con-
+tacted. It uses a hash table to track, for each tuple
+of ⟨source IP address, destination port⟩, whether
+any internal machine has been probed on a given
+port from that particular source address. To attack
+this hash table, we observe that the attacker has 48-
+bits of freedom: a 32-bit source IP address and a
+16-bit destination port number. (We’re now assum-
+ing the attacker has the freedom to forge arbitrary
+source IP addresses.) If our goal is to compute
+32-bit hash collisions (i.e., before the modulo op-
+eration to determine the hash bucket), then for any
+good hash function, we would expect there to be
+approximately 216 possible collisions we might be
+abletoﬁndforanygiven32-bithashvalue. Inahy-
+potheticalIPv6implementationofBro,therewould
+be signiﬁcantly more possible collisions, given the
+larger space of source IP addresses.
+Deriving these collisions with Bro’s XOR-based
+hash function requires understanding the precise
+way that Bro implements its hash function. In this
+case, the hash function is the source IP address,
+in network byte order, XORed with the destination
+port number, in host order. This means that on a
+little-endian computer, such as an x86 architecture
+CPU, the high-order 16 bits of the hash value are
+taken straight from the last two octets of the IP ad-
+dress, while the low-order 16 bits of the hash value
+resultfromtheﬁrsttwooctetsoftheIPaddressand
+the port number. Hash collisions can be derived
+by ﬂipping bits in the ﬁrst two octets of the IP ad-
+dress in concert with the matching bits of the port
+number. Thisallowsus,forevery32-bittargethash
+value,toderiveprecisely2 16 inputpacketsthatwill
+hash to the same value.
+Wecouldalsohaveattemptedtoderivebucketcolli-
+sionsdirectly,whichwouldallowustoderivemore
+than 216 collisions in a single hash bucket. While
+we could guess the bucket count, or even gener-
+ate parallel streams designed to collide in a num-
+ber of different bucket counts as discussed in Sec-
+tion 2.1.1, this would require sending a signiﬁcant
+amount of additional trafﬁc to the Bro server. If the
+216 hashcollisionsaresufﬁcienttocauseannotica-
+ble quadratic explosion inside Bro, then this would
+be the preferable attack.
+4.2 Attack implementation
+We have designed attack trafﬁc that can make Bro
+saturate the CPU and begin to drop trafﬁc within
+30 seconds during a 160kb/s, 500 packets/second
+ﬂood, and within 7 minutes with a 16kb/s ﬂood.
+Our experiments were run over an idle Ethernet,
+with a laptop computer transmitting the packets to
+a Bro server, version 0.8a20, running on a dual-
+CPUPentium-2machine,runningat450MHz,with
+768MBofRAM,andrunningtheLinux2.4.18ker-
+nel. Bro only uses a single thread, allowing other
+processes to use the second CPU. For our experi-
+ments, we conﬁgured Bro exclusively to track port
+scanningactivity. InaproductionBroserver,where
+it might be tracking many different forms of net-
+workmisbehavior,thememoryandCPUconsump-
+tion would be strictly higher than we observed in
+our experiments.
+4.3 Attack results
+We ﬁrst present the performance of Bro, operating
+inanoff-linemode,consumingpacketsonlyasfast
+as it can process them. We then present the latency
+and drop-rate of Bro, operating online, digesting
+12th USENIX Security Symposium USENIX Association 37
+Attack Random
+Total CPU time 44.50 min .86 min
+Hash table time 43.78 min .02 min
+Table 2: Total CPU time and CPU time spent in
+hash table code during an ofﬂine processing run of
+64k attack and 64k random SYN packets.
+packets at a variety of different bandwidths.
+4.3.1 Of ﬂine CPU consumption
+Normally, on this hardware, Bro can digest about
+1200 SYN packets per second. We note that this
+is only 400kb/s, so Bro would already be vulnera-
+ble to a simple ﬂood of arbitrary SYN packets. We
+alsonotethatBroappearstouseabout500bytesof
+memory per packet when subject to random SYN
+packets. At a rate of 400kb/s, our Bro system, even
+if it had 4GB of RAM, would run out of memory
+within two hours.
+We have measured the ofﬂine running time for Bro
+to consume 64k randomly chosen SYN packets.
+We then measured the time for Bro to consume
+the same 64k randomly chosen packets, to warm
+up the hash table, followed by 64k attack packets.
+This minimizes rehashing activity during the attack
+packets and more closely simulates the load that
+Bro might observe had it been running for a long
+timeandexperiencedasuddenburstofattackpack-
+ets. The CPU times given in Table 2 present the re-
+sults of benchmarking Bro under this attack. The
+results show that the attack packets introduce two
+orders of magnitude of overhead to Bro, overall,
+and three orders of magnitude of overhead specif-
+ically in Bro’s hash table code. Under this attack,
+Bro can only process 24 packets per second instead
+of its normal rate of 1200 packets per second.
+In the event that Bro was used to process an ex-
+tended amount of data, perhaps captured for later
+ofﬂineanalysis,thenanhourofverylowbandwidth
+attack trafﬁc (16kb/s, 144k packets, 5.8Mbytes of
+Packet rate Packets sent Drop rate
+16kb/s 192k 31%
+16kb/s (clever) 128k 71%
+64kb/s 320k 75%
+160kb/s 320k 78%
+Table 3: Overall drop rates for the different attack
+scenarios.
+trafﬁc) would take Bro 1.6 hours to analyze instead
+of 3 minutes. An hour of T1-level trafﬁc (1.5Mb/s)
+wouldtakeaweekinsteadof5hours,assumingthat
+Bro didn’t ﬁrst run out of memory.
+4.3.2 Online latency and drop-rate
+As described above, our attack packets cannot be
+processedbyBroinreal-time,evenwithverymod-
+esttransmissionrates. Forofﬂineanalysis,thissim-
+ply means that Bro will take a while to execute.
+For online analysis, it means that Bro will fall be-
+hind. The kernel’s packet queues will ﬁll because
+Broisn’treadingthedata,andeventuallythekernel
+willstartdroppingthepackets. Tomeasurethis,we
+constructedseveraldifferentattackscenarios. Inall
+cases, wewarmedupBro’shashtablewithapprox-
+imately 130k random SYN packets. We then trans-
+mitted the attack packets at any one of three differ-
+ent bandwidths (16kb/s, 64kb/s, and 160kb/s). We
+constructed attacks that transmitted all 216 attack
+packets sequentially, multiple times. We also con-
+structed a “clever” attack scenario, where we ﬁrst
+sent 3/4 of our attack packets and then repeated
+the remaining 1/4 of the packets. The clever at-
+tack forces more of the chain to be scanned before
+the hash table discovered the new value is already
+present in the hash chain.
+Table 3 shows the approximate drop rates for four
+attack scenarios. We observe that an attacker with
+even a fraction of a modem’s bandwidth, transmit-
+ting for less than an hour, can cause Bro to drop,
+onaverage,71%ofitsincomingtrafﬁc. Thiswould
+make an excellent precursor to another network at-
+tackthattheperpetratordidnotwishtobedetected.
+12th USENIX Security Symposium USENIX Association38
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 0  5  10  15  20  25
+Delay in seconds
+Minutes into the Attack
+A
+B
+C
+Figure 3: Packet processing latency, 16kb/s.
+ 0
+ 2
+ 4
+ 6
+ 8
+ 10
+ 12
+ 14
+ 16
+ 18
+ 20
+ 0  5  10  15  20  25
+Thousands dropped
+Minutes into the Attack
+A BC
+Figure 4: Cumulative dropped packets, 16kb/s.
+Bro’s drop rate is not constant. In fact, Bro mani-
+fests interesting oscillations in its drop rate, which
+are visible in Figures 3 through 6. These graphs
+present Bro’s packet processing latency and cu-
+mulative packet drop rate for attack packets being
+transmitted at 16 kb/sec and 64 kb/sec.
+At time A, the latency (time between packet ar-
+rival and packet processing) starts increasing as to-
+tal processing cost per packet begins to exceed the
+packet inter-arrival time.
+At timeB, Bro is sufﬁciently back-logged that the
+kernel has begun to drop packets. As a result, Bro
+starts catching up on its backlogged packets. Dur-
+ing this phase, the Bro server is dropping virtually
+all of its incoming trafﬁc.
+At time C, Bro has caught up on its backlog, and
+the kernel is no longer dropping packets. The cycle
+ 20
+ 40
+ 60
+ 80
+ 100
+ 120
+ 140
+ 0  1  2  3  4  5  6
+Delay in seconds
+Minutes into the Attack
+A
+B
+C
+Figure 5: Packet processing latency, 64kb/s.
+ 0
+ 5
+ 10
+ 15
+ 20
+ 25
+ 30
+ 35
+ 40
+ 45
+ 0  1  2  3  4  5  6
+Thousands dropped
+Minutes into the Attack
+A B
+C
+Figure 6: Cumulative dropped packets, 64kb/s.
+cannowstartagain. However,thehashchainunder
+attack is now larger then it was at timeA. This will
+cause subsequent latencies to rise even higher than
+they were at timeB.
+This cyclic behavior occurs because Bro only adds
+entries to this hash table after it has determined
+there will be no response to the SYN packet. Bro
+normally uses a ﬁve minute timeout. We reduced
+this to 30 seconds to reduce our testing time and
+make it easier to illustrate our attacks. We antic-
+ipate that, if we were to run with the default 5-
+minute timeout, the latency swings would have a
+longer period and a greater amplitude, do to the ten
+times larger queues of unprocessed events which
+would be accumulated.
+12th USENIX Security Symposium USENIX Association 39
+4.4 Discussion
+Our attack on Bro has focused on its port scanning
+detector. Bro and other IDS systems almost cer-
+tainly have other hash tables which may grow large
+enough to be vulnerable to algorithmic complexity
+attacks. For example, Bro has a module to detect
+network scans, determining how many destination
+hostshavebeensentpacketsbyagivensourcehost.
+This module gives 32+ h bits of freedom, whereh
+isthenumberofhostbitsinthedestinationnetwork
+monitored by the IDS.h is unlikely to be greater
+than 16 except for a handful of sites. However, in
+an IPv6 network, the sky is the limit. For that mat-
+ter, IPv6 gives the attacker a huge amount of free-
+dom for any attack where IP addresses are part of
+the values being hashed.
+Part of any hash table design is the need to ex-
+pand the bucket count when the table occupancy
+exceeds some threshold. When the hash table has
+a large number of objects which hash to the same
+bucket after the rehashing operation, then the re-
+hashing operation could be as bad asO(n2), if the
+hash table were using its normal insertion opera-
+tion that checks for duplicates. As it turns out,
+Bro does exactly this. In our regular experimen-
+tal runs, we “warmed up” the hash tables to pre-
+vent any rehashing during the experiment. Before
+we changed our experimental setup to do this, we
+saw large spikes in our latency measurements that
+indicated rehashing was occurring. When rehash-
+ing,Brotakes4minutestoprocessatablewith32k
+attack entries. Bro takes 20 minutes to process a
+table with 64k attack entries. Without IPv6 or us-
+ing bucket collisions, we cannot create more colli-
+sionsthanthis, althoughmakingtheIDSserverun-
+responsive for 20 minutes is certainly an effective
+attack.
+Although rehashing attacks are extremely potent,
+they are not necessarily easy to use; attackers can-
+not exploit this window of opportunity unless they
+know exactly when it is occurring. Furthermore,
+Bro’s hash table will rehash itself at most 12 times
+as it grows from 32k entries to 64M entries.
+5 Solving algorithmic complexity attacks
+When analyzing algorithmic complexity attacks,
+we must assume the attacker has access to the
+source code of the application, so security through
+obscurity is not acceptable. Instead, either the ap-
+plication must use algorithms that do not have pre-
+dictable worst-case inputs, or the application must
+beabletodetectwhenitisexperiencingworst-case
+behavior and take corrective action.
+5.1 Eliminating worst-case performance
+A complete survey of algorithms used in common
+systemsisbeyondthescopeofthispaper. Wefocus
+our attention on binary trees and on hash tables.
+While binary trees are trivial for an attacker to gen-
+erateworst-caseinput,manymanyotherdatastruc-
+tures like red-black trees [11] and splay trees [18]
+have runtime bounds that areguaranteed, regard-
+lessoftheirinput. Aweakerbutsufﬁcientcondition
+istouseanalgorithmthatdoesnothave predictable
+worst-case inputs. For example, treaps [17] are
+trees where all nodes are assigned a randomly cho-
+sen number upon creation. The tree nodes are ro-
+tated such that atree property is preserved on the
+input data, as would be expected of any tree, but
+a heap property is also maintained on the random
+numbers, yielding a tree that is probabilistically
+balanced. So long as the program is designed to
+prevent the attacker from predicting the random
+numbers (i.e., the pseudo-random number genera-
+tor is “secure” and is properly initialized), the at-
+tacker cannot determine what inputs would cause
+the treap to exhibit worst-case behavior.
+When attacking hash tables, an attacker’s goal is to
+efﬁciently computesecond pre-images to the hash
+function,i.e.,if xhashesto h(x)and y ⁄= x,itshould
+be infeasible for the attacker to derivey such that
+h(y)= h(x). Cryptographically strong hash func-
+tionslikeMD5andSHA-1areresistant,ingeneral,
+to such attacks. However, when used in hash ta-
+bles, the 128 or 160 bits of output from MD5 or
+12th USENIX Security Symposium USENIX Association40
+SHA-1 must eventually be reduced to the bucket
+count, making it feasible for an attacker to mount
+a brute force search on the hash function to ﬁnd
+bucket collisions. Some simple benchmarking on
+a 450MHz Pentium-2 allowed us to compute ap-
+proximately ﬁve such collisions per second in a
+hash table with 512k buckets. This weakness can
+be addressed by using keyed versions of MD5 or
+SHA-1 (e.g., HMAC [12]). The key, chosen ran-
+domly when the program is initialized, will not
+be predictable by an attacker; as a result, the at-
+tacker will not be able to predict the hash values
+used when the program is actually running. When
+keyed, MD5 and SHA-1 becomepseudo-random
+functions,which,liketreaps,becomeunpredictable
+for the attacker. When unkeyed, MD5 and SHA-1
+are deterministic functions and subject to bucket
+collisions.
+5.2 Universal hashing
+Replacing deterministic hash functions with
+pseudo-random functions gives probabilistic guar-
+antees of security. However, a stronger solution,
+which can also execute more efﬁciently, is avail-
+able. Universal hash functions were introduced
+in 1979 [5] and are cited by common algorithm
+textbooks (e.g., Cormen, Leiserson, and Rivest [6])
+as a solution suitable for adversarial environments.
+It has not been standard practice to follow this
+advice, but it should be.
+WhereMD5andSHA-1aredesignedtoberesistant
+to the computation of second pre-images, universal
+hash functions are families of functions (with the
+speciﬁc function speciﬁed by a key) with the prop-
+erty that, for any two arbitrary messagesM and M′,
+the odds ofh(M)= h(M′) are less than some small
+value ε. This property is sufﬁcient for our needs,
+becauseanattackerwhodoesnotknowthespeciﬁc
+hash function has guaranteed low odds of comput-
+ing hash collisions.
+CarterandWegman’soriginalconstructionofauni-
+versal hash function computes the sum of a ﬁxed
+chosenconstantwiththedotproductofaﬁxedcho-
+sen vector with the input, modulo a large prime
+number. The ﬁxed chosen constant and vectors
+are chosen, randomly, at the beginning, typically
+pre-computed using a keyed pseudo-random func-
+tion, and reused for every string being hashed. The
+only performance issue is that this vector must ei-
+ther be pre-computed up to the maximum expected
+input length, or it must be recomputed when it
+is used, causing a noticeable performance penalty.
+More recent constructions, including UMAC [4]
+and hash127 [3] use a ﬁxed space despite support-
+ing arbitrary-length arguments. UMAC, in partic-
+ular, is carefully engineered to run fast on modern
+processors, using adds, multiplies, and SIMD mul-
+timedia instructions for increased performance.
+5.2.1 Universal hash designs
+Some software designers are unwilling to use uni-
+versal hashing, afraid that it will introduce unac-
+ceptable performance overheads in critical regions
+of their code. Other software designers simply
+need a fast, easy-to-integrate library to solve their
+hashing needs. Borrowing code from UMAC and
+adding variants hand-optimized for small, ﬁxed-
+length inputs, we have implemented a portable C
+library suitable for virtually any program’s needs.
+Our library includes two different universal hash
+functions: the UHASH function, submitted as part
+of the (currently expired) UMAC Internet draft
+standard [4], and the Carter-Wegman dot-product
+construction. We also include a hand-tuned vari-
+ant of the Carter-Wegman construction, optimized
+to support ﬁxed-length, short inputs, as well as an
+additionally tuned version that only yields a 20 bit
+result, rather than the usual 32 bits. This may be
+appropriate for smaller hash tables, such as used in
+Squid (see Section 3.1).
+Our Carter-Wegman construction processes the
+value to be hashed one byte at a time. These bytes
+are multiplied by 32 bits from the ﬁxed vector,
+yielding40bitintermediatevaluesthatareaccumu-
+lated in a 64 bit counter. One 64-by-32 bit modulo
+operation is used at the end to yield the 32 bit hash
+12th USENIX Security Symposium USENIX Association 41
+value. This construction supports inputs of length
+upt o2 24 bytes. (A maximum length is declared
+by the programmer when a hashing context is al-
+located,causingtheﬁxedvectortobeinitializedby
+AESincountermode,keyedfrom /dev/random.
+Hash inputs longer than this are rejected.)
+Our initial tests showed that UHASH signiﬁcantly
+outperformed the Carter-Wegman construction for
+long inputs, but Carter-Wegman worked well for
+short inputs. Since many software applications of
+hash functions know, apriori, that their inputs are
+small and of ﬁxed length (e.g., in-kernel network
+stacks that hash portions of IP headers), we wished
+to provide carefully tuned functions to make such
+hashingfaster. Byﬁxingthelengthoftheinput, we
+could fully unroll the internal loop and avoid any
+function calls. GCC inlines our hand-tuned func-
+tion. Furthermore, the Carter-Wegman construc-
+tion can be implemented with a smaller accumu-
+lator. Without changing the mathematics of Carter-
+Wegman, we can multiply 8 bit values with 20 bit
+entries in the ﬁxed vector and use a 32 bit accumu-
+lator. Forinputslessthan16-bytes,theaccumulator
+will not overﬂow, and we get a 20 bit hash value as
+a result. The inputs are passed as separate formal
+arguments, rather than in an array. This gives the
+compiler ample opportunity for inlining and spe-
+cializing the function.
+5.2.2 Universal hash microbenchmarks
+We performed our microbenchmarking on a Pen-
+tium 2, 450MHz computer. Because hash tables
+tend to use a large amount of data, but only read
+it once, working set size and its resultant impact
+on cache miss rates cannot be ignored. Our mi-
+crobenchmark is designed to let us measure the ef-
+fects of hitting or missing in the cache. We pick
+an array size, then ﬁll it with random data. We then
+hasharandomsub-rangeofit. Dependingonthear-
+ray size chosen and whether it ﬁts in the L1 cache,
+L2 cache, or not, the performance can vary signiﬁ-
+cantly.
+In our tests, the we microbenchmarked two con-
+ventional algorithms, four universal hashing al-
+gorithms, and one cryptographic hash algorithm:
+Perl Perl 5.8.0 hash function
+MD5 cryptographic hash function
+UHASH UMAC universal hash function
+CW Carter-Wegman,onebyteprocess-
+ing, variable-length input, 64 bit
+accumulator, 32 bit output
+CW12 Carter-Wegman,twobyteprocess-
+ing, 12-byte ﬁxed input, 64 bit ac-
+cumulator, 32 bit output
+CW12-20 Carter-Wegman,onebyteprocess-
+ing, 12-byte ﬁxed input, 32 bit ac-
+cumulator, 20 bit output
+XOR12 fourbyteprocessing,12-byteﬁxed
+input, 32 bit output
+In addition to Perl, MD5, UHASH, and three vari-
+ants of the Carter-Wegman construction, we also
+include a specialized function that simply XORs
+its input together, four bytes at a time. This sim-
+ulates the sort of hash function used by many
+performance-paranoid systems.
+Figure 7 shows the effects of changing the work-
+ing set size on hash performance. All the hash
+functions are shown hashing 12-byte inputs, cho-
+sen from an array whose sizes have been chosen to
+ﬁt within the L1 cache, within the L2 cache, and to
+miss both caches. The largest size simulates the ef-
+fect that will be seen when the data being hashed is
+freshlyreadfromanetworkbufferorhasotherwise
+not yet been processed. We believe this most ac-
+curatelyrepresentsthecachingthroughputthatwill
+beobservedinpractice,ashashvaluesaretypically
+only computed once, and then written into an ob-
+ject’s internal ﬁeld, somewhere, for later compari-
+son.
+As one would expect, the simplistic XOR12 hash
+function radically outperforms its rivals, but the ra-
+tio shrinks as the working set size increases. With
+a 6MB working set, XOR12’s throughput is 50
+MB/sec,whereasCW12-20is33MB/sec. Thisrel-
+atively modest difference says that universal hash-
+ing, with its strong security guarantees, can ap-
+proach the performance of even the weakest hash
+12th USENIX Security Symposium USENIX Association42
+ 0
+ 20
+ 40
+ 60
+ 80
+ 100
+ 120
+ 140
+ 160
+ 180
+Perl MD5 UHASH CW CW12 CW12-20 XOR12
+Throughput (Mbyte/sec)
+391
+12KByte
+240KByte
+6MByte
+Figure 7: Effect of working set on hash performance on 12-byte inputs.
+functions. We can also see that universal hashing is
+competitive with Perl’s hash function and radically
+outperforms MD5.
+Asthecachehitrateincreaseswithasmallerwork-
+ing set, XOR12 radically outperforms its competi-
+tion. We argue that this case is unlikely to occur
+in practice, as the data being hashed is likely to
+incur cache misses while it’s being read from the
+network hardware into main memory and then the
+CPU. Secondly, we are microbenchmarking hash
+functionperformance,ahashfunctionisonlyaper-
+centage of overall hash table runtime which is only
+a percentage of application runtime. Of course, in-
+dividual application designers will need to try uni-
+versal hashing out to see how it impacts their own
+systems.
+Some applications hash longer strings and require
+general-purpose hash functions. Figure 8 uses the
+6MB working set and varies the length of the input
+to be hashed. We can no longer use the special-
+ized 12-byte functions, but the other functions are
+shown. (We did not implement a generalization of
+ourXOR12hashfunction,althoughsuchafunction
+would be expected to beat the other hash functions
+in the graph.) With short strings, we see the Perl
+hash function outperforms its peers. However, with
+strings longer than around 44-bytes, UHASH dom-
+inates all the other hash functions, due in no small
+part to its extensive performance tuning and hand-
+coded assembly routines.
+ 0
+ 20
+ 40
+ 60
+ 80
+ 100
+ 120
+ 140
+ 1  4  16  64  256  1024
+Throughput (MByte/sec)
+Input length
+Perl
+MD5
+UHASH
+CW
+Figure 8: Effect of input length on hash perfor-
+mance with a 6MB working set.
+We have some preliminary benchmarks with in-
+tegrating universal hashing into Perl. We bench-
+marked the change with two perl scripts, both of
+whichdolittleotherthanhashtableoperations. The
+ﬁrst script is a histogramming program, the second
+just inserts text into a hash table. Our results in-
+dicate that the application performance difference
+between UHASH and Perl’s default hash function
+is plus or minus 10%.
+We conclude that our customized Carter-Wegman
+construction, for short ﬁxed-length strings, and
+UHASH, for arbitrary strings, are sufﬁciently high
+performance that there is no excuse for them not to
+beused,oratleastbenchmarked,inproductionsys-
+tems. OurcodeisavailableonlinewithaBSD-style
+12th USENIX Security Symposium USENIX Association 43
+license2.
+6 Conclusions and future work
+We have presented algorithmic complexity attacks,
+a new class of low-bandwidth denial of service
+attacks. Where traditional DoS attacks focus on
+small implementation bugs, such as buffer over-
+ﬂows, these attacks focus on inefﬁciencies in the
+worst-caseperformanceofalgorithmsusedinmany
+mainstream applications. We have analyzed a va-
+riety of common applications, ﬁnding weaknesses
+which vary from increasing an applications work-
+loadbyasmallconstantfactortocausingtheappli-
+cation to completely collapse under the load cause
+by its algorithm’s unexpectedly bad behavior.
+Algorithmic complexity attacks against hash table,
+in particular, count on the attacker having sufﬁ-
+cient freedom over the space of possible inputs to
+ﬁnd a sufﬁcient number of hash collisions to in-
+duce worst-case behavior in an application’s hash
+table. When the targeted system is processing net-
+work packets, the limited address space of IPv4 of-
+fers some limited protection against these attacks,
+but future IPv6 systems will greatly expand an at-
+tacker’s ability to ﬁnd collisions. As such, we
+strongly recommend that network packet process-
+ing code be audited for these vulnerabilities.
+Common applications often choose algorithms
+based on their common-case behavior, expecting
+the worst-case to never occur in practice. This pa-
+per shows that such design choices introduce vul-
+nerabilitiesthatcanandshouldbepatchedbyusing
+more robust algorithms. We showed how univer-
+sal hashing demonstrates impressive performance,
+suitable for use in virtually any application.
+While this paper has focused on a handful of soft-
+waresystems,aninterestingareaforfutureresearch
+will be to study the algorithms used by embed-
+ded systems, such as routers, ﬁrewalls, and other
+networking devices. For example, many “stateful”
+2http://www.cs.rice.edu/˜scrosby/hash/
+ﬁrewalls likely use simple data structures to store
+this state. Anyone who can learn the ﬁrewall’s al-
+gorithmsmaybeabletomountDoSattacksagainst
+those systems.
+Acknowledgements
+The authors gratefully thank John Garvin for his
+help in the analysis of the Squid web proxy and
+Algis Rudys and David Rawlings for their careful
+reading and comments. We also thank David Wag-
+ner and Dan Boneh for helpful discussions on uni-
+versal hashing.
+This work is supported by NSF Grant CCR-
+9985332 and Texas ATP grant #03604-0053-2001
+and by gifts from Microsoft and Schlumberger.
+References
+[1] G. M. Adel’son-Vel’skii and Y. M. Landis. An al-
+gorithmfortheorganizationofinformation. Soviet
+Mathematics Doklady, 3:1259–1262, 1962.
+[2] Aleph1. Smashing the stack for fun and
+proﬁt. Phrack #49, Nov. 1996. http://www.
+phrack.org/show.php?p=49&a=14.
+[3] D. J. Bernstein. Floating-point arithmetic and
+message authentication. http://cr.yp.to/
+papers/hash127.ps, March 2000.
+[4] J. Black, S. Halevi, H. Krawczyk, T. Krovetz,
+and P. Rogaway. UMAC: Fast and secure
+message authentication. In Advances in Cryp-
+tology – CRYPTO 99 , pages 215–233, 99.
+see also, http://www.cs.ucdavis.edu/
+˜rogagay/umac/.
+[5] J. L. Carter and M. N. Wegman. Universal classes
+ofhashfunctions. Journal of Computer and System
+Sciences (JCSS), 18(2):143–154, Apr. 1979.
+[6] T. H. Cormen, C. E. Leiserson, and R. L. Rivest.
+Introduction to Algorithms. MIT Electrical Engi-
+neering and Computer Science Series. MIT Press,
+1990.
+[7] P. B. Danzig, R. S. Hall, and M. F. Schwartz. A
+case for caching ﬁle objects inside internetworks.
+12th USENIX Security Symposium USENIX Association44
+In Proceedings of the ACM SIGCOMM ’93 Con-
+ference on Communication Architectures, Proto-
+cols, and Applications, pages 239–248, San Fran-
+cisco, CA, Sept. 1993.
+[8] D. Dean and A. Stubbleﬁeld. Using client puz-
+zles to protect TLS. In Proceedings of the 10th
+USENIX Security Symposium, Washington, D.C.,
+Aug. 2001.
+[9] C. Dwork and M. Naor. Pricing via processing
+or combatting junk mail.Advances in Cryptology
+CRYPTO ’92, 740:139–147, August 1992.
+[10] S. Garﬁnkel. Script for a king. HotWired Packet,
+Nov.1996. http://hotwired.lycos.com/
+packet/garfinkel/96/45/geek.html,
+and see http://simson.vineyard.net/
+table.htmlfor the table attack.
+[11] L. J. Guibas and R. Sedgewick. A dichromatic
+framework for balanced trees. InProceedings of
+19th Foundations of Computer Science , pages 8–
+21, 1978.
+[12] H. Krawczyk, M. Bellare, and R. Canetti. HMAC:
+Keyed-hashing for message authentication. Tech-
+nicalReport RFC-2104, InternetEngineering Task
+Force, Feb. 1997.ftp://ftp.rfc-editor.
+org/in-notes/rfc2104.txt.
+[13] S. McCanne and V. Jacobson. The BSD packet ﬁl-
+ter: A new architecture for user-level packet cap-
+ture. In USENIX Annual Technical Conference ,
+pages 259–270, San Diego, California, Jan. 1993.
+[14] National Laboratory for Applied Network Re-
+search. The Squid Internet object cache.http:
+//www.squid-cache.org.
+[15] V. Paxson. Bro: a system for detecting network
+intrudersinreal-time. Computer Networks,31(23–
+24):2435–2463, 1999.
+[16] X. Qie, R. Pang, and L. Peterson. Defensive Pro-
+gramming: Using an Annotation Toolkit to Build
+Dos-Resistant Software. In Proceedings of the
+Fifth Symposium on Operating Systems Design
+and Implementation,Boston,MAUSA,December
+2002.
+[17] R. Seidel and C. R. Aragon. Randomized search
+trees. Algorithmica, 16(4/5):464–497, 1996.
+[18] D. D. Sleator and R. E. Tarjan. Self-adjusting bi-
+nary search trees. Journal of the ACM (JACM) ,
+32(3):652–686, 1985.
+[19] D.-E. C. Smorgrav. YA Apache DoS attack.
+Bugtraq mailing list, August 1998. http:
+//lists.nas.nasa.gov/archives/
+ext/bugtraq/1998/08/msg00060.html.
+[20] F. Weimer. Private communication, Apr. 2003.
+[21] D. Wessels and K. Claffey. Application of Internet
+Cache Protocol (ICP), version 2. Technical Re-
+port RFC-2187, Internet Engineering Task Force,
+Sept. 1997. ftp://ftp.rfc-editor.org/
+in-notes/rfc2187.txt.

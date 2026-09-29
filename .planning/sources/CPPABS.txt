@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html class="client-nojs" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>abs, labs, llabs, imaxabs - cppreference.com</title>
+<script>document.documentElement.className="client-js";RLCONF={"wgBreakFrames":false,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"aqY8BV9na_rlzhY0D9V9HQAAARQ","wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"c/numeric/math/abs","wgTitle":"c/numeric/math/abs","wgCurRevisionId":172096,"wgRevisionId":172096,"wgArticleId":6266,"wgIsArticle":true,"wgIsRedirect":false,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Pages using deprecated source tags","Pages using deprecated enclose attributes"],"wgPageViewLanguage":"en","wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"c/numeric/math/abs","wgRelevantArticleId":6266,"wgIsProbablyEditable":false,"wgRelevantPageIsProbablyEditable":false,"wgRestrictionEdit":[],"wgRestrictionMove":[],"wgCiteReferencePreviewsActive":true,"wgCheckUserClientHintsHeadersJsApi":["architecture","bitness","brands","fullVersionList","mobile","model","platform","platformVersion"]};
+RLSTATE={"site.styles":"ready","user.styles":"ready","user":"ready","user.options":"loading","ext.pygments":"ready","skins.cppreference2.styles":"ready"};RLPAGEMODULES=["ext.pygments.view","site","mediawiki.page.ready","mediawiki.toc","skins.cppreference2.js","ext.checkUser.clientHints","ext.gadget.ColiruCompiler","ext.gadget.StandardRevisions","ext.gadget.MathJax"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.impl(function(){return["user.options@12s5i",function($,jQuery,require,module){mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});
+}];});});</script>
+<link rel="stylesheet" href="/load.php?lang=en&amp;modules=ext.pygments%7Cskins.cppreference2.styles&amp;only=styles&amp;skin=cppreference2">
+<script async="" src="/load.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=cppreference2"></script>
+<meta name="ResourceLoaderDynamicStyles" content="">
+<link rel="stylesheet" href="/load.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=cppreference2">
+<meta name="generator" content="MediaWiki 1.43.9">
+<meta name="robots" content="max-image-preview:standard">
+<meta name="format-detection" content="telephone=no">
+<meta name="viewport" content="width=1120">
+<link rel="search" type="application/opensearchdescription+xml" href="/rest.php/v1/search" title="cppreference.com (en)">
+<link rel="EditURI" type="application/rsd+xml" href="https://cppreference.com/api.php?action=rsd">
+<link rel="alternate" type="application/atom+xml" title="cppreference.com Atom feed" href="/index.php?title=Special:RecentChanges&amp;feed=atom">
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject page-c_numeric_math_abs rootpage-c skin-cppreference2 action-view cpp-navbar"><!-- header -->
+<div id="mw-head" class="noprint">
+    <div id="cpp-head-first-base">
+        <div id="cpp-head-first">
+            <h5><a href="/">cppreference.com</a></h5>
+            <div id="cpp-head-search">
+                <div id="p-search">
+                    <h5>Search</h5>
+                    <form action="/index.php" id="searchform">
+                        <div id="simpleSearch">
+                            <input type="search" name="search" placeholder="Search cppreference.com" aria-label="Search cppreference.com" autocapitalize="none" title="Search cppreference.com [f]" accesskey="f" id="searchInput">                            <input type="hidden" name="title" value="Special:Search">
+                            <button id="searchButton" type="submit" name="go" title="Search">&#x1F50D;</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div id="cpp-head-personal">
+                <div id="p-personal" class="">
+<span id="pt-createaccount"><a href="/index.php?title=Special:CreateAccount&amp;returnto=c%2Fnumeric%2Fmath%2Fabs" title="You are encouraged to create an account and log in; however, it is not mandatory"><span>Create account</span></a></span>                    <div class="menu">
+                        <ul lang="en" dir="ltr">
+<li id="pt-login" class="mw-list-item"><a href="/index.php?title=Special:UserLogin&amp;returnto=c%2Fnumeric%2Fmath%2Fabs" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o"><span>Log in</span></a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="cpp-head-second-base">
+        <div id="cpp-head-second">
+            <div id="cpp-head-tools-left">
+                <!-- namespaces -->
+                <div id="p-namespaces" class="vectorTabs"><h5>Namespaces</h5><ul lang="en" dir="ltr"><li id="ca-nstab-main" class="selected mw-list-item"><a href="/c/numeric/math/abs" title="View the content page [c]" accesskey="c"><span>Page</span></a></li>
+<li id="ca-talk" class="new mw-list-item"><a href="/index.php?title=Talk:c/numeric/math/abs&amp;action=edit&amp;redlink=1" rel="discussion" class="new" title="Discussion about the content page (page does not exist) [t]" accesskey="t"><span>Discussion</span></a></li>
+</ul></div>                <!-- variants -->
+                <div id="p-variants" class="vectorMenu emptyPortlet"><h5><span>Variants</span><a href="#"></a></h5><div class="menu"><ul lang="en" dir="ltr"></ul></div></div>            </div>
+            <div id="cpp-head-tools-right">
+                <!-- views -->
+                <div id="p-views" class="vectorTabs"><h5>Views</h5><ul lang="en" dir="ltr"><li id="ca-view" class="selected mw-list-item"><a href="/c/numeric/math/abs"><span>Read</span></a></li>
+<li id="ca-viewsource" class="mw-list-item"><a href="/index.php?title=c/numeric/math/abs&amp;action=edit" title="This page is protected.&#10;You can view its source [e]" accesskey="e"><span>View source</span></a></li>
+<li id="ca-history" class="mw-list-item"><a href="/index.php?title=c/numeric/math/abs&amp;action=history" title="Past revisions of this page [h]" accesskey="h"><span>View history</span></a></li>
+</ul></div>                <!-- actions -->
+                <div id="p-cactions" class="vectorMenu emptyPortlet"><h5><span>Actions</span><a href="#"></a></h5><div class="menu"><ul lang="en" dir="ltr"></ul></div></div>            </div>
+        </div>
+    </div>
+</div>
+<!-- /header -->
+
+<!-- content -->
+<div id="cpp-content-base">
+    <div id="content" class="mw-body">
+        <a id="top"></a>
+        <div id="mw-js-message" style="display:none;" lang="en" dir="ltr"></div>
+        <!-- firstHeading -->
+        <h1 id="firstHeading" class="firstHeading">abs, labs, llabs, imaxabs</h1>
+        <!-- /firstHeading -->
+        <!-- bodyContent -->
+        <div id="bodyContent" class="mw-body-content">
+            <!-- tagline -->
+            <div id="siteSub">From cppreference.com</div>
+            <!-- /tagline -->
+            <!-- subtitle -->
+            <div id="contentSub" lang="en" dir="ltr"><div id="mw-content-subtitle"><div class="subpages">&lt; <bdi dir="ltr"><a href="/c" title="c">c</a></bdi> | <bdi dir="ltr"><a href="/c/numeric" title="c/numeric">numeric</a></bdi> | <bdi dir="ltr"><a href="/c/numeric/math" title="c/numeric/math">math</a></bdi></div></div></div>
+            <!-- /subtitle -->
+            <!-- bodycontent -->
+            <div id="mw-content-text"><div class="mw-content-ltr mw-parser-output" lang="en" dir="ltr"><div class="t-navbar" style=""><div class="t-navbar-sep">&#160;</div><div class="t-navbar-head"><a href="/c" title="c"> C</a><div class="t-navbar-menu"><div><div><table class="t-nv-begin" cellpadding="0" style="line-height:1.1em;">
+<tbody><tr class="t-nv"><td colspan="5"><a href="/c/compiler_support" title="c/compiler support">Compiler support</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/language" title="c/language">Language</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/header" title="c/header">Headers</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/types" title="c/types">Type support</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/program" title="c/program">Program utilities</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/variadic" title="c/variadic">Variadic function support</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/error" title="c/error">Error handling</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/memory" title="c/memory">Dynamic memory management</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/string" title="c/string">Strings library</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/algorithm" title="c/algorithm">Algorithms</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/numeric" title="c/numeric">Numerics</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/chrono" title="c/chrono">Date and time utilities</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/io" title="c/io">Input/output support</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/locale" title="c/locale">Localization support</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/thread" title="c/thread">Concurrency support</a> <span class="t-mark-rev t-since-c11">(C11)</span></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/experimental" title="c/experimental">Technical Specifications</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/symbol_index" title="c/symbol index">Symbol index</a></td></tr>
+</tbody></table></div><div><span class="editsection noprint plainlinks" title="Edit this template"><a rel="nofollow" class="external text" href="https://cppreference.com/index.php?title=Template:c/navbar_content&amp;action=edit">&#91;edit&#93;</a></span></div></div></div></div><div class="t-navbar-sep">&#160;</div><div class="t-navbar-head"><a href="/c/numeric" title="c/numeric"> Numerics</a><div class="t-navbar-menu"><div><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><a href="/c/numeric/math" title="c/numeric/math">Common mathematical functions</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/numeric/fenv" title="c/numeric/fenv">Floating-point environment</a> <span class="t-mark-rev t-since-c99">(C99)</span></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/numeric/random" title="c/numeric/random">Pseudo-random number generation</a></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/numeric/complex" title="c/numeric/complex">Complex number arithmetic</a> <span class="t-mark-rev t-since-c99">(C99)</span></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/numeric/tgmath" title="c/numeric/tgmath">Type-generic math</a> <span class="t-mark-rev t-since-c99">(C99)</span></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/numeric#Bit_manipulation" title="c/numeric">Bit manipulation</a> <span class="t-mark-rev t-since-c23">(C23)</span></td></tr>
+<tr class="t-nv"><td colspan="5"><a href="/c/numeric#Checked_integer_arithmetic" title="c/numeric">Checked integer arithmetic</a> <span class="t-mark-rev t-since-c23">(C23)</span></td></tr>
+</tbody></table></div><div><span class="editsection noprint plainlinks" title="Edit this template"><a rel="nofollow" class="external text" href="https://cppreference.com/index.php?title=Template:c/numeric/navbar_content&amp;action=edit">&#91;edit&#93;</a></span></div></div></div></div><div class="t-navbar-sep">&#160;</div><div class="t-navbar-head"><a href="/c/numeric/math" title="c/numeric/math"> Common mathematical functions</a><div class="t-navbar-menu"><div><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv-h1"><td colspan="5">Functions</td></tr>
+<tr class="t-nv-h2"><td colspan="5">Basic operations</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a class="mw-selflink selflink"><span class="t-lines"><span>abs</span><span>labs</span><span>llabs</span><span>imaxabs</span></span></a></div><div><span class="t-lines"><span></span><span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fabs" title="c/numeric/math/fabs"><span class="t-lines"><span>fabs</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/div" title="c/numeric/math/div"><span class="t-lines"><span>div</span><span>ldiv</span><span>lldiv</span><span>imaxdiv</span></span></a></div><div><span class="t-lines"><span></span><span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fmod" title="c/numeric/math/fmod"><span class="t-lines"><span>fmod</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/remainder" title="c/numeric/math/remainder"><span class="t-lines"><span>remainder</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/remquo" title="c/numeric/math/remquo"><span class="t-lines"><span>remquo</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fma" title="c/numeric/math/fma"><span class="t-lines"><span>fma</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fdim" title="c/numeric/math/fdim"><span class="t-lines"><span>fdim</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/nan" title="c/numeric/math/nan"><span class="t-lines"><span>nan</span><span>nanf</span><span>nanl</span><span>nand<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Maximum/minimum operations</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fmax" title="c/numeric/math/fmax"><span class="t-lines"><span>fmax</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fmin" title="c/numeric/math/fmin"><span class="t-lines"><span>fmin</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fmaximum&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fmaximum (page does not exist)"><span class="t-lines"><span>fmaximum</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fminimum&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fminimum (page does not exist)"><span class="t-lines"><span>fminimum</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fmaximum_mag&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fmaximum mag (page does not exist)"><span class="t-lines"><span>fmaximum_mag</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span>&#160;&#160;&#160;&#160;</span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fmaximum_num&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fmaximum num (page does not exist)"><span class="t-lines"><span>fmaximum_num</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fminimum_mag&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fminimum mag (page does not exist)"><span class="t-lines"><span>fminimum_mag</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fminimum_num&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fminimum num (page does not exist)"><span class="t-lines"><span>fminimum_num</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fmaximum_mag_num&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fmaximum mag num (page does not exist)"><span class="t-lines"><span>fmaximum_mag_num</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fminimum_mag_num&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fminimum mag num (page does not exist)"><span class="t-lines"><span>fminimum_mag_num</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span>&#160;&#160;&#160;&#160;</span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Exponential functions</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/exp" title="c/numeric/math/exp"><span class="t-lines"><span>exp</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/exp10&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/exp10 (page does not exist)"><span class="t-lines"><span>exp10</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/exp2" title="c/numeric/math/exp2"><span class="t-lines"><span>exp2</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/expm1" title="c/numeric/math/expm1"><span class="t-lines"><span>expm1</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/exp10m1&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/exp10m1 (page does not exist)"><span class="t-lines"><span>exp10m1</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/exp2m1&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/exp2m1 (page does not exist)"><span class="t-lines"><span>exp2m1</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><br />
+</td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/log" title="c/numeric/math/log"><span class="t-lines"><span>log</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/log10" title="c/numeric/math/log10"><span class="t-lines"><span>log10</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/log2" title="c/numeric/math/log2"><span class="t-lines"><span>log2</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/log1p" title="c/numeric/math/log1p"><span class="t-lines"><span>log1p</span><span>logp1</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/log10p1&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/log10p1 (page does not exist)"><span class="t-lines"><span>log10p1</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/log2p1&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/log2p1 (page does not exist)"><span class="t-lines"><span>log2p1</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Power functions</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/sqrt" title="c/numeric/math/sqrt"><span class="t-lines"><span>sqrt</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/cbrt" title="c/numeric/math/cbrt"><span class="t-lines"><span>cbrt</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/rootn&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/rootn (page does not exist)"><span class="t-lines"><span>rootn</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/rsqrt&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/rsqrt (page does not exist)"><span class="t-lines"><span>rsqrt</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><br />
+</td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/hypot" title="c/numeric/math/hypot"><span class="t-lines"><span>hypot</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/compound&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/compound (page does not exist)"><span class="t-lines"><span>compound</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/pow" title="c/numeric/math/pow"><span class="t-lines"><span>pow</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/pown&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/pown (page does not exist)"><span class="t-lines"><span>pown</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/powr&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/powr (page does not exist)"><span class="t-lines"><span>powr</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Trigonometric and hyperbolic functions</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/sin" title="c/numeric/math/sin"><span class="t-lines"><span>sin</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/cos" title="c/numeric/math/cos"><span class="t-lines"><span>cos</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/tan" title="c/numeric/math/tan"><span class="t-lines"><span>tan</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/asin" title="c/numeric/math/asin"><span class="t-lines"><span>asin</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/acos" title="c/numeric/math/acos"><span class="t-lines"><span>acos</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/atan" title="c/numeric/math/atan"><span class="t-lines"><span>atan</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/atan2" title="c/numeric/math/atan2"><span class="t-lines"><span>atan2</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/sinpi" title="c/numeric/math/sinpi"><span class="t-lines"><span>sinpi</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/cospi" title="c/numeric/math/cospi"><span class="t-lines"><span>cospi</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/tanpi&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/tanpi (page does not exist)"><span class="t-lines"><span>tanpi</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/asinpi&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/asinpi (page does not exist)"><span class="t-lines"><span>asinpi</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/acospi&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/acospi (page does not exist)"><span class="t-lines"><span>acospi</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/atanpi&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/atanpi (page does not exist)"><span class="t-lines"><span>atanpi</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/atan2pi&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/atan2pi (page does not exist)"><span class="t-lines"><span>atan2pi</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/sinh" title="c/numeric/math/sinh"><span class="t-lines"><span>sinh</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/cosh" title="c/numeric/math/cosh"><span class="t-lines"><span>cosh</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/tanh" title="c/numeric/math/tanh"><span class="t-lines"><span>tanh</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/asinh" title="c/numeric/math/asinh"><span class="t-lines"><span>asinh</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/acosh" title="c/numeric/math/acosh"><span class="t-lines"><span>acosh</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/atanh" title="c/numeric/math/atanh"><span class="t-lines"><span>atanh</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv-h2"><td colspan="5">Nearest integer floating-point</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/ceil" title="c/numeric/math/ceil"><span class="t-lines"><span>ceil</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/floor" title="c/numeric/math/floor"><span class="t-lines"><span>floor</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/round" title="c/numeric/math/round"><span class="t-lines"><span>round</span><span>lround</span><span>llround</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/roundeven" title="c/numeric/math/roundeven"><span class="t-lines"><span>roundeven</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/trunc" title="c/numeric/math/trunc"><span class="t-lines"><span>trunc</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><br />
+</td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/nearbyint" title="c/numeric/math/nearbyint"><span class="t-lines"><span>nearbyint</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/rint" title="c/numeric/math/rint"><span class="t-lines"><span>rint</span><span>lrint</span><span>llrint</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fromfp&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fromfp (page does not exist)"><span class="t-lines"><span>fromfp</span><span>fromfpx</span><span>ufromfp</span><span>ufromfpx</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Floating-point manipulation</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/ldexp" title="c/numeric/math/ldexp"><span class="t-lines"><span>ldexp</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/frexp" title="c/numeric/math/frexp"><span class="t-lines"><span>frexp</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/scalbn" title="c/numeric/math/scalbn"><span class="t-lines"><span>scalbn</span><span>scalbln</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/ilogb" title="c/numeric/math/ilogb"><span class="t-lines"><span>ilogb</span><span>llogb</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/logb" title="c/numeric/math/logb"><span class="t-lines"><span>logb</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/modf" title="c/numeric/math/modf"><span class="t-lines"><span>modf</span></span></a></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/nextafter" title="c/numeric/math/nextafter"><span class="t-lines"><span>nextafter</span><span>nexttoward</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/nextup&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/nextup (page does not exist)"><span class="t-lines"><span>nextup</span><span>nextdown</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/copysign" title="c/numeric/math/copysign"><span class="t-lines"><span>copysign</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/canonicalize&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/canonicalize (page does not exist)"><span class="t-lines"><span>canonicalize</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Narrowing operations</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fadd&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fadd (page does not exist)"><span class="t-lines"><span>fadd</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fsub&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fsub (page does not exist)"><span class="t-lines"><span>fsub</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fmul&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fmul (page does not exist)"><span class="t-lines"><span>fmul</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fdiv&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fdiv (page does not exist)"><span class="t-lines"><span>fdiv</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/ffma&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/ffma (page does not exist)"><span class="t-lines"><span>ffma</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fsqrt&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fsqrt (page does not exist)"><span class="t-lines"><span>fsqrt</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Quantum and quantum exponent</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/quantize&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/quantize (page does not exist)"><span class="t-lines"><span>quantized<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/quantum&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/quantum (page does not exist)"><span class="t-lines"><span>quantumd<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/samequantum&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/samequantum (page does not exist)"><span class="t-lines"><span>samequantumd<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/llquantexp&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/llquantexp (page does not exist)"><span class="t-lines"><span>llquantexpd<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Decimal re-encoding functions</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/encodedec&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/encodedec (page does not exist)"><span class="t-lines"><span>encodedecd<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/decodedec&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/decodedec (page does not exist)"><span class="t-lines"><span>decodedecd<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/encodebin&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/encodebin (page does not exist)"><span class="t-lines"><span>encodebind<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/decodebin&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/decodebin (page does not exist)"><span class="t-lines"><span>decodebind<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Total order and payload functions</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/totalorder&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/totalorder (page does not exist)"><span class="t-lines"><span>totalorder</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/getpayload&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/getpayload (page does not exist)"><span class="t-lines"><span>getpayload</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/setpayload&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/setpayload (page does not exist)"><span class="t-lines"><span>setpayload</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/setpayloadsig&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/setpayloadsig (page does not exist)"><span class="t-lines"><span>setpayloadsig</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Classification</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fpclassify" title="c/numeric/math/fpclassify"><span class="t-lines"><span>fpclassify</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/iscanonical&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/iscanonical (page does not exist)"><span class="t-lines"><span>iscanonical</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span>&#160;&#160;&#160;&#160;</span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isfinite" title="c/numeric/math/isfinite"><span class="t-lines"><span>isfinite</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isinf" title="c/numeric/math/isinf"><span class="t-lines"><span>isinf</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isnan" title="c/numeric/math/isnan"><span class="t-lines"><span>isnan</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isnormal" title="c/numeric/math/isnormal"><span class="t-lines"><span>isnormal</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/signbit" title="c/numeric/math/signbit"><span class="t-lines"><span>signbit</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/issubnormal&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/issubnormal (page does not exist)"><span class="t-lines"><span>issubnormal</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/iszero&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/iszero (page does not exist)"><span class="t-lines"><span>iszero</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isgreater" title="c/numeric/math/isgreater"><span class="t-lines"><span>isgreater</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isgreaterequal" title="c/numeric/math/isgreaterequal"><span class="t-lines"><span>isgreaterequal</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span>&#160;&#160;&#160;&#160;</span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isless" title="c/numeric/math/isless"><span class="t-lines"><span>isless</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/islessequal" title="c/numeric/math/islessequal"><span class="t-lines"><span>islessequal</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/islessgreater" title="c/numeric/math/islessgreater"><span class="t-lines"><span>islessgreater</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/isunordered" title="c/numeric/math/isunordered"><span class="t-lines"><span>isunordered</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/issignaling&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/issignaling (page does not exist)"><span class="t-lines"><span>issignaling</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/iseqsig&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/iseqsig (page does not exist)"><span class="t-lines"><span>iseqsig</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><br />
+</td></tr>
+</tbody></table></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv-h2"><td colspan="5">Error and gamma functions</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/erf" title="c/numeric/math/erf"><span class="t-lines"><span>erf</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/erfc" title="c/numeric/math/erfc"><span class="t-lines"><span>erfc</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/lgamma" title="c/numeric/math/lgamma"><span class="t-lines"><span>lgamma</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/tgamma" title="c/numeric/math/tgamma"><span class="t-lines"><span>tgamma</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h1"><td colspan="5">Types</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/div" title="c/numeric/math/div"><span class="t-lines"><span>div_t</span><span>ldiv_t</span><span>lldiv_t</span><span>imaxdiv_t</span></span></a></div><div><span class="t-lines"><span></span><span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/float_t" title="c/numeric/math/float t"><span class="t-lines"><span>float_t</span><span>double_t</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/_Decimal_t&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/ Decimal t (page does not exist)"><span class="t-lines"><span>_Decimal32_t</span><span>_Decimal64_t</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h1"><td colspan="5">Macro constants</td></tr>
+<tr class="t-nv-h2"><td colspan="5">Special floating-point values</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/HUGE_VAL" title="c/numeric/math/HUGE VAL"><span class="t-lines"><span>HUGE_VAL</span><span>HUGE_VALF</span><span>HUGE_VALL</span><span>HUGE_VALD<i>N</i></span></span></a></div><div><span class="t-lines"><span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/INFINITY" title="c/numeric/math/INFINITY"><span class="t-lines"><span>INFINITY</span><span>DEC_INFINITY</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/NAN" title="c/numeric/math/NAN"><span class="t-lines"><span>NAN</span><span>DEC_NAN</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/types/limits/SNAN&amp;action=edit&amp;redlink=1" class="new" title="c/types/limits/SNAN (page does not exist)"><span class="t-lines"><span>FLT_SNAN</span><span>DBL_SNAN</span><span>LDBL_SNAN</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><br />
+</td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Arguments and return values</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/ilogb" title="c/numeric/math/ilogb"><span class="t-lines"><span>FP_ILOGB0</span><span>FP_ILOGBNAN</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/FP_categories" title="c/numeric/math/FP categories"><span class="t-lines"><span>FP_NORMAL</span><span>FP_SUBNORMAL</span><span>FP_ZERO</span><span>FP_INFINITE</span><span>FP_NAN</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/ilogb" title="c/numeric/math/ilogb"><span class="t-lines"><span>FP_LLOGB0</span><span>FP_LLOGBNAN</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fromfp&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fromfp (page does not exist)"><span class="t-lines"><span>FP_INT_UPWARD</span><span>FP_INT_DOWNWARD</span><span>FP_INT_TOWARDZERO</span><span>FP_INT_TONEARESTFROMZERO</span><span>FP_INT_TONEAREST</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Error handling</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/math_errhandling" title="c/numeric/math/math errhandling"><span class="t-lines"><span>MATH_ERRNO</span><span>MATH_ERRNOEXCEPT</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span>&#160;&#160;&#160;&#160;</span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/math_errhandling" title="c/numeric/math/math errhandling"><span class="t-lines"><span>math_errhandling</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><br />
+</td></tr>
+</tbody></table></div></td></tr>
+<tr class="t-nv-h2"><td colspan="5">Fast operation indicators</td></tr>
+<tr class="t-nv-col-table"><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fma" title="c/numeric/math/fma"><span class="t-lines"><span>FP_FAST_FMAF</span><span>FP_FAST_FMA</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fadd&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fadd (page does not exist)"><span class="t-lines"><span>FP_FAST_FADD</span><span>FP_FAST_FADDL</span><span>FP_FAST_DADDL</span><span>FP_FAST_D<i>M</i>ADDD<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fmul&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fmul (page does not exist)"><span class="t-lines"><span>FP_FAST_FMUL</span><span>FP_FAST_FMULL</span><span>FP_FAST_DMULL</span><span>FP_FAST_D<i>M</i>MULD<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/ffma&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/ffma (page does not exist)"><span class="t-lines"><span>FP_FAST_FFMA</span><span>FP_FAST_FFMAL</span><span>FP_FAST_DFMAL</span><span>FP_FAST_D<i>M</i>FMAD<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td><td><div><table class="t-nv-begin" cellpadding="0" style="">
+<tbody><tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/c/numeric/math/fma" title="c/numeric/math/fma"><span class="t-lines"><span>FP_FAST_FMAL</span><span>FP_FAST_FMAD<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fsub&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fsub (page does not exist)"><span class="t-lines"><span>FP_FAST_FSUB</span><span>FP_FAST_FSUBL</span><span>FP_FAST_DSUBL</span><span>FP_FAST_D<i>M</i>SUBD<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fdiv&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fdiv (page does not exist)"><span class="t-lines"><span>FP_FAST_FDIV</span><span>FP_FAST_FDIVL</span><span>FP_FAST_DDIVL</span><span>FP_FAST_D<i>M</i>DIVD<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+<tr class="t-nv"><td colspan="5"><div class="t-nv-ln-table"><div><a href="/index.php?title=c/numeric/math/fsqrt&amp;action=edit&amp;redlink=1" class="new" title="c/numeric/math/fsqrt (page does not exist)"><span class="t-lines"><span>FP_FAST_FSQRT</span><span>FP_FAST_FSQRTL</span><span>FP_FAST_DSQRTL</span><span>FP_FAST_D<i>M</i>SQRTD<i>N</i></span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span><span><span class="t-mark-rev t-since-c23">(C23)</span></span></span></div></div></td></tr>
+</tbody></table></div></td></tr>
+</tbody></table></div></td></tr>
+</tbody></table></div><div><span class="editsection noprint plainlinks" title="Edit this template"><a rel="nofollow" class="external text" href="https://cppreference.com/index.php?title=Template:c/numeric/math/navbar_content&amp;action=edit">&#91;edit&#93;</a></span></div></div></div></div><div class="t-navbar-sep">&#160;</div></div>
+<table class="t-dcl-begin">
+<tbody><tr class="t-dsc-header">
+<td> <div>Defined in header <code><a href="/c/header/stdlib" title="c/header/stdlib"><tt>&lt;stdlib.h&gt;</tt></a></code>
+ </div></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="t-dcl">
+<td class="t-dcl-nopad"> <div><div class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><pre><span></span><span class="kt">int</span><span class="w">        </span><span class="nf">abs</span><span class="p">(</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="p">);</span>
+</pre></div></div></td>
+<td class="t-dcl-nopad">  </td>
+<td class="t-dcl-nopad">  </td>
+</tr>
+<tr class="t-dcl">
+<td class="t-dcl-nopad"> <div><div class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><pre><span></span><span class="kt">long</span><span class="w">       </span><span class="nf">labs</span><span class="p">(</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="p">);</span>
+</pre></div></div></td>
+<td class="t-dcl-nopad">  </td>
+<td class="t-dcl-nopad">  </td>
+</tr>
+<tr class="t-dcl t-since-c99">
+<td> <div><div class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><pre><span></span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="nf">llabs</span><span class="p">(</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="p">);</span>
+</pre></div></div></td>
+<td class="t-dcl-nopad">  </td>
+<td> <span class="t-mark-rev t-since-c99">(since C99)</span> </td>
+</tr>
+<tr class="t-dsc-header">
+<td> <div>Defined in header <code><a href="/c/header/inttypes" title="c/header/inttypes"><tt>&lt;inttypes.h&gt;</tt></a></code>
+ </div></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="t-dcl t-since-c99">
+<td> <div><div class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><pre><span></span><span class="kt">intmax_t</span><span class="w"> </span><span class="nf">imaxabs</span><span class="p">(</span><span class="w"> </span><span class="kt">intmax_t</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="p">);</span>
+</pre></div></div></td>
+<td class="t-dcl-nopad">  </td>
+<td> <span class="t-mark-rev t-since-c99">(since C99)</span> </td>
+</tr>
+<tr class="t-dcl-sep"><td></td><td></td><td></td></tr>
+</tbody></table>
+<p>Computes the absolute value of an integer number.  The behavior is undefined if the result cannot be represented by the return type.
+</p>
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none" /><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Parameters"><span class="tocnumber">1</span> <span class="toctext">Parameters</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="#Return_value"><span class="tocnumber">2</span> <span class="toctext">Return value</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="#Notes"><span class="tocnumber">3</span> <span class="toctext">Notes</span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="#Example"><span class="tocnumber">4</span> <span class="toctext">Example</span></a></li>
+<li class="toclevel-1 tocsection-5"><a href="#References"><span class="tocnumber">5</span> <span class="toctext">References</span></a></li>
+<li class="toclevel-1 tocsection-6"><a href="#See_also"><span class="tocnumber">6</span> <span class="toctext">See also</span></a></li>
+</ul>
+</div>
+
+<h3><span class="mw-headline" id="Parameters">Parameters</span></h3>
+<table class="t-par-begin">
+
+
+<tbody><tr class="t-par">
+<td>n
+</td>
+<td>-
+</td>
+<td>integer value
+</td></tr></tbody></table>
+<h3><span class="mw-headline" id="Return_value">Return value</span></h3>
+<p>The absolute value of <span class="t-c"><code class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><span class="n">n</span></code></span> (i.e. <code>|n|</code>), if it is representable.
+</p>
+<h3><span class="mw-headline" id="Notes">Notes</span></h3>
+<p>In 2's complement systems, the absolute value of the most-negative value is out of range, e.g. for 32-bit 2's complement type <code style="white-space: pre;" class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><span class="kt">int</span></code>, <span class="t-lc"><a href="/c/types/limits" title="c/types/limits">INT_MIN</a></span> is <span class="t-c"><code class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><span class="mi">-2147483648</span></code></span>, but the would-be result <span class="t-c"><code class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><span class="mi">2147483648</span></code></span> is greater than <span class="t-lc"><a href="/c/types/limits" title="c/types/limits">INT_MAX</a></span>, which is <span class="t-c"><code class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><span class="mi">2147483647</span></code></span>.
+</p>
+<h3><span class="mw-headline" id="Example">Example</span></h3>
+<div class="t-example"><div class="t-example-live-link"><div class="coliru-btn coliru-btn-run-init">Run this code</div></div>
+<div class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;limits.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;stdlib.h&gt;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;abs(+3) = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">abs</span><span class="p">(</span><span class="o">+</span><span class="mi">3</span><span class="p">));</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;abs(-3) = %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">abs</span><span class="p">(</span><span class="mi">-3</span><span class="p">));</span>
+
+<span class="c1">//  printf(&quot;%+d\n&quot;, abs(INT_MIN)); // undefined behavior on 2&#39;s complement systems</span>
+<span class="p">}</span>
+</pre></div>
+<p>Output:
+</p>
+<div class="mw-highlight mw-highlight-lang-text mw-content-ltr" dir="ltr"><pre><span></span>abs(+3) = 3
+abs(-3) = 3
+</pre></div> 
+</div>
+<h3><span class="mw-headline" id="References">References</span></h3>
+<div class="t-ref-std-23">
+<ul><li>C23 standard (ISO/IEC 9899:2024):</li></ul>
+<dl><dd><ul><li>7.8.2.1 The imaxabs function (p: TBD)</li></ul></dd></dl>
+<dl><dd><ul><li>7.22.6.1 The abs, labs and llabs functions (p: TBD)</li></ul></dd></dl>
+</div>
+<div class="t-ref-std-17">
+<ul><li>C17 standard (ISO/IEC 9899:2018):</li></ul>
+<dl><dd><ul><li>7.8.2.1 The imaxabs function (p: 159)</li></ul></dd></dl>
+<dl><dd><ul><li>7.22.6.1 The abs, labs and llabs functions (p: 259)</li></ul></dd></dl>
+</div>
+<div class="t-ref-std-11">
+<ul><li>C11 standard (ISO/IEC 9899:2011):</li></ul>
+<dl><dd><ul><li>7.8.2.1 The imaxabs function (p: 218)</li></ul></dd></dl>
+<dl><dd><ul><li>7.22.6.1 The abs, labs and llabs functions (p: 356)</li></ul></dd></dl>
+</div>
+<div class="t-ref-std-c99">
+<ul><li>C99 standard (ISO/IEC 9899:1999):</li></ul>
+<dl><dd><ul><li>7.8.2.1 The imaxabs function (p: 199-200)</li></ul></dd></dl>
+<dl><dd><ul><li>7.20.6.1 The abs, labs and llabs functions (p: 320)</li></ul></dd></dl>
+</div>
+<div class="t-ref-std-c89">
+<ul><li>C89/C90 standard (ISO/IEC 9899:1990):</li></ul>
+<dl><dd><ul><li>4.10.6.1 The abs function</li></ul></dd></dl>
+<dl><dd><ul><li>4.10.6.3 The labs function</li></ul></dd></dl>
+</div>
+<h3><span class="mw-headline" id="See_also">See also</span></h3>
+<table class="t-dsc-begin">
+
+<tbody><tr class="t-dsc">
+<td><div class="t-dsc-member-div"><div><a href="/c/numeric/math/fabs" title="c/numeric/math/fabs"> <span class="t-lines"><span>fabs</span><span>fabsf</span><span>fabsl</span></span></a></div><div><span class="t-lines"><span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div>
+</td>
+<td>computes absolute value of a floating-point value (<span class="mjax" style="display:none">\(\small{&#124;x&#124;}\)</span><span class="mjax-fallback texhtml" style="white-space: nowrap;">&#124;x&#124;</span>) <br /> <span class="t-mark">(function)</span> <span class="editsection noprint plainlinks" title="Edit this template"><a rel="nofollow" class="external text" href="https://cppreference.com/index.php?title=Template:c/numeric/math/dsc_fabs&amp;action=edit">&#91;edit&#93;</a></span>
+</td></tr>
+
+<tr class="t-dsc">
+<td><div class="t-dsc-member-div"><div><a href="/c/numeric/complex/cabs" title="c/numeric/complex/cabs"> <span class="t-lines"><span>cabs</span><span>cabsf</span><span>cabsl</span></span></a></div><div><span class="t-lines"><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span><span><span class="t-mark-rev t-since-c99">(C99)</span></span></span></div></div>
+</td>
+<td>computes the magnitude of a complex number  <br /> <span class="t-mark">(function)</span> <span class="editsection noprint plainlinks" title="Edit this template"><a rel="nofollow" class="external text" href="https://cppreference.com/index.php?title=Template:c/numeric/complex/dsc_cabs&amp;action=edit">&#91;edit&#93;</a></span>
+</td></tr>
+
+<tr class="t-dsc">
+<td colspan="2"><div class="t-dsc-see"><span><a href="/cpp/numeric/math/abs" title="cpp/numeric/math/abs">C++ documentation</a></span> for <span class="t-dsc-see-tt"><span>abs</span></span></div>
+</td></tr>
+
+</tbody></table>
+<!-- 
+NewPP limit report
+Cached time: 20260912130531
+Cache expiry: 2592000
+Reduced expiry: false
+Complications: [show‐toc]
+CPU time usage: 0.345 seconds
+Real time usage: 0.537 seconds
+Preprocessor visited node count: 13244/1000000
+Post‐expand include size: 426527/4194304 bytes
+Template argument size: 79703/4194304 bytes
+Highest expansion depth: 21/100
+Expensive parser function count: 11/100
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 3937/5000000 bytes
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  436.913      1 -total
+ 43.22%  188.846      1 Template:example
+ 42.85%  187.214      2 Template:source
+ 35.03%  153.048      1 Template:c/numeric/math/navbar
+ 34.79%  151.998      1 Template:navbar
+ 30.84%  134.737      1 Template:c/numeric/math/navbar_content
+ 26.42%  115.417    138 Template:nv_ln
+ 25.71%  112.322    162 Template:nv
+  6.25%   27.315      2 Template:dsc_inc
+  4.69%   20.499      2 Template:dsc_fun
+-->
+
+<!-- Saved in parser cache with key en:pcache:idhash:6266-0!canonical and timestamp 20260912130531 and revision id 172096. Rendering was triggered because: page-view
+ -->
+</div></div>
+            <!-- /bodycontent -->
+            <!-- catlinks -->
+            <div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="/index.php?title=Category:Pages_using_deprecated_source_tags&amp;action=edit&amp;redlink=1" class="new" title="Category:Pages using deprecated source tags (page does not exist)">Pages using deprecated source tags</a></li><li><a href="/index.php?title=Category:Pages_using_deprecated_enclose_attributes&amp;action=edit&amp;redlink=1" class="new" title="Category:Pages using deprecated enclose attributes (page does not exist)">Pages using deprecated enclose attributes</a></li></ul></div></div>            <!-- /catlinks -->
+            <div class="visualClear"></div>
+            <!-- debughtml -->
+                        <!-- /debughtml -->
+        </div>
+        <!-- /bodyContent -->
+    </div>
+</div>
+<!-- /content -->
+
+<!-- footer -->
+<div id="cpp-footer-base" class="noprint">
+    <div id="footer" lang="en" dir="ltr">
+        <!-- navigation -->
+        <div id="cpp-navigation">
+            <h5>Navigation</h5>
+            <ul>
+                <li id="n-Support-us" class="mw-list-item"><a href="http://www.cppreference.com/support" rel="nofollow"><span>Support us</span></a></li>                <li id="n-recentchanges" class="mw-list-item"><a href="/Special:RecentChanges" title="A list of recent changes in the wiki [r]" accesskey="r"><span>Recent changes</span></a></li>                <li id="n-FAQ" class="mw-list-item"><a href="/Cppreference:FAQ"><span>FAQ</span></a></li>                <li id="n-Offline-version" class="mw-list-item"><a href="/Cppreference:Archives"><span>Offline version</span></a></li>            </ul>
+        </div>
+        <!-- toolbox -->
+        <div id="cpp-toolbox">
+            <h5><span>Tools</span><a href="#"></a></h5>
+            <ul>
+                <li id="t-whatlinkshere" class="mw-list-item"><a href="/Special:WhatLinksHere/c/numeric/math/abs" title="A list of all wiki pages that link here [j]" accesskey="j"><span>What links here</span></a></li>                <li id="t-recentchangeslinked" class="mw-list-item"><a href="/Special:RecentChangesLinked/c/numeric/math/abs" rel="nofollow" title="Recent changes in pages linked from this page [k]" accesskey="k"><span>Related changes</span></a></li>                <li id="t-upload" class="mw-list-item"><a href="http://upload.cppreference.com/w/Special:Upload" title="Upload files [u]" accesskey="u"><span>Upload file</span></a></li>                <li id="t-specialpages" class="mw-list-item"><a href="/Special:SpecialPages" title="A list of all special pages [q]" accesskey="q"><span>Special pages</span></a></li>                <li id="t-print" class="mw-list-item"><a href="javascript:print();" rel="alternate" title="Printable version of this page [p]" accesskey="p"><span>Printable version</span></a></li>                <li id="t-permalink" class="mw-list-item"><a href="/index.php?title=c/numeric/math/abs&amp;oldid=172096" title="Permanent link to this revision of this page"><span>Permanent link</span></a></li>                <li id="t-info" class="mw-list-item"><a href="/index.php?title=c/numeric/math/abs&amp;action=info" title="More information about this page"><span>Page information</span></a></li>            </ul>
+        </div>
+        <!-- languages -->
+        <div id="cpp-languages">
+            <div><ul><li>In other languages</li></ul></div>
+            <div><ul>
+                <li class="interlanguage-link interwiki-ar mw-list-item"><a href="http://ar.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – العربية" lang="ar" hreflang="ar" data-title="c/numeric/math/abs" data-language-autonym="العربية" data-language-local-name="العربية" class="interlanguage-link-target"><span>العربية</span></a></li>                <li class="interlanguage-link interwiki-cs mw-list-item"><a href="https://cs.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – čeština" lang="cs" hreflang="cs" data-title="c/numeric/math/abs" data-language-autonym="Čeština" data-language-local-name="čeština" class="interlanguage-link-target"><span>Čeština</span></a></li>                <li class="interlanguage-link interwiki-de mw-list-item"><a href="https://de.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – Deutsch" lang="de" hreflang="de" data-title="c/numeric/math/abs" data-language-autonym="Deutsch" data-language-local-name="Deutsch" class="interlanguage-link-target"><span>Deutsch</span></a></li>                <li class="interlanguage-link interwiki-es mw-list-item"><a href="http://es.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – español" lang="es" hreflang="es" data-title="c/numeric/math/abs" data-language-autonym="Español" data-language-local-name="español" class="interlanguage-link-target"><span>Español</span></a></li>                <li class="interlanguage-link interwiki-fr mw-list-item"><a href="http://fr.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – français" lang="fr" hreflang="fr" data-title="c/numeric/math/abs" data-language-autonym="Français" data-language-local-name="français" class="interlanguage-link-target"><span>Français</span></a></li>                <li class="interlanguage-link interwiki-it mw-list-item"><a href="http://it.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – italiano" lang="it" hreflang="it" data-title="c/numeric/math/abs" data-language-autonym="Italiano" data-language-local-name="italiano" class="interlanguage-link-target"><span>Italiano</span></a></li>                <li class="interlanguage-link interwiki-ja mw-list-item"><a href="http://ja.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – 日本語" lang="ja" hreflang="ja" data-title="c/numeric/math/abs" data-language-autonym="日本語" data-language-local-name="日本語" class="interlanguage-link-target"><span>日本語</span></a></li>                <li class="interlanguage-link interwiki-ko mw-list-item"><a href="http://ko.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – 한국어" lang="ko" hreflang="ko" data-title="c/numeric/math/abs" data-language-autonym="한국어" data-language-local-name="한국어" class="interlanguage-link-target"><span>한국어</span></a></li>                <li class="interlanguage-link interwiki-pl mw-list-item"><a href="http://pl.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – polski" lang="pl" hreflang="pl" data-title="c/numeric/math/abs" data-language-autonym="Polski" data-language-local-name="polski" class="interlanguage-link-target"><span>Polski</span></a></li>                <li class="interlanguage-link interwiki-pt mw-list-item"><a href="http://pt.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – português" lang="pt" hreflang="pt" data-title="c/numeric/math/abs" data-language-autonym="Português" data-language-local-name="português" class="interlanguage-link-target"><span>Português</span></a></li>                <li class="interlanguage-link interwiki-ru mw-list-item"><a href="http://ru.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – русский" lang="ru" hreflang="ru" data-title="c/numeric/math/abs" data-language-autonym="Русский" data-language-local-name="русский" class="interlanguage-link-target"><span>Русский</span></a></li>                <li class="interlanguage-link interwiki-tr mw-list-item"><a href="http://tr.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – Türkçe" lang="tr" hreflang="tr" data-title="c/numeric/math/abs" data-language-autonym="Türkçe" data-language-local-name="Türkçe" class="interlanguage-link-target"><span>Türkçe</span></a></li>                <li class="interlanguage-link interwiki-zh mw-list-item"><a href="http://zh.cppreference.com/c/numeric/math/abs" title="c/numeric/math/abs – 中文" lang="zh" hreflang="zh" data-title="c/numeric/math/abs" data-language-autonym="中文" data-language-local-name="中文" class="interlanguage-link-target"><span>中文</span></a></li>            </ul></div>
+        </div>
+        <!-- footer links -->
+        <div style="clear:both"></div>
+    </div>
+</div>
+<!-- /footer -->
+
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgBackendResponseTime":169,"wgPageParseReport":{"limitreport":{"cputime":"0.345","walltime":"0.537","ppvisitednodes":{"value":13244,"limit":1000000},"postexpandincludesize":{"value":426527,"limit":4194304},"templateargumentsize":{"value":79703,"limit":4194304},"expansiondepth":{"value":21,"limit":100},"expensivefunctioncount":{"value":11,"limit":100},"unstrip-depth":{"value":0,"limit":20},"unstrip-size":{"value":3937,"limit":5000000},"timingprofile":["100.00%  436.913      1 -total"," 43.22%  188.846      1 Template:example"," 42.85%  187.214      2 Template:source"," 35.03%  153.048      1 Template:c/numeric/math/navbar"," 34.79%  151.998      1 Template:navbar"," 30.84%  134.737      1 Template:c/numeric/math/navbar_content"," 26.42%  115.417    138 Template:nv_ln"," 25.71%  112.322    162 Template:nv","  6.25%   27.315      2 Template:dsc_inc","  4.69%   20.499      2 Template:dsc_fun"]},"cachereport":{"timestamp":"20260912130531","ttl":2592000,"transientcontent":false}}});});</script>
+</body>
+<!-- Cached 20260913060037 -->
+</html>

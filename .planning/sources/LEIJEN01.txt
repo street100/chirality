@@ -1,0 +1,217 @@
+Division and Modulus for Computer Scientists
+DAAN LEIJEN
+University of Utrecht
+Dept. of Computer Science
+PO.Box 80.089, 3508 TB Utrecht
+The Netherlands
+daan@cs.uu.nl,http://www.cs.uu.nl/~daan/lvm.html
+December 3, 2001
+1 Introduction
+There exist many deﬁnitions of the div and mod functions in computer science
+literature and programming languages. Boute ( Boute, 1992 ) describes most of
+these and discusses their mathematical properties in depth. We shall therefore
+only brieﬂy review the most common deﬁnitions and the rare, but mathemati-
+cally elegant, Euclidean division. We also give an algorithm for the Euclidean
+div and mod functions and prove it correct with respect to Euclid’s theorem.
+1.1 Common deﬁnitions
+Most common deﬁnitions are based on the following mathematical deﬁnition.
+For any two real numbers D (dividend) and d (divisor) with d ⁄= 0, there exists
+a pair of numbers q (quotient) and r (remainder) that satisfy the following basic
+conditions of division:
+(1) q ∈ Z (the quotient is an integer)
+(2) D = d · q + r (division rule)
+(3) |r | < |d |
+We only consider functions div and mod that satisfy the following equalities:
+q = D div d
+1
+2 Division and Modulus for Computer Scientists
+r = D mod d
+The above conditions don’t enforce a unique pair of numbers q and r. When
+div and mod are deﬁned as functions, one has to choose a particular pair q
+and r that satisfy these conditions. It is this choice that causes the diﬀerent
+deﬁnitions found in literature and programming languages.
+Note that the deﬁnitions for division and modulus in Pascal and Algol68 fail to
+satisfy even the basic division conditions for negative numbers. The four most
+common deﬁnitions that satisfy these conditions are div-dominant and use the
+same basic structure.
+q = D div d = f (D/d )
+r = D mod d = D − d · q
+Note that due to the deﬁnition of r, condition (2) is automatically satisﬁed by
+these deﬁnitions. Each deﬁnition is instantiated by choosing a proper function
+f :
+q = trunc(D/d ) (T-division)
+q = ⌊D/d ⌋ (F-division)
+q = round(D/d ) (R-division)
+q = ⌈D/d ⌉ (C-division)
+The ﬁrst deﬁnition truncates the quotient and eﬀectively rounds towards zero.
+The sign of the modulus is always the same as the sign of the dividend. Trun-
+cated division is used by virtually all modern processors and is adopted by the
+ISO C99 standard. Since the behaviour of the ANSI C functions / and % is un-
+speciﬁed, most compilers use the processor provided division instructions, and
+thus implicitly use truncated division anyway. The Haskell functions quot and
+rem use T-division, just as the integer / and rem functions of Ada ( Tucker Taft
+and Duﬀ (eds.), 1997 ). The Ada mod function however fails to satisfy the basic
+division conditions.
+F-division ﬂoors the quotient and eﬀectively rounds toward negative inﬁnity.
+This deﬁnition is described by Knuth ( Knuth, 1972 ) and is used by Oberon
+(Wirth, 1988 ) and Haskell ( Peyton Jones and Hughes (eds.), 1998 ). Note that
+the sign of the modulus is always the same as the sign of the divisor. F-division is
+also a sign-preserving division ( Boute, 1992 ), i.e. given the signs of the quotient
+and remainder, we can give the signs of the dividend and divisor. Floored
+division can be expressed in terms of truncated division.
+Algorithm F:
+qF = qT − I
+rF = rT + I · d
+where
+1 Introduction 3
+I = if signum(rT ) = −signum(d ) then 1 else 0
+The round- and ceiling-division are rare but both are available in Common Lisp
+(Steele Jr., 1990 ). The modR function corresponds with the REM function of
+the IEEE ﬂoating-point arithmetic standard ( Cody et al., 1984 ).
+1.2 Euclidean division
+Boute (Boute, 1992) describes another deﬁnition that satisﬁes the basic division
+conditions. The Euclidean or E-deﬁnition deﬁnes a mod-dominant division in
+terms of Euclid’s theorem – for any real numbers D and d with d ⁄= 0, there
+exists a unique pair of numbers q and r that satisfy the following conditions:
+(a) q ∈ Z
+(b) D = d · q + r
+(c) 0 ≤ r < |d |
+Note that these conditions are a superset of the basic division conditions. The
+Euclidean conditions garantee a unique pair of numbers and don’t leave any
+choice in the deﬁnition the div and mod functions. Euclidean division satisﬁes
+two simple equations for negative divisors.
+D divE (−d ) = −(D divE d )
+D modE (−d ) = D modE d
+Euclidean division can also be expressed eﬃciently in terms of C99 truncated
+division. The proof of this algorithm is given in section 1.5.
+Algorithm E:
+qE = qT − I
+rE = rT + I · d
+where
+I = if rT ≥ 0 then 0 else if d > 0 then 1 else − 1
+Boute argues that Euclidean division is superior to the other ones in terms of
+regularity and useful mathematical properties, allthough ﬂoored division, pro-
+moted by Knuth, is also a good deﬁnition. Despite its widespread use, truncated
+division is shown to be inferior to the other deﬁnitions.
+An interesting mathematical property that is only satisﬁed by Euclidean division
+is the shift-rule. A compiler can use this to optimize divisions by a power of
+two into an arithmetical shift or a bitwise-and operation
+D divE (2n ) = D asr n
+4 Division and Modulus for Computer Scientists
+D modE (2n ) = D and (2n−1)
+Take for example the expression, ( −1) div (−2). With T- and F-division this
+equals 0 but with E-division this equals 1, and indeed:
+(−1) divE (−2) = −((−1) divE 21) = −((−1) asr 1) = 1
+The L VM implements Euclidean division through the DivInt and ModInt instruc-
+tions. For completeness, truncated division is also supported by the QuotInt and
+RemInt instructions.
+1.3 Comparision of T-, F- and E-division
+The following table compares results of the diﬀerent division deﬁnitions for some
+inputs.
+(D, d) (qT , rT ) ( qF , rF ) ( qE, rE)
+(+8, +3) (+2, +2) (+2 , +2) (+2 , +2)
+(+8, −3) (−2, +2) ( −3, −1) ( −2, +2)
+(−8, +3) (−2, −2) ( −3, +1) ( −3, +1)
+(−8, −3) (+2, −2) (+2 , −2) (+3 , +1)
+(+1, +2) ( 0 , +1) ( 0 , +1) ( 0 , +1)
+(+1, −2) ( 0 , +1) ( −1, −1) ( 0 , +1)
+(−1, +2) ( 0 , −1) ( −1, +1) ( −1, +1)
+(−1, −2) ( 0 , −1) ( 0 , −1) (+1 , +1)
+1.4 C sources for algorithm E and F
+This section implements C functions for ﬂoored- and Euclidean division in terms
+of truncated division, assuming that the C functions / and % use truncated
+division. Note that any decent C compiler optimizes a division followed by a
+modulus into a single division/modulus instruction.
+/* Euclidean division */
+long divE( long D, long d )
+{
+long q = D/d;
+long r = D%d;
+if (r < 0) {
+if (d > 0) q = q-1;
+else q = q+1;
+1 Introduction 5
+}
+return q;
+}
+long modE( long D, long d )
+{
+long r = D%d;
+if (r < 0) {
+if (d > 0) r = r + d;
+else r = r - d;
+}
+return r;
+}
+/* Floored division */
+long divF( long D, long d )
+{
+long q = D/d;
+long r = D%d;
+if ((r > 0 && d < 0) || (r < 0 && d > 0)) q = q-1;
+return q;
+}
+long modF( long D, long d )
+{
+long r = D%d;
+if ((r > 0 && d < 0) || (r < 0 && d > 0)) r = r+d;
+return r;
+}
+1.5 Proof of correctness of algorithm E
+We prove that algorithm E is correct with respect to Euclid’s theorem. First
+we establish that T-division satisﬁes the basic division conditions. The ﬁrst two
+conditions follow directly from the T-deﬁnition.
+condition (1) :
+qT = trunc(D/d ) ∈ Z □
+condition (2) :
+rT = D − d · qT ≡ D = rT + d · qT □
+condition (3) :
+|rT | = {def }
+|D − d · qT | = {def }
+6 Division and Modulus for Computer Scientists
+|D − d · trunc(D/d )| = {math}
+|d · (D/d − trunc(D/d ))| < {|D/d − trunc(D/d )| < 1}
+|d | □
+Any division that satisﬁes Euclid’s conditions also satisﬁes the basic division
+conditions since these are a subset of Euclid’s conditions. Given the properties
+of T-division, we can now prove that algorithm E is correct with respect to
+Euclid’s theorem.
+condition (a) :
+qE = qT − I ∈ { (1) ∧ I ∈ Z}
+Z □
+condition (b) :
+D = {(2)}
+d · qT − rT = {math}
+d · qT − d · I + rT + d · I = {math}
+d · (qT − I ) + ( rT + I · d ) = {def }
+d · qE + rE □
+condition (c) :
+rE = {def }
+rT + I · d = {math}
+if (rT ≥ 0) then I = 0
+rT ⇒ { (3) ∧ rT ≥ 0}
+0 ≤ rE < |d |
+if (rT < 0 ∧ d < 0) then I = −1
+rT − d ⇒ { (3) ∧ rT < 0 ∧ d < 0}
+0 ≤ rE < |d |
+if (rT < 0 ∧ d > 0) then I = 1
+rT + d ⇒ { (3) ∧ rT < 0 ∧ d > 0}
+0 ≤ rE < |d | □
+References
+Raymond T. Boute. The Euclidean deﬁnition of the functions div and mod .
+In ACM Transactions on Programming Languages and Systems (TOPLAS),
+14(2):127–144, New York, NY, USA, April 1992. ACM press.
+W. J. Cody et al. A proposed radix- and word-length-independent standard for
+ﬂoating-point arithmetic. In IEEE Micro, 4(4):86–100, August 1984.
+1 Introduction 7
+Donald. E. Knuth. The Art of Computer Programming, Vol 1, Fundamental
+Algorithms. Addison-Wesley, 1972.
+Simon Peyton Jones and John Hughes (eds.). Report on the language Haskell’98,
+February 1998. http://www.haskell.org/report.
+Guy L. Steele Jr. Common LISP: The Language, 2nd edition . Digital Press,
+Woburn, MA, USA, 1990. ISBN 1-55558-041-6.
+S. Tucker Taft and Robert A. Duﬀ (eds.). Ada95 Reference Manual: Language
+and Standard Libraries . International Standard ISO/IEC 8652:1995(E), 1997.
+Niklaus Wirth. The programming language Oberon . Software Practice and
+Experience, 19(9), 1988. The Oberon language report.
+http://www.oberon.ethz.ch.

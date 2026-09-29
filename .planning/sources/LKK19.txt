@@ -1,0 +1,1035 @@
+RESEARCH ARTICLE
+Faster Remainder by Direct Computation
+Applications to Compilers and Software Libraries
+Daniel Lemire*1 | Owen Kaser2 | Nathan Kurz3
+1TELUQ, Université du Québec, Quebec,
+Canada
+2Computer Science Department, UNB Saint
+John, New Brunswick, Canada
+3Vermont, USA
+Correspondence
+*Daniel Lemire, 5800 Saint-Denis, Oﬃce
+1105, Montreal, Quebec, H2S 3L5 Canada.
+Email: lemire@gmail.com
+Summary
+On common processors, integer multiplication is many times faster than integer
+division.Dividinganumerator nbyadivisor d ismathematicallyequivalenttomul-
+tiplication by the inverse of the divisor (n∕d = n ∗ 1∕d). If the divisor is known in
+advance—orifrepeatedintegerdivisionswillbeperformedwiththesamedivisor—it
+can be beneﬁcial to substitute a less costly multiplication for an expensive division.
+Currently, the remainder of the division by a constant is computed from the quo-
+tient by a multiplication and a subtraction. But if just the remainder is desired and
+the quotient is unneeded, this may be suboptimal. We present a generally applicable
+algorithmtocomputetheremaindermoredirectly.Speciﬁcally,weusethefractional
+portion of the product of the numerator and the inverse of the divisor. On this basis,
+we also present a new, simpler divisibility algorithm to detect nonzero remainders.
+We also derive new tight bounds on the precision required when representing the
+inverse of the divisor. Furthermore, we present simple C implementations that beat
+the optimized code produced by state-of-art C compilers on recent x64 proces-
+sors (e.g., Intel Skylake and AMD Ryzen), sometimes by more than 25%. On all
+testedplatformsincluding64-bitARMandPOWER8,ourdivisibility-testfunctions
+are faster than state-of-the-art Granlund-Montgomery divisibility-test functions,
+sometimes by more than 50%.
+KEYWORDS:
+Integer Division, Bit Manipulation, Divisibility
+1 INTRODUCTION
+Integer division often refers to two closely related concepts, the actual division and the modulus. Given an integer numeratorn
+andanon-zerointegerdivisor d,theintegerdivision,written div,givestheintegerquotient( n divd =q).Themodulus,written
+mod,givestheintegerremainder( n modd =r).Givenanintegernumerator nandanintegerdivisor d,thequotient( q)andthe
+remainder (r) are always integers even when the fractionn∕d is not an integer. It always holds that the quotient multiplied by
+the divisor plus the remainder gives back the numerator:n =q ∗d +r.
+Depending on the context, ‘integer division’ might refer solely to the computation of the quotient, but might also refer to the
+computation of both the integer quotient and the remainder. The integer division instructions on x64 processors compute both
+arXiv:1902.01961v3  [cs.MS]  20 Nov 2019
+2 D. LEMIRE, O. KASER, N. KURZ
+the quotient and the remainder.a In most programming languages, they are distinct operations: the C programming language
+uses / for division (div) and% for modulo (mod).
+Let us work through a simple example to illustrate how we can replace an integer division by a multiplication. Assume we
+have a pile of 23 items, and we want to know how many piles of 4 items we can divide it into and how many will be left over
+(n = 23,d = 4; ﬁndq andr). Working in base 10, we can calculate the quotient23 div 4 = 5 and the remainder23 mod 4 = 3 ,
+which means that there will be 5 complete piles of 4 items with 3 items left over (23 = 5 ∗ 4 + 3).
+If for some reason, we do not have a runtime integer division operator (or if it is too expensive for our purpose), we can
+instead precompute the multiplicative inverse of 4 once (c = 1∕d = 1∕4 = 0 .25) and then calculate the same result using
+a multiplication (23 ∗ 0.25 = 5 .75). The quotient is the integer portion of the product to the left of the decimal point (q =
+⌊5.75⌋ = 5), and the remainder can be obtained by multiplying the fractional portionf = 0.75 of the product by the divisord:
+r =f ∗d = 0.75 ∗ 4 = 3.
+The binary registers in our computers do not have a built-in concept of a fractional portion, but we can adopt a ﬁxed-point
+convention. Assume we have chosen a convention where1∕d has 5 bits of whole integer value and 3 bits of ‘fraction’. The
+numerator 23 and divisor 4 would still be represented as standard 8-bit binary values (00010111 and 00000100, respectively),
+but 1∕d would be 00000.010. From the processor’s viewpoint, the rules for arithmetic are still the same as if we did not have
+a binary point—it is only our interpretation of the units that has changed. Thus we can use the standard (fast) instructions for
+multiplication (00010111 ∗ 00000010 = 00101110 ) and then mentally put the ‘binary point’ in the correct position, which in
+this case is 3 from the right: 00101.110. The quotientq is the integer portion (leftmost 5 bits) of this result: 00101 in binary
+(q = 5 in decimal). In eﬀect, we can compute the quotientq with a multiplication (to get 00101.110) followed by a right shift
+(by three bits, to get 000101). To ﬁnd the remainder, we can multiply the fractional portion (rightmost 3 bits) of the result by
+the divisor:00000.110 ∗ 00000100 = 00011.000 (r = 3 in decimal). To quickly check whether a number is divisible by 4 (n
+mod 4 = 0 ?) without computing the remainder it suﬃces to check whether the fractional portion of the product is zero.
+But what if instead of dividing by 4, we wanted to divide by 6? While the reciprocal of 4 can be represented exactly with
+twodigitsofﬁxed-pointfractioninbothbinaryanddecimal, 1∕6cannotbeexactlyrepresentedineither.Asadecimalfraction,
+1∕6 is equal to the repeating fraction 0.1666...(with a repeating 6), and in binary it is 0.0010101...(with a repeating 01). Can
+the same technique work if we have a suﬃciently close approximation to the reciprocal for any divisor, using enough fractional
+bits? Yes!
+Forexample,consideraconventionwheretheapproximatereciprocal c has8bits,allofwhicharefractional.Wecanusethe
+value0.00101011asourapproximatereciprocalof6.Todivide 23by6,wecanmultiplythenumerator(10111inbinary)bythe
+approximate reciprocal:n ∗c = 00010111 ∗ 0.00101011 = 11.11011101. As before, the decimal point is merely a convention,
+the computer need only multiply ﬁxed-bit integers. From the product, the quotient of the division is 11 in binary (q = 3 in
+decimal); and indeed 23 div 6 = 3 . To get the remainder, we multiply the fractional portion of the product by the divisor
+(f ∗d = 0.11011101 ∗ 00000110 = 101.00101110), and then right shift by 8 bits, to get 101 in binary (r = 5 in decimal). See
+Table 1 for other examples.
+Whiletheuseoftheapproximatereciprocal c preventsusfromconﬁrmingdivisibilityby6bycheckingwhetherthefractional
+portion is exactly zero, we can still quickly determine whether a number is divisible by 6 (n mod 6 = 0 ?) by checking whether
+thefractionalportionislessthantheapproximatereciprocal( f <c?).Indeed,if n =q ∗d +rthenthefractionalportionofthe
+product ofnwith the approximate reciprocal should be close tor∕d: it makes intuitive sense that comparingr∕d withc ≈ 1∕d
+determineswhethertheremainder riszero.Forexample,consider n = 42 (101010inbinary).Wehavethatournumeratortimes
+the approximate reciprocal of 6 is101010 ∗ 0.00101011 = 111.00001110. We see that the quotient is 111 in binary (q = 7 in
+decimal), while the fractional portionf is smaller than the approximate reciprocalc (0.00001110 < 0.00101011), indicating
+that 42 is a multiple of 6.
+In our example with 6 as the divisor, we used 8 fractional bits. The more fractional bits we use, the larger the numerator we
+canhandle.Aninsuﬃciencyoffractionalbitscanleadtoincorrectresultswhen ngrows.Forinstance,with n = 131 (10000011
+in binary) and only 8 fractional bits,n times the approximate reciprocal of 6 is10000011 ∗ 0.00101011 = 10110.00000001, or
+22 in decimal. Yet in actuality,131 div 6 = 21; using an 8 bit approximation of the reciprocal was inadequate.
+How close does the approximation need to be?—that is, what is the minimum number of fractional bits needed for the
+approximate reciprocalc such that the remainder is exactly correct for all numerators? We derive the answer in § 3.
+aWeuse x64torefertothecommodityIntelandAMDprocessorssupportingthe64-bitversionofthex86instructionset.Itisalsoknownasx86-64,x86_64,AMD64
+and Intel 64.
+D. LEMIRE, O. KASER, N. KURZ 3
+TABLE 1 Divisionby6( d = 110 inbinary)usingamultiplicationbytheapproximatereciprocal( c = 0.00101011inbinary).
+The numeratorn is anN-bit value, withN = 6. The approximate reciprocal usesF = 8 fractional bits. The integer portion of
+the product (N bits) gives the quotient. Multiplying the fractional portion of the product (F bits) by the divisor (N bits) and
+keeping only the integer portion (N bits), we get the remainder (two last columns). The integer portion in bold (column 2) is
+equaltothequotient(column3)inbinary.Theintegerportioninbold(column4)isequaltotheremainder(column5)inbinary.
+n numerator times the approx. reciprocal (n ∗c) quotient fractional portion ∗ divisor (f ∗d) remainder
+N bits ∗F bits →N +F bits N bits F bits ∗N bits →N +F bits N bits
+0 000000 ∗ 0.00101011 = 000000.00000000 0 0.00000000 ∗ 000110 = 000000.00000000 0
+1 000001 ∗ 0.00101011 = 000000.00101011 0 0.00101011 ∗ 000110 = 000001.00000010 1
+2 000010 ∗ 0.00101011 = 000000.01010110 0 0.01010110 ∗ 000110 = 000010.00000100 2
+3 000011 ∗ 0.00101011 = 000000.10000001 0 0.10000001 ∗ 000110 = 000011.00000110 3
+4 000100 ∗ 0.00101011 = 000000.10101100 0 0.10101100 ∗ 000110 = 000100.00001000 4
+5 000101 ∗ 0.00101011 = 000000.11010111 0 0.11010111 ∗ 000110 = 000101.00001010 5
+6 000110 ∗ 0.00101011 = 000001.00000010 1 0.00000010 ∗ 000110 = 000000.00001100 0
+⋮ ⋮ ⋮ ⋮ ⋮
+17 010001 ∗ 0.00101011 = 000010.11011011 2 0.11011011 ∗ 000110 = 000101.00100010 5
+18 010010 ∗ 0.00101011 = 000011.00000110 3 0.00000110 ∗ 000110 = 000000.00100100 0
+19 010011 ∗ 0.00101011 = 000011.00110001 3 0.00110001 ∗ 000110 = 000001.00100110 1
+20 010100 ∗ 0.00101011 = 000011.01011100 3 0.01011100 ∗ 000110 = 000010.00101000 2
+21 010101 ∗ 0.00101011 = 000011.10000111 3 0.10000111 ∗ 000110 = 000011.00101010 3
+22 010110 ∗ 0.00101011 = 000011.10110010 3 0.10110010 ∗ 000110 = 000100.00101100 4
+23 010111 ∗ 0.00101011 = 000011.11011101 3 0.11011101 ∗ 000110 = 000101.00101110 5
+24 011000 ∗ 0.00101011 = 000100.00001000 4 0.00001000 ∗ 000110 = 000000.00110000 0
+⋮ ⋮ ⋮ ⋮ ⋮
+63 111111 ∗ 0.00101011 = 001010.10010101 10 0.10010101 ∗ 000110 = 000011.01111110 3
+The scenario we describe with an expensive division applies to current processors. Indeed, integer division instructions on
+recent x64 processors have a latency of 26 cycles for 32-bit registers and at least 35 cycles for 64-bit registers1. We ﬁnd sim-
+ilar latencies in the popular ARM processors2. Thus, most optimizing compilers replace integer divisions by constantsd that
+are known at compile time with the equivalent of a multiplication by a scaled approximate reciprocalc followed by a shift. To
+compute the remainder by a constant (n modd), an optimizing compiler might ﬁrst compute the quotientn divd as a multipli-
+cation byc followed by a logical shift byF bits (c ∗n) div 2F, and then use the fact that the remainder can be derived using a
+multiplication and a subtraction asn modd =n − (n divd) ∗d.
+Currentoptimizingcompilersdiscardthefractionalportionofthemultiplication( (c ∗n) mod 2F).Yetusingthefractionalbits
+to compute the remainder or test the divisibility in software has merit. It can be faster (e.g., by more than 25%) to compute the
+remainderusingthefractionalbitscomparedtothecodeproducedforsomeprocessors(e.g.,x64processors)byastate-of-the-art
+optimizing compiler.
+2 RELATED WORK
+Jacobsohn3derivesanintegerdivisionmethodforunsignedintegersbyconstantdivisors.Afterobservingthatanyintegerdivisor
+can be written as an odd integer multiplied by a power of two, he focuses on the division by an odd divisor. He ﬁnds that we
+candividebyanoddintegerbymultiplyingbyafractionalinverse,followedbysomerounding.Hepresentsanimplementation
+solely with full adders, suitable for hardware implementations. He observes that we can get the remainder from the fractional
+portion with rounding, but he does not specify the necessary rounding or the number of bits needed.
+Inthespecialcasewherewedivideby10,Vowels 4 describesthecomputationofboththequotientandremainder.Incontrast
+with other related work, Vowels presents the computation of the remainder directly from the fractional portion. Multiplications
+are replaced by additions and shifts. He does not extend the work beyond the division by 10.
+4 D. LEMIRE, O. KASER, N. KURZ
+GranlundandMontgomery 5 presenttheﬁrstgeneral-purposealgorithmstodivideunsignedandsignedintegersbyconstants.
+Their approach relies on a multiplication followed by a division by a power of two which is implemented as an logical shift
+((
+2F ∕d ∗n) div 2F). They implemented their approach in the GNU GCC compiler, where it can still be found today (e.g., up
+to GCC version 7). Given any non-zero 32-bit divisor known at compile time, the optimizing compiler can (and usually will)
+replacethedivisionbyamultiplicationfollowedbyashift.FollowingCavagninoandWerbrouck 6,Warren 7 ﬁndsthatGranlund
+and Montgomery choose a slightly suboptimal number of fractional bits for some divisors. Warren’s slightly better approach is
+found in LLVM’s Clang compiler. See Algorithm 1.
+Algorithm 1 Granlund-Montgomery-Warren5,7 division algorithm by a constant using unsigned integers.
+1: Require: ﬁxed integer divisord ∈ [1, 2N )
+2: Require: runtime integer numeratorn ∈ [0, 2N )
+3: Compute: the integern divd
+4: ifd is a power of two (d = 2K) then
+5: returnn div 2K ⊳ Implemented with a bitwise shift
+6: else if forL = ⌊log2(d)⌋andc = 
+2N+L∕d, we havec ∗(2N − (2N modd) − 1)< (2N divd)2N+L then
+7: return (c ∗n) div 2N+L ⊳c ∈ [0, 2N )
+8: else if d = 2Kd¤forK >0 then
+9: letL = ⌈log2(d¤)⌉andc = 
+2N−K+L∕d¤ ⊳c ∈ [0, 2N )
+10: returnc ∗(n div 2K ) div 2N−K+L
+11: else
+12: letL = ⌈log2d⌉andc = 
+2N+L∕d ⊳c > 2N
+13: letc¤be such thatc = 2N +c¤ ⊳c ¤ ∈ [0, 2N )
+14: return (c¤ ∗n∕2N	 + ((n −c¤ ∗n∕2N	) div 2)) div 2L−1
+15: end if
+FollowingArtzyetal. 8,GranlundandMontgomery 5 describehowtocheckthatanintegerisamultipleofaconstantdivisor
+more cheaply than by the computation of the remainder. Yet, to our knowledge, no compiler uses this optimization. Instead, all
+compilers that we tested compute the remainderrby a constant using the formular =n −q ∗d and then compare against zero.
+That is, they use a constant to compute the quotient, multiply the quotient by the original divisor, subtract from the original
+numerator, and only ﬁnally check whether the remainder is zero.
+Insupportofthisapproach,GranlundandMontgomery 5statethat the remainder, if desired, can be computed by an additional
+multiplication and subtraction. Warren7 covers the computation of the remainder without computing the quotient, but only for
+divisors that are a power of two2K, or for small divisors that are nearly a power of two (2K + 1, 2K − 1).
+In software, to our knowledge, no authors except Jacobsohn3 and Vowels4 described using the fractional portion to com-
+pute the remainder or test the divisibility, and neither of these considered the general case. In contrast, the computation of the
+remainderdirectly,withoutﬁrstcomputingthequotient,hasreceivedsomeattentioninthehardwareandcircuitliterature 9,10,11.
+Moreover,manyresearchers 12,13 considerthecomputationoftheremainderofunsigneddivisionbyasmalldivisortobeuseful
+when working with big integers (e.g., in cryptography).
+3 COMPUTING THE REMAINDER DIRECTLY
+InsteadofdiscardingtheleastsigniﬁcantbitsresultingfromthemultiplicationintheGranlund-Montgomery-Warrenalgorithm,
+we can use them to compute the remainder without ever computing the quotient. We formalize this observation by Theorem 1,
+which we believe to be a novel mathematical result.
+In general, we expect that it takes at leastN fractional bits for the approximate reciprocalc to provide exact computation of
+theremainderforallnon-negativenumeratorslessthan 2N.Letussayweuse F =N +Lfractionalbitsforsomenon-negative
+integer valueL to be determined. We want to pickL so that approximate reciprocalc = 
+2F ∕d = 
+2N+L∕d allows exact
+computation of the remainder asr =   
+(c ∗n) mod 2F ∗d div 2F whereF =N +L.
+D. LEMIRE, O. KASER, N. KURZ 5
+We illustrate our notation using the division of63by 6as in the last row of Table 1. We have that63is 111111 in binary and
+that the approximate reciprocalc of 6 is 
+28∕6 = 00101011 in binary. We can compute the quotient as the integer part of the
+product of the reciprocal by
+n ∗c =
+N=6
+'ﬁ“
+111111 ∗ 0.
+N=6
+'ﬁ“
+001010
+L=2
+'ﬁ“
+11«›››››››ﬂ›››››››‹
+F =N+L=8
+=
+quotient∶ N bits
+'›ﬁ›“
+0001010 .
+(c ∗n) mod 2F
+'››ﬁ››“
+10010101.
+Taking theF-bit fractional portion ((c ∗n) mod 2F), and multiplying it by the divisor6 (110 in binary), we get the remainder
+as the integer portion of the result:
+((c ∗n) mod 2F ) ∗d =
+(c ∗n) mod 2F
+'››ﬁ››“
+10010101 ∗
+d∶N bits
+'ﬁ“
+000110 =
+remainder∶ N bits
+'›ﬁ›“
+0000011 . ⋯.
+The fractional portion(c ∗n) mod 2F given by 10010101 is relatively close to the product of the reciprocal by the remainder
+(00101011 ∗ 11) given by 10000001: as we shall see, this is not an accident.
+Indeed, we begin by showing that theF =N +L least signiﬁcant bits of the product ((c ∗n) mod 2N+L) are approximately
+equal to the scaled approximate reciprocalc times the remainder we seek (c ∗(n modd)), in a way made precise by Lemma 1.
+Intuitively, this intermediate result is useful because we only need to multiply this product byd and divide by2F to cancel out
+c (sincec ∗d ≈ 2F) and get the remaindern modd.
+Lemma 1. Givend ∈ [1, 2N ), and non-negative integersc,L such that
+2N+L ≤c ∗d ≤ 2N+L + 2L
+then
+c ∗(n modd) ≤ (c ∗n) mod 2N+L ≤c ∗(n modd) + 2L(n divd)< 2N+L
+for alln ∈ [0, 2N ).
+Proof. We can writen uniquely asn = q ∗d +r for some integersq and r where q ≥ 0 and r ∈ [0,d ). We assume that
+2N+L ≤c ∗d ≤ 2N+L + 2L.
+We begin by showing thatc ∗r + 2Lq <2N+L. Becausec ∗d ≤ 2N+L + 2L, we have that
+c ∗r + 2Lq ≤ 2N+L
+d r + 2L
+d r + 2Lq
+= 2L
+d
+ 2Nr +r +d ∗q
+= 2L
+d
+ n + 2Nr.
+Becausen< 2N andr<d , we have thatn + 2Nr< 2Nd which shows that
+c ∗r + 2Lq <2N+L. (1)
+We can rewrite our assumption2N+L ≤ c ∗d ≤ 2N+L + 2L as 0 ≤ c ∗d − 2N+L ≤ 2L. Multiplying throughout by the
+non-negative integerq, we get
+0 ≤c ∗d ∗q − 2N+Lq ≤ 2Lq.
+After addingc ∗rthroughout, we get
+c ∗r ≤c ∗n − 2N+Lq ≤ 2Lq +c ∗r
+where we used the fact thatc ∗d ∗q +c ∗r = c ∗n. So we have thatc ∗n − 2N+Lq ∈ [c ∗r, 2Lq +c ∗r]. We already showed
+(see Equation 1) that2Lq +c ∗r is less than2N+L so thatc ∗n − 2N+Lq ∈ [0, 2N+L). Thus we have thatc ∗n − 2N+Lq =
+(c ∗n) mod 2N+L because (in general and by deﬁnition) ifp −kQ ∈ [0,y ) for somey ≤ Q, thenp modQ = p −kQ. Hence,
+we have that(c ∗n) mod 2N+L ∈ [c ∗r, 2Lq +c ∗r]. This completes the proof.
+Lemma 1 tells us that(c ∗n) mod 2N+L is close toc ∗(n modd) whenc is close to2N+L∕d. Thus it should make intuitive
+sense that(c ∗n) mod 2N+L multiplied byd∕2N+L should give usn modd. The following theorem makes the result precise.
+6 D. LEMIRE, O. KASER, N. KURZ
+Theorem 1. Givend ∈ [1, 2N ), and non-negative integersc,L such that
+1
+d ≤ c
+2N+L ≤ 1
+d + 1∕d
+2N
+then
+n modd =   (c ∗n) mod 2N+L ∗d div 2N+L
+for alln ∈ [0, 2N ).
+Proof. We can writen uniquely asn = q ∗d +r whereq ≥ 0 andr ∈ [0,d ). By Lemma 1, we have thatc ∗n mod 2N+L ∈
+[c ∗r,c ∗r + 2Lq]for alln ∈ [0, 2N ).
+We want to show that if we multiply any value in[c ∗r,c ∗r + 2Lq] byd and divide it by2N+L, then we getr. That is, if
+y ∈ [c ∗r,c ∗r + 2Lq], thend ∗y ∈ [2N+Lr, 2N+L(r + 1)). We can check this inclusion using two inequalities:
+• (d ∗y ≥ 2N+Lr)Itisenoughtoshowthat c ∗d ∗r ≥ 2N+Lrwhichfollowssince c ∗d ≥ 2N+L byoneofourassumptions.
+• (d ∗y < 2N+L(r + 1)) It is enough to show thatd ∗(c ∗r + 2Lq) < 2N+L(r + 1). Using the assumption thatc ∗d ≤
+2N+L + 2L, we have thatd ∗(c ∗r + 2Lq) ≤ 2N+Lr + 2Lr + 2Ld ∗q = 2N+Lr + 2Ln. Sincen < 2N, we ﬁnally have
+d ∗(c ∗r + 2Lq)< 2N+L(r + 1) as required.
+This concludes the proof.
+Consider the constraint2N+L ≤c ∗d ≤ 2N+L + 2L given by Theorem 1.
+• We have thatc = 
+2N+L∕d is the smallest value ofc satisfying 2N+L ≤c ∗d.
+• Furthermore, whend does not divide2N+L, we have that
+2N+L∕d ∗d = 2N+L +d − (2N+L modd) and soc ∗d ≤
+2N+L + 2L impliesd ≤ (2N+L modd) + 2L. See Lemma 2.
+On this basis, Algorithm 2 gives the minimal number of fractional bitsF. It is suﬃcient to pickF ≥N + log2(d).
+Lemma 2. Given a divisord ∈ [1, 2N ), if we setc = 
+2N+L∕d, then
+• c ∗d = 2N+L +d − (2N+L modd) whend is not a power of two,
+• andc ∗d = 2N+L whend is a power of two.
+Proof. The case whend is a power of two follows by inspection, so suppose thatd is not a power of two. We seek to round
+2N+L up to the next multiple ofd. The previous multiple ofd is smaller than2N+L by 2N+L modd. Thus we need to add
+d − 2N+L modd to 2N+L to get the next multiple ofd.
+Example. ConsiderTable 1wherewe divideby d = 6 andwe wanttosupport thenumerators nbetween0 and 64 = 2 6 sothat
+N = 6. It is enough to pickF ≥ N + log2(d) ≈ 8.58 orF = 9 but we can do better. According to Algorithm 2, the number
+of fractional bitsF = N +L = 6 + L must satisfyd ≤ (26+L modd) + 2L. PickingL = 0 andF = 6 does not work since
+26 mod 6 + 1 = 5 . PickingL = 1 also does not work since27 mod 6 + 2 = 4 . Thus we needL = 2 andF = 8, at least. So we
+can pickc = 
+28∕6 = 43. In binary, representing 43 with 8 fractional bits gives0.00101011, as in Table 1 . Let us divide63
+by 6. The quotient is(63 ∗ 43) div 28 = 10. The remainder is(((63 ∗ 43) mod 2 8) ∗ 6) div 28 = 3.
+It is not always best to use the smallest number of fractional bits. For example, we can always conveniently pickF = 2 ∗N
+(meaningL =N) andc = 
+22N ∕d, sinced ≤ 2F modd + 2N clearly holds (givend ≤ 2N).
+3.1 Directly Computing Signed Remainders
+Havingestablishedthatwecouldcomputetheremainderintheunsignedcasedirectly,withoutﬁrstcomputingthequotient,we
+proceed to establish the same in the signed integer case. We assume throughout that the processor represents signed integers in
+[−2N−1, 2N−1)using the two’s complement notation. We assume that the integerN ≥ 1.
+Though the quotient and the remainder have a unique deﬁnition over positive integers, there are several valid ways to deﬁne
+themoversignedintegers.Weadoptaconventionregardingsignedintegerarithmeticthatiswidespreadamongmoderncomputer
+D. LEMIRE, O. KASER, N. KURZ 7
+Algorithm 2 Algorithm to select the number of fractional bits and the scaled approximate reciprocal in the case of unsigned
+integers.
+1: Require: ﬁxed integer divisord ∈ [1, 2N )
+2: We seek the smallest number of fractional bitsF such that for any integer numeratorn ∈ [0, 2N ), the remainder isr =  
+(c ∗n) mod 2F ∗d div 2F for some scaled approximate reciprocalc.
+3: We can always choose the scaled approximate reciprocalc ← 
+2F ∕d.
+4: ifd is a power of twothen
+5: LetF ← log2(d) andc = 1.
+6: else
+7: LetF ←N +L whereL is the smallest integer such thatd ≤ (2N+L modd) + 2L.
+8: end if
+languages, including C99, Java, C#, Swift, Go, and Rust. Following Granlund and Montgomery5, we lettrunc(v)bevrounded
+towards zero: it is⌊v⌋ ifv ≥ 0 and ⌈v⌉ otherwise. We use “div” to denote the signed integer division deﬁned asn divd ≡
+trunc(n∕d)and“mod”todenotethesignedintegerremainderdeﬁnedbytheidentity n modd ≡n−trunc(n∕d) ∗d.Changingthe
+signofthedivisorchangesthesignofthequotientbuttheremainderisinsensitivetothesignofthedivisor.Changingthesignof
+the numerator changes the sign of both the quotient and the remainder:(−n) divd = −(n divd)and (−n) modd = −(n modd).
+Let lsbK (n) be the function that selects theK least signiﬁcant bits of an integern, zeroing others. The result is always non-
+negative (in[0, 2K )) in our work. Whenever2K dividesn, whethern is positive or not, we have lsbK (n) = 0 = n mod 2K.
+Remark 1. Suppose 2K doesnotdivide n,then n mod 2K = 2K −lsbK (n)whentheinteger nisnegative,and n mod 2K = lsbK (n)
+when it is positive. Thus we have lsbK (n) +lsbK (−n) = 2K whenever 2K does not dividen.
+We establish a few technical results before proving Theorem 2. We believe it is novel.
+Lemma 3. Givend ∈ [1, 2N−1), and non-negative integersc,L such that
+2N−1+L<c ∗d <2N−1+L + 2L,
+we have that2N−1+L cannot dividec ∗nfor anyn ∈ [−2N−1, 0).
+Proof. First, we prove that2L cannot dividec. When2L dividesc, settingc = 2L for some integer, we have that2N−1 <
+d <2N−1 + 1, but there is no integer between2N−1 and 2N−1 + 1.
+Next,supposethat n ∈ [−2N−1, 0)and 2N−1+L dividesc ∗n.Since 2N−1+L dividesc ∗n,weknowthattheprimefactorization
+ofc ∗n has at leastN − 1 + L copies of 2. Within the range ofn ([−2N−1, 0)) at mostN − 1 copies of 2 can be provided.
+Obtaining the requiredN − 1 + L copies of 2 is only possible whenn = −2N−1 andc provides the remaining copies—so2L
+dividesc. But that is impossible.
+Lemma 4. Givend ∈ [1, 2N−1), and non-negative integersc,L such that
+2N−1+L<c ∗d <2N−1+L + 2L,
+for all integersn ∈ (0, 2N−1] and lettingy = lsbN−1+L(c ∗n), we have that(y ∗d) mod 2N−1+L> 0.
+Proof. Writen =q ∗d +r wherer ∈ [0,d ).
+Sincec ∗nis positive we have thaty = (c ∗n) mod 2N−1+L = lsbN−1+L(c ∗n). (See Remark 1.)
+Lemma1isapplicable,replacing N withN − 1.Wehaveastrongerconstrainton c ∗d,butthatisnotharmful.Thuswehave
+y ∈ [c ∗r,c ∗r + 2Lq].
+We proceed as in the proof of Theorem 1. We want to show thatd ∗y ∈ (2N−1+Lr, 2N−1+L(r + 1)).
+• (d ∗y >2N−1+Lr) We havey ≥c ∗r. Multiplying throughout byd, we getd ∗y ≥c ∗d ∗r >2N−1+Lr, where we used
+c ∗d >2N−1+L in the last inequality.
+• (d ∗y < 2N−1+L(r + 1)) We havey ≤ c ∗r + 2Lq. Multiplying throughout byd, we getd ∗y ≤ c ∗d ∗r + 2Lq ∗d <
+2N−1+Lr + 2Ln. Becausen ≤ 2N−1, we have the resultd ∗y< 2N−1+L(r + 1).
+Thus we haved ∗y ∈ (2N−1+Lr, 2N−1+L(r + 1)), which shows that(y ∗d) mod 2N−1+L> 0. This completes the proof.
+8 D. LEMIRE, O. KASER, N. KURZ
+Lemma 5. Given positive integersa,b,d , we have that⌊(b −a) ∗d∕b⌋ =d − 1 − ⌊a ∗d∕b⌋ifbdoes not dividea ∗d.
+Proof. Deﬁnep = a ∗d∕b − ⌊a ∗d∕b⌋. We have p ∈ (0 , 1). We have that ⌊(b −a) ∗d∕b⌋ = ⌊d −a ∗d∕b⌋ =
+⌊d −⌊a ∗d∕b⌋ −p⌋ =d − 1 − ⌊a ∗d∕b⌋.
+Theorem 2. Givend ∈ [1, 2N−1), and non-negative integersc,L such that
+2N−1+L<c ∗d <2N−1+L + 2L,
+let = (lsbN−1+L(c ∗n) ∗d)∕2N−1+L	 then
+• n modd = for alln ∈ [0, 2N−1)
+• andn modd = −d + 1 for alln ∈ [−2N−1, 0).
+Proof. When n is non-negative, then so isc ∗n, and lsbN−1+L(c ∗n) is equal to(c ∗n) mod 2N−1+L; there is no distinction
+between signed and unsignedmod, so the result follows by Theorem 1, replacingN by N − 1. (Theorem 1 has a weaker
+constraint onc ∗d.)
+Supposethat nisnegative( n ∈ [−2N−1, 0)).ByLemma3, 2N−1+L cannotdivide c ∗n.Hence,wehavethatlsb N−1+L(c ∗n) =
+2N−1+L −lsbN−1+L(c ∗(−n))by Remark 1. Thus we have
+ =
+ 
+lsb
+N−1+L
+(c ∗n) ∗d∕2N−1+L
+!
+=
+ 
+2N−1+L − lsb
+N−1+L
+(c ∗(−n))
+
+∗d∕2N−1+L
+!
+by Remark 1
+= d − 1 −
+ 
+lsb
+N−1+L
+(c ∗(−n)) ∗d∕2N−1+L
+!
+by Lemmata 4 and 5
+= d − 1 −  (c ∗(−n)) mod 2N−1+L ∗d∕2N−1+L	
+= d − 1 − ((−n) mod d) by Theorem 1.
+Hence we have −d + 1 = −((−n) mod d) = n modd, which concludes the proof.
+We do not need to be concerned with negative divisors sincen modd =n mod −d for all integersn.
+Wecanpick c,L inamannersimilartotheunsignedcase.Wecanchoose c = 2F ∕d	 + 1andlet F =N − 1 +LwhereLis
+anintegersuchthat 2N−1+L<c ∗d <2N−1+L + 2L.Withthischoiceof c,wehavethat c ∗d = 2N−1+L − (2N−1+L modd) +d.
+Thus we have the constraint−(2N−1+L modd) +d < 2L onL. Because−(2N−1+L modd) +d ∈ [1,d ], it suﬃces to pickL
+large enough so that2L > d. Thus anyL >log2d would do, and henceF > N+ log2(d) is suﬃcient. It is not always best to
+pickLto be minimal: it could be convenient to pickL =N + 1.
+3.2 Fast Divisibility Check with a Single Multiplication
+Following earlier work by Artzy et al.8, Granlund and Montgomery5 describe how we can check quickly whether an unsigned
+integerisdivisiblebyaconstant,withoutcomputingtheremainder.Wesummarizetheirapproachbeforeprovidinganalternative.
+Given an odd divisord, we can ﬁnd its (unique) multiplicative inversēd deﬁned asd ∗ ̄d mod 2N = 1 . The existence of a
+multiplicativeinverse ̄d allowsustoquicklydivideaninteger nbyd whenitisdivisibleby d,if d isodd.Itsuﬃcestomultiply
+n =a ∗d by ̄d:n ∗ ̄d mod 2N =a ∗(d ∗ ̄d) mod 2N =a mod 2N =n divd.Whenthedivisoris 2Kd ford oddand nisdivisible
+by 2Kd,thenwecanwrite n div(2Kd) = (n div 2K ) ∗ ̄d mod 2N.AspointedoutbyGranlundandMontgomery,thisobservation
+can also enable us to quickly check whether a number is divisible byd. Ifd is odd andn ∈ [0, 2N ) is divisible byd, then
+n ∗ ̄d mod 2N ∈ [0,(2N − 1)∕d	].Otherwise nisnotdivisibleby d.Thus,when d isodd,wecancheckwhetheranyintegerin
+[0, 2N )isdivisibleby d withamultiplicationfollowedbyacomparison.Whenthedivisoriseven( 2Kd),thenwehavetocheck
+thatn ∗ ̄d mod 2N ∈ [0, 2K ∗(2N − 1)∕d	]andthat nisdivisibleby 2K (i.e.,n mod 2K = 0).Wecanachievethedesiredresult
+by computingn ∗ ̄d, rotating the resulting word byK bits and comparing the result with(2N − 1)∕d	.
+Granlund and Montgomery can check that an unsigned integer is divisible by another using as little as one multiplication
+and comparison when the divisor is odd, and a few more instructions when the divisor is even. Yet we can always check the
+divisibility with a single multiplication and a modulo reduction to a power of two—even when the divisor is even because of
+the following proposition. Moreover, a single precomputed constant (c) is required.
+D. LEMIRE, O. KASER, N. KURZ 9
+uint32_t d = ...; // your divisor > 0
+// c = ceil ( (1 < <64) / d ) ; we take L = N
+uint64_t c = UINT64_C (0 x F F F F F F F F F F F F F F F F ) / d + 1;
+// fastmod computes ( n mod d ) given p r e c o m p u t e d c
+uint32_t fastmod ( uint32_t n /* , uint64_t c , uint32_t d */ ) {
+uint64_t lowbits = c * n ;
+return (( _ _ u i n t 1 2 8 _ t ) lowbits * d ) >> 64;
+}
+FIGURE 1 C code implementing a fast unsigned remainder function using the__uint128_t type extension.
+Proposition 1. Givend ∈ [1, 2N ), and non-negative integersc,L such that 2N+L ≤ c ∗d ≤ 2N+L + 2L then given some
+n ∈ [0, 2N ), we have thatd dividesnif and only if(c ∗n) mod 2N+L<c .
+Proof. We have thatd dividesn if and only ifn modd = 0. By Lemma 1, we have thatc ∗(n modd) ≤ (c ∗n) mod 2N+L ≤
+c ∗(n modd) + 2L(n divd). We want to show thatn modd = 0 is equivalent to(c ∗n) mod 2N+L<c .
+Supposethat n modd = 0,thenwehavethat (c ∗n) mod 2N+L ≤ 2L(n divd).However,byourconstraintson c,wehavethat
+c ≥ 2N+L∕d >2L(n divd). Thus, ifn modd = 0 then (c ∗n) mod 2N+L<c .
+Suppose that(c ∗n) mod 2N+L < c, then becausec ∗(n modd) ≤ (c ∗n) mod 2N+L, we have thatc ∗(n modd) < cwhich
+implies thatn modd = 0. This completes the proof.
+Thusifwehaveareciprocal c = 
+2F ∕dwithF =N +Llargeenoughtocomputetheremainderexactly(seeAlgorithm2),
+then (c ∗n) mod 2F <c if and only ifn is divisible byd. We do not need to pickF as small as possible. In particular, if we set
+c = 
+22N ∕d, then(c ∗n) mod 2 2N <c if and only ifn is divisible byd.
+Remark 2. Wecanextendourfastdivisibilitychecktothesignedcase.Indeed,wehavethat d dividesnifandonlyif ðdðdivides
+ðnð. Moreover, the absolute value of anyN-bit negative integer can be represented as anN-bit unsigned integer.
+4 SOFTWARE IMPLEMENTATION
+Using the C language, we provide our implementations of the 32-bit remainder computation (i.e.,a % d ) in Figs. 1 and 2 for
+unsigned and signed integers. In both case, the programmer is expected to precompute the constantc. For simplicity, the code
+shown here explicitly does not handle the divisorsd ∈ {−1, 0, 1, −231}.
+For the x64 platforms, we provide the instruction sequences in assembly code produced by GCC and Clang for computing
+n mod 95 inFig.3;inthethirdcolumn,weprovidethex64codeproducedwithourapproachafterconstantfolding.Ourapproach
+generates about half as many instructions.
+In Fig. 4, we make the same comparison on the 64-bit ARM platform, putting side-by-side compiler-generated code for the
+Granlund-Montgomery-Warren approach with code generated from our approach. As a RISC processor, ARM does not handle
+most large constants in a single machine instruction, but typically assembles them from 16-bit quantities. Since the Granlund-
+Montgomery-Warren algorithm requires only 32-bit constants, two 16-bit values are suﬃcient whereas our approach relies
+on 64-bit quantities and thus needs four 16-bit values. The ARM processor also has a “multiply-subtract” instruction that is
+particularlyconvenientforcomputingtheremainderfromthequotient.Unlikethecasewithx64,ourapproachdoesnottranslate
+into signiﬁcantly fewer instructions on the ARM platform.
+Thesecodefragmentsshowthatacode-sizesavingisachievedbyourapproachonx64processors,comparedtotheapproach
+taken by the compilers. We verify in § 5 that there is also a runtime advantage.
+4.1 Divisibility
+Weareinterestedindeterminingquicklywhethera32-bitinteger d dividesa32-bitinteger n—fasterthanbycheckingwhether
+theremainderiszero.Tothebestofourknowledge,nocompilerincludessuchanoptimization,thoughsomesoftwarelibraries
+10 D. LEMIRE, O. KASER, N. KURZ
+int32_t d = ...; // your non - zero divisor in
+[ -2147483647 ,2147483647]
+uint32_t pd = d < 0 ? -d : d ; // absolute value , abs ( d )
+// c = floor ( (1 < <64) / pd ) + 1; Take L = N + 1
+uint64_t c = UINT64_C (0 x F F F F F F F F F F F F F F F F ) / pd
++ 1 + (( pd & ( pd -1) ) ==0 ? 1 : 0) ;
+// fastmod computes ( n mod d ) given p r e c o m p u t e d c
+int32_t fastmod ( int32_t n /* , uint64_t c , uint32_t pd */ ) {
+uint64_t lowbits = c * n ;
+int32_t highbits = (( _ _ u i n t 1 2 8 _ t ) lowbits * pd ) >> 64;
+// answer is e q u i v a l e n t to (n <0) ? highbits - 1 + d : highbits
+return highbits - (( pd - 1) & ( n >> 31) ) ;
+}
+FIGURE 2 C code implementing a fast signed remainder function using the__uint128_t type extension.
+// GCC 6.2
+mov eax , edi
+mov edx , 1 4 9 1 9 3 6 0 0 9
+mul edx
+mov eax , edi
+sub eax , edx
+shr eax
+add eax , edx
+shr eax , 6
+imul eax , eax , 95
+sub edi , eax
+mov eax
+// Clang 4.0
+mov eax , edi
+imul rax , rax , 1 4 9 1 9 3 6 0 0 9
+shr rax , 32
+mov ecx , edi
+sub ecx , eax
+shr ecx
+add ecx , eax
+shr ecx , 6
+imul eax , ecx , 95
+sub edi , eax
+mov eax , edi
+// our fast version
+// + GCC 6.2
+movabs rax ,
+1 9 4 1 7 6 2 5 3 4 0 7 4 6 8 9 6 5
+mov edi , edi
+imul rdi , rax
+mov eax , 95
+mul rdi
+mov rax , rdx
+//
+//
+//
+//
+FIGURE 3 Comparison between the x64 code generated by GCC 6.2 for unsigneda mod 95 (left) and our version (right).
+Clang 4.0 generated the middle code, and when compiling our version (not shown) used amulx instruction to place the high
+bits of the product directly into the return register, saving one instruction over GCC.
+providerelatedfastfunctions. b Wepresentthecodeforourapproach(LKK)inFig.5,andourimplementationoftheGranlund-
+Montgomery approach (GM) in Fig. 6.
+5 EXPERIMENTS
+Superiority over the Granlund-Montgomery-Warren approach might depend on such CPU characteristics as the relative speeds
+ofinstructionsforintegerdivision,32-bitintegermultiplicationand64-bitintegerdivision.Therefore,wetestedoursoftwareon
+severalx64platformsandonARM candPOWER8servers,andrelevantdetailsaregiveninTable2.Thechoiceofmultiplication
+instructions and instruction scheduling can vary by compiler, and thus we tested using various versions of GNU GCC and
+LLVM’s Clang. For brevity we primarily report results from the Skylake platform, with comments on points where the other
+bhttps://gmplib.com
+cWith GCC 4.8 on the ARM platform we observed that, for many constant divisors, the compiler chose to generate audivinstruction instead of using the Granlund-
+Montgomery code sequence. This is not seen for GCC 6.2.
+D. LEMIRE, O. KASER, N. KURZ 11
+// GCC 6.2 for a % 95 on ARM
+mov w1 , 8969
+mov w3 , 95
+movk w1 , 0 x58ed , lsl 16
+umull x1 , w0 , w1
+lsr x1 , x1 , 32
+sub w2 , w0 , w1
+add w1 , w1 , w2 , lsr 1
+lsr w1 , w1 , 6
+msub w0 , w1 , w3 , w0
+// our version of a % 95 + GCC 6.2
+mov x2 , 7589
+uxtw x0 , w0
+movk x2 , 0 x102b , lsl 16
+mov x1 , 95
+movk x2 , 0 xda46 , lsl 32
+movk x2 , 0 x2b1 , lsl 48
+mul x0 , x0 , x2
+umulh x0 , x0 , x1
+//
+FIGURE 4 ComparisonbetweentheARMcodegeneratedbyGNUGCC6.2for a mod 95 (left)andourword-alignedversion
+(right). In both cases, except for instruction order, Clang’s code was similar to GCC’s.
+// c al cu lat e c for use in l k k _ d i v i s i b l e
+uint64_t l k k _ c v a l u e ( uint32_t d ) {
+return 1 + UINT64_C (0 x f f f f f f f f f f f f f f f f ) / d ;
+}
+// given p r e c o m p u t e d c , checks whether n % d == 0
+bool l k k _ d i v i s i b l e ( uint32_t n ,
+uint64_t c ) {
+// rhs is large when c ==0
+return n * c <= c - 1;
+}
+FIGURE 5 Unsigned divisibility test, our approach.
+platforms were signiﬁcantly diﬀerent. For the Granlund-Montgomery-Warren approach with compile-time constants, we use
+the optimized divide and remainder operations built into GCC and Clang.
+Wesometimesneedtorepeatedlydividebyaconstantthatisknownonlyatruntime.Insuchinstances,anoptimizingcompiler
+may not be helpful. Instead a programmer might rely on a library oﬀering fast division functions. For runtime constants on x64
+processors, we use the libdivide libraryd as it provides a well-tested and optimized implementation.
+Onx64platforms,weusethecompilerﬂags -O3 -march=native ;onARMweuse -O3 -march=armv8-a andonPOWER8
+we use -O3 -mcpu=power8 . Some tests have results reported in wall-clock time, whereas in other tests, the Linuxperf
+stat command was used to obtain the total number of processor cycles spent doing an entire benchmark program. To ease
+reproducibility, we make our benchmarking software and scripts freely available.e
+5.1 Beating the Compiler
+We implement a 32-bit linear congruential generator14 that generates random numbers according to the functionXn+1 =
+(a ∗Xn +b) mod d, starting from a given seedX0. Somewhat arbitrarily, we set the seed to 1234, we use 31 as the multi-
+plier (a = 31) and the additive constant is set to 27961 (b = 27961). We call the function 100 million times, thus generating
+100 million random numbers. The divisord is set at compile time. See Fig. 7 . In the signed case, we use a negative multiplier
+(a = −31).
+dhttp://libdivide.com
+ehttps://github.com/lemire/constantdivisionbenchmarks
+12 D. LEMIRE, O. KASER, N. KURZ
+// rotate n by e bits , avoiding u nd ef in ed
+be ha vi or s
+// cf https :// blog . regehr . org / archives /1063
+uint32_t rotr32 ( uint32_t n , uint32_t e ) {
+return ( n >> e ) | ( n << ( ( - e ) &31) ) ;
+}
+// does d divide n ?
+// d = 2** e * d_odd ; dbar =
+m u l t i p l i c a t i v e _ i n v e r s e ( d_odd )
+// thresh = 0 xf fff ff ff / d
+bool g m _ d i v i s i b l e ( uint32_t n ,
+uint32_t e , uint32_t dbar ,
+uint32_t thresh ) {
+return rotr32 ( n * dbar , e ) <= thresh ;
+}
+// Newton ’s method per Warren ,
+// Hacker ’s Delight pp . 246 - -247
+uint32_t m u l t i p l i c a t i v e _ i n v e r s e ( uint32_t d ) {
+uint32_t x0 = d + 2 * (( d +1) & 4) ;
+uint32_t x1 = x0 * (2 - d * x0 ) ;
+uint32_t x2 = x1 * (2 - d * x1 ) ;
+return x2 * (2 - d * x2 ) ;
+}
+FIGURE 6 Unsigned divisibility test, Granlund-Montgomery approach.
+TABLE 2 Systems Tested
+Processor Microarchitecture Compilers
+Intel i7-6700 Skylake (x64) GCC 6.2; Clang 4.0 default platform
+Intel i7-4770 Haswell (x64) GCC 5.4; Clang 3.8
+AMD Ryzen 7 1700X Zen (x64) GCC 7.2; Clang 4.0
+POWER8 POWER8 Murano GCC 5.4; Clang 3.8
+AMD Opteron A1100 ARM Cortex A57 (Aarch64) GCC 6.2; Clang 4.0
+Becausethedivisorisaconstant,compilerscanoptimizetheintegerdivisionusingtheGranlund-Montgomeryapproach.We
+refer to this scenario as thecompiler case. To prevent the compiler from proceeding with such an optimization and force it to
+repeatedly use the division instruction, we can declare the variable holding the modulus to be volatile (as per the C standard).
+Werefertothisscenarioasthe division instructioncase.Insuchcases,thecompilerisnotallowedtoassumethatthemodulusis
+constant—even though it is. We veriﬁed that the assembly generated by the compiler includes the division instruction and does
+not include expensive operations such as memory barriers or cache ﬂushes. We veriﬁed that our wall-clock times are highly
+repeatablef.
+We present our results in Fig. 8 where we compare with our alternative. In all cases, our approach is superior to the code
+produced by the compiler, except for powers of two in the case of GCC. The beneﬁt of our functions can reach 30%.
+fFor instance, we repeated tests 20 times for 9 divisors in Figs. 8 abcd and 9 ab, and we observed maximum diﬀerences among the 20 trials of 4.8%, 0.3%, 0.7%,
+0.0%, 0.8% and 0.9%, respectively.
+D. LEMIRE, O. KASER, N. KURZ 13
+uint32_t x = 1234;
+for ( size_t i = 0; i < 1 0 0 0 0 0 0 0 0 ; i ++) {
+// d may be set at compile time
+x = (32 * x + 27961) % d ;
+}
+FIGURE 7 Code for a linear congruential generator used to benchmark division by a constant.
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK)
+(a) GNU GCC (unsigned)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK) (b)GNU GCC (signed)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK)
+(c)LLVM’s Clang (unsigned)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 1
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK) (d)LLVM’s Clang (signed)
+FIGURE 8 Wall-clocktimetocompute100millionrandomintegersusingalinearcongruentialgeneratorwithvariousdivisors
+set at compile time (Skylake x64)
+The performance of the compiler (labelled ascompiler) depends on the divisor for both GCC and Clang, though Clang has
+greater variance. The performance of our approach is insensitive to the divisor, except when the divisor is a power of two.
+Weobservethatintheunsignedcase,Clangoptimizesveryeﬀectivelywhenthedivisorisasmallpoweroftwo.Thisremains
+true even when we disable loop unrolling (using the-fno-unroll-loops compiler ﬂag). By inspecting the produced code,
+we ﬁnd that Clang (but not GCC) optimizes away the multiplication entirely in the sense that, for example,Xn+1 = (31 ∗Xn +
+27961) mod 16 is transformed intoXn+1 = lsb4(9 −Xn). We ﬁnd it interesting that these optimizations are applied both in the
+compiler functions as well as in our functions. Continuing with the unsigned case, we ﬁnd that Clang often produces slightly
+more eﬃcient compiled code than GCC for our functions, even when the divisor is not a power of two: compare Fig. 8 a with
+Fig. 8 c. However, these small diﬀerences disappear if we disable loop unrolling.
+Yet,GCCseemspreferableinthesignedbenchmark:inFigs.8 band8 d,ClangisslightlylesseﬃcientthanGCC,sometimes
+requiring 0.5 sto complete the computation whereas GCC never noticeably exceeds0.4 s.
+14 D. LEMIRE, O. KASER, N. KURZ
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK)
+(a) Ryzen (GCC, unsigned)
+ 0
+ 0.2
+ 0.4
+ 0.6
+ 0.8
+ 1
+ 1.2
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK) (b) ARM (GCC, unsigned)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK)
+(c) POWER8 (Clang, unsigned)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK) (d) POWER8 (Clang, signed)
+FIGURE 9 Ryzen, ARM and POWER8 results for small divisors.
+Forcomparison,Fig.9showshowtheRyzen,POWER8andARMprocessorsperformonunsignedcomputations.Thespeed
+of the hardware integer-division instruction varies, speeding up atd = 8 and again atd = 32 for Ryzen andd = 4, 16, 64,
+256 and 1024 for ARM. The gap between hardware integer division and Granlund-Montgomery (compiler) is less on Ryzen,
+POWER8andARMthanonSkylake;forsomedivisors,thereislittlebeneﬁttousing compileronPOWER8andARM.Onx64
+platforms, our approach continues to be signiﬁcantly faster than hardware integer division for all divisors.
+On ARM, the performance is limited when computing remainders using our approach. Unlike x64 processors, ARM proces-
+sorsrequiremorethanoneinstructiontoloadaconstantsuchasthereciprocal( c),butthatisnotaconcerninthisinstancesince
+thecompilerloads c intoaregisteroutsideoftheloop.Webelievethatthereducedspeedhastodowiththeperformanceofthe
+multiplicationinstructionsofourCortexA57processor 2.Tocomputethemostsigniﬁcant64bitsofa64-bitproductasneeded
+byourfunctions,wemustusethemultiply-highinstructions( umulhand smulh),buttheyrequiresixcyclesoflatencyandthey
+prevent the execution of other multi-cycle instructions for an additional three cycles. In contrast, multiplication instructions on
+x64 Skylake processors produce the full 128-bit product in three cycles. Furthermore, our ARM processor has a multiply-and-
+subtractinstructionwithalatencyofthreecycles.Thusitisadvantageoustorelyonthemultiply-and-subtractinstructioninstead
+of the multiply-high instruction. Hence, it is faster to compute the remainder from the quotient by multiplying and subtracting
+(r =n−(n divd) ∗d).Furthermore,ourARMprocessorhasfastdivisioninstructions:theARMoptimizationmanualforCortex
+A57 processors indicates that both signed and unsigned division require between 4 and 20 cycles of latency2 whereas integer
+division instructions on Skylake processors (idivand div) have 26 cycles of latency for 32-bit registers1. Even if we take into
+accountthatdivisioninstructionsonARMcomputessolelythequotient,asopposedtoboththequotientandremainderonx64,
+itseemsthattheARMplatformhasacompetitivedivisionlatency.Empirically,thedivisioninstructiononARMisoftenwithin
+10% of the Granlund-Montgomery compiler optimization (Fig. 9 b) whereas the compiler optimization is consistently more
+than twice as fast as the division instruction on a Skylake processor (see Fig. 8 a).
+D. LEMIRE, O. KASER, N. KURZ 15
+ 0
+ 0.05
+ 0.1
+ 0.15
+ 0.2
+ 0.25
+ 0.3
+ 0.35
+ 0.4
+ 0.45
+ 0.5
+ 100  10000  1x10 6  1x10 8
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK)
+(a)Ryzen (GCC)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 100  10000  1x10 6  1x10 8
+time (s)
+divisor
+division instruction
+compiler
+our approach (LKK) (b)ARM (Clang)
+FIGURE 10 Ryzen and ARM results for 28 larger divisors (using unsigned arithmetic). Our approach performed slightly
+worsewhencompiledbyGCConARM,buttheRyzenresultswerenotsensitivetothechoiceofthecompiler.OnSkylake(not
+shown), the division instruction behaved similarly for large and small divisors, as did compiler and our approach.
+ResultsforPOWER8areshowninFigs.9 cand9 d.Ourunsignedapproachisbetterthanthecompiler’s;indeedthecompiler
+wouldsometimeshavedonebettertogenerateadivideinstructionthanusetheGranlund-Montgomeryapproach.Foroursigned
+approach, both GCC and Clang had trouble generating eﬃcient code for many divisors.
+As with ARM, code generated for POWER8 also deals with 64-bit constants less directly than x64 processors. If not in
+registers,POWER8codeloads64-bitconstantsfrommemory,usingtwooperationstoconstructa32-bitaddressthatisthenused
+with a load instruction. In this benchmark, however, the compiler keeps 64-bit constants in registers. Like ARM, POWER8 has
+instructions that compute the upper 64 bits of a 64-bit product. The POWER8 microarchitecture15 has good support for integer
+division:ithastwoﬁxed-pointpipelines,eachcontainingamultiplierunitandadividerunit.Whenthemulti-cycledividerunit
+isoperating,ﬁxed-pointoperationscanusuallybeissuedtootherunitsinitspipeline.Inourbenchmark,dependenciesbetween
+successivedivisioninstructionspreventtheprocessorfromusingmorethanonedivider.Thoughwehavenotseenpublisheddata
+on the actual latency and throughput of division and multiplication on this processor, we did not observe the divisor aﬀecting
+the division instruction’s speed, at least within the range of 3 to 4096.
+Our results suggest that the gap between multiplication and division performance on the POWER8 lies between that of
+ARM and Intel; the fact that our approach (using 64-bit multiplications) outperforms the compiler’s approach (using 32-bit
+multiplications) seems to indicate that, unlike ARM, the instruction to compute the most signiﬁcant bits of a 64-bit product is
+not much slower than the instruction to compute a 32-bit product.
+Looking at Fig. 10, we see how the approaches compare for larger divisors. The division instruction is sometimes the fastest
+approach on ARM, and sometimes it can be faster than the compiler approach on Ryzen. Overall, our approach is preferred on
+Ryzen (as well as Skylake and POWER8), but not on ARM.
+5.2 Beating the libdivide Library
+There are instances when the divisor might not be known at compile time. In such instances, we might use a library such as a
+libdivide. We once again use our benchmark based on a linear congruential generator using the algorithms, but this time, we
+provide the divisor as a program parameter.
+The libdivide library does not have functions to compute the remainder, so we use its functions to compute the quotient. It
+has two types of functions: regular "branchful" ones, those that include some branches that depend on the divisor, and branch-
+less ones. In this benchmark, the invariant divisor makes the branches perfectly predictable, and thus the libdivide branchless
+functions were always slower. Consequently we omit the branchless results.
+16 D. LEMIRE, O. KASER, N. KURZ
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+libdivide
+our approach (LKK)
+(a) GNU GCC (unsigned)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+libdivide
+our approach (LKK) (b)GNU GCC (signed)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+libdivide
+our approach (LKK)
+(c)LLVM’s Clang (unsigned)
+ 0
+ 0.1
+ 0.2
+ 0.3
+ 0.4
+ 0.5
+ 0.6
+ 0.7
+ 0.8
+ 0.9
+ 1
+ 10  20  30  40  50  60
+time (s)
+divisor
+division instruction
+libdivide
+our approach (LKK) (d)LLVM’s Clang (signed)
+FIGURE 11 Wall-clock time to compute 100 million random integers using a linear congruential generator with various
+divisors passed as a program parameter (Skylake x64).
+WepresentourresultsinFig.11.Theperformancelevelsofourfunctions g areinsensitivetothedivisor,andourperformance
+levels are always superior to those of the libdivide functions (by about 15%), except for powers of two in the unsigned case. In
+these cases, libdivide is faster, but this is explained by a fast conditional code path for powers of two.
+5.3 Competing for Divisibility
+We adapted a prime-counting benchmark distributed with libdivide, specialized to 32-bit operands. The code determines the
+numberofprimesin [2, 40000)usingasimplisticapproach:oddnumbersinthisrangearecheckedfordivisibilitybyanysmaller
+number that has already been determined to be prime. See Fig. 12. When a number is identiﬁed as a prime, we compute its
+scaled approximate reciprocal (c) value, which is repeatedly used in future iterations. In this manner, the computation ofc is
+onlydoneonceperprime,andnotoncepertrialdivisionbytheprime.Amajordiﬀerencefromthebenchmarkusingthelinear-
+congruential generator is that we cycle rapidly between diﬀerent divisors, making it much more diﬃcult to predict branches in
+the libdivide functions.
+In these tests, we compare libdivide against LKK and GM, the fast divisibility tests whose implementations are shown in
+§ 4.1; see Fig. 5 for LKK and Fig. 6 for GM. Divisibility of a candidate prime is checked either using
+• libdivide to divide, followed by multiplication and subtraction to determine whether the remainder is nonzero;
+• the Granlund-Montgomery (GM) divisibility check, as in Fig. 6;
+gWhen 20 test runs were made for 9 divisors, timing results among the 20 never diﬀered by more than 1%.
+D. LEMIRE, O. KASER, N. KURZ 17
+int c o u n t _ p r i m e s _ u n d e r _ N () {
+int primectr =0;
+static uint64_t p r i m e _ c v a l s [ N ];
+for ( uint32_t n =3; n < N ; n += 2) {
+bool isprime = true ;
+for ( int j =0; j < primectr ; ++ j ) {
+if ( l k k _ d i v i s i b l e (n , p r i m e _ c v a l s [ j ]) ) {
+isprime = false ;
+break ;
+}
+}
+if ( isprime )
+p r i m e _ c v a l s [ primectr ++] = l k k _ c v a l u e ( n ) ;
+}
+return (1+ primectr ) ; // 2 is also prime .
+}
+FIGURE 12 Prime-counting benchmark for the unsigned divisibility test. The code shown is for the LKK approach, similar
+code is used for other strategies.
+• the C% operation, which uses a division instruction;
+• our LKK divisibility check (Fig. 5).
+LKK stores 64 bits for each prime; GM requires an additional 5-bit rotation amount. The division-instruction version of the
+benchmark only needs to store 32 bits per prime. The libdivide approach requires 72 bits per prime, because we explicitly store
+the primes.
+Instructioncounts andexecution speedareboth important.All elsebeingequal, wewould preferthatcompilers emitsmaller
+instructionsequences.Usingahardwareintegerdivisionwillyieldthesmallestcode,butthismightgiveuptoomuchspeed.In
+theunsignedcase,ourLKKhasasigniﬁcantcode-sizeadvantageoverGM—approximately3arithmeticinstructionstocompute
+ourc versus about 11 to compute their required constant. Both fast approaches use a multiplication and comparison for each
+subsequent divisibility check. GM requires an additional instruction to rotate the result of the multiplication.
+PerformanceresultsfortheunsignedcaseareshowninTable3,showingthetotalnumberofprocessorcyclesoneachplatform
+from1000repetitionsofthebenchmark.OnSkylake,20repeatedcomputationsyieldedcycle-countresultswithin0.3%ofeach
+other.ForARM,resultswerealwayswithin4%.Initially,Ryzenresultswouldsometimesdiﬀerbyupto10%within20attempts,
+evenafterweattemptedtocontrolsuchfactorsasdynamicfrequencyscaling.Thus,ratherthanreportingtheﬁrstmeasurement
+for each benchmark, the given Ryzen results are the average of 11 consecutive attempts (the basic benchmark was essentially
+executed11000times).OurPOWER8results(exceptoneoutlier)werewithin7%ofoneanotherovermultipletrialsandsowe
+averaged several attempts (3 for GCC and 7 for Clang) to obtain each data point. Due to platform constraints, POWER8 results
+are user-CPU times that matched the wall-clock times.
+LKK has a clear speed advantage in all cases, including the POWER8 and ARM platforms. LKK is between 15% to 80%
+faster than GM. Both GM and LKK always are much faster than using an integer division instruction (up to7× for Ryzen) and
+they also outperform the best algorithm in libdivide.
+6 CONCLUSION
+To our knowledge, we present the ﬁrst general-purpose algorithms to compute the remainder of the division by unsigned or
+signedconstantdivisorsdirectly,usingthefractionalportionoftheproductofthenumeratorwiththeapproximatereciprocal 3,4.
+On popular x64 processors (and to a lesser extent on POWER), we can produce code for the remainder of the integer division
+18 D. LEMIRE, O. KASER, N. KURZ
+TABLE 3 Processorcycles(ingigacycles)todeterminethenumberofprimeslessthan40000,1000times,usingunsigned32-
+bitcomputations. Branchfuland branchlessarelibdividealternatives.Notethatlibdividewasonlyavailableforthex64systems
+asitusesplatform-speciﬁcoptimizations.POWER8resultsareinuserCPUseconds.Boldfacingindicatesthefastestapproach.
+Algorithm Skylake Haswell Ryzen ARM POWER8
+GCC Clang GCC Clang GCC Clang GCC Clang GCC Clang
+division instruction 72 72 107 107 131 131 65 65 18 17
+branchful 46 88 56 98 59 71 – – – –
+branchless 35 35 36 37 34 37 – – – –
+LKK 18 18 18 18 17 18 27 27 8.7 8.0
+GM 24 27 27 28 27 32 36 37 10 11
+GM/LKK 1.33 1.50 1.50 1.55 1.59 1.77 1.33 1.37 1.15 1.38
+that is faster than the code produced by well regarded compilers (GNU GCC and LLVM’s Clang) when the divisor constant is
+knownatcompiletime,usingsmallCfunctions.Ourfunctionsareupto30%fasterandwithonlyhalfthenumberofinstructions
+for most divisors. Similarly, when the divisor is reused, but is not a compile-time constant, we can surpass a popular library
+(libdivide) by about 15% for most divisors.
+We can also speed up a test for divisibility. Our approach (LKK) is several times faster than the code produced by popular
+compilers. It is faster than the Granlund-Montgomery divisibility check5, sometimes nearly twice as fast. It is advantageous on
+all tested platforms (x64, POWER8 and 64-bit ARM).
+Though compilers already produce eﬃcient code, we show that additional gains are possible. As future work, we could
+compareagainstmorecompilersandotherlibraries.Moreover,variousadditionaloptimizationsarepossible,suchasfordivision
+by powers of two.
+ACKNOWLEDGMENTS
+The work is supported by the Natural Sciences and Engineering Research Council of Canada under grant RGPIN-2017-03910.
+TheauthorsaregratefultoIBM’sCentreforAdvancedStudies—AtlanticandKennethKentforaccesstothePOWER8system.
+References
+1. Fog A.Instruction tables: Lists of instruction latencies, throughputs and micro-operation breakdowns for Intel, AMD and
+VIA CPUs. Copenhagen University College of Engineering Copenhagen, Denmark; 2016. http://www.agner.org/optimize/
+instruction_tables.pdf. Accessed May 31, 2018.
+2. Cortex-A57 Software Optimization Guide. ARM Holdings; 2016. http://infocenter.arm.com/help/topic/com.arm.doc.
+uan0015b/Cortex_A57_Software_Optimization_Guide_external.pdf. Accessed May 31, 2018.
+3. Jacobsohn DH. A combinatoric division algorithm for ﬁxed-integer divisors.IEEE T. Comput.. 1973;100(6):608–610.
+4. Vowels RA. Division by 10.Aust. Comput. J.. 1992;24(3):81–85.
+5. Granlund T, Montgomery PL. Division by invariant integers using multiplication.SIGPLAN Not.. 1994;29(6):61–72.
+6. Cavagnino D, Werbrouck AE. Eﬃcient algorithms for integer division by constants using multiplication.Comput. J..
+2008;51(4):470–480.
+7. Warren HS.Hacker’s Delight. Boston: Addison-Wesley; 2nd ed.2013.
+D. LEMIRE, O. KASER, N. KURZ 19
+8. Artzy E, Hinds JA, Saal HJ. A fast division technique for constant divisors.Commun. ACM. 1976;19(2):98–101.
+9. Raghuram PS, Petry FE. Constant-division algorithms.IEE P-Comput. Dig. T.. 1994;141(6):334-340.
+10. Doran RW. Special cases of division.J. Univers. Comput. Sci.. 1995;1(3):176–194.
+11. UgurdagF,DinechinFDe,GenerYS,GörenS,DidierLS.Hardwaredivisionbysmallintegerconstants. IEEE T. Comput..
+2017;66(12):2097–2110.
+12. Rutten L, Van Eekelen M. Eﬃcient and formally proven reduction of large integers by small moduli.ACM Trans. Math.
+Softw..2010;37(2):16:1–16:21.
+13. Moller N, Granlund T. Improved division by invariant integers.IEEE T. Comput.. 2011;60(2):165–175.
+14. Knuth DE.Seminumerical Algorithms. The Art of Computer ProgrammingReading, MA: Addison-Wesley; 2nd ed.1981.
+15. Sinharoy B, Van Norstrand J.A., Eickemeyer R.J., et al. IBM POWER8 processor core microarchitecture.IBM Journal of
+Research and Development. 2015;59.
+How to cite this article: D. Lemire, O. Kaser, and N. Kurz, Faster Remainder by Direct Computation,2018.
