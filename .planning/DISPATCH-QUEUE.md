@@ -25,6 +25,15 @@ row the same turn.
 
 ## Running
 
+The author gave a green light on 2026-09-29, *"dispatch next stages for all, green light"*, after three concurrent runs the same day. Two run at once: one writer over the tools and one read-only review. Writers over docs and arcs wait, because a tool fix checks the docs they would be writing.
+
+| # | run | serves | writes |
+|---|---|---|---|
+| DT-01 | `pack.py` stops damaging rosters: unknown flags refused, one forward-only transition table, read-only bundle modes. Then DT-04, DT-03, DT-06 with DT-02, DT-05, DT-11, DT-09 with DT-08, DT-10 with DT-13, DT-12, one at a time, from `.planning/DOC-TOOLSET-REVIEW-2026-09.md`. DT-07 waits on the author | tooling | `tools/pack/pack.py`, the skills that call it |
+| O1b | optimization gaps re-run, with a dated results log at the top of its artifact | speed | `.planning/OPTIMIZATION-GAPS-2026-09.md` |
+
+## Earlier running rows
+
 | # | run | serves | writes |
 |---|---|---|---|
 | D1 | **done**, see Done. The documentation toolset reviewed for capability, correctness and ergonomics, report only, changes dispatched after the author reads it. Third live agent, by the author's one-off exception, 2026-09-29: *"i honestly wouldnt mind if you also dispatched a few documentation toolset improvements in another agent (must orient and research and report before we dispatch again for changes)"* | tooling | `.planning/DOC-TOOLSET-REVIEW-2026-09.md` |
