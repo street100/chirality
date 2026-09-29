@@ -3,7 +3,7 @@ node: arc-enforcement
 layer: navigation
 related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, decisions/decision-erased-word-level, decisions/decision-def-partition, index]
 status: current
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 # Arc: enforcement
@@ -36,8 +36,9 @@ Lane division and what enforces it: `docs/decisions/decision-lane-split.md`. Lan
 
 ## REQUIREMENTS
 
-Done when all six hold. Each is checkable, and the state beside it is measured
-2026-09-02.
+Done when all seven hold. Each is checkable, and the state beside it is measured
+2026-09-02. ⚑ **Six until 2026-09-29.** Requirement 7 came in from
+[[records/findings]] FD-55, [[records/enforcement-arc]] EN-36.
 
 1. **A capability sits at ENFORCED, or its ledger row says why it does not.**
    Inherited verbatim from [[goals/enforcement]]. The row-says-why half carries
@@ -467,16 +468,54 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    `enforcement/N21` is the row. Whether the requirement itself widens from
    row-quality to class-coverage is an author call, below.
 
+7. **Every rewrite the optimizer adopts carries evidence that its output means
+   what its input meant, and a rewrite without that evidence is refused.** An
+   optimization is a rewrite, and a rewrite is a claim the compiler makes about
+   its own work, which is [[goals/enforcement]] condition 2's subject
+   (`docs/goals/enforcement.md:29`). Requirement 4 asks whether the re-check
+   runs, and the re-check it names is `ck-fn`, which judges the residual's
+   shape: [[records/enforcement-arc]] EN-24 measured it accepting `dead`'s
+   residual while `dead` alone grades `tools/test/row.sh` at `33 passed, 9
+   failed`. So requirement 4 can close with a miscompiling pass inside it, and
+   this requirement is the half it leaves open.
+
+   Observed in two halves. First, a value check over a named corpus that
+   reddens on `dead` today and stays green on `fold`, so the defect this arc
+   already carries is the check's standing falsifier (`enforcement/N23`).
+   Second, each arm of `fold-prim` and `fold-cmp` checked once against the
+   operation the backend emits for it, over a boundary operand table, with a
+   mutant arm the table convicts (`enforcement/N24`).
+
+   State 2026-09-29: open, and nothing runs. `fold` is adopted unjudged at
+   `lib/lowering/compile-back.chiral:250`. The target evaluator the check would
+   use sits at zero importers and does not define three of the eight operations
+   `fold` rewrites: `eval-prim` (`lib/lowering/tal/eval.chiral:86-95`) carries
+   `+`, `-`, `*`, `/` and `%` and answers `(v-i64 0)` for anything else, while
+   `fold-cmp` (`lib/lowering/upper/optimize.chiral:68-73`) folds `=i`, `<i` and
+   `<=i`, which the lowering emits as `i-prim` (`lib/lowering/tal/erase.chiral:97-99`).
+   Read 2026-09-29 and never run.
+
+   ⚑ **Where the check runs is an author call.** PRB-70 ruled the checker
+   outside the compiler closure (`records/lenses/problems.md:986`),
+   `docs/decisions/decision-self-verification.md:175` names translation
+   validation *"per compilation"*, and goal condition 3
+   (`docs/goals/enforcement.md:34`) wants the re-check *"running in the shipping
+   compile"*. FD-55 prices a validator beside every compile at 1.1x to 4x of a
+   pass's own time, and no goal condition holds the compiler's own time. Either
+   placement satisfies this requirement, and `N23` records which one the author
+   takes. What a rewrite buys in emitted code belongs to [[goals/emitted-speed]],
+   and FD-55's `element:` field sorts each surveyed design into its two halves.
+
 ⚑ Requirement 3 is the one that gates the rest. E16's scope and E18's both
 stop short of it as written, so no element owns it.
 
 ## Roster
 
-Twenty-two rows. Five are the minted `E184-E188` band, four are older catalog
+Twenty-four rows. Five are the minted `E184-E188` band, four are older catalog
 rows this arc owns, three came from the 2026-09-06 native-tests ruling, five
 came from the TAL conformance findings on 2026-09-08, four came from the
-`diagnostics/L5` design on 2026-09-10, and `N22` came from `PRB-82` on
-2026-09-10. Groups: `attribution` is
+`diagnostics/L5` design on 2026-09-10, `N22` came from `PRB-82` on
+2026-09-10, and `N23` and `N24` came from FD-55 on 2026-09-29. Groups: `attribution` is
 what the compiler states about its own work, `floor` is the typed-assembly floor
 and its adoption, and `tooling` is the gate tier owning itself.
 
@@ -496,7 +535,7 @@ on another arc measured the hole is itself the finding
 | `enforcement/N4` | the `sk-defunc` blame channel: `closconv` states why it dropped a family | attribution | law | new | 1 | built | `E187` |
 | `enforcement/N5` | `arm-body`'s unreachable arm is reached, and an `$apply` arm returns a literal `0` | attribution | law | new | 3 | built | `E188` |
 | `enforcement/N6` | lowering: pure to tal, register and slot allocation, non-tail case outlining, preserve-check ⚑ **The title's fourth deliverable has a definition since 2026-09-08 and its second is measured absent.** `docs/decisions/decision-preserve-check.md` settles preserve-check as two rungs, T0 and T1, split by `ttype`'s `Maybe`, so the fourth deliverable is `N13` and `N14` together and giving `ck-prog` a call site does not discharge it: FD-20 and PRB-77 measured `ck-prog` as `(-> CEnv Prog TckR)` with both arguments target-level, which witnesses target well-typedness alone. LIM-19 measured the second: there is no register allocator, `nregs` (`lib/lowering/tal/ssa.chiral:40`) is a fresh-register high-water mark and `lib/lowering/mach/emit-core.chiral:533` hands it to `(mach-pro m)` for one stack slot per SSA register, so slot allocation is what is built | floor | primitive | new | 2 | open | `E16` |
-| `enforcement/N7` | the optimizer's re-check runs, or the element says why it does not | floor | tool | connect | 4 | open | `E17` |
+| `enforcement/N7` | the optimizer's re-check runs, or the element says why it does not ⚑ **2026-09-29: `dead`'s repair is re-admitted only under `enforcement/N23`.** EN-24 measured `ck-fn` accepting the miscompiling residual, so the re-check this row names cannot refuse it, and a repair re-admitted on that re-check alone is graded by an instrument already shown blind to the defect. `specialize` also runs it: its body ends in `(dead (fold ...))` at `lib/lowering/upper/optimize.chiral:256`, so adopting that pass, `emitted-speed/X10`, ships `dead` with it | floor | tool | connect | 4 | open | `E17` |
 | `enforcement/N8` | the typed-assembly checker and reference tal interpreter reach the shipping path ⚑ **The interpreter half is now named and it is half of a pair this row does not hold.** FD-20 and `docs/decisions/decision-preserve-check.md` place `lib/lowering/tal/eval.chiral` (187 L, zero importers) as T1's target evaluator; its source-side counterpart `lib/evidence/interp.chiral` (109 L, zero importers) is E15's and sits outside E18, and T1 buys nothing until both are required to agree. `N13` carries the pair. What stays here is the call site `ck-prog` has never had, PRB-15 | floor | tool | connect | 2 | open | `E18` |
 | `enforcement/N9` | effectful lowering: the effect row's tal shadow plus a preserve-check over the effect claim ⚑ **The phrase in this title is defined since 2026-09-08 and the effect side is unpriced.** `docs/decisions/decision-preserve-check.md` settles preserve-check as two rungs for E70 as well as E16, so this row owes an effect-side T0 and an effect-side T1. R7 of `.planning/TAL-CONFORMANCE-QUEUE.md`, the slice that asks what carries an effect claim at the target level, reads UNRUN, so no finding prices either rung and the row stays gated on `decision-effect-facets`. PRB-70's ruling repointed `lib/lowering/upper/eff-lower.chiral:20` at `lowering/tal/ssa` at `b613a8f`, so the module no longer carries the checker into the closure with it | floor | law | new | 2 | open | `E70` |
 | `enforcement/N10` | the gate tier becomes chirality: 10,719 lines of shell in `tools/test/` against 1,775 native, on the `prose-lint` precedent where the checks moved into a `.prog` and the shell kept only the front end | tooling | tool | new | 5 | open | `unminted` |
@@ -512,6 +551,8 @@ on another arc measured the hole is itself the finding
 | `enforcement/N20` | the census: which of the prelude's externs lower to a routine that reads or writes memory at a caller-supplied index, and which of those clamp. Committed, re-runnable, not a session probe. `docs/arcs/parts/diagnostics-L5.md` measured one entry of this population and named it `str-sub`; `lib/lowering/tal/erase.chiral:115` maps `str-sub` and `bslice` to the one routine `nb-bslice`, so the entry is two surface names. Measured here 2026-09-10, a **second** entry nothing in the tree records: `bget` (`lib/prelude/prelude.chiral:97`, `(-> Bytes I64 I64)`) reads at an unchecked index in both directions — `(bget (str->bytes "abc") 99)` returns 0 at exit 0, `(bget (str->bytes "abc") (- 0 999999))` is SIGSEGV. `bcat`, `brepeat`, `str-find-from` and the `nb-copy` callers are unmeasured. The row buys the size of the class rather than a repair: E176 owns `nb-bslice` and no element owns the rest, and without a number nobody can say whether `diagnostics/L5` closes the class or one of it | safety | tool | new | 1 | minted | `E198` |
 | `enforcement/N21` | every class in `docs/definitions/bug-classes.md` at state `none` or `partial` names either a gate that reddens or the reason none can exist, checked mechanically. The document is `status: draft`, holds 28 classes across six categories, and its own note says *"adding a class with no element is expected"*, so the state column is prose that nothing re-derives. Requirement 6 as written quantifies over gate rows that exist and cannot see a class with zero rows, which is how a primitive that reads before and after its buffer under two names sits at `412 passed, 0 failed`. GA-08 in [[records/gate-audit]] is the precedent for the second branch: a row left OPEN with the reason that no mutant of the discipline's meaning can exist until something consumes it. **This is not `diagnostics/L5`'s gate.** That run's §6 already sizes a phase over the three range cases in both surface names inside `E176`; what this row buys is that the next class at `none` cannot be silent the same way | tooling | tool | new | 6 | open | `unminted` |
 | `enforcement/N22` | a refinement atom names a value the program already has: `operand-ok?` (`lib/typing/kernel.chiral:1390-1394`) admits a saturated application of a total, `I64`-returning primitive over in-scope variables, and a `=>` value binder is visible to the refinement atoms of the seats that follow it. Today that function admits two value forms, `(v-lit-i k)` and a `(v-ne h sp)` whose spine is `nil` and whose head is `(n-var lvl)`, so `(refine I64 (<= (str-len s)))` is refused on two independent grounds: `load: unknown name s` from the binder scope, and `jg-refine-opnd-form` (`:1419`) on the operand's form whatever `s` is bound to. Both reproduce at HEAD, [[records/findings]] FD-26 item 1 and `docs/arcs/parts/enforcement-N18.md` §2. **`E41` is the wrong owner and its own SPEC is the measurement.** `docs/elements/specs/E41-region-types-SPEC.md` §1 scopes that element's arithmetic to a linear sum of atoms against an atom, `(<= (+ o s) cap)`, and lists *"the general/nonlinear refinement solver"* in its non-goals; §3 decision 2 resolves that E41 owns that sum and states the consumers it owns it for, regions and `E22`'s cursor and `E25`'s byte-cell faces. A saturated application falls outside that sum, and the binder scope carries no arithmetic at all, so `lib/typing/refine.chiral:7`'s arrow lands short of this row in both halves. That comment is compiler source inside the blob and is left standing: `PRB-79` and `PRB-82` carry the repoint and this row owns it. **The pair**: the primitive is the widened operand admission plus the binder scope, together with the term-keyed fact `Constraint` needs, its symbolic bounds being keyed by operand level today (`lib/typing/refine.chiral:14-19`); the consumer is `mem-put-checked` off its `(Pool n)` producer, which [[banks/memory]] §5 residue 3 calls *"the enabling sub-capability"* shared by two memory residues (`docs/banks/memory.md:362-366`), and the bound `enforcement/N18` §4 Shape 3 calls *"the enabling change, and it is what every other shape terminates at"*. FD-26 measured four of ten surveyed systems refusing this exact call on this one capability with no type-level index anywhere | safety | primitive | pair | 1 | open | `unminted` |
+| `enforcement/N23` | the per-rewrite value check: every rewrite `opt-tfns` adopts runs under `lib/lowering/tal/eval.chiral` (`tal-eval`, `:98`) on its input and its output over a named corpus of TFns and arguments, and a disagreement refuses the rewrite and keeps the input. [[records/findings]] FD-55 §1 (`records/findings.md:1485`) measured this as nanopass's evaluable-language check and as `N13`'s T1 run per pass, cheaper than `N13` because both sides are the same IR. **Its standing falsifier exists**: `dead` alone grades `tools/test/row.sh` at `33 passed, 9 failed` and `ck-fn` accepts its residual (EN-24), so a check that stays green on `dead` measures nothing. **It quantifies over every pass `opt-tfns` adopts**, so the passes [[arcs/emitted-speed-arc]] schedules enter under it: an inlining step (`emitted-speed/X11`) owes its residual equal to the `let` it replaces under the evaluator (FD-55 §2, `:1493`), and a `specialize` call site (`emitted-speed/X10`) owes the Lambdamix shape, the residual equal to the original with its static inputs supplied (§3, `:1507`). Their effort and size counters are emitted-speed's and carry no correctness weight, because an aborted attempt keeps the call. **Two preconditions, read 2026-09-29 and not run.** `eval-prim` (`eval.chiral:86-95`) defines five of the eight operations `fold` rewrites and answers `(v-i64 0)` for `=i`, `<i` and `<=i`, which the lowering emits (`lib/lowering/tal/erase.chiral:97-99`), so the check would disagree with every comparison `fold` makes; that repair is E18's interpreter half, `N8`, and `N13` rests on the same evaluator. The evaluator omits the sysface (`eval.chiral:11`), so the corpus is pure TFns. **Where it runs is the author's**: on every self-compile inside the closure, or as a gate over the census the way `prog/optimizer-census.prog` runs `ck-fn` outside it. [[records/author-calls]] carries the call | floor | tool | connect | 7 | open | `unminted` |
+| `enforcement/N24` | `fold`'s rules checked once: each arm of `fold-prim` (`lib/lowering/upper/optimize.chiral:60-67`, `+ - * / %`) and `fold-cmp` (`:68-73`, `=i <i <=i`) run against the operation the backend emits for the unfolded instruction, over a boundary operand table (0, 1, -1, the `I64` minimum and maximum, and their pairs), with a mutant arm the table convicts. This is Alive's route (FD-55 §4, `records/findings.md:1521`): a rule checked at its definition and re-run when the rule changes, at no cost per compile. `fold` is the one rewrite on the shipping path (`lib/lowering/compile-back.chiral:250`) and has been adopted unjudged since PRB-70 cut `re-check` on 2026-09-08. **The comparison is against the emitted instruction, because against `eval-prim` it agrees by construction**: both reach the same host operator per arm (`optimize.chiral:62-66`, `lib/lowering/tal/eval.chiral:90-94`), so an evaluator comparison can fail only on the guards, `fold-prim` refusing `b = 0` at `:65-66` where `eval-prim` divides unguarded at `:93`, and on the three comparison arms `eval-prim` does not define. The native side needs one arm folded and the same arm unfolded in one build: operands passed through a call are invisible to the fold, since a call kills the constant environment (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`) | floor | tool | new | 7 | open | `unminted` |
 
 ### Coverage
 
@@ -530,6 +571,9 @@ The decision added the value and the roster's own contract document was not
 updated. `docs/arcs/parts/diagnostics-L5.md` §5 reported the same stale line on
 the same day. Neither run edits that file; it is reported and owed.
 
+⚑ **7 by N23 and N24**, opened 2026-09-29 from [[records/findings]] FD-55
+([[records/enforcement-arc]] EN-36).
+
 **N13 through N17 came in on 2026-09-08 from the TAL conformance findings**,
 FD-15 through FD-20 and `docs/decisions/decision-preserve-check.md`. They split
 across the two requirements the property touches. Requirement 2 is coverage: a
@@ -543,6 +587,28 @@ wrong program (N13). `GAP-22` names N13 as its owner, and PRB-74, PRB-75 and
 PRB-76 name N15, N17 and N16.
 
 ## Resume state
+
+⚑ **2026-09-29: RESCOPE. An optimization enters this arc as a checked rewrite,
+and `N7`'s work divides.** Trigger: [[records/findings]] FD-55 (`3bf4fa7`), on
+the author's direction of the same day to build what the goals need and to
+optimize hard. Requirement 7 and rows `N23` and `N24` opened; `N7` amended so
+`dead` re-enters only under `N23`. FD-55's eight candidates, tested against the
+requirements and [[goals/enforcement]]: the per-pass value check is `N23`;
+`dead`'s repair is a property of `N7`, E17's row; the rule-level check for
+`fold` is `N24`; the inlining and specializer agreement obligations are `N23`
+quantified over `emitted-speed/X11` and `X10`, with their counters, budgets and
+the ancestor check staying there; the check's price is a placement call on
+`N23` and opens no row; region soundness is `E41`'s and `E22`'s typing half,
+rostered at `substrate-floor/SU15` and `SU16` and unseated; the lift is a
+language decision. Three calls went to [[records/author-calls]]: where the value
+check runs, whether a quantity-0 value may be lifted into emitted code, and
+which arc owns the region class. ⚑ **`emitted-speed/X10` calls `specialize`
+"meaning-preserving", and `specialize` ends in `dead`**
+(`lib/lowering/upper/optimize.chiral:256`), the pass that grades `33 passed, 9
+failed`. That arc lies outside this run's write surface, and the correction is owed there.
+[[records/enforcement-arc]] EN-36 carries the run. **`N23` is the row to design
+first**: its falsifier already exists and its first precondition is three
+comparison arms missing from one function, `eval-prim`.
 
 ⚑ **2026-09-23: a seventeenth `Term` former is absorbed silently by four walks,
 and no gate in this tier sees the class. No row opened.**
