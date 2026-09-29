@@ -27,13 +27,12 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| 2b | `pipeline-audit` SPEC on `E201` | error handling | the SPEC's audit section |
+| 2d | implement `E201`: register, instrument, fixtures, gate, phase 34 | error handling | `prog/shape-census.prog`, `tools/test/shape-census.sh`, `docs/definitions/shape-census.md` |
 
 ## Queued, in order
 
 | # | run | serves | waits on |
 |---|---|---|---|
-| 2d | implement `E201` | error handling | run 2b PASS |
 | 2c | check AL: an `xlat check` exit with no parseable line becomes a finding, the rule AM took in `fa4461a` | self-verification | nothing |
 | 3 | audit `EV1`'s design, then design `EV2` | error handling | nothing |
 | 4 | gate `K2` before it mints (was crypto queue 4b) | crypto | nothing for the audit, the `CRY` band for the mint |
@@ -70,5 +69,6 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| 2b | `E201` SPEC audit: PASS, nine corrections, the three EV3 flags carried as non-blocking | `edd9a6c` |
 | 2 | `E201` SPEC: fifteen register rows, phase 34, six gate rows and eight mutants, the allowed count held as one ratchet-down value | `92a51b2` |
 | 1 | check AM: `xlat unpinned` 2m37s to 2.5s, byte-identical to the old output, a pipefail race that let an unpinned quote pass removed, and a run that cannot finish now fails. Full `ledger-lint` 4m10s to 1m14s. H and M stay Vacuous on author calls | `fa4461a`, `PRB-99` |
