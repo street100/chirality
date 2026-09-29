@@ -29,10 +29,12 @@ The author gave a green light on 2026-09-29, *"dispatch next stages for all, gre
 
 | # | run | serves | writes |
 |---|---|---|---|
-| L0 | `revisit` `docs/arcs/lowering-and-emit-arc.md` against `.planning/LANGUAGE-PROFILE-2026-09.md`: rows for the compiler-pass fixes, so they can enter the pipeline | speed | the arc and its record |
+| LE28 | built, uncommitted in `lib/lowering/compile-back.chiral`: `C1 == C2`, and C2 compiling HEAD's blob reproduces `bin/chirality-bin` byte for byte, so the change is speed alone (0.81 s to 0.79 s, 385 to 358 MiB). **The suite did not complete**: the VM hit the host's open-file limit (Error 24) under the suite's file churn with a research run live. The orchestrator re-runs the suite alone when R1 returns, then promotes | speed | `lib/lowering/compile-back.chiral` |
 | R1 | research: the fastest proper algorithms for text primitives P1 to P4, and what each needs from the language (the author: text tools *"relevant because of like chirality native fzf and similar tools at best primitive. big optimization opportunities"*) | text tools, speed | pins, `FD-56` |
 
 ## Next, in order
+
+**Anything that runs the suite runs alone**, from 2026-09-29: three suite runs failed on Error 24 whenever a second agent was live. Only read-only work may overlap a run that does not touch the suite.
 
 The author asked on 2026-09-29 for the language fixes to go one by one through the full pipeline, vertically, *"until precomputing"*, which the author holds for discussion. Order by measured cost from the profile: erase once and `lower-defs` cons-then-reverse; name lookup through a map; constructor tags once; `str-split` by index and a linear byte builder; word-wide byte compare and copy (checked rewrite); constants once, region reset, inlining (waits on the author's `emitted-speed-arc.md` edits), register-resident values.
 
@@ -146,6 +148,7 @@ resume when `K4` is built.
 | E3c | `N10` designed, `status: blocked` on three author questions: a native judge floor built by the promoted binary, a native registration witness, and a port rule where shell and native agree row by row before one commit switches and deletes | `87b41e6` |
 | E3b | `N24` designed: each fold rule checked once against a bash reference from the definition, over eight operands including the imm32 edges, nine mutants, about 20 s as a phase, nothing in the closure. For the audit: its `mach.chiral:1005-1013` means `lib/lowering/x64/mach.chiral`, and three files carry that name | `15b80fa` |
 | E3a | `N23` designed, `status: blocked` on the placement call. `eval-prim` returns a made-up `0` for 35 of 40 lowered ops, so both sides of a rewrite agree on it. Self-compile 0.78 s, 394 MB | `ef3b1ba` |
+| L0 | lowering-and-emit RESCOPE: requirement 7 and `LE25` to `LE30`, the compiler's own passes | `cfc7add` |
 | E2 | enforcement RESCOPE: requirement 7, rows `N23` (per-rewrite value check) and `N24` (each fold arm checked once), `N7` amended so `dead` re-enters only under `N23`. Three calls registered, AK 40 to 43. `docs/arcs/README.md:165` is stale and sits in the author's dirty file | `95e8043` |
 | E1 | `FD-55`: every checked-rewrite design pays for its check per pass, once, or per compile, and each lands on a row the tree holds. Beating C by precomputing has evidence on general programs a generator specializes. Committed without the author's uncommitted FD-52 to FD-54 | `3bf4fa7` |
 | 3a | `E202` SPEC, phase 35, four census readings move | `dcb2b6d` |
