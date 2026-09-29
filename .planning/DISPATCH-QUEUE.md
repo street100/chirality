@@ -30,6 +30,7 @@ The author gave a green light on 2026-09-29, *"dispatch next stages for all, gre
 | # | run | serves | writes |
 |---|---|---|---|
 | none | the queue resumes at `LE25` (name lookup through maps), design stage. FD-57 leaves its design one question: whether per-pass `Map Str` is later replaced by id-keyed maps, which would make it an improper split | | |
+| KR1-KR4 | **a second session runs the crypto research pre-wave beside this queue, by the author's request, 2026-09-29:** *"id like if you could work parallel to the other active agent working on optimizations and enforcement"*. One agent live in that session at a time. It writes `.planning/sources/` pins and one `FD` row per run, never runs the suite, and leaves `records/findings.md` uncommitted while the author's FD-52 to FD-54 are. The list is in `docs/arcs/crypto-primitives-arc.md` §Resume state | crypto | `.planning/sources/`, `records/findings.md` |
 
 ## Next, in order
 

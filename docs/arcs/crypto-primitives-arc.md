@@ -381,6 +381,26 @@ scoping it late. `.planning/REACH-MODEL.md:524` names `N5` and not `E60`. One
 judgment, two homes and two tiers, which is the same shape as the `N10` boundary
 already carried to [[records/author-calls]]. Reported, not settled.
 
+⚑ **A research pre-wave runs first, from 2026-09-29.** The author, the same
+day: *"we're doing our own implementation and blending like, multiple things so
+its not actually keccak and it's also basically the spine of the crypto arch so
+needs thorough inspection"*. The permutation this arc builds is a family over
+separated step mappings with more than one published design as an instance, so
+the evidence behind any one published instance is an input to test and does not
+carry by default. Four `research` runs, serial, one `FD` row each, before the
+Keccak translation or any design audit:
+
+| # | question |
+|---|---|
+| KR1 | what security evidence survives when step mappings from different published permutations are combined, or a published permutation is re-parameterised off its analysed points, and what the designers of derived permutations published to justify theirs |
+| KR2 | the published small-state members, Xoodoo and its modes beside Keccak-p[200] and [400] and Ascon-p: parameters, analysis status, and what that settles or leaves open in `C2` |
+| KR3 | what analysing a new permutation in-house takes: the trail-bound and algebraic methods, the tools, the bounds designers publish per round count, and whether it runs CPU-only here |
+| KR4 | what the sponge, duplex, Farfalle and tree modes assume of the permutation, and what a permutation with no public cryptanalysis must show before those proofs apply to it |
+
+The crypto queue's vertical order and its pause, written 2026-09-28 in
+`ba709a9` with no author quote, do not bind this arc: it runs in waves per the
+2026-09-29 ruling, and the first slice is `K1` to `K4`.
+
 **Next, in order.** Audit that artifact at TRANSLATE level, which closes the loop
 on a gate that has never run against real work. Then `K1`, because everything
 under this arc rests on the permutation and its family is the one place the
