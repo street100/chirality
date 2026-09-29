@@ -27,7 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| 3 | `pipeline-audit` DESIGN on `EV1`, the result type, with the design's numbers re-read off `E201` | error handling | the design's audit section, and the mint on PASS |
+| 3a | `design-to-spec` on `E202`, `Result` | error handling | `docs/elements/specs/E202-*-SPEC.md` |
 
 ## Queued, in order
 
@@ -35,7 +35,9 @@ row the same turn.
 |---|---|---|---|
 | 2e | register `E201` as phase 34, and flip `EV12` to `built`. The diff is built and held, saved outside the tree | error handling | the R2 call below |
 | 2f | `revisit` `docs/arcs/parts/errors-as-values-EV12.md` §4b: a file past `MAX-DEPTH` is read and counted, and the design says it errors | error handling | nothing |
-| 3b | design `EV2`, `bind` and `map-err` over `EV1`'s type | error handling | run 3 |
+| 3c | `E202` SPEC audit, then implement | error handling | run 3a |
+| 3b | design `EV2`, `bind` and `map-err` over `E202`'s type | error handling | nothing |
+| 3d | amend `docs/arcs/errors-as-values-arc.md` to the `E201` readings: its 76, 47, 30 and 202 are hand counts, and requirement 5 reads 30 where the committed predicate reads 33 | error handling | nothing |
 | 4 | gate `K2` before it mints (was crypto queue 4b) | crypto | nothing for the audit, the `CRY` band for the mint |
 | 5 | write the Keccak translation, off the gather `9a46243` ran (was crypto queue 6) | crypto, `crypto-primitives/K1` | nothing |
 | 6 | `K2` spec and build, then `K3` and `K4`: one permutation, and hash, XOF, MAC and KDF as configurations of it | crypto | run 4, run 5 |
@@ -71,6 +73,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| 3 | `EV1` design audit PASS, eleven corrections, every wide-rule figure reproduced off `E201`. Minted `E202`, `Result` | `70c0191` |
 | 2c | check AL fails when `xlat check` reaches no verdict, three mutants run | `fe5fd88` |
 | 2d | `E201` built: register, instrument, fixtures and gate, 14 passed against the real index. Bare `Str` error arms read 33 where the arc said 30, a `Str` anywhere 49 where it said 47. Compiler blob unchanged. Not yet a suite phase | `4e9649f` |
 | 2b | `E201` SPEC audit: PASS, nine corrections, the three EV3 flags carried as non-blocking | `edd9a6c` |
