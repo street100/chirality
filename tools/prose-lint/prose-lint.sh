@@ -78,37 +78,68 @@ _scope() {
   fi
 }
 
-# ── the one pass: file <tab> check <tab> hits <tab> lines ────────────────────
+# ── the one pass ─────────────────────────────────────────────────────────────
+# One check table, read by every mode. `--summary`, `--worklist`, `--baseline`
+# and `--regress` read the totals; `prose-lint PATH...` reads the same pass's
+# per-hit records. A file is clean in one mode exactly when it is clean in the
+# other, and a total always equals its count of printed lines.
+#
 # Code is not prose. Fenced blocks are skipped whole and inline `spans` are
-# blanked before counting, so an identifier, a shell snippet or a check name
-# quoted in a doc is not a finding. Both the counter and the per-line reporter
-# read through this same filter, so a worklist number and its lines agree.
-_scan() {
+# blanked before counting, in every mode, so an identifier, a shell snippet or a
+# check name quoted in a doc is not a finding. The default scope applies to the
+# modes that take no path; a PATH argument scopes every mode the same way.
+#
+# A hit is a `gsub` match: leftmost-longest and non-overlapping within one
+# check, and each check counted independently of the others, so one span can
+# score under two checks. The per-line reporter marks the matches `gsub` made
+# and prints those, so it cannot count differently from the totals.
+#
+# output: file <tab> check <tab> hits <tab> lines, one row per nonzero pair;
+# with detail=1, first a row per hit: HIT <tab> file <tab> line <tab> check <tab> text
+_scan() { _pass 0 "$@"; }
+_hits() { _pass 1 "$@"; }
+_pass() {
+  local detail="$1"; shift
   [ "$#" -eq 0 ] && return 0
-  awk '
+  awk -v detail="$detail" '
+    BEGIN {
+      n = 0
+      name[++n] = "em-dash";         re[n] = "—"
+      name[++n] = "antithesis";      re[n] = ", (but |and |though |yet )?(not|never|rather than) [a-z]"
+      name[++n] = "copula-negation"; re[n] = "(is|are|was|were|isn.t|aren.t) not (just |merely |simply )?[a-z]"
+      name[++n] = "not-but";         re[n] = "not [a-z]+ but "
+      name[++n] = "parallel-no";     re[n] = "[Nn]o [a-z]+, no [a-z]+|[Nn]ever [a-z]+, never "
+      name[++n] = "slop-word";       re[n] = "[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|[Pp]lethora|[Mm]yriad|[Pp]ivotal"
+      name[++n] = "throat-clearing"; re[n] = "worth noting|important to note|[Ii]n essence|[Aa]t its core|[Ii]n other words"
+      name[++n] = "connective";      re[n] = "Furthermore|Moreover|Additionally,"
+      name[++n] = "self-reference";  re[n] = "as noted above|as mentioned above|see above|as (I|we) (said|noted|wrote)|the draft (above|below)|Notes on this"
+      name[++n] = "first-person";    re[n] = "( |^)I (wrote|added|proposed|changed|removed|kept)|( |^)my (row|draft|framing|first)"
+    }
     FNR == 1 { fence = 0 }
     /^[ \t]*```/ { fence = !fence; lines[FILENAME]++; next }
     fence { lines[FILENAME]++; next }
     {
-      $0 = $0
-      gsub(/`[^`]*`/, "", $0)
-      c["em-dash"]         = gsub(/—/, "&")
-      c["antithesis"]      = gsub(/, (but |and |though |yet )?(not|never|rather than) [a-z]/, "&")
-      c["copula-negation"] = gsub(/(is|are|was|were|isn.t|aren.t) not (just |merely |simply )?[a-z]/, "&")
-      c["not-but"]         = gsub(/not [a-z]+ but /, "&")
-      c["parallel-no"]     = gsub(/[Nn]o [a-z]+, no [a-z]+|[Nn]ever [a-z]+, never /, "&")
-      c["slop-word"]       = gsub(/[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|[Pp]lethora|[Mm]yriad|[Pp]ivotal/, "&")
-      c["throat-clearing"] = gsub(/worth noting|important to note|[Ii]n essence|[Aa]t its core|[Ii]n other words/, "&")
-      c["connective"]      = gsub(/Furthermore|Moreover|Additionally,/, "&")
-      c["self-reference"]  = gsub(/as noted above|as mentioned above|see above|as (I|we) (said|noted|wrote)|the draft (above|below)|Notes on this/, "&")
-      c["first-person"]    = gsub(/( |^)I (wrote|added|proposed|changed|removed|kept|kept)|( |^)my (row|draft|framing|first)/, "&")
-      for (k in c) tot[FILENAME SUBSEP k] += c[k]
+      s = $0
+      gsub(/`[^`]*`/, "", s)
+      for (i = 1; i <= n; i++) {
+        t = s
+        h = gsub(re[i], "\001&\002", t)
+        if (h == 0) continue
+        tot[FILENAME SUBSEP name[i]] += h
+        if (detail) {
+          while ((p = index(t, "\001")) > 0) {
+            t = substr(t, p + 1); q = index(t, "\002")
+            printf "HIT\t%s\t%d\t%s\t%s\n", FILENAME, FNR, name[i], substr(t, 1, q - 1)
+            t = substr(t, q + 1)
+          }
+        }
+      }
       lines[FILENAME]++
     }
     END {
       for (k in tot) {
         split(k, a, SUBSEP)
-        if (tot[k] > 0) printf "%s\t%s\t%d\t%d\n", a[1], a[2], tot[k], lines[a[1]]
+        printf "%s\t%s\t%d\t%d\n", a[1], a[2], tot[k], lines[a[1]]
       }
     }' "$@"
 }
@@ -150,26 +181,17 @@ cmd_summary() {
 }
 
 # ── per-line findings ────────────────────────────────────────────────────────
+# The same pass as the counter, printing each hit with its check. Every hit is
+# printed; pipe to `head` for less.
 cmd_lines() {
   local rc=0
   for f in $(_scope "$@"); do
     local hits
-    hits="$(awk '
-      FNR == 1 { fence = 0 }
-      /^[ \t]*```/ { fence = !fence; next }
-      fence { next }
-      {
-        s = $0
-        gsub(/`[^`]*`/, "", s)
-        while (match(s, /—|, (but |and |though |yet )?(not|never|rather than) [a-z]|(is|are|was|were) not (just |merely |simply )?[a-z]|not [a-z]+ but |[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|worth noting|important to note|[Ii]n essence|[Aa]t its core|Furthermore|Moreover|as noted above|as mentioned above|see above|as (I|we) (said|noted|wrote)|the draft (above|below)|Notes on this|( |^)I (wrote|added|proposed|changed|removed|kept)|( |^)my (row|draft|framing|first)/)) {
-          printf "%6d  %s\n", FNR, substr(s, RSTART, RLENGTH)
-          s = substr(s, RSTART + RLENGTH)
-        }
-      }' "$f" 2>/dev/null)"
+    hits="$(_hits "$f" | awk -F'\t' '$1 == "HIT" { printf "%6d  %-16s %s\n", $3, $4, $5 }' | sort -s -n -k1,1)"
     [ -z "$hits" ] && continue
     rc=1
     echo "=== $(echo "$f" | _rel)  ($(echo "$hits" | wc -l) hits) ==="
-    echo "$hits" | head -60
+    echo "$hits"
   done
   [ "$rc" -eq 0 ] && echo "prose-lint: clean"
   return $rc
