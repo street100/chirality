@@ -309,3 +309,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-11
 - owner:    none
 - from:     none
+
+### LIM-23 scriba's cursor desyncs on a line wider than the terminal, recorded 2026-08-14 and not re-observed
+
+- state:    to-plan
+- author:   unreviewed
+- note:     none
+- level:    goal
+- about:    [[goals/local-ai]] condition 2, lib/protocol/render.chiral:335-341
+- claim:    `docs/goals/local-ai.md:58-60` states condition 2 as *"TUI through scriba for full interaction."*, with every part of a run authored, composed, fired, watched and revised from `prog/scriba/`.
+- measured: **Read 2026-09-29 from the record, and the behaviour itself stays unobserved since 2026-08-14.** This run has no interactive terminal to observe it in. `.planning/archive/handoffs/MINI-RUSH-HANDOFF.md:323-324` sits in a snapshot its header at `:7` dates as implemented through 2026-08-14, and reads *"Remaining known limit: long-line cursor wrap desyncs"*. The same sentence names a cell-grid renderer as what it needs and flags it do-not-half-fix. The renderer today turns terminal wrap off. `lib/protocol/render.chiral:340` defines `ansi-nowrap`, and the comment at `:335-339` gives the reason: with wrap on, a line wider than the terminal wraps and the next line's `ansi-goto` overwrites the wrapped tail, and with wrap off the overflow clips at the right edge. `:465-468` states that nothing in `Rendering` reflows and that render-to-ansi never wraps by column. `docs/examples/S17-manas-token-streaming.md:356-358` calls that clip the known cursor/wrap limitation, and `:484-487` names a cell-grid renderer as the fix. So the recorded desync and today's clip may be one shortfall seen before and after `ansi-nowrap`, and which of the two a long line shows now is unmeasured. The grid exists as `E111`, `Grid` at `lib/protocol/grid.chiral:28`, SEEDED. `terminal/TM6` at `docs/arcs/terminal-arc.md:196` brings the grid to a root outside the samples and does not make the editor render through it. `docs/arcs/scriba-arc.md:47-62` states four requirements and none of them concerns line width, so a roster row there would serve no requirement.
+- evidence: `.planning/archive/handoffs/MINI-RUSH-HANDOFF.md:7`, `:323-324`, `lib/protocol/render.chiral:335-341`, `:465-468`, `docs/examples/S17-manas-token-streaming.md:356-358`, `:484-487`, `lib/protocol/grid.chiral:28`, `docs/arcs/terminal-arc.md:196`, `docs/arcs/scriba-arc.md:47-62`
+- checked:  2026-09-29
+- owner:    none
+- from:     none

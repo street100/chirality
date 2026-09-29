@@ -1402,3 +1402,17 @@
 - checked:  2026-09-28
 - owner:    `baseline-alignment/AL1`. What counts as an attributed quotation, a named source on the line or the pin-citation form `ID:LINE "span"`, is the author's call before (3) can close
 - from:     none
+
+### PRB-100 `dg-` is the largest `E154` workaround and no lens row holds it
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    E154, lib/typing/diag.chiral:27-30
+- claim:    `docs/elements/catalog.md:485` opens `E154`'s state cell with the defect *"hand-patched three times"*, and `docs/elements/ledger.md:151` opens its cell with *"the defect has bitten THREE times"*. `.planning/archive/handoffs/NAMING-SYSTEM-HANDOFF.md:116` states that `dg-` is untracked work regardless of any ruling and needs a row somewhere.
+- measured: **2026-09-29: `dg-` carries thirty defs, and the stale three is annotated in place beside its lead sentence.** The predicate is a `def` form whose name opens `dg-`, on a line with no comment before it: `grep -cE '^[^;]*\(def[a-z]* +\(?dg-' lib/typing/diag.chiral` returns 30, over 30 distinct names. Outside comments those names occur 117 times in the module and 9 times in three importers, `lib/surface/parse.chiral` 7, `lib/typing/kernel-core.chiral` 1 and `lib/lowering/compile-front.chiral` 1. `lib/typing/diag.chiral:27-30` names `E154` as the reason for the prefix. Both tracked cells already carry a correction dated 2026-09-24 after the stale sentence, which counts thirteen instances over sixteen files and names `dg-` at 30. The handoff line at `.planning/handoffs/HANDOFF-2026-09-29.md:136` reads the cells as still saying three, which holds for the lead sentences and misses the correction. The thirteen are the rows of the instance table at `docs/arcs/parts/lowering-and-emit-LE18.md:169-183`, one row per workaround the flat label space forced, and the sixteen are the distinct paths in its `where` column. Six rows carry a collision prefix, `tck-`, `dg-`, `su-`, `ms-`/`dd-`, `opt-` and `l-`. The other seven are two single renames, the `doc.chiral` renames, a dropped import, two rows of gate roots that import around the collision, and a clone pattern. Re-measured by the same predicate, each prefix count reproduces: `tck-` 11 names as 6 defs, 2 types and 3 constructors (`lib/lowering/tal/check.chiral:47-53`), `su-` 10, `ms-`/`dd-` 5, `opt-` 2, `l-find-ctor` 1, and all sixteen paths exist. What stands is two defects. The lead sentences of both cells still count three. The one register row that reaches `dg-` is the author call at `records/author-calls.md:114`, which asks whether the prefix is reverted, and no lens row carries it.
+- evidence: re-runnable: the grep above. `lib/typing/diag.chiral:27-30`, `:146`, `docs/elements/catalog.md:485`, `docs/elements/ledger.md:151`, `docs/arcs/parts/lowering-and-emit-LE18.md:169-185`, `.planning/archive/handoffs/NAMING-SYSTEM-HANDOFF.md:17-34`, `:116-117`, `records/author-calls.md:114`
+- checked:  2026-09-29
+- owner:    `E154`, designed at `docs/arcs/parts/lowering-and-emit-LE18.md`. Whether its build reverts `dg-` is the unreviewed call at `records/author-calls.md:114`. The two lead sentences are a doc edit that no roster row takes
+- from:     none

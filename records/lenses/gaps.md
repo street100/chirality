@@ -351,3 +351,31 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-18
 - owner:    none
 - from:     none
+
+### GAP-26 own-web condition 3, reach, has no arc, so the reach model's defects have no owner
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    goal
+- about:    [[goals/own-web]] condition 3
+- claim:    `docs/goals/own-web.md:43-45` states condition 3 as one instance getting a value from another with no global namespace and no authority, and marks it *"Unopened, and it holds no arc file."* Its design is `.planning/REACH-MODEL.md`, 852 lines, opened 2026-09-05 from a design session with the author.
+- measured: **2026-09-29: no arc covers reach.** `docs/arcs/` holds no reach arc file, and `grep -l REACH-MODEL docs/arcs/*.md` returns `docs/arcs/crypto-primitives-arc.md` alone, whose rows read from the model and claim none of its prose. Two open problem rows name defects in that prose, and both read `owner: none` for this reason. PRB-96 at `records/lenses/problems.md:1350` finds the anonymity claim at `.planning/REACH-MODEL.md:115-117` resting on a precedent its own pinned source refutes. PRB-97 at `:1364` finds a signature priced on one side of the fetch path while the model says it never touches that path. Their owner lines at `:1361` and `:1375` both say no roster row takes the document. The work can be scheduled today. `docs/decisions/decision-scope.md:67-68` splits `build-deferred` from `plan-deferred` and defers the build alone, so an arc, its roster and its designs are open to this condition while the build stays held. `docs/goals/own-web.md:84-87` records that hold as the scope ruling keeping condition 3 out of reach.
+- evidence: `docs/goals/own-web.md:43-45`, `:84-87`, `.planning/REACH-MODEL.md:1-10`, `records/lenses/problems.md:1350-1362`, `:1364-1376`, `docs/decisions/decision-scope.md:67-68`
+- checked:  2026-09-29
+- owner:    none. An arc opened under [[goals/own-web]] condition 3 would take it, and PRB-96 and PRB-97 would name that arc's rows
+- from:     none
+
+### GAP-27 the B3 test class quantifies over configurations, and no closed sum of profiles exists to quantify over
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    docs/definitions/testing-floors.md:463, lib/typing/kernel.chiral:60-61
+- claim:    `docs/definitions/testing-floors.md:463` reads *"B3 = 0 before this."* and treats B3 as a refusal-universality test, with `e170_refine_top` the first. `.planning/archive/handoffs/HANDOFF-VERIFICATION-ARC.md:210-215` corrected that labelling on 2026-08-26: B3 is quantification over a family of configurations, it is still 0, and its sibling gap is a profile axis with no negative coverage until a closed sum of profiles exists to quantify over. `docs/elements/ledger.md:156` carries the same reading in `E170`'s cell, which records B3 untouched and still 0 because a family of ports and a family of configurations are two axes.
+- measured: **2026-09-29: the cited line holds no profile, and the correction never reached it.** `docs/definitions/testing-floors.md` has no occurrence of `profile`, and `:463-469` still gives B3 the refusal-universality reading the handoff retired. The correction's own citation is gone: it names `RUNG1-CHECKLIST.md:310`, and `.planning/RUNG1-CHECKLIST.md` is 262 lines and holds no `B3`. The one profile type in the tree is a record. `lib/typing/kernel.chiral:60-61` declares `Profile` with the single constructor `mk-profile` over open fields, so any file can declare a new profile and the family is never closed. A sweep of every roster under `docs/arcs/`, the four lenses and `records/author-calls.md` for `B3`, `closed sum` and a configuration family found no owner. `binary-split/B3` at `docs/arcs/binary-split-arc.md:113` shares the spelling and concerns a front-end root. `binary-split/B4` at `:114` gives `.profile` an instance and a consumer and does not close the set.
+- evidence: `docs/definitions/testing-floors.md:463-469`, `.planning/archive/handoffs/HANDOFF-VERIFICATION-ARC.md:196-199`, `:210-215`, `docs/elements/ledger.md:156`, `lib/typing/kernel.chiral:60-61`, `docs/arcs/binary-split-arc.md:113-114`, `.planning/RUNG1-CHECKLIST.md`
+- checked:  2026-09-29
+- owner:    none
+- from:     none
