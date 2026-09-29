@@ -1,9 +1,9 @@
 ---
 node: records-lowering-and-emit
 layer: navigation
-related: [records/README, arcs/lowering-and-emit-arc, goals/self-hosting, status-ledger, index]
+related: [records/README, arcs/lowering-and-emit-arc, goals/self-hosting, goals/emitted-speed, status-ledger, index]
 status: current
-updated: 2026-09-18
+updated: 2026-09-29
 ---
 
 # Lowering and emit arc
@@ -30,3 +30,12 @@ files it cites is unverified.
 - evidence: docs/arcs/lowering-and-emit-arc.md:215, :295-302, :174, :197, records/author-calls.md:100, lib/lowering/x64/elf.chiral:6, :59-64, :70, docs/arcs/substrate-floor-arc.md:173, docs/arcs/runtime-loading-arc.md:208-212
 - checked:  2026-09-18
 - element:  none. The verdict is AMEND and both corrections are in place at `docs/arcs/lowering-and-emit-arc.md:215` and `:295-302`. The typed seal stays `E20`, `design` at `docs/elements/ledger.md:162`
+
+### LE-03 the compiler's own pass work had no roster row, and this arc takes it
+
+- state:    FIXED
+- claim:    `docs/arcs/lowering-and-emit-arc.md` served [[goals/self-hosting]] alone, refused [[goals/emitted-speed]] in its `goals:` field, and stated six requirements over reach, closure, identity, state claims, the label space and a second instrument. None reached what a compile spends inside the passes this arc rosters.
+- measured: the artifact's side moved. `.planning/LANGUAGE-PROFILE-2026-09.md` (`2131616`) measured a self-compile at 0.81 s and 385 MB on HEAD `96f40ee`, 56% of its self time a linear name scan by byte-wise `str-eq` inside this arc's passes, `ctor-tag` 13.8% inclusive, a second erase of every function at 70 ms and 29.0 MB, and an appending accumulator at 28.0 MB; it found a closed constant rebuilt per reference and no reachability prune, and gave six of its twelve fixes no owning row. The verdict is RESCOPE: requirement 7 is added, tied to [[goals/emitted-speed]] condition 4 over `bin/chirality-bin` short of that condition's owed budget, and rows `LE25` to `LE30` are drawn `open` and `unminted`, one per profile item 1, 2, 3, 4, 9 and 12. `LE25` to `LE28` move no emitted byte and carry the BUILD RULE as their whole check; `LE29` waits on `enforcement/N23`; `LE30` moves emitted bytes and falls outside the rewrites `opt-tfns` adopts. Items 5, 8 and 11 stay with `emitted-speed`, 6 with `text-tools`, 7 with `memory-discipline/M4` and 10 with `memory-discipline/M2`. Two things did not move: the first six requirements and rows `LE1` to `LE24`. [[goals/emitted-speed]] condition 4 still reads *"Unopened, and it holds no arc file"* at `docs/goals/emitted-speed.md:98`, which this run does not edit.
+- evidence: docs/arcs/lowering-and-emit-arc.md:21-33, :121-126, :147, :158-159, :217-232, :267-272, :337-347, .planning/LANGUAGE-PROFILE-2026-09.md §"Ranked language fixes", docs/goals/emitted-speed.md:92-104
+- checked:  2026-09-29
+- element:  none. The verdict is RESCOPE and the six rows it drew carry `unminted`

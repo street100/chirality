@@ -1,9 +1,9 @@
 ---
 node: arc-lowering-and-emit
 layer: navigation
-related: [arcs/README, goals/self-hosting, arcs/enforcement-arc, arcs/emitted-speed-arc, arcs/checker-core-arc, arcs/sys-face-arc, arcs/independent-judgment-arc, arcs/ownership-and-trust-arc, arcs/runtime-loading-arc, banks/verification, banks/erasure, banks/module, status-ledger, bug-classes, working-discipline, decisions/decision-scope, decisions/decision-work-ids, decisions/decision-backend, elements/catalog, records/homing-triage, records/findings, records/lenses/problems, records/author-calls, index]
+related: [arcs/README, goals/self-hosting, goals/emitted-speed, arcs/enforcement-arc, arcs/emitted-speed-arc, arcs/checker-core-arc, arcs/sys-face-arc, arcs/independent-judgment-arc, arcs/ownership-and-trust-arc, arcs/runtime-loading-arc, banks/verification, banks/erasure, banks/module, status-ledger, bug-classes, working-discipline, decisions/decision-scope, decisions/decision-work-ids, decisions/decision-backend, elements/catalog, records/homing-triage, records/findings, records/lenses/problems, records/author-calls, index]
 status: current
-updated: 2026-09-18
+updated: 2026-09-29
 ---
 
 # Arc: lowering-and-emit
@@ -15,12 +15,23 @@ updated: 2026-09-18
   is the table that names this arc as one of four subject arcs, opened
   2026-09-18, and `:92-100` gives it both conditions in one sentence: each
   "rosters the elements of that subject that no other arc rosters, and states
-  over the same code the reach and assertion requirements condition 4 names". No
-  second goal is served. [[goals/enforcement]], [[goals/emitted-speed]] and
-  [[goals/independent-judgment]] were each tested against this roster and each
-  is refused under *What this arc does not take*. **Conditions 1 to 3 are not
-  claimed**, and `LE24` states why while taking the phase that would gate them.
-- reserved element block: **none**. Twenty-three of the twenty-four rows carry an
+  over the same code the reach and assertion requirements condition 4 names".
+  **This arc claims none of conditions 1 to 3**, and `LE24` states why while taking the
+  phase that would gate them.
+- goals: [[goals/emitted-speed]], condition 4: "**A shipped native tool runs
+  inside a declared budget.**" `docs/goals/emitted-speed.md:92-104`. Requirement
+  7 carries it over one tool, `bin/chirality-bin`, which is shipped
+  (committed, [[goals/self-hosting]] condition 2) and native, and whose own
+  passes are this arc's code. The condition's budget is owed at `:99-102`, so
+  requirement 7 is observed by the work its rows remove, and no budget gate reads it.
+  ⚑ This field read *"No second goal is served. [[goals/enforcement]],
+  [[goals/emitted-speed]] and [[goals/independent-judgment]] were each tested
+  against this roster and each is refused"*. `.planning/LANGUAGE-PROFILE-2026-09.md`
+  measured on 2026-09-29 that 56% of a self-compile's self time is linear name
+  lookup inside this arc's passes and that no roster row owns it, so
+  [[goals/emitted-speed]] is taken for requirement 7 alone. The other two stay
+  refused.
+- reserved element block: **none**. Twenty-three of the thirty rows carry an
   element minted long before this file, and the arc-local ids per
   [[decisions/decision-work-ids]] spell the letters `LE`, for lowering and emit:
   `lowering-and-emit/LE1` upward. A grep for `LE` followed by a digit over
@@ -35,7 +46,8 @@ updated: 2026-09-18
 - checklist: [[records/lowering-and-emit]], prefix `LE`.
 - neighbour: [[arcs/emitted-speed-arc]], stated in full under *What this arc does
   not take*. That arc owns what emitted code costs. This arc owns whether the
-  emitter's own parts are reached and gated at all.
+  emitter's own parts are reached and gated at all, and since 2026-09-29 the
+  work those parts do per compile.
 
 ## Why this arc exists
 
@@ -106,6 +118,12 @@ tier. None is re-derived below.
 | G6 | the five outside, 944 lines: `tal/check` 312, `tal/eval` 187, `upper/eff-lower` 183, `listing/mach` 136, `tal/spec` 126. Three belong to elements this arc refuses and two are `G5`'s instruments | measured 2026-09-18 | SEEDED |
 | G6 | ⚑ **the fixpoint compare runs, holds, and no phase performs it.** Run 2026-09-18: the blob regenerates in 1.193 s at 17,797 lines, generation one builds in 0.765 s at 1,220,984 B and is byte-identical to the committed `bin/chirality-bin`, generation two builds from generation one in 0.766 s, and `cmp` reports `C1 == C2`. **Under three seconds of wall clock, end to end.** `tools/test/run-tests.sh:412` gives Phase 11's blocker as *"no committed blob artifact to cmp against"* | `docs/definitions/working-discipline.md:26-33`, run here | absent |
 | G6 | the root census, for the boundary rather than for a row: 103 roots carry `^(def compile-main` under `lib prog`, Phase 7's own selector, and **84 are named by no `tools/test/*.sh` at all**. Of the 84 the largest family is `prog/samples` at 50 | measured 2026-09-18 | absent |
+| G7 the passes' own work | every name environment in the front and back halves is an association list scanned with a byte-wise `str-eq`: `in?` and `assoc` in the elaborator, `assoc-core` in closure conversion, `emap-get` at the peel, `lits-mem` in prune, `sig-assoc` in lowering. `.planning/LANGUAGE-PROFILE-2026-09.md` measured 2026-09-29 that this scan is 56% of a self-compile's self time, 0.81 s and 385 MB at HEAD `96f40ee`. An ordered `Map` is built (`lib/prelude/map.chiral:19`) and the emitter already keys its labels by `Map Str I64` (`lib/lowering/mach/asm-reloc.chiral:68`) | `lib/surface/surface.chiral:88-91`, `lib/lowering/upper/closconv.chiral:470-471`, `lib/lowering/compile-front.chiral:92-93`, `lib/lowering/compile-back.chiral:90-91`, `lib/lowering/upper/lower.chiral:163-164` | IMPLEMENTED |
+| G7 | constructor tags found by name at every use: `ctor-tag` walks every data declaration and every constructor for each `i-con` (`:198`) and each case branch (`:254`), and `boxed-of` walks them again through `dname-of` (`:248`). `ctor-tag` is 13.8% inclusive and `boxed-of` 3.5%, measured 2026-09-29 | `lib/lowering/tal/erase.chiral:58-61`, `:64-65`, `:79-80` | IMPLEMENTED |
+| G7 | every function erased twice. `filter-erasable` erases each `TFn` as a dry run and keeps the `TFn` where the erase succeeded, discarding the `NFn` (`:192`); `erase-list` erases the survivors again after prune. The second erase is 70 ms and 29.0 MB of a self-compile, measured 2026-09-29, and a scratch prototype that keeps the `NFn` produced output `cmp` equal on three roots | `lib/lowering/compile-back.chiral:184-193`, `:127-128`, `:255-257` | IMPLEMENTED |
+| G7 | `lower-defs` appends each def's `TFn`s to the end of its accumulator, `(lapp-tfn acc ...)`, which copies the accumulator once per def: 28.0 MB of a self-compile, measured 2026-09-29 | `lib/lowering/compile-back.chiral:272` | IMPLEMENTED |
+| G7 | a closed top-level constant lowers to a function that rebuilds its value at every reference. `crossing-wraps` is a `(List (Pair Str Str))` def, 8,881 B of code allocating each pair and cons cell per call, and `erase-instr-onto` calls `(cw-lookup crossing-wraps op)` once per `i-prim`. 0.7% self time measured, its allocation unmeasured | `lib/lowering/tal/crossing-wraps.chiral:13`, `lib/lowering/tal/erase.chiral:220` | IMPLEMENTED |
+| G7 | no reachability prune. `prune-fix` drops a function only when a callee it names is missing, so every def in the blob that lowers is emitted whether or not the entry reaches it. `prog/prose-lint.prog:42`, `prog/paren-audit.prog:34` and `prog/shape-census.prog:55` import `lowering/compile-all` for `read-fd-all`, so each build lowers and emits the whole compiler: `prose-lint.prog` is 1,294,712 B, 0.846 s and 400 MB to build, measured 2026-09-29 | `lib/lowering/compile-back.chiral:213-219` | absent |
 
 Four facts from that table govern the roster. **The emit path is built and inside
 the closure**, so no row here writes a pass from nothing. **The verification of
@@ -126,6 +144,7 @@ deleted.
 | G4 the blob and the path | the two resolvers, the multi-root search path, and the flat label space beneath them. The resolvers are built and pinned by prose. The label space refuses a legal program and prints the wrong reason for it |
 | G5 the instruments | a second reading of what the emitter decided: the source-side interpreter, the target-side evaluator, the listing target, the second C seam, and the floor the corpus lands on. The floor is adopted. Every other instrument has zero importers |
 | G6 the gate | a phase that runs one of this arc's roots and judges what comes back, and a phase that rebuilds the artifact and compares it with itself. Neither exists. The second is measured above at under three seconds |
+| G7 the passes' own work | what a compile spends inside G1 to G4's passes: how a pass finds a name, whether a result is computed once, how an accumulator grows, how a closed constant is built, and which defs are lowered at all. Every pass works. About a quarter of a self-compile is the compile's own work, measured 2026-09-29, and the rest is lookup, recomputation and copying |
 
 ### The edges that run against the order
 
@@ -136,10 +155,15 @@ deleted.
 | G5 to G3 | against | the listing target exists to hold `emit-core` to target independence and has zero importers, so the claim that `G3`'s core is target-independent has no instrument behind it. Reading `G3` as settled because it is built and reached inverts what reached means here: reached by the compiler, judged by nothing |
 | G5 to G5 | out of this arc's reach | `LE23` is blocked on `LE22`'s Phase 12 and `LE21` is blocked on an author call. So the two instruments that would give the emit path a second independent reading cannot both be scheduled from here, and `LE20` half (a) is the one that can |
 | G1 to G3 | out of this arc's reach | the preserve-check over what lowering produces is `enforcement/N6`, `N13` and `N14`, and `lib/lowering/tal/check.chiral` stays outside the closure by PRB-70's ruling. A session giving `ck-prog` a call site from here is building another arc's row |
+| G7 to G6 | against | a G7 row that moves no emitted byte has the BUILD RULE as its whole check, and the phase that would run that check is `LE24`, unbuilt. Until it lands the check is the command block at `docs/definitions/working-discipline.md:26-33` run by hand per row |
+| G7 to other arcs | out of this arc's reach | `LE29` changes what every program emits, so it enters as a checked rewrite under [[arcs/enforcement-arc]] requirement 7, whose rows `enforcement/N23` and `N24` are `designed` and unbuilt. The fixes in the same profile that change emitted code in general or sit in a library stay with the owners *What this arc does not take* names |
 
 ## REQUIREMENTS
 
-Six, each with the observation beside it, measured 2026-09-18.
+Seven, each with the observation beside it, the first six measured 2026-09-18
+and the seventh 2026-09-29. `docs/arcs/README.md` asks for six or fewer;
+[[arcs/enforcement-arc]] and [[arcs/emitted-speed-arc]] carry seven, and the
+seventh here serves a second goal the first six do not.
 
 1. **Every root that verifies an element of this arc is dispatched by a phase.**
    Observed as the root's basename appearing in a `tools/test/*.sh` script some
@@ -190,11 +214,29 @@ Six, each with the observation beside it, measured 2026-09-18.
    `lib/lowering/tal/eval.chiral` 187 lines, `lib/evidence/interp.chiral` 109
    lines. The fourth was the C leg, parked 2026-09-01 with its code deleted.
 
+7. **A compile does each piece of its work once, finds a name without scanning
+   a list, and lowers only what the entry reaches.** Observed in six limbs, each
+   read off the code and confirmed by a sampled self-compile the way
+   `.planning/LANGUAGE-PROFILE-2026-09.md` §Log ran one: every name environment
+   that profile names is an ordered map; a constructor's tag and owning type are
+   each found once per compile; each function is erased once; no accumulator is
+   copied per element; a closed top-level constant is built once; and no def the
+   entry cannot reach is lowered. Today none of the six holds: the scan is 56%
+   of self time, `ctor-tag` 13.8% inclusive, the second erase 70 ms and 29.0 MB, the append accumulator
+   28.0 MB, `crossing-wraps` is rebuilt per erased `i-prim`, and a tool that
+   imports `lowering/compile-all` for one reader builds the whole compiler into
+   its ELF. A self-compile is 0.81 s and 385 MB at HEAD `96f40ee`. Serves
+   [[goals/emitted-speed]] condition 4 over `bin/chirality-bin`, short of that
+   condition's gate: its budget is owed (`docs/goals/emitted-speed.md:99-102`),
+   so this requirement states the work removed and the figure measured, and
+   sets no bar.
+
 ## Roster
 
-Twenty-four rows. Twenty-three carry an element minted long before this file and
-homed by no roster until now, and one is unminted. Ids spell `LE`. **This arc
-mints nothing and allocates no number.**
+Thirty rows. Twenty-three carry an element minted long before this file and
+homed by no roster until now, and seven are unminted: `LE24`, and `LE25` to
+`LE30`, drawn 2026-09-29 for requirement 7. Ids spell `LE`. **This arc mints
+nothing and allocates no number.**
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
@@ -222,20 +264,27 @@ mints nothing and allocates no number.**
 | `lowering-and-emit/LE22` | the test floor, adopted and without its own phase. `lib/evidence/test-floor.chiral` is 1,023 lines (`docs/elements/ledger.md:154` records 854 at `f9441e4`), imported by `prog/test-runner.prog:28`, which Phase 2 rebuilds from source every run and gates by exit code, so the adoption is real. **Phase 12 is the element's own phase and it does not run**: `tools/test/run-tests.sh:22` and `:413` print it NOT PORTED over *"the phase SCRIPT and its mutant machinery"*, while eighteen fixtures importing the floor sit under `tools/test/samples/` and no script names one. So the element reads `built` with its gate absent, and the floor's central claim, that a `Gate` cannot be constructed without a `MutRun`, is exercised by nothing the suite runs. **Wanted**: the Phase 12 script and the mutant machinery, dispatching the eighteen. **Blocking condition**: none measured | G5 | tool | bind | 1 | built | `E168` |
 | `lowering-and-emit/LE23` | the corpus landing on the floor, blocked on the phase above. Lanes C, D and E are done and their artifacts are in the tree: `e170_conv_eta`, `e170_infer_arms`, `e170_qtt_semiring` and `e170_refine_top` re-found four checker rules, `e170_port_twin` and six `e170_reject_*` roots carry the per-port map, and every one of them is a Phase 12 row. Lane B, re-expressing Phases 1 and 3 to 11 as `Suite` values, is untouched. **Every artifact of the three finished lanes is undispatched for the same reason `LE22` is**, and `checker-core/CK7` through `CK10` name four of them as the roots their rules already have and cannot get run. **Wanted**: Lane B, after Phase 12 exists. **Blocking condition**: `LE22`. `records/lenses/unspoken.md` UNS-46 admits the element as unhomed | G5 | tool | connect | 1 | open | `E170` |
 | `lowering-and-emit/LE24` | the fixpoint compare as a phase: build two generations from one regenerated blob, check each artifact non-empty, `cmp` them, and iterate when the first pair differs, because `docs/definitions/working-discipline.md:35-41` puts the first agreement at `C2 == C3` for a change that touched emission. **Measured 2026-09-18 and the cost objection does not survive it**: blob 1.193 s at 17,797 lines, generation one 0.765 s at 1,220,984 B and byte-identical to the committed binary, generation two 0.766 s, `C1 == C2`. Under three seconds against a suite that runs minutes. `tools/test/run-tests.sh:412` gives the blocker as *"no committed blob artifact to cmp against"* and the compare takes no committed blob: both its inputs are tracked, `bin/chirality-bin` and `bin/chirality-resolve.sh`'s `chirality_blob_file` at `:269`. **Wanted**: the phase, in Phase 11's slot beside `LE17`'s resolver half. **Blocking condition**: none measured. **The placement is an author call**, carried verbatim under FLAGs | G6 | tool | new | 1, 3 | open | `unminted` |
+| `lowering-and-emit/LE25` | name lookup through an ordered map, in every pass `.planning/LANGUAGE-PROFILE-2026-09.md` measured scanning a list: `in?` and `assoc` in the elaborator (`lib/surface/surface.chiral:88-91`), `assoc-core` in closure conversion (`lib/lowering/upper/closconv.chiral:470-471`), `emap-get` at the peel (`lib/lowering/compile-front.chiral:92-93`), `lits-mem` in prune (`lib/lowering/compile-back.chiral:90-91`) and `sig-assoc` in lowering (`lib/lowering/upper/lower.chiral:163-164`), each comparing keys with a byte-wise `str-eq`. The scan is 56% of a self-compile's self time, measured 2026-09-29, and removing it is 0.35 to 0.45 s per large compile, estimated from the pass shares. The map is built (`lib/prelude/map.chiral:19`) and the emitter already keys its labels by `Map Str I64` (`lib/lowering/mach/asm-reloc.chiral:68`). **Proper and smaller, pass by pass**: one pass's environment becomes a map inside that pass and no type that crosses a pass boundary changes, so each pass's conversion stands complete and none is replaced later. The row is done when every scan listed is a map, and whether it divides into one row per pass is the design stage's. **Wanted**: the listed environments as ordered maps. **Check**: no emitted byte moves, so the BUILD RULE is the whole check: generations built from one regenerated blob, each checked non-empty before `cmp`, converging at `C1 == C2` because emission is untouched, then the suite on the new binary before it is promoted (`docs/definitions/working-discipline.md:19-33`). A sampled self-compile re-reads requirement 7's figure, as a measurement that gates nothing. **Blocking condition**: none measured | G7 | primitive | connect | 7 | open | `unminted` |
+| `lowering-and-emit/LE26` | constructor tags and owning types resolved once per compile: two maps built from the data declarations before the erase, one from constructor name to tag and one from constructor name to owning type, read in place of `ctor-tag`'s walk over every declaration and constructor (`lib/lowering/tal/erase.chiral:58-61`, called at `:198` per `i-con` and `:254` per case branch) and `boxed-of`'s second walk through `dname-of` (`:79-80`, `:64-65`, called at `:248`). The env `erase-fn` takes (`:276`) grows from the data list to a record holding it and the two maps. `ctor-tag` is 13.8% inclusive and `boxed-of` 3.5%, measured 2026-09-29; after `LE27` about half remains, about 70 ms, estimated. **Wanted**: every tag and owner lookup in the erase read from the two maps. **Check**: no emitted byte moves, so the BUILD RULE is the whole check: generations built from one regenerated blob, each checked non-empty before `cmp`, converging at `C1 == C2` because emission is untouched, then the suite on the new binary before it is promoted (`docs/definitions/working-discipline.md:19-33`). A sampled self-compile re-reads requirement 7's figure, as a measurement that gates nothing. **Blocking condition**: none measured. Its gain is read after `LE27`, which removes the second erase's share of the same walk | G7 | primitive | new | 7 | open | `unminted` |
+| `lowering-and-emit/LE27` | each function erased once. `filter-erasable` (`lib/lowering/compile-back.chiral:184-193`) erases every `TFn` as a dry run and at `:192` keeps the `TFn` and drops the `NFn` it produced; `erase-list` (`:127-128`, called at `:257`) erases the survivors of `prune-fix` again. The `NFn` is kept beside its `TFn` through `prune-fix` (`:213-219`) and the kept `NFn`s are recovered by a paired walk in place of the second erase. `erase-fn` is pure in its two arguments and `prune-fix` keeps an in-order subsequence, so the paired walk returns what the second erase returns. Measured 2026-09-29 by a scratch prototype carrying this row and `LE28`: a self-compile 0.816 s to 0.723 s and 385 MB to 331 MB peak, the erase pass 70 ms and 29.0 MB to 0.2 ms and nothing, output `cmp` equal to `bin/chirality-bin`'s on the compiler blob, `e170_infer_arms` and `e173_matcher`. **Wanted**: one erase per function. **Check**: no emitted byte moves, so the BUILD RULE is the whole check: generations built from one regenerated blob, each checked non-empty before `cmp`, converging at `C1 == C2` because emission is untouched, then the suite on the new binary before it is promoted (`docs/definitions/working-discipline.md:19-33`). A sampled self-compile re-reads requirement 7's figure, as a measurement that gates nothing. **Blocking condition**: none measured | G7 | law | connect | 7 | open | `unminted` |
+| `lowering-and-emit/LE28` | `lower-defs` conses and reverses once. Each def's folded `TFn`s are appended to the end of the accumulator by `(lapp-tfn acc (opt-tfns (cons main extra)))` at `lib/lowering/compile-back.chiral:272`, which copies the accumulator once per def. They go onto a reversed accumulator instead and the `nil` arm (`:255`) reverses it once, so `filter-erasable` receives the same list in the same order. 28.0 MB and about 20 ms of a self-compile, measured 2026-09-29 in `LE27`'s prototype. `.planning/OPTIMIZATION-GAPS-2026-09.md` names it as item 7. **Wanted**: the accumulator built by `cons` and one reverse. **Check**: no emitted byte moves, so the BUILD RULE is the whole check: generations built from one regenerated blob, each checked non-empty before `cmp`, converging at `C1 == C2` because emission is untouched, then the suite on the new binary before it is promoted (`docs/definitions/working-discipline.md:19-33`). A sampled self-compile re-reads requirement 7's figure, as a measurement that gates nothing. **Blocking condition**: none measured | G7 | primitive | new | 7 | open | `unminted` |
+| `lowering-and-emit/LE29` | a closed top-level constant built once. A def with no parameters whose body is a closed value lowers today to a function that rebuilds the value at every reference: `crossing-wraps` (`lib/lowering/tal/crossing-wraps.chiral:13`) is 8,881 B of code allocating each pair and cons cell per call, and `erase-instr-onto` calls `(cw-lookup crossing-wraps op)` once per `i-prim` (`lib/lowering/tal/erase.chiral:220`); `linux-syscalls` (`lib/lowering/tal/target-linux.manifest:20`) is 8,273 B of code and `prim-table` (`lib/lowering/compile-back.chiral:62`) 1,071 B. The value is built once, into the data section or on first use, and which one is the design's. A closed constant has no linear component, so the linear and region rules hold unchanged. 0.7% self time measured 2026-09-29, its allocation unmeasured. **This row changes what every program emits**, so it enters as a checked rewrite under [[arcs/enforcement-arc]] requirement 7: `enforcement/N23`'s per-rewrite value check and `N24`'s rule table judge it, both `designed` and unbuilt, and the design owes how `N23`'s evaluator reads a value built into the data section. **Wanted**: each closed constant built once. **Check**: requirement 7's value check over this rewrite, then the BUILD RULE converging at `C2 == C3`, since the compiler's own blob holds constants the change reaches (`docs/definitions/working-discipline.md:35-41`), then the suite. **Blocking condition**: `enforcement/N23` | G7 | law | new | 7 | open | `unminted` |
+| `lowering-and-emit/LE30` | a reachability prune before lowering: the defs the program's entry reaches, walked over the calls each def makes, and only those lowered, erased and emitted. `prune-fix` (`lib/lowering/compile-back.chiral:213-219`) walks `block-calls` (`:159-166`) to drop a function whose callee is missing, and nothing drops a function nothing calls. `prog/prose-lint.prog:42`, `prog/paren-audit.prog:34` and `prog/shape-census.prog:55` import `lowering/compile-all` for `read-fd-all` alone, so each build lowers and emits the whole compiler: `prose-lint.prog` builds in 0.846 s and 400 MB to a 1,294,712 B ELF, measured 2026-09-29. Back half and emit are 52% of a large compile, so about 0.4 s per such build and about 1 s per suite, estimated. The profile sized a walk over `block-calls` beside `prune-fix` at a day; that walk runs after lowering and saves erase and emit only, so the design owes the call graph over the front's output, which is what keeps an unreached def from being lowered. The walk removes whole functions and rewrites no kept one, so it falls outside the rewrites `opt-tfns` adopts, which are all [[arcs/enforcement-arc]] requirement 7 reaches. **Wanted**: no def the entry cannot reach is lowered. **Check**: emitted bytes move wherever a blob holds an unreached def, so the BUILD RULE converging at `C2 == C3` (`docs/definitions/working-discipline.md:35-41`), the suite, and `prose-lint.prog`'s ELF size read before and after. **Blocking condition**: none measured | G7 | law | new | 7 | open | `unminted` |
 
 ### Coverage
 
-Run 2026-09-18 against the table above.
+Run 2026-09-18 against the table above, and re-run 2026-09-29 when `LE25` to
+`LE30` and requirement 7 were drawn.
 
 - **Every requirement is served.** 1 by `LE1` through `LE5`, `LE7` through
   `LE17`, `LE20`, `LE22`, `LE23` and `LE24`; 2 by `LE19` and `LE20`; 3 by `LE16`,
   `LE17` and `LE24`; 4 by `LE1`, `LE4`, `LE5`, `LE6`, `LE7`, `LE14`, `LE15`,
-  `LE17`, `LE18` and `LE19`; 5 by `LE18`; 6 by `LE19`, `LE20` and `LE21`. No
-  requirement is unscheduled.
-- **Every row serves a requirement.** All twenty-four name at least one. No row
+  `LE17`, `LE18` and `LE19`; 5 by `LE18`; 6 by `LE19`, `LE20` and `LE21`; 7 by
+  `LE25` through `LE30`. No requirement is unscheduled.
+- **Every row serves a requirement.** All thirty name at least one. No row
   is out of scope.
 - **Eighteen rows are `built`, one is `building`, four are `open` with an element
-  and one is `open` and unminted, and the requirements they serve are unmet,
+  and seven are `open` and unminted, and the requirements they serve are unmet,
   which is this arc's premise.** The state column is the pipeline's authority for
   a row; the elements are built and what the rows carry is the residue. Goal
   condition 4 is exactly the requirement that a built part run on a path
@@ -245,11 +294,16 @@ Run 2026-09-18 against the table above.
     mangling at emit, and no `tal` to C seam in a tree whose C backend was
     deleted on 2026-09-01. `LE24` is `new` because no phase in
     `tools/test/run-tests.sh` performs the compare and the procedure it wraps
-    lives only in a command block a person runs.
+    lives only in a command block a person runs. `LE26`, `LE28`, `LE29` and
+    `LE30` are `new` because §3's G7 rows measure each absent: no tag map, an
+    appending accumulator, a constant rebuilt per reference, and a prune that
+    drops only functions whose callee is missing.
   - `LE20` and `LE23` are `connect` because both halves exist and the join does
     not: two evaluators at zero importers that would have to be required to
     agree, and three finished corpus lanes whose artifacts wait on a phase
-    script.
+    script. `LE25` is `connect` because the ordered map is built and five
+    passes scan lists beside it, and `LE27` because the dry-run erase already
+    produces the `NFn` the second erase recomputes.
   - The other eighteen are `bind` because the code is built and what is absent is
     a surface onto it: a dispatch line for a root that already passes, or a state
     cell that matches the code. Each names the span measured.
@@ -280,6 +334,17 @@ Run 2026-09-18 against the table above.
   behaviour. `LE11` and `LE12` take the two elements where their roots already
   sit, and if the author prefers the speed seat both rows retire and the elements
   move with their ids intact.
+  **The seam with requirement 7 is whose code changes.** `LE25` to `LE28` and
+  `LE30` change the compiler's own passes and leave every other program's
+  emitted bytes as they were, apart from `LE30` dropping defs nothing reaches;
+  `LE29` changes how one lowering form is emitted and is taken because the form
+  is this arc's. A change to the code emitted for programs in general stays
+  there: in `.planning/LANGUAGE-PROFILE-2026-09.md` §"Ranked language fixes",
+  item 5, word-wide byte compare and copy as a new operation, item 8,
+  register-resident values (`B3` and the ratified `rd-packed`), and item 11,
+  inlining (`emitted-speed/X10` to `X12`). Items 6 and 7 are library rewrites
+  and 10 is a region reset, and they sit with `text-tools`,
+  `memory-discipline/M4` and `memory-discipline/M2`.
 - **The crossing surface.** [[arcs/sys-face-arc]] rosters nineteen crossing
   elements through `SF1` to `SF20` and owns the `.port` sheets, the linkage
   table, the carrier lifecycles and the module coordinate. `E123` is named in
@@ -464,6 +529,16 @@ above. Seventeen read `built`, `E168` reads `**built**` and is written `built`,
 `E94` reads `flight` and is written `building`, and `E154`, `E167`, `E169` and
 `E170` read `design`, which the roster's closed vocabulary has no word for and
 which is written `open`. No element of §CG is `superseded`.
+
+**Rescoped 2026-09-29 against `.planning/LANGUAGE-PROFILE-2026-09.md`
+(`2131616`).** Requirement 7 and rows `LE25` to `LE30` hold the profile's
+fixes to this arc's own passes, which had no owning row, and
+[[records/lowering-and-emit]] `LE-03` records the move. Thirty rows, seven
+requirements. **The first of them to design is `LE25`**, the profile's first
+rank and 56% of a self-compile, and its design stage decides whether it divides
+by pass. `LE27` and `LE28` are the two a scratch prototype already measured
+together at 11%, and neither waits on another row. `LE29` waits on
+`enforcement/N23`.
 
 **The row to take up first is `LE24`.** Its whole procedure ran here in under
 three seconds, both inputs are tracked, and it is the only row on this roster
