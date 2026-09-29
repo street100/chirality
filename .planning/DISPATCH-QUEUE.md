@@ -27,7 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
-| E3 | `element-design` on `enforcement/N11`, every gate row names a mutant that is actually run, checked mechanically | enforcement, wave 1 | `docs/arcs/parts/enforcement-N11.md` |
+| E3 | `element-design` on `enforcement/N12`, the TFn census as a gate | enforcement, wave 1 | `docs/arcs/parts/enforcement-N12.md` |
 
 ## Waves
 
@@ -63,8 +63,8 @@ bad"*, with speed rows added to the enforcement arc as checked rewrites.
 
 | # | run | waits on |
 |---|---|---|
-| E3 | `element-design` on each unminted, undesigned row, one run each: `N23` (designed), `N24` (designed), `N10` (designed), `N11` (running), `N12`, `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22` | E2 |
-| E4 | `revisit` folding every "needed and unrostered" discovery into its roster. Standing from E2: an interprocedural constant fact for `X10` (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`, emitted-speed condition 3 has no arc), a lift form for a quantity-0 value (waits on `records/author-calls.md:117`), and a region profiler (`records/findings.md:1527`). From `N23`: `eval-prim` covering fold's ops and `dead`'s path, answering `r-err` for an unknown op, and a literal table in `tal-eval` (`lib/lowering/tal/eval.chiral:86-95`, `:131`), owed a row in this arc, and a condition holding the compiler's own time and memory (`goal-open` amendment of emitted-speed, the author's). From `N24`: fold's static case dispatch, its third rule (`lib/lowering/upper/optimize.chiral:57`, `:124-136`), has no rule-level check. From `N10`: one gate port per script under its port rule; the build steps made native; the `prose-lint` switch that never happened (`tools/prose-lint/prose-lint.sh:86-113`, text-tools P1); `mkdir` and `unlink` crossings (zero-python); `run-filter` ignoring its input (`lib/runtime/proc.chiral:133-148`, tool-authority). Then every row E3 surfaces, and a design for each new row. Repeats until a pass adds nothing | E3 |
+| E3 | `element-design` on each unminted, undesigned row, one run each: `N23` (designed), `N24` (designed), `N10` (designed), `N11` (designed), `N12` (running), `N13`, `N15`, `N16`, `N17`, `N19`, `N21`, `N22` | E2 |
+| E4 | `revisit` folding every "needed and unrostered" discovery into its roster. Standing from E2: an interprocedural constant fact for `X10` (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`, emitted-speed condition 3 has no arc), a lift form for a quantity-0 value (waits on `records/author-calls.md:117`), and a region profiler (`records/findings.md:1527`). From `N23`: `eval-prim` covering fold's ops and `dead`'s path, answering `r-err` for an unknown op, and a literal table in `tal-eval` (`lib/lowering/tal/eval.chiral:86-95`, `:131`), owed a row in this arc, and a condition holding the compiler's own time and memory (`goal-open` amendment of emitted-speed, the author's). From `N24`: fold's static case dispatch, its third rule (`lib/lowering/upper/optimize.chiral:57`, `:124-136`), has no rule-level check. From `N10`: one gate port per script under its port rule; the build steps made native; the `prose-lint` switch that never happened (`tools/prose-lint/prose-lint.sh:86-113`, text-tools P1); `mkdir` and `unlink` crossings (zero-python); `run-filter` ignoring its input (`lib/runtime/proc.chiral:133-148`, tool-authority). From `N11`: the suite tally reads the five `N ok, M FAIL` phases or refuses a log with no tally (`tools/test/run-tests.sh:134-138`), 50 rows run uncounted; `mutant.sh`'s matrix under a phase (PRB-55); falsifiers for `profile-target.sh`'s 11 uncovered rows (PRB-56) and `linear-mint.sh`'s 22; the three held-out gates' mutants reach a run; E168's `Gate` carries one `MutRun` per gate (`lib/evidence/test-floor.chiral:641`). Then every row E3 surfaces, and a design for each new row. Repeats until a pass adds nothing | E3 |
 | E5 | reconcile the enforcement calls: the register rows at `records/author-calls.md` 83, 84, 85, 93, 95, 96, 97 and 98, then every call E3 and E4 raise | E4 |
 
 ## Held from before the waves
@@ -115,6 +115,7 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| E3d | `N11` designed, `status: blocked` on three author questions: trace lines per mutant and a witness that folds them. At least 34 counted rows have no run mutant, and the suite's 441 omits 50 rows that run | `644fc8d` |
 | E3c | `N10` designed, `status: blocked` on three author questions: a native judge floor built by the promoted binary, a native registration witness, and a port rule where shell and native agree row by row before one commit switches and deletes | `87b41e6` |
 | E3b | `N24` designed: each fold rule checked once against a bash reference from the definition, over eight operands including the imm32 edges, nine mutants, about 20 s as a phase, nothing in the closure. For the audit: its `mach.chiral:1005-1013` means `lib/lowering/x64/mach.chiral`, and three files carry that name | `15b80fa` |
 | E3a | `N23` designed, `status: blocked` on the placement call. `eval-prim` returns a made-up `0` for 35 of 40 lowered ops, so both sides of a rewrite agree on it. Self-compile 0.78 s, 394 MB | `ef3b1ba` |
