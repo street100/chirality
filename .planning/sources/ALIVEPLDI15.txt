@@ -1,0 +1,1295 @@
+=== page 1 ===
+Provably Correct Peephole Optimizations with Alive
+Nuno P. Lopes
+Microsoft Research, UK
+nlopes@microsoft.com
+David Menendez Santosh Nagarakatte
+Rutgers University, USA
+{davemm,santosh.nagarakatte}@cs.rutgers.edu
+John Regehr
+University of Utah, USA
+regehr@cs.utah.edu
+Abstract
+Compilers should not miscompile. Our work addresses problems
+in developing peephole optimizations that perform local rewriting
+to improve the efﬁciency of LLVM code. These optimizations are
+individually difﬁcult to get right, particularly in the presence of un-
+deﬁned behavior; taken together they represent a persistent source
+of bugs. This paper presents Alive, a domain-speciﬁc language for
+writing optimizations and for automatically either proving them cor-
+rect or else generating counterexamples. Furthermore, Alive can
+be automatically translated into C++ code that is suitable for inclu-
+sion in an LLVM optimization pass. Alive is based on an attempt
+to balance usability and formal methods; for example, it captures—
+but largely hides—the detailed semantics of three different kinds
+of undeﬁned behavior in LLVM. We have translated more than 300
+LLVM optimizations into Alive and, in the process, found that eight
+of them were wrong.
+Categories and Subject Descriptors D.2.4 [ Programming Lan-
+guages]: Software/Program Veriﬁcation; D.3.4 [ Programming
+Languages]: Processors—Compilers; F.3.1 [ Logics and Meanings
+of Programs]: Specifying and Verifying and Reasoning about Pro-
+grams
+Keywords Compiler Veriﬁcation, Peephole Optimization, Alive
+1. Introduction
+Compiler optimizations should be efﬁcient, effective, and correct—
+but meeting all of these goals is difﬁcult. In practice, whereas efﬁ-
+ciency and effectiveness are relatively easy to quantify, correctness
+is not. Incorrect compiler optimizations can remain latent for long
+periods of time; the resulting problems are subtle and difﬁcult to
+diagnose since the incorrectness is introduced at a level of abstrac-
+tion lower than the one where software developers typically work.
+Although mainstream compilers use well-known algorithms, bugs
+arise due to misunderstandings of the semantics, incomplete reason-
+ing about boundary conditions, and errors in the implementation of
+the algorithms.
+Random testing [ 15, 23, 37] is one approach to improve the
+correctness of compilers; it has been shown to be effective, but
+of course testing misses bugs. A stronger form of insurance against
+compiler bugs can be provided by a proof that the compiler is correct
+[Copyright notice will appear here once ’preprint’ option is removed.]
+(compiler veriﬁcation) or a proof that a particular compilation was
+correct (translation validation). For example, CompCert [ 17] uses
+a hybrid of the two approaches. Unfortunately, creating CompCert
+required several person-years of proof engineering and the resulting
+tool does not provide a good value proposition for many real-world
+use cases: it implements a subset of C, optimizes only lightly, and
+does not yet support x86-64 or the increasingly important vector
+extensions to x86 and ARM. In contrast, production compilers
+are constantly improved to support new language standards and
+to obtain the best possible performance on emerging architectures.
+This paper presents Alive: a new language and tool for devel-
+oping correct LLVM optimizations. Alive aims for a design point
+that is both practical and formal; it allows compiler writers to spec-
+ify peephole optimizations for LLVM’s intermediate representation
+(IR), it automatically proves them correct with the help of satisﬁa-
+bility modulo theory (SMT) solvers (or provides a counterexample),
+and it automatically generates C++ code that is similar to hand-
+written peephole optimizations such as those found in LLVM’s in-
+struction combiner (InstCombine) pass. InstCombine transforma-
+tions perform numerous algebraic simpliﬁcations that improve efﬁ-
+ciency, enable other optimizations, and canonicalize LLVM code.
+Alive is inspired by previous research on domain speciﬁc lan-
+guages for easing compiler development such as Gospel [ 36],
+Rhodium [16], PEC [13], Broadway [9], and Lola [21]. Alive’s main
+contribution to the state of the art is providing a usable formal meth-
+ods tool based on the semantics of LLVM IR, with support for auto-
+mated correctness proofs in the presence of LLVM’s three kinds of
+undeﬁned behavior, and with support for code generation.
+While testing LLVM using Csmith, we found InstCombine to
+be the single buggiest ﬁle [37]; it was subsequently split into multi-
+ple ﬁles totaling about 15,600 SLOC. A similar pass, InstSimplify,
+contains about 2,500 more SLOC. An example InstCombine trans-
+formation takes (x⊕− 1) +C and turns it into (C− 1)−x where
+x is a variable,⊕ is exclusive or, and C is an arbitrary constant
+as wide as x. If C is 3333, the LLVM input to this InstCombine
+transformation would look like this:
+%1 = xor i32 %x, -1
+%2 = add i32 %1, 3333
+and the optimized code:
+%2 = sub i32 3332, %x
+The LLVM code specifying this transformation1 is 160 bytes of
+C++, excluding comments. In Alive it is:
+%1 = xor %x, -1
+%2 = add %1, C
+=>
+%2 = sub C-1, %x
+1 http://llvm.org/viewvc/llvm-project/llvm/tags/
+RELEASE_350/final/lib/Transforms/InstCombine/
+InstCombineAddSub.cpp?view=markup#l1148
+1 2015/4/27
+=== page 2 ===
+prog :: = pre nl stmt =⇒ stmt
+stmt :: = stmt nl stmt | reg = inst | reg = op |
+store op, op | unreachable
+inst :: = binop attr op, op | conv op |
+select op, op, op | icmp cond, op, op |
+alloca typ, constant | bitcast op |
+inttoptr op | ptrtoint op |
+getelementptr op,..., op | loadop
+cond :: = eq | ne | ugt | uge | ult |
+ule | sgt | sge | slt | sle
+typ :: = isz | typ∗ |[ sz × typ ]
+binop :: = add | sub | mul | udiv | sdiv |
+urem | srem | shl | lshr | ashr |
+and | or | xor
+attr :: = nsw | nuw | exact
+op :: = reg | constant | undef
+conv :: = zext | sext | trunc
+Figure 1. Partial Alive syntax. Types include arbitrary bitwidth
+integers, pointers typ∗, and arrays [sz× typ] that have a statically-
+known size sz .
+The Alive speciﬁcation is less than one third the size of the
+LLVM C++ code. Moreover, it was designed to resemble—both
+syntactically and semantically—the LLVM transformation that it
+describes. The Alive code is, we claim, much easier to understand,
+in addition to being veriﬁable by the Alive tool chain. This trans-
+formation illustrates two forms of abstraction supported by Alive:
+abstraction over choice of a compile-time constant and abstraction
+over bitwidth.
+So far Alive has helped us discover eight previously unknown
+bugs in the LLVM InstCombine transformations. Furthermore, we
+have prevented dozens of bugs from getting into LLVM by mon-
+itoring the various InstCombine patches as they were committed
+to the LLVM subversion repository. Several LLVM developers are
+currently using the Alive prototype to check their InstCombine trans-
+formations. Alive is open source.2
+2. The Alive Language
+We designed Alive to resemble the LLVM intermediate represen-
+tation (IR) because our user base—the LLVM developers—is al-
+ready familiar with it. Alive’s most important features include its
+abstraction over choice of constants, over the bitwidths of operands
+(Sections 2.2 and 3.2), and over LLVM’s instruction attributes that
+control undeﬁned behavior (Sections 2.4 and 3.4).
+2.1 Syntax
+Figure 1 gives the syntax of Alive. An Alive transformation has the
+formA =⇒ B, whereA is the source template andB is the target
+template. Additionally, a transformation may include a precondition.
+Since Alive’s representation, like LLVM’s, is based on directed
+graphs of instructions in SSA format [ 5], the ordering of non-
+dependent instructions, and the presence of interleaved instructions
+not part of a template, are irrelevant.
+Alive implements a subset of LLVM’s integer and pointer in-
+structions; since InstCombine does not modify control ﬂow, Alive
+does not support branches. 3 In contrast to LLVM, Alive provides
+an explicit assignment instruction for copying temporaries (i.e.,
+%tmp1 = % tmp2). Alive supports LLVM’s nsw, nuw, and
+2 The latest version of Alive can be found at https://github.com/
+nunoplopes/alive.
+3 An experimental version of Alive supports branches, but does not yet
+support indirect branches and loops.
+Pre: C1 & C2 == 0 && MaskedValueIsZero(%V, ∼C1)
+%t0 = or %B, %V
+%t1 = and %t0, C1
+%t2 = and %B, C2
+%R = or %t1, %t2
+=>
+%R = and %t0, (C1 | C2)
+Figure 2. An example illustrating many of Alive’s features.((B∨
+V )∧ C1)∨ (B∧ C2) can be transformed to (B∨ V )∧
+(C1∨ C2) when C1∧ C2 = 0 and when the predicate
+MaskedValueIsZero (V,¬C1) is true, indicating that an LLVM
+dataﬂow analysis has concluded thatV∧¬C1 = 0. %B and %V
+are input variables.C1 andC2 are constants. %t0, %t1, and %t2
+are temporaries. This transformation is rooted at %R.
+exact instruction attributes that weaken the behavior of integer
+instructions by adding undeﬁned behaviors.
+Scoping. The source and target templates must have a common
+root variable that is the root of the respective graphs. The remaining
+variables are either inputs to the transformation or else temporary
+variables produced by instructions in the source or target template.
+Inputs are visible throughout the source and target templates. Tem-
+poraries deﬁned in the source template are in scope for the precondi-
+tion, the target, and the remaining part of the source from the point
+of deﬁnition. Temporaries declared in the target are in scope for the
+remainder of the target. To help catch errors, every temporary in
+the source template must be used in a later source instruction or be
+overwritten in the target, and all target instructions must be used in
+a later target instruction or overwrite a source instruction.
+Constant expressions. To allow algebraic simpliﬁcations and con-
+stant folding, Alive includes a language for constant expressions. A
+constant expression may be a literal, an abstract constant (e.g., C in
+the example on the previous page), or a unary or binary operator
+applied to one or two constant expressions. The operators include
+signed and unsigned arithmetic operators and bitwise logical opera-
+tors. Alive also supports functions on constant expressions. Built-in
+functions include type conversions and mathematical and bitvector
+utilities (e.g., abs(), umax(), width()).
+2.2 Type System
+Alive supports a subset of LLVM’s types. The types in Alive
+are a union of integer types (I ={i1, i2, i3,... } for bitwidth
+1,2,3,... ), pointer types (P ={t∗| t∈T} ), array types (A =
+{[n xt]|n∈ N∧t∈T} ), and the void type. LLVM also deﬁnes
+the set of ﬁrst-class types (FC =I∪P ), which are the types that
+can be the result of an instruction. The set of all types is therefore
+T =FC∪A∪{ void}. Alive does not yet support ﬂoating point,
+aggregate types such as records and vectors, and labels.
+Unlike LLVM, variables in Alive can be implicitly typed and do
+not need to have ﬁxed bitwidth. An Alive transformation is poly-
+morphic for all the types that satisfy the constraints imposed by the
+instructions. The Alive framework automatically checks the correct-
+ness of the transformation for all feasible types. A transformation
+can optionally provide types for the input operands of the instruc-
+tions, which then constrain the set of feasible types. The typing rules
+for the Alive language are shown in Figure 3.
+2.3 Built-In Predicates
+Peephole optimizations frequently make use of the results of
+dataﬂow analyses. Alive makes these results available using a col-
+lection of built-in predicates such as isPowerOf2(), MaskedVal-
+ueIsZero(), and WillNotOverﬂowSignedAdd(). The analyses pro-
+ducing these results are trusted by Alive: verifying their correctness
+2 2015/4/27
+=== page 3 ===
+varΓ, %x :t⊣ %x :t
+Γ⊣ %x :t Γ⊣ %y :t t ∈I binopΓ⊣binop %x, %y :t
+Γ⊣ %x :t t< :t′
+extendΓ⊣extend %x :t′
+Γ⊣ %x :t t ′ <:t truncΓ⊣ trunc %x :t′
+Γ⊣ %x :t t ∈I t′∗∈P inttoptr
+Γ⊣ inttoptr %x :t′∗
+Γ⊣ %x :t∗ t′∈I ptrtoint
+Γ⊣ ptrtoint %x :t′
+Γ⊣ %x :t Γ⊣ %y :t t ∈I∪P icmpΓ⊣ icmpcond %x, %y : i1
+Γ⊣ %c : i1 Γ⊣ %x :t Γ⊣ %y :t t ∈FC selectΓ⊣ select %c, %x, %y :t
+Γ⊣ %x :t t,t ′∈FC width(t) = width(t′)
+bitcastΓ⊣ bitcast %x :t′
+t∈FC allocaΓ⊣ allocat :t∗ Γ⊣ %x :t
+n
+z }| {
+@... @t :t′ Γ⊣ %y1...n :I gep
+Γ⊣ getelementptr %x, %y1,..., %yn :t′∗
+Γ⊣ %x :t∗ t∈FC loadΓ⊣ load %x :t
+Γ⊣ %x :t t ∈FC Γ⊣ %y :t∗ storeΓ⊣ store %x, %y : void
+unreachΓ⊣ unreachable : void pointer@t∗ :t
+array
+@[n xt] :t
+Figure 3. Typing rules of the Alive language. The bitwidth of a type is given by the functionwidth(.) (e.g., width(i3) = 3 and width(i5∗)
+is the pointer size, say 32 bits). A typet is smaller than a typet′, writtent< :t′, if both are integer types and the bitwidth oft is smaller than
+that oft′ (i.e.,t <: t′ ifft,t ′∈I∧ width(t) < width(t′)). The extension operations are represented by extend∈{ zext, sext}. The
+type dereferencing operator is denoted by @.
+Instruction Deﬁnedness Constraint
+sdiva,b b⁄= 0∧ (a⁄= INT MIN∨b⁄=−1)
+udiva,b b⁄= 0
+srema,b b⁄= 0∧ (a⁄= INT MIN∨b⁄=−1)
+urema,b b⁄= 0
+shla,b b< u B
+lshra,b b< u B
+ashra,b b< u B
+Table 1. The constraints for Alive’s arithmetic instructions to be
+deﬁned.<u is unsigned less-than.B is the bitwidth of the operands
+in the Alive instruction. INT MIN is the smallest signed integer
+value for a given bitwidth.
+is not within Alive’s scope. Predicates can be combined with the
+usual logical connectives. Figure 2 shows an example transforma-
+tion that includes a built-in predicate in its precondition.
+2.4 Well-Deﬁned Programs and Undeﬁned Behaviors
+LLVM has three distinct kinds of undeﬁned behavior. Together,
+they enable many desirable optimizations, and LLVM aggressively
+exploits these opportunities.
+Undeﬁned behavior in LLVM resembles undeﬁned behavior in
+C/C++: anything may happen to a program that executes it. The
+compiler may simply assume that undeﬁned behavior does not oc-
+cur; this assumption places a corresponding obligation on the pro-
+gram developer (or on the compiler and language runtime, when a
+safe language is compiled to LLVM) to ensure that undeﬁned op-
+erations are never executed. An instruction that executes undeﬁned
+behavior can be replaced with an arbitrary sequence of instructions.
+When an instruction executes undeﬁned behavior, all subsequent
+instructions can be considered undeﬁned as well.
+Table 1 shows when Alive’s arithmetic instructions have deﬁned
+behavior, following the LLVM IR speciﬁcation. For example, the
+shl instruction is deﬁned only when the shift amount is less than
+the bitwidth of the instruction. With the exception of memory access
+instructions (discussed in Section 3.3), the Alive instructions not
+listed in Table 1 are always deﬁned.
+The undeﬁned value (undef in the IR) is a limited form of
+undeﬁned behavior that mimics a free-ﬂoating hardware register
+than can return any value each time it is read. Semantically,undef
+stands for the set of all possible bit patterns for a particular type; the
+Instruction Constraints for Poison-free execution
+add nswa,b SExt(a, 1) + SExt(b, 1) = SExt(a +b, 1)
+add nuwa,b ZExt(a, 1) + ZExt(b, 1) = ZExt(a +b, 1)
+sub nswa,b SExt(a, 1) - SExt(b, 1) = SExt(a−b, 1)
+sub nuwa,b ZExt(a, 1) - ZExt(b, 1) = ZExt(a−b, 1)
+mul nswa,b SExt(a,B )× SExt(b,B ) = SExt(a×b,B )
+mul nuwa,b ZExt(a,B )× ZExt(b,B ) = ZExt(a×b,B )
+sdiv exacta,b (a÷b)×b =a
+udiv exacta,b (a÷ub)×b =a
+shl nswa,b (a<<b )>>b =a
+shl nuwa,b (a<<b )>>u b =a
+ashr exacta,b (a>>b )<<b =a
+lshr exacta,b (a>> u b)<<b =a
+Table 2. The constraints for Alive’s arithmetic instructions to be
+poison-free.>>u and÷u are the unsigned shift and division op-
+erations.B is the bitwidth of the operands in the Alive instruction.
+SExt(a,n) sign-extendsa byn bits; ZExt(a,n) zero-extendsa byn
+bits.
+%z  = xor i8 undef, undef %x = add i8 0, undef
+ %y = add i8 0, undef
+%z = xor i8 %x , %y  
+%z  = or i8 1, undef
+(a) (b)
+(c)
+br undef, l1, l2
+(d)
+%z  = {0, 1, 2, ..., 255} %z  = {0, 1, 2, ..., 255}
+%z  = {1,3,...,253,255} can branch to 
+either l1 or l2
+Figure 4. Illustration of the semantics of undef. The top half of
+each part of the ﬁgure presents an LLVM instruction; the bottom
+half indicates the possible results. In (a) and (b) the compiler can
+choose %z to have any value in [0, 255]. In (c), %z takes an odd
+8-bit value. In (d) the compiler can choose either branch.
+3 2015/4/27
+=== page 4 ===
+compiler is free to pick a convenient value for each use ofundef to
+enable aggressive optimizations. For example, a one-bit undeﬁned
+value, sign-extended to 32 bits, produces a variable containing either
+all zeros or all ones. Figure 4 illustrates the semantics of undef.
+Poison values, which are distinct from undeﬁned values, are
+used to indicate that a side-effect-free instruction has a condition
+that produces undeﬁned behavior. When the poison value gets
+used by an instruction with side effects, the program exhibits true
+undeﬁned behavior. Hence, poison values are deferred undeﬁned
+behaviors: they are intended to support speculative execution of
+possibly-undeﬁned operations. Poison values cannot be represented
+in the IR, but rather are ephemeral effects of certain incorrect
+operations. Poison values taint subsequent dependent instructions;
+unlike undef, poison values cannot be untainted by subsequent
+operations.
+Instruction attributes modify the behavior of some LLVM in-
+structions. The nsw attribute (“no signed wrap”) makes signed
+overﬂow undeﬁned. For example, this Alive transformation, which
+is equivalent to the optimization of (x+1)>x to 1 in C/C++ where
+x is a signed integer, is valid:
+%1 = add nsw %x, 1
+%2 = icmp sgt %1, %x
+=>
+%2 = true
+An analogous nuw attribute exists to rule out unsigned wrap.
+If an add, subtract, multiply, or shift left operation with an nsw or
+nuw attribute overﬂows, the result is a poison value. Additionally,
+LLVM’s shift right and divide instructions have anexact attribute
+that requires an operation to not be lossy. Table 2 provides the
+constraints for the instructions to be poison-free. Developers writing
+Alive patterns can omit instruction attributes, in which case Alive
+infers where they can be safely placed.
+2.5 Memory
+LLVM’salloca instruction reserves memory in the current stack
+frame and returns a pointer to the allocated memory block. Heap
+memory, in contrast, is handled indirectly: there is no instruction in
+the IR for heap allocations; it is handled by library functions such
+as calls to malloc.
+The getelementptr instruction supports structured address
+computations: it uses a sequence of additions and multiplications
+to compute the address of a speciﬁc array element or structure ﬁeld.
+For example, an array dereference in C such as val = a[b][c]
+can be translated to the following LLVM code:
+%ptr = getelementptr %a, %b, %c
+%val = load %ptr
+Unstructured memory accesses are supported by theinttoptr
+instruction. The load and store instructions support typed mem-
+ory reads and writes. Out-of-bounds and unaligned loads and stores
+result in true undeﬁned behavior, but a load from valid, uninitialized
+memory returns an undef.
+3. Verifying Optimizations in Alive
+The Alive checker veriﬁes a transformation by automatically en-
+coding the source and target, their deﬁnedness conditions, and the
+overall correctness criteria into SMT queries. An Alive transforma-
+tion is parametric over the set of allfeasible types: the concrete types
+satisfying the constraints of LLVM’s type system. When computing
+feasible types, we place an upper limit on the width of each variable
+and constant (64 bits, by default).
+3.1 Checking Correctness for a Feasible Type
+In the absence of undeﬁned behavior in the source or target of an
+Alive transformation, we can check correctness using a straightfor-
+ward equivalence check: for each possible combination of values of
+input variables, the value of any variable that is present in both the
+source and target must be the same. However, checking equality of
+the values produced both in the source and target is not sufﬁcient to
+prove correctness in the presence of any of the three kinds of unde-
+ﬁned behavior described in Section 2.4. We use reﬁnement to reason
+about optimizations in the presence of undeﬁned behavior, follow-
+ing prior work [17]. The target of an Alive transformation reﬁnes
+the source template if all the behaviors of the target are included in
+the set of behaviors of the source.
+When an instruction can produce or use an undef value, we
+need to ensure that the value produced in the target is one of
+the values that the source would have produced. In other words,
+an undef in the source represents a set of values and the target
+can reﬁne it to any particular value. Poison values are handled
+by ensuring that an instruction in the target template will not
+yield a poison value when the source instruction did not, for any
+speciﬁc choice of input values. In summary, we check correctness
+by checking (1) the target is deﬁned when the source is deﬁned, (2)
+the target is poison-free when the source is poison-free, and (3) the
+source and the target produce the same result when the source is
+deﬁned and poison-free.
+3.1.1 Veriﬁcation Condition Generation
+To automatically check correctness of an Alive transformation,
+we need to encode the values produced, the precondition, and the
+correctness conditions into SMT. The semantics of the LLVM
+and Alive integer instructions closely match bitvector operations
+provided by SMT solvers. The encoding of these instructions is
+therefore straightforward and we omit the details. Predicates used
+in preconditions are also easily encoded as predicates over bitvector
+expressions in SMT.
+For each instruction, Alive computes three SMT expressions: (1)
+an expression for the result of the operation (except for instructions
+returning void), (2) an expression representing the cases for which
+the instruction has deﬁned behavior, and (3) an expression repre-
+senting the cases for which the instruction does not return a poison
+value. The veriﬁcation condition generator (VC Gen) generates a
+constraint for each instruction representing the cases for which it is
+deﬁned (see Table 1). The VC Gen aggregates deﬁnedness condi-
+tions over the def-use chains, such that the deﬁnedness condition for
+each instruction is the conjunction of the deﬁnedness condition of
+the instruction and the deﬁnedness conditions of all of its operands.
+In summary, deﬁnedness constraints ﬂow through def-use chains.
+The same applies to poison-free constraints.
+Encoding undef values in SMT. An undef value represents a
+set of values of a particular type. The VC Gen encodes eachundef
+value as a fresh SMT variable and adds it to a set U. Variables
+inU are then appropriately quantiﬁed (see Section 3.1.2) over the
+correctness conditions to check reﬁnement.
+Encoding precondition predicates in SMT. The encoding of
+predicates depends on whether the underlying analysis is precise
+or is an over- or under-approximation. For example, the predicate
+isPower2 is implemented in LLVM with a must-analysis, i.e.,
+when isPower2(%a) is true, we know for sure that%a is a power
+of two; when it is false, no inference can be made. The VC Gen en-
+codes the result of isPower2(%a) using a fresh Boolean variable
+p, and a side constraintp =⇒ a⁄= 0∧a & (a− 1) = 0.
+The encoding of may-analyses is similar. The VC Gen creates
+a fresh variable p to represent the result of the analysis and a
+side constraint of the form s =⇒ p where s is an expression
+4 2015/4/27
+=== page 5 ===
+summarizing the may-analysis based on the inputs. For example, a
+simpliﬁed encoding of mayAlias(%a,%b) isa =b =⇒ p.
+Most analyses in LLVM are precise when their inputs are
+compile-time constants. Therefore, we encode the result of these
+analyses precisely when we detect such cases (done statically by
+the VC Gen).
+3.1.2 Correctness Criteria
+Letφ be the precondition of a transformation,δ be the deﬁnedness
+constraint of the source instruction,ρ be the poison-free constraint,
+ι the result of executing a source instruction, and δ,ρ, and ι the
+respective constraints for the target.
+LetI be the set of input variables from the source template
+including constants, P be the set of all fresh variables p used to
+encode approximating analyses in the precondition, and U andU
+be the sets of variables created by the VC Gen to encode undef
+values of the source and target, respectively.
+Letψ≡φ∧δ∧ρ. A transformation speciﬁed in Alive is correct
+iff all of the following constraints hold for each instruction:
+1.∀I,P,U∃U :ψ =⇒ δ
+2.∀I,P,U∃U :ψ =⇒ ρ
+3.∀I,P,U∃U :ψ =⇒ ι =ι
+The ﬁrst constraint states that the target operation should be
+deﬁned whenever the source operation is deﬁned. The second
+constraint states that the target operation can only produce poison
+values for the inputs that the source operation does. Finally, the
+third constraint states that the source and target instructions should
+produce the same result whenever the precondition holds and the
+source operation is deﬁned and poison-free.
+The correctness conditions are universally quantiﬁed over the
+undef values in the target and existentially quantiﬁed over the
+undef values from the source. If the target has anundef value, we
+check that the correctness conditions hold for all possible values that
+a particular undef can take. In contrast, if the source has anundef
+value, undef can be instantiated with any value that enables the
+validity of the correctness conditions. Hence an existential quantiﬁer
+is used for undef variables in the source, which occurs after the
+universal quantiﬁer for the target undef variables. In summary,
+for each set of input variables, and undef values in the target, we
+can pick any value for the undef in the source that satisﬁes the
+correctness conditions.
+We now state the correctness criteria for an Alive transformation:
+T H E O R E M 1 (Soundness). If conditions 1–3 hold for every in-
+struction in an Alive transformation (without memory operations)
+and for any valid type assignment (as given by the type system of
+Figure 3), then the transformation is correct.
+3.1.3 Illustration of Correctness Checking
+We illustrate the veriﬁcation condition generation and correctness
+conditions with two examples.
+Pre: C1 u>= C2
+%0 = shl nsw i8 %a, C1
+%1 = ashr %0, C2
+=>
+%1 = shl nsw %a, C1-C2
+The precondition for the above transformation isφ≡c1≥u c2,
+wherec1 andc2 are bitvector variables corresponding to constants
+C1 and C2 in the transformation. The source instruction that pro-
+duces %0 is deﬁned when shl is deﬁned (c1 <u 8: the SMT vari-
+ablec1 is unsigned less than 8, the bitwidth of the operands). Like-
+wise, instruction %1 is deﬁned when ashr is deﬁned (c2 <u 8)
+and its operands are deﬁned. Hence, the deﬁnedness conditions for
+the source areδ%0≡c1 <u 8 andδ%1≡c1 <u 8∧c2 <u 8.
+The source instruction %0 is poison-free if no signed overﬂow
+occurs in the shift operation (because of the nsw attribute). The
+source instruction %1 can only be poison if any of its operands is
+poison (since it has no nsw or nuw attributes). Hence, constraints
+for poison-free execution in the source are ρ%0≡ ρ%1≡ (a <<
+c1) >> c1 = a, wherea is the SMT variable for input %a in the
+source.
+Similarly, the deﬁnedness and poison-free constraints for the
+target areδ%1≡c1−c2 <u 8 andρ%1≡ (a<< (c1−c2))>>
+(c1−c2) = a respectively. We trivially have δ%0 = δ%0 and
+ρ%0 =ρ%0. The constraints for the values produced by the source
+and target areι%0≡ι%0≡a << c1,ι%1 = (a << c1)>> c2,
+andι%1 = a << (c1−c2). There are no undef values in this
+transformation.
+Letψ≡φ∧δ%1∧ρ%1. To ensure correctness, we need to check
+the validity of the following formulas:
+1.∀a,c1,c2 :ψ =⇒ δ%1
+2.∀a,c1,c2 :ψ =⇒ ρ%1
+3.∀a,c1,c2 :ψ =⇒ ι%1 =ι%1
+Since we have that δ%0 = δ%0,ρ%0 = ρ%0, andι%0 = ι%0,
+the corresponding formulas for %0 are trivially valid, and therefore
+we do not present them.
+To check validity, we check if the negation of the above formulas
+are unsatisﬁable; that is, we check if (1)∃a,∃c1,∃c2 :ψ∧¬δ, (2)
+∃a,∃c1,∃c2 :ψ∧¬ρ, and (3)∃a,∃c1,∃c2 :ψ∧ι⁄=ι are unsat.
+Example with undef. We illustrate veriﬁcation condition gener-
+ation and correctness checking for undef with the following exam-
+ple:
+%r = select undef, i4 -1, 0
+=>
+%r = ashr undef, 3
+In this example, both the source and target are always deﬁned
+and poison-free. However, there are undef values both in the
+source and the target. The VC Gen creates an SMT variable u1
+for the undef in the source and a variable u2 for the undef in
+the target. Since both the source and the target are always deﬁned
+and poison-free, checking reﬁnement amounts only to checking that
+the values produced by the instructions are equal. The constraint
+for the value produced by the source is ι≡ ite(u1 = 1,−1, 0),
+and for the target is ι≡ u2 >> 3 (where ite is the standard if-
+then-else SMT expression). We check the validity of the following
+formula:∀u2∃u1 : ι = ι. Since the formula is valid, the Alive
+transformation is correct. Note the use of universal quantiﬁcation of
+the target undef (u2) and existential quantiﬁcation of the source
+undef (u1).
+3.1.4 Generating Counterexamples
+When Alive fails to prove the correctness of a transformation, it
+prints a counterexample showing values for inputs and constants,
+as well as for each of the preceding intermediate operations. We
+bias the SMT solver to produce counterexamples with bitwidths
+such as four or eight bits. It is obvious that large-bitwidth examples
+are difﬁcult to understand; we also noticed that, perhaps counter-
+intuitively, examples involving one- or two-bit variables are also
+not easy to understand, perhaps because almost every value is a
+corner case. Figure 5 shows an example.
+3.2 Enumerating Feasible Types
+Alive transformations are parametric over types. Hence, Alive must
+verify a transformation for all valid type assignments. We use
+5 2015/4/27
+=== page 6 ===
+Pre: C2 % (1 << C1) == 0
+%s = shl nsw %X, C1
+%r = sdiv %s, C2
+=>
+%r = sdiv %X, C2 / (1 << C1)
+ERROR: Mismatch in values of i4 %r
+Example:
+%X i4 = 0xF (15, -1)
+C1 i4 = 0x3 (3)
+C2 i4 = 0x8 (8, -8)
+%s i4 = 0x8 (8, -8)
+Source value: 0x1 (1)
+Target value: 0xF (15, -1)
+Figure 5. Alive’s counterexample for the incorrect transformation
+reported as LLVM PR21245
+an SMT solver to perform type inference and to enumerate all
+possible type assignments (up to a bound of 64 bits for integers).
+We create SMT variables to represent types and create typing
+constraints between these variables according to the typing rules
+in Figure 3. Given this setup, enumerating all valid typings amounts
+to enumerating all (non-partial) models of an SMT formula. We
+solve the formula to obtain a model for the typing constraints and
+check the correctness of the Alive transformation for the typing.
+We explore all valid type assignments using the standard technique
+of iteratively strengthening the formula with the negation of each
+model until the formula becomes unsatisﬁable.
+3.3 Memory
+We encode memory-handling instructions precisely in order
+to support arbitrary pointer arithmetic through structured (i.e.,
+getelementptr) and unstructured (i.e.,inttoptr) means. We
+use the SMT array theory to describe our encoding. Memory is rep-
+resented by an array from the pointer length (e.g., 32 or 64 bits) to 8
+bits, and is represented bym. Both the source and target start with
+an arbitrary, but equal, memory arraym0.
+3.3.1 Veriﬁcation Condition Generation
+Alloca. Stack memory allocation is handled in two steps. First, a
+variable is created to represent the pointer resulting from an alloca
+instruction. This variable is constrained (1) to be different than
+zero, (2) to have a value that is properly aligned (e.g., a pointer
+to a 32-bit integer must be a multiple of 4), (3) to enforce that
+the allocated memory range does not overlap with other allocated
+regions (i.e., for two pointers p,p′ and allocated sizessz,sz′, we
+havep′≥u p+sz∨p′+s′≤u p), and (4) to ensure that the allocated
+memory range does not wrap around the memory space (i.e., for a
+pointer p and allocated size sz, we have p ≤u p +sz). These
+constraints are added toα: a collection of constraints corresponding
+to stack memory allocation from alloca instructions. Second, the
+allocated region is marked as uninitialized because reading from an
+uninitialized memory location returns an undef value in LLVM.
+The VC Gen accomplishes this by creating a fresh bit vector with
+length equal to the allocation size and stores it to the memory region
+at the pointer value. This fresh variable is added to setU. With this
+encoding, different loads of the same uninitialized memory location
+will return the same arbitrary value.
+The size of the allocated memory block is equal to the number
+of allocated elements multiplied by the aligned allocation size of
+each element type. The allocation size of a type is computed by ﬁrst
+rounding it to the nearest byte boundary (e.g., the allocation size
+of i5 is 8 bits). Then, the size is rounded to the next valid ABI
+alignment. For example, in common x86 ABIs, the alignment for
+integers is usually 32 bits, and therefore the aligned allocation size
+of i5 would be 32 bits. Veriﬁcation is done parametrically on the
+ABI. If the allocation size exceeds the memory size, the operation
+has undeﬁned behavior.
+Load. Since memory is encoded as a byte array, load instructions
+are encoded as a concatenation of multiple array loads ( select op-
+eration with the array theory). We use concat and extract oper-
+ations from the bitvector theory to concatenate multiple bits and
+to extract a set of bits, respectively. For example, the instruction
+%v = load i16 * %p is encoded asv = concat(select(m,p +
+1), select(m,p )) (assuming a little-endian architecture, like x86).
+For loads of values whose size is not a multiple of 8 bits, anextract
+is added to the last loaded byte to trim its size. It is undeﬁned be-
+havior if a load operation is not within any known memory block, if
+the alignment of a load is larger than the alignment of the accessed
+memory block, or if the pointer is null.
+Store. The encoding of store instructions is similar to that of the
+load instructions. Stored values are sliced into 8-bit fragments and
+then stored to the memory array. If undeﬁned behavior has been
+observed previously, the memory is not modiﬁed. For example,
+the instruction store %v, %p yields the memory conﬁguration
+ite(δ,m ′′,m ), withm′ = store(m,p, extract(v, 7, 0)) andm′′ =
+store(m′,p + 1, extract(v, 15, 8)).
+Input memory blocks. An input variable in an Alive transforma-
+tion can be a pointer. Such pointers can point to memory blocks
+that have been allocated without using the alloca instruction. Alive
+transformations can transform load and/or store instructions through
+these input pointer variables. Since we do not know anything about
+the memory regions referenced by these pointers (e.g., their size and
+alignment, whether they have been initialized before, whether any
+of the input pointers alias, etc.), none of the constraints described for
+the alloca instructions apply here. However, the VC Gen adds con-
+straints that ensure that these pointers cannot alias pointers returned
+from alloca instructions (added toα).
+Deﬁnedness constraint propagation with memory operations.
+Deﬁnedness constraints ﬂow through the def-use chain. However,
+with the addition of memory operations, deﬁnedness constraints are
+also propagated by instructions with side-effects (e.g., stores and
+volatile loads). To propagate deﬁnedness constraints, the VC Gen
+has to maintain the order between instructions with side-effects.
+These instructions create sequence points. At each sequence point,
+the deﬁnedness constraints of the instructions and its operands are
+recorded and are also propagated to any subsequent instruction.
+Hence, the target can only perform limited reordering of instruc-
+tions across sequence points.
+3.3.2 Correctness Criteria
+Letm andm be the ﬁnal memory conﬁgurations of the source and
+the target. Let α be the alloca constraints given in the previous
+section for the source, andα the respective constraints for the target.
+The three correctness constraints of Section 3.1.2 must be modiﬁed
+to include memory information (i.e., ψ ≡ φ∧δ∧ρ∧α∧α).
+Moreover, an additional constraint must be discharged whenever
+the transformation uses memory-handling instructions:
+4.∀I,U ,i∃U :φ∧α∧α =⇒ select(m,i ) = select(m,i )
+This constraint does not explicitly include constraints for limit-
+ing the equality to deﬁned behavior like the correctness constraint 3
+in Section 3.1.2. These are, however, already included inm. A store
+instruction only updates a memory block if no undeﬁned behav-
+ior has been observed previously. Thus, no further constraints are
+required.
+6 2015/4/27
+=== page 7 ===
+We now state the correctness criteria for Alive transformations
+with memory operations:
+T H E O R E M 2 (Soundness). If, for every valid type assignment in
+an Alive transformation, conditions 1–3 hold for every instruction
+and condition 4 holds for the ﬁnal memory conﬁgurations, then the
+transformation is correct.
+3.3.3 Beyond the Array Theory
+Many SMT solvers do not support the theory of arrays efﬁciently, es-
+pecially in the presence of quantiﬁers. Hence, we explore encoding
+memory operations without arrays. This is usually accomplished
+with Ackermann’s expansion [1]. In the worst case, this procedure
+can result in a quadratic increase in the size of the formula in terms
+of the number of load instructions, and requires an additional fresh
+SMT variable per load. SMT solvers usually perform Ackerman-
+nization lazily to avoid the quadratic blowup as much as possible.
+In contrast to lazy Ackermannization as usually performed by
+SMT solvers, we use an eager Ackermannization encoding that is
+linear in the number of load and store instructions. Our encoding
+has the additional advantage of not requiring extra SMT variables,
+at the expense of potentially more complex SMT expressions.
+With our eager encoding, store instructions are replaced with
+if-then-else expressions, such that the expression returns the stored
+value if pointerp is equal to the stored location, or returns the pre-
+vious memory expression otherwise, i.e., store(m,q,v ) becomes
+ite(p =q,v,m ).
+Load instructions take the memory expression built so far (a
+chain of ite expressions) and replace p with the loaded mem-
+ory location, i.e., select(m,q ) becomes ite(q = p1,v 1, ite(q =
+p2,v 2,... ite(q = pn,v n,m 0))) for previously stored values
+v1,...,v n at locationsp1,...,p n (potentially overlapping) and ini-
+tial memory content m0. Since the store operations are enqueued
+in order (most to least recent), the expression yields the most recent
+store in case there were multiple stores to the same location.
+In our experiments, we observed that our eager encoding results
+in faster SMT solving when compared to the theory of arrays.
+However, our encoding does not ensure consistency across different
+loads to the same uninitialized memory location, but this is not
+required by any optimization we have analyzed.
+3.4 Attribute Inference
+By watching LLVM developers submit patches, we observed that
+placing the nsw, nuw, and exact attributes in LLVM optimiza-
+tions is difﬁcult enough that it often becomes a matter of trial and
+error, with developers frequently omitting attributes from the tar-
+get side of transformations rather than determining whether they
+can be added safely. The result is that peephole optimizations in
+LLVM tend to strip away attributes, constraining the behavior of
+subsequent optimization passes that might have been able to exploit
+the attributes, had they been preserved.
+Alive has support for adding the nsw, nuw, and exact at-
+tributes to the source and target of transformations when it is safe
+to do so. On the source side, our goal is to automatically synthesize
+the weakest precondition for a transformation in terms of instruc-
+tion attributes. On the target side, we want to synthesize the optimal
+propagation of attributes: the strongest postcondition.
+Our algorithm enumerates all models of a quantiﬁed SMT for-
+mula for correctness to infer attributes. As attributes only inﬂu-
+ence constraints generated for poison-free execution, we generate
+these poison-free constraints conditionally based on the presence
+or absence of the attributes. The algorithm introduces a fresh SMT
+Boolean variablef for each instruction and for each attribute. More
+concretely, we haveρ≡f1 =⇒ p1∧... ∧fn =⇒ pn, where
+fi are fresh Boolean variables, andpi are the conditions that state
+Φ := true
+for each type assignment do
+f :=∃F ,F : Φ∧c1∧c2∧c3∧c4
+µ := false
+whilef is satisﬁable with modelm do
+b :={l|l∈F∧ m(l)}∪{¬ l|l∈F∧¬ m(l)}
+µ :=µ∨
+⋀
+b
+f :=f∧¬
+⋀
+b
+Φ := Φ∧µ
+Figure 6. Optimal attribute inference algorithm. The set b accu-
+mulates SMT variables that indicate the presence of attributes in
+the source (for the precondition) and absence of attributes in the
+target in a given model (for the postcondition). The result (Φ) is a
+constraint that gives all possible attribute assignments.
+when the instruction is poison-free when the respective attribute i
+is enabled.
+LetF (F) be the set of all f variables from the source (resp.
+target). The disjunction of all models of the following formula is
+the optimal set of attributes:
+∃F ,F :c1∧c2∧c3∧c4
+Constraintsc1,c 2,c 3,c 4 are the conjunction of the constraints given
+as the correctness criteria in Section 3.1.2 for all instructions.
+The algorithm for optimal attribute inference, shown in Figure 6,
+exploits the partial ordering between the attribute assignments. For
+example, if an optimization is correct without the nsw attribute in
+a source instruction, then the optimization is also correct with it.
+Similarly, if an attribute can be enabled in a target operation, then
+the optimization is also correct if it is turned off (although we are
+interested in enabling as many attributes in the target as possible).
+The inner loop of the algorithm in Figure 6 generates all possi-
+ble attribute assignments, which satisfy the correctness constraints
+and exploits the partial ordering of the attributes, for a given type
+assignment. The algorithm strengthens the set of possible attribute
+assignments with the disjunction of all possible attribute assign-
+ments for a given type assignment. The inner loop of the algorithm
+generates all possible attributes by iteratively enumerating all possi-
+ble solutions by blocking each model at a time (i.e.,f :=f∧¬ ⋀b).
+The outer loop strengthens the attribute assignments explored for
+each type assignment to generate the constraint (Φ), whose solution
+gives the optimal attribute assignment. The algorithm can be further
+improved to reduce the number of queries by using techniques to
+bias the results of the SMT solver (e.g., [ 19]), which we leave for
+future work.
+4. Generating C++ from Alive
+After a transformation has been proved correct, Alive can turn it into
+C++ code that uses the same instruction pattern matching library
+that InstCombine uses; the generated code can be linked into LLVM
+and used as an LLVM optimization pass. The C++ code for an
+optimization has two parts. First, there is an if-statement checking
+if the optimization should ﬁre, which is the case when a DAG of
+LLVM instructions matches the Alive source template and when the
+precondition, if any, is met. Second, the body of the transformation
+creates instructions from the target template and wires them up to
+the source and input variables. Figure 7 shows an example. The
+generated C++ code does not attempt to clean up any instructions
+7 2015/4/27
+=== page 8 ===
+Alive transformation:
+Pre: isSignBit(C1)
+%b = xor %a, C1
+%d = add %b, C2
+=>
+%d = add %a, C1 ˆ C2
+Generated C++:
+Value *a, *b;
+ConstantInt *C1, *C2, *C3;
+if (match(I,m_Add(m_Value(b),m_ConstantInt(C2))) &&
+match(b,m_Xor(m_Value(a),m_ConstantInt(C1))) &&
+C1->getValue().isSignBit()) {
+APInt C3_val = C1->getValue() ˆ C2->getValue();
+C3 = ConstantInt::get(I->getType(), C3_val);
+BinaryOperator *d =
+BinaryOperator::CreateAdd(a, C3, "", I);
+I->replaceAllUsesWith(d);
+}
+Figure 7. An Alive transformation and its corresponding generated
+code. The C++ transformation is conditional on two match calls, one
+for each instruction in the source template, and also on the precon-
+dition. The target template has a single instruction and creates a
+new compile-time constant; both of these are directly reﬂected in
+the body of the C++ transformation.
+that might have been rendered useless by the optimization; this task
+is left to a subsequent dead-code elimination pass.
+Translating a source template. The code generator translates
+the source into conditions using LLVM’s pattern-matching li-
+brary, and binds variables for later use. For example, match(I,
+m Add(m Value(b), m ConstantInt(C2))) in Figure 7
+will return true if an LLVM instructionI is an addition of a value to
+a constant, and setsb and C2 to point to the arguments. Matching be-
+gins with the root instruction in the source template and recursively
+matches operands until all non-inputs have been bound. Although
+LLVM allows arbitrarily nested pattern matching, Alive currently
+matches each instruction in a separate clause. Alive’s predicates and
+logical connectives directly correspond to their C++ equivalents in
+LLVM.
+Translating a target template. A new instruction is created for
+each instruction that is in the target template but not the source. The
+root instruction from the source is replaced by its counterpart in the
+target.
+Constants. Constant expressions translate to APInt (LLVM’s
+arbitrary-width literal values) or Constant values, depending on
+the context. Arithmetic expressions and functions translate to the
+corresponding operations for APInt values in LLVM.
+Type uniﬁcation. The LLVM constructors for constant literal val-
+ues and conversion instructions require explicit types. In general,
+this information will depend on types in the source. As Alive trans-
+formations are parametric over types, and Alive provides support for
+explicit and named types, such information is not readily available.
+The Alive code generator uses a uniﬁcation-based type inference
+algorithm to identify appropriate types for the operands and intro-
+duces additional clauses in the if condition to ensure the operands
+have the appropriate type before invoking the transformation. This
+type system ensures that the generated code does not produce ill-
+typed LLVM code.
+The uniﬁcation proceeds in three phases. First, the types of the
+operands in the source are uniﬁed according to the constraints in
+the source (e.g., the operands of a binary operator must have the
+same type) based on the assumption that source is a well-formed
+LLVM program. Second, the types of the operands in the target are
+similarly uniﬁed according to constraints of the target. Third, when
+the operands of a particular instruction in the target do not belong
+to the same class, then an explicit check requiring that the types
+are equal is inserted to the if condition in the C++ code generated.
+The explicit check is necessary as the target has type constraints
+that cannot be determined by the source alone.
+5. Implementation
+We implemented Alive in Python and used the Z3 SMT solver [7]
+to discharge both typing and reﬁnement constraints. Alive is about
+5,200 lines of open-source code.4
+Typing constraints are over the QF LIA (quantiﬁer-free linear
+integer arithmetic) theory, and reﬁnement constraints are either over
+the BV or QF BV (quantiﬁed/quantiﬁer-free bitvector) theories.
+The number of possible type assignments for a transformation is
+usually inﬁnite. To ensure termination we constrain integer types to
+have bitwidths in the range 1..64, and type nesting is limited to two
+levels.
+Constraintsc1 toc4 (Section 3.1.2) are negated before query-
+ing the SMT solver, effectively removing one quantiﬁer alterna-
+tion. Therefore, for transformations without undeﬁned values in the
+source template, we obtain quantiﬁer-free formulas, and formulas
+with a single quantiﬁer otherwise. When performing attribute infer-
+ence, formulas have either one or two sets of quantiﬁers.
+Threats to validity. Alive tries to accurately reﬂect the semantics
+described in the LLVM Language Reference [ 18]; there could be
+differences between our formalization and the semantics intended
+by the LLVM developers. Alive’s bounded veriﬁcation could lead it
+to incorrectly verify an optimization, though in our experience it is
+uncommon to see operands wider than 64 bits in LLVM code.
+6. Evaluation
+We translated hundreds of peephole optimizations from LLVM
+into Alive. We veriﬁed them, we inferred optimalnsw/nuw/exact
+attributes for them, and we translated the Alive optimizations into
+C++ that we linked into LLVM and then used the resulting optimizer
+to build LLVM’s test suite and the SPEC INT 2000 and 2006
+benchmarks.
+6.1 Translating and Verifying InstCombine
+LLVM’s InstCombine pass rewrites expression trees to reduce their
+cost, but does not change the control-ﬂow graph. Table 3 summa-
+rizes the 334 InstCombine transformations that we translated to
+Alive. Eight (2.4%) of these could not be proved correct; we re-
+ported these erroneous transformations to the LLVM developers,
+who conﬁrmed and ﬁxed them. We re-translated the ﬁxed optimiza-
+tions to Alive and proved them correct. Out of the remaining 694
+transformations that we did not translate, some (such as those us-
+ing vectors, call/return instructions, and ﬂoating point) cannot yet
+be expressed in Alive and the rest we simply have not had time to
+translate.
+The buggiest InstCombine ﬁle that we found was MulDivRem,
+which implements optimizations that have multiply, divide, and
+remainder instructions as the root of expression trees. Out of the
+44 translated optimizations, we found that six of them (14%) were
+incorrect.
+The most common kind of bug in InstCombine was the intro-
+duction of undeﬁned behavior, where an optimization replaces an
+4 The version of Alive corresponding to this paper can be found at https:
+//github.com/nunoplopes/alive/tree/pldi15.
+8 2015/4/27
+=== page 9 ===
+Name: PR20186
+%a = sdiv %X, C
+%r = sub 0, %a
+=>
+%r = sdiv %X, -C
+Name: PR20189
+%B = sub 0, %A
+%C = sub nsw %x, %B
+=>
+%C = add nsw %x, %A
+Name: PR21242
+Pre: isPowerOf2(C1)
+%r = mul nsw %x, C1
+=>
+%r = shl nsw %x, log2(C1)
+Name: PR21243
+Pre: !WillNotOverflowSignedMul(C1, C2)
+%Op0 = sdiv %X, C1
+%r = sdiv %Op0, C2
+=>
+%r = 0
+Name: PR21245
+Pre: C2 % (1<<C1) == 0
+%s = shl nsw %X, C1
+%r = sdiv %s, C2
+=>
+%r = sdiv %X, C2/(1<<C1)
+Name: PR21255
+%Op0 = lshr %X, C1
+%r = udiv %Op0, C2
+=>
+%r = udiv %X, C2 << C1
+Name: PR21256
+%Op1 = sub 0, %X
+%r = srem %Op0, %Op1
+=>
+%r = srem %Op0, %X
+Name: PR21274
+Pre: isPowerOf2(%Power) && hasOneUse(%Y)
+%s = shl %Power, %A
+%Y = lshr %s, %B
+%r = udiv %X, %Y
+=>
+%sub = sub %A, %B
+%Y = shl %Power, %sub
+%r = udiv %X, %Y
+Figure 8. We found eight incorrect InstCombine transformations during the development of Alive
+File # opts. # translated # bugs
+AddSub 67 49 2
+AndOrXor 165 131 0
+Calls 80 0 0
+Casts 77 0 0
+Combining 63 0 0
+Compares 245 0 0
+LoadStoreAlloca 28 17 0
+MulDivRem 65 44 6
+PHI 12 0 0
+Select 74 52 0
+Shifts 43 41 0
+SimplifyDemanded 75 0 0
+VectorOps 34 0 0
+Total 1,028 334 8
+Table 3. The total number of optimizations, the number of opti-
+mizations that we translated into Alive, and the number of translated
+optimizations that were wrong, for each ﬁle in InstCombine
+expression with one that is deﬁned for a smaller range of inputs than
+was the original expression. There were four bugs in this category.
+We also found two bugs where the value of an expression was incor-
+rect for some inputs, and two bugs where a transformation would
+generate a poison value for inputs that the original expression did
+not. Figure 8 provides the Alive code and the bug report numbers
+for the bugs that we discovered during our translation of LLVM
+InstCombine optimizations into Alive.
+Alive usually takes a few seconds to verify the correctness of a
+transformation, during which time it may issue hundreds or thou-
+sands of incremental solver calls. Unfortunately, for some transfor-
+mations involving multiplication and division instructions, Alive
+can take several hours or longer to verify the larger bitwidths. This
+indicates that further improvements are needed in SMT solvers to
+efﬁciently handle such formulas. In the meantime, we work around
+slow veriﬁcations by limiting the bitwidths of operands.
+6.2 Preventing New Bugs
+A few LLVM developers are already using Alive to avoid intro-
+ducing wrong-code bugs. Also, we have been monitoring proposed
+LLVM patches and trying to catch incorrect transformations before
+they are committed to the tree. For example, in August 2014 a de-
+veloper submitted a patch that improved the performance of one of
+the SPEC CPU 2000 benchmarks by 3.8%—this is obviously an
+interesting addition to a compiler. We used Alive to ﬁnd bugs in
+the developer’s initial and second proposed patches, and we proved
+that the third one was correct. This third and ﬁnal patch retained the
+performance improvement without compromising the correctness
+of LLVM.
+0 50 100 150
+1
+10
+100
+1000
+10000
+100000
+Invocations
+Figure 9. The number of times each Alive optimization was in-
+voked during compilation of the LLVM nightly suite and SPEC
+2000 and 2006. The x-axis is the Alive optimization number, sorted
+by decreasing number of invocations. The y-axis is the number of
+invocations. Only 159 of these optimizations were triggered during
+the experiment.
+6.3 Inferring Instruction Attributes
+Out of the 334 transformations we translated, Alive was able to
+weaken the precondition for one transformation and strengthen the
+postcondition for 70 (21%) transformations. The most strengthening
+took place for transformations in AddSub, MulDivRem, and Shifts,
+each with around 40% of transformations getting stronger postcon-
+ditions. When a postcondition is strengthened, more instructions
+retain undeﬁned behavior attributes, permitting additional optimiza-
+tions to be performed. We have not yet quantiﬁed this effect.
+6.4 Generating C++
+We removed the InstCombine optimizer from LLVM 3.6 and re-
+placed it with C++ generated by Alive; we refer to the resulting com-
+piler as LLVM+Alive. We used LLVM+Alive to build the LLVM
+nightly test suite and also the SPEC 2000 and 2006 benchmarks,
+compiling about a million lines of code overall. All experiments
+were performed on an Intel x86-64 machine running Ubuntu 14.04.
+The code compiled by LLVM+Alive did not have any unexpected
+test case failures: as far as we can tell, it is free of miscompilation
+bugs.
+Figure 9 reports the number of times that each optimization ﬁred
+during compilation of the LLVM nightly test suite and SPEC bench-
+marks using LLVM+Alive at -O3. Alive optimizations ﬁred about
+87,000 times in total. Figure 9 also illustrates that a small number
+of optimizations are applied frequently. The top ten optimizations
+account for approximately 70% of the total invocations and there is
+a long tail of infrequently-used optimizations.
+Compilation time. We measured the time to compile SPEC 2000
+and SPEC 2006 using LLVM+Alive in comparison to LLVM 3.6
+at -O3. Compilation using LLVM+Alive was on average 7% faster
+than LLVM because it runs only a fraction of the total InstCombine
+9 2015/4/27
+=== page 10 ===
+optimizations. Our C++ code generator is a proof of concept imple-
+mentation and we have not yet implemented many optimizations
+such as reusing the results of redundant pattern-match calls.
+Execution time of compiled code. We measured the execution
+time of the SPEC 2000 and 2006 benchmarks on their reference
+inputs. Code compiled with LLVM+Alive is (averaged across all
+SPEC benchmarks) 3% slower than code compiled with LLVM 3.6
+-O3. Among these benchmarks, LLVM+Alive provides a speedup
+of 7% with gcc, and suffers a slowdown of 10% in the equake
+benchmark. The code generated with LLVM+Alive is slower with
+some benchmarks because we have only translated a third of the
+InstCombine optimizations.
+7. Related Work
+Prior research on improving compiler correctness can be broadly
+classiﬁed into compiler testing tools, formal reasoning frameworks
+for compilers, and domain speciﬁc languages (DSLs). DSLs for
+compiler optimizations are the most closely related work to Alive.
+These include languages based on graph rewriting [ 2, 21, 27],
+regular expressions [12], computation tree logic (CTL) [ 14], type
+systems [28], and rewrite rules [ 16, 36]. While Alive is perhaps
+most similar to high-level rewrite patterns [ 13, 20], it differs in
+its extensive treatment of undeﬁned behavior, which is heavily
+exploited by LLVM and other aggressive modern compilers.
+Peephole optimization patterns for a particular ISA can be
+generated from an ISA speciﬁcation [ 6]. In contrast to compiler
+optimizations, optimized code sequences can be synthesized ei-
+ther with peephole pattern generation or through superoptimiza-
+tion [3, 11, 22, 30, 33].
+Optgen [ 4] automatically generates peephole optimizations.
+Like Alive, Optgen operates at the IR level and uses SMT solvers to
+verify the proposed optimizations. While Alive focuses on verifying
+developer-created optimizations, Optgen generates all possible opti-
+mizations up to a speciﬁed cost and can generate a test suite to check
+optimizations not implemented in a given compiler. In contrast to
+Alive, Optgen handles only integer operations and does not handle
+memory operations, poison values, support any operation producing
+undeﬁned behavior, or abstraction over bitwidths/types.
+Random testing tools [ 15, 24, 37] have discovered numerous
+bugs in LLVM optimizations both for sequential programs and
+concurrent programs. These tools are not complete, as was shown
+by the bugs we found in optimizations that had previously been
+fuzzed.
+An alternative approach to compiler correctness is translation
+validation [25, 26, 29] where, for each compilation, it is proved that
+the optimized code reﬁnes the unoptimized code. Many techniques
+and tools have been developed [ 10, 31, 32, 34, 38]. Translation
+validation appears to be a very promising approach, but it suffers
+from the drawback of requiring proof machinery to execute during
+every compilation. Our judgment was that the LLVM developers
+would not tolerate this, so Alive instead aims for once-and-for-all
+proof of correctness of a limited slice of the compiler.
+The CompCert [ 17] compiler, for a subset of C, is an end-to-
+end veriﬁed compiler developed with the interactive proof assistant
+Coq. Vellvm [39, 40] formalizes the semantics of LLVM IR, SSA
+properties, and optimizations in Coq. Alive’s treatment of undef
+values mirrors the treatment in Vellvm. In contrast to Vellvm,
+which concretizes values in memory, Alive maintainsundef values
+in memory, handles poison attributes, and automates reasoning
+with an SMT solver. Recent efforts have explored formalizing the
+relations of optimizations with weak memory models in Coq [ 35].
+Proving the correctness of trace optimizations (as used in, e.g., JIT
+compilers) has also been attempted recently [8].
+8. Conclusion
+We have shown that an important class of optimizations in LLVM—
+peephole optimizations—can be formalized in Alive, a new lan-
+guage that makes optimizations much more concise than when they
+are embedded in C++ code, while also supporting automated proofs
+of correctness. We designed Alive to resemble LLVM’s textual for-
+mat while also supporting abstraction over constant values, over
+bitwidths of operands, and over the presence of LLVM’s undeﬁned
+behavior attributes that modify instruction behavior. After an Alive
+transformation has been proved correct, it can be automatically
+translated into C++ that can be included in an optimization pass.
+Our ﬁrst goal was to create a tool that is useful for LLVM develop-
+ers. We believe this goal has been accomplished. Second, we would
+like to see a large part of InstCombine replaced with code generated
+by Alive; we are still working towards that goal.
+Acknowledgments
+The authors thank the LLVM developers for their continued support
+for the development of Alive, for discussions regarding LLVM
+IR’s semantics, and for adopting Alive. A special thanks to David
+Majnemer for conﬁrming and ﬁxing the bugs we reported. Eric
+Eide and Raimondas Sasnauskas provided valuable feedback on
+this work. This paper is based upon work supported in part by NSF
+CAREER Award CCF–1453086, NSF Award CNS–1218022, and a
+Google Faculty Award.
+References
+[1] W. Ackermann. Solvable Cases of the Decision Problem. Studies in
+Logic and the Foundations of Mathematics, 1954.
+[2] U. Aßmann. How to uniformly specify program analysis and transfor-
+mation with graph rewrite systems. In Proc. of the 6th International
+Conference on Compiler Construction, pages 121–135, 1996.
+[3] S. Bansal and A. Aiken. Automatic generation of peephole superopti-
+mizers. In Proc. of the 12th International Conference on Architectural
+Support for Programming Languages and Operating Systems (ASP-
+LOS), pages 394–403, 2006.
+[4] S. Buchwald. Optgen: A generator for local optimizations. In Proc.
+of the 24th International Conference on Compiler Construction (CC),
+pages 171–189, Apr. 2015.
+[5] R. Cytron, J. Ferrante, B. K. Rosen, M. N. Wegman, and F. K. Zadeck.
+Efﬁciently computing static single assignment form and the control
+dependence graph. ACM Trans. Program. Lang. Syst., 13(4):451–490,
+Oct. 1991.
+[6] J. W. Davidson and C. W. Fraser. Automatic generation of peephole
+optimizations. In Proc. of the 1984 SIGPLAN Symposium on Compiler
+Construction, pages 111–116, 1984.
+[7] L. De Moura and N. Bjørner. Z3: An efﬁcient SMT solver. In Proc.
+of the 14th International Conference on Tools and Algorithms for the
+Construction and Analysis of Systems, pages 337–340, 2008.
+[8] S. Dissegna, F. Logozzo, and F. Ranzato. Tracing compilation by
+abstract interpretation. In Proc. of the 41st ACM SIGPLAN-SIGACT
+Symposium on Principles of Programming Languages , pages 47–59,
+2014.
+[9] S. Guyer and C. Lin. Broadway: A compiler for exploiting the domain-
+speciﬁc semantics of software libraries. Proceedings of the IEEE, 93
+(2), 2005.
+[10] C. Hawblitzel, S. K. Lahiri, K. Pawar, H. Hashmi, S. Gokbulut, L. Fer-
+nando, D. Detlefs, and S. Wadsworth. Will you still compile me tomor-
+row? Static cross-version compiler validation. In Proc. of the 9th Joint
+Meeting on Foundations of Software Engineering (FSE), 2013.
+[11] R. Joshi, G. Nelson, and Y . Zhou. Denali: A practical algorithm for
+generating optimal code. ACM Trans. Program. Lang. Syst. , 28(6):
+967–989, Nov. 2006.
+10 2015/4/27
+=== page 11 ===
+[12] D. Kozen and M.-C. Patron. Certiﬁcation of compiler optimizations
+using Kleene algebra with tests. In Proc. of the 1st International
+Conference on Computational Logic, pages 568–582, 2000.
+[13] S. Kundu, Z. Tatlock, and S. Lerner. Proving optimizations correct
+using parameterized program equivalence. In Proc. of the 2009
+ACM SIGPLAN Conference on Programming Language Design and
+Implementation, pages 327–337, 2009.
+[14] D. Lacey, N. D. Jones, E. Van Wyk, and C. C. Frederiksen. Compiler
+optimization correctness by temporal logic. Higher Order Symbol.
+Comput., 17(3):173–206, Sept. 2004.
+[15] V . Le, M. Afshari, and Z. Su. Compiler validation via equivalence
+modulo inputs. In Proc. of the 35th ACM SIGPLAN Conference on
+Programming Language Design and Implementation, pages 216–226,
+2014.
+[16] S. Lerner, T. Millstein, E. Rice, and C. Chambers. Automated sound-
+ness proofs for dataﬂow analyses and transformations via local rules. In
+Proc. of the 32nd ACM SIGPLAN-SIGACT Symposium on Principles
+of Programming Languages, pages 364–377, 2005.
+[17] X. Leroy. Formal veriﬁcation of a realistic compiler. Communications
+of the ACM, 52(7):107–115, 2009.
+[18] LLVM Developers. LLVM Language Reference Manual. Available
+from http://llvm.org/docs/LangRef.html, 2014.
+[19] N. P. Lopes and J. Monteiro. Weakest precondition synthesis for
+compiler optimizations. In Proc. of the 15th International Conference
+on Veriﬁcation, Model Checking, and Abstract Interpretation , pages
+203–221, 2014.
+[20] N. P. Lopes and J. Monteiro. Automatic equivalence checking of
+programs with uninterpreted functions and integer arithmetic. Int. J.
+Softw. Tools Technol. Transf., 2015.
+[21] W. Mansky and E. Gunter. A cross-language framework for verifying
+compiler optimizations. In Proc. of the 5th Workshop on Syntax and
+Semantics of Low-Level Languages, 2014.
+[22] H. Massalin. Superoptimizer: A look at the smallest program. In
+Proc. of the 2nd International Conference on Architectural Support
+for Programming Languages and Operating Systems (ASPLOS), pages
+122–126, 1987.
+[23] W. M. McKeeman. Differential testing for software. Digital Technical
+Journal, 10(1):100–107, Dec. 1998.
+[24] R. Morisset, P. Pawan, and F. Z. Nardelli. Compiler testing via a theory
+of sound optimisations in the C11/C++11 memory model. In Proc.
+of the 34th ACM SIGPLAN Conference on Programming Language
+Design and Implementation, pages 187–196, 2013.
+[25] G. C. Necula. Translation validation for an optimizing compiler.
+In Proc. of the ACM SIGPLAN 2000 Conference on Programming
+Language Design and Implementation, pages 83–94, 2000.
+[26] A. Pnueli, M. Siegel, and E. Singerman. Translation validation. In
+Proc. of the 4th International Conference on Tools and Algorithms for
+Construction and Analysis of Systems, pages 151–166, 1998.
+[27] N. Ramsey, J. Dias, and S. P. Jones. Hoopl: A modular, reusable library
+for dataﬂow analysis and transformation. In Proc. of the 3rd ACM
+Symposium on Haskell, 2010.
+[28] A. Saabas and T. Uustalu. Program and proof optimizations with type
+systems. The Journal of Logic and Algebraic Programming, 77(1–2):
+131–154, 2008.
+[29] H. Samet. Proving the correctness of heuristically optimized code. In
+Communications of the ACM, 1978.
+[30] E. Schkufza, R. Sharma, and A. Aiken. Stochastic superoptimization.
+In Proc. of the 18th International Conference on Architectural Support
+for Programming Languages and Operating Systems (ASPLOS), 2013.
+[31] T. A. L. Sewell, M. O. Myreen, and G. Klein. Translation validation for
+a veriﬁed OS kernel. In Proc. of the 34th ACM SIGPLAN Conference
+on Programming Language Design and Implementation , pages 471–
+482, 2013.
+[32] M. Stepp, R. Tate, and S. Lerner. Equality-based translation validator
+for LLVM. In Proc. of the 23rd International Conference on Computer
+Aided Veriﬁcation, pages 737–742, 2011.
+[33] R. Tate, M. Stepp, and S. Lerner. Generating compiler optimizations
+from proofs. In Proc. of the 37th Annual ACM SIGPLAN-SIGACT
+Symposium on Principles of Programming Languages, 2010.
+[34] J.-B. Tristan, P. Govereau, and G. Morrisett. Evaluating value-graph
+translation validation for LLVM. In Proc. of the 32nd ACM SIGPLAN
+Conference on Programming Language Design and Implementation ,
+pages 295–305, 2011.
+[35] V . Vafeiadis, T. Balabonski, S. Chakraborty, R. Morisset, and F. Z.
+Nardelli. Common compiler optimisations are invalid in the C11
+memory model and what we can do about it. In Proc. of the 42nd
+ACM SIGPLAN-SIGACT Symposium on Principles of Programming
+Languages, 2015.
+[36] D. L. Whitﬁeld and M. L. Soffa. An approach for exploring code
+improving transformations. ACM Trans. Program. Lang. Syst., 19(6):
+1053–1084, Nov. 1997.
+[37] X. Yang, Y . Chen, E. Eide, and J. Regehr. Finding and understanding
+bugs in C compilers. In Proc. of the 32nd ACM SIGPLAN Conference
+on Programming Language Design and Implementation , pages 283–
+294, 2011.
+[38] A. Zaks and A. Pnueli. CoVaC: Compiler validation by program
+analysis of the cross-product. In Proc. of the 15th International
+Symposium on Formal Methods, pages 35–51, 2008.
+[39] J. Zhao, S. Nagarakatte, M. M. Martin, and S. Zdancewic. Formalizing
+the LLVM intermediate representation for veriﬁed program transforma-
+tions. In Proc. of the 39th Annual ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, pages 427–440, 2012.
+[40] J. Zhao, S. Nagarakatte, M. M. Martin, and S. Zdancewic. Formal
+veriﬁcation of SSA-based optimizations for LLVM. In Proc. of the
+34th ACM SIGPLAN Conference on Programming Language Design
+and Implementation, pages 175–186, 2013.
+11 2015/4/27

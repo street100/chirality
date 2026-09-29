@@ -1,0 +1,963 @@
+=== page 1 ===
+Fast and Eﬀective Procedure Inlining ∗
+Indiana University
+Computer Science Department
+Technical Report No. 484
+Oscar Waddell and R. Kent Dybvig
+Indiana University Computer Science Department
+Lindley Hall 215
+Bloomington, Indiana 47405
+{owaddell,dyb}@cs.indiana.edu, 812-855-3608
+May 15, 2004
+Abstract
+Inlining is an important optimization for programs that use procedural abstraction. Because inlining
+trades code size for execution speed, the eﬀectiveness of an inlining algorithm is determined not only
+by its ability to recognize inlining opportunities but also by its discretion in exercising those opportu-
+nities. This paper presents a new inlining algorithm for higher-order languages that combines simple
+analysis techniques with demand-driven online transformation to achieve consistent and often dramatic
+performance gains in fast linear time. Benchmark results reported here demonstrate that this inlining
+algorithm is as eﬀective as and signiﬁcantly faster than oﬄine, analysis-intensive algorithms recently
+described in the literature.
+Keywords: procedure inlining, procedure integration, compiler optimization
+1 Introduction
+Inlining is an important optimization for programs that use procedural abstraction. By replacing a call with
+an inline expansion of the procedure body, inlining eliminates procedure linkage overhead and may uncover
+opportunities for further optimization. Unrestrained inlining, however, can lead to excessive code growth
+and excessive compile time. The eﬀectiveness of an inlining algorithm is therefore determined not only by
+its ability to recognize inlining opportunities but also by its discretion in exercising those opportunities.
+Recent research on procedure inlining for higher-order languages has focused on the use of oﬄine poly-
+variant ﬂow analyses to identify appropriate inlining opportunities [14, 3]. Although reported performance
+gains are impressive, the cost and volatility of such analyses renders the method impractical for use in pro-
+duction compilers. This paper presents a new inlining algorithm for higher-order languages that combines
+simple analysis techniques with online transformation to achieve comparable or better performance gains in
+fast linear time.
+Several factors contribute to the speed and eﬀectiveness of our algorithm.
+• It is polyvariant. Information about the arguments at a call site is used to decide whether inlining that
+call is cost-eﬀective.
+• It is online. Inlining decisions are based, in part, on the eﬀects of other optimizations performed by
+the algorithm: constant folding, copy propagation, and elimination of useless or unreachable code.
+∗This material is based on work supported in part by the National Science Foundation under grant number CDA-9312614.
+This report is an expanded version of a paper to be presented at the 1997 International Static Analysis Symposium .
+1
+=== page 2 ===
+• It is context-sensitive. The context in which an expression occurs is used to identify legal transforma-
+tions.
+• It is demand-driven. The operands of binding constructs and calls are not processed until the context
+in which they are used has been determined.
+Polyvariance permits aggressive inlining without excessive code growth. Code growth is usually limited
+by inlining only procedures whose size is less than a given threshold. Our polyvariant algorithm instead
+considers the size of the procedure when optimized for the arguments at the call site. For example, given
+the deﬁnition of f below, the algorithm may choose to inline e2 in place of the call (f ’key2) even if the
+size of f as a whole exceeds the threshold.
+(define f
+(lambda (x)
+(case x [(key1) e1] [(key2) e2] ... [(keyn) en])))
+Online transformation provides our algorithm with more accurate information on which to base its inlining
+decisions. Oﬄine algorithms, which separate inlining from subsequent optimization, must estimate the eﬀects
+of these optimizations. When their estimate is too conservative, inlining opportunities are missed; when
+their estimate is too liberal, code size increases. Our algorithm inlines aggressively while maintaining tighter
+control over code growth because it uses the actual optimized code to decide when inlining a call is cost-
+eﬀective. In some cases, online transformation also provides more accurate control-ﬂow information, which
+helps to identify additional inlining opportunities.
+Contextual information allows the algorithm to determine when an expression can be discarded or pro-
+cessed in a more restricted mode. For example, in the expression (seq e1 e2) , e1 is processed only for its
+eﬀects. When processed for eﬀect, certain provably terminating eﬀect-free expressions are discarded. In the
+expression (if e1 e2 e3) , e1 is processed for its boolean value. This is useful in languages such as C and
+Scheme where it may be possible to determine the boolean value of an expression even when its actual value
+cannot be determined.
+Demand-driven processing of call operands allows our algorithm to defer processing until more contextual
+information is available. For example, suppose f is (lambda (x y) (if (< x 5) x y)) . When attempting
+to inline the call (f e1 e2) , e1 is not processed until it is needed to evaluate the test (< x 5) . If e1 reduces
+to 3, the reference to y is unreachable and the useless expression e2 is processed for eﬀect only. Eliminating
+useless or unreachable code saves processing time and also improves the accuracy of the information collected
+by the algorithm. For example, if variables originally referenced only within e2 no longer appear referenced,
+their bindings can be processed for eﬀect only.
+The inlining algorithm is a source-to-source transformation that operates by a mostly depth-ﬁrst traversal
+of the source program. The algorithm collects information about the size of the residual program and the
+use of variables in the residual program as it is produced. This information supports inlining decisions and
+elimination of useless code. Termination is achieved by detecting cycles in the call graph as it is computed
+and by bounding the amount of eﬀort expended on inlining at each call site in the input program. Code
+growth is limited by aborting an inlining attempt as soon as the size of the residual code produced in that
+attempt exceeds a given threshold. Polyvariance is obtained by attempting to inline all calls, while relying
+on the eﬀort bound and the size threshold to abort an attempt when it becomes too costly. Applicative
+order and sequencing of eﬀects are preserved by optimizing inlined calls as if they were equivalent let
+expressions. For example, suppose f is (lambda (x y) e1) . When inlining, the call (f e2 e3) is treated
+as the semantic equivalent of (let ((x e2) (y e3)) e1) . Values obtained by processing e2 and e3 are
+used when specializing e1, but eﬀects in e2 and e3 are residualized at the point of call.
+Inlining is copy propagation extended to lambda expressions. Just as copy propagation often enables
+constant folding, inlining enables β-reduction. The next section formally describes an inlining algorithm
+that exploits this observation. This algorithm is simpliﬁed in that it concentrates on recognizing inlining
+opportunities without attempting to select appropriately among them. Section 3 shows how the simpliﬁed
+algorithm is restrained to obtain the actual inlining algorithm. Section 4 presents reﬁnements of the inlining
+algorithm. Section 5 provides detailed measurements of the eﬀect of the algorithm on execution time, code
+size, and compile time in a production compiler. Section 6 describes related work and compares our results
+2
+=== page 3 ===
+e ::= (const c) | (ref x) | (primref p)
+| (if e1 e2 e3) | (seq e1 e2) | (assign x e )
+| (lambda ( x) e) | (letrec (( x1 e1) . . .(xn en)) e)
+| (call e0 e1)
+c ∈ Const, p ∈ Prim, x ∈ Var, e ∈ Exp
+Figure 1: The core language.
+ρ ∈ Env = Var → Var
+σ ∈ Store = ( Locx → VarFlags) × (Locγ → ContextFlags) × (Loce → Exp ∪ {unvisited})
+κ ∈ Continuation = Exp → Store → Exp
+s, r ∈ VarFlags ⊆ { ref, assign}
+ContextFlags ⊆ { inlined}
+op ∈ Operand ::= Opnd(Exp, Env , Loce)
+Var ::= Var(Identiﬁer , Operand ∪ {null}, VarFlags, Locx)
+γ ∈ Context ::= Test | Eﬀect | Value | App(Operand, Context, Locγ)
+le ∈ Loce, lx ∈ Locx, lγ ∈ Locγ Locations
+Figure 2: Domain equations.
+with those obtained by oﬄine, ﬂow-analysis-based inlining algorithms. Section 7 summarizes our work and
+suggests directions for future work.
+2 Unrestrained Inlining Algorithm
+The inlining algorithm is described as a continuation-passing style (CPS) interpreter with explicit store. The
+actual implementation is in direct style but otherwise follows the structure of the algorithm described here
+with the restraints and extensions described in Sections 3 and 4.
+The inlining algorithm, I, takes an input expression e, a context γ, an environment ρ, a continuation κ,
+and a store σ. The input expression is in the core language shown in Figure 1. The algorithm returns a
+residual expression in the same core language. Domain equations are given in Figure 2. Figure 3 presents
+the algorithm driver. Figure 4 shows the functions that implement the core of the algorithm. To simplify
+the presentation, lambda abstractions are restricted to a single formal parameter, and applications ( call)
+are restricted to a single operand. Generalization to multiple-argument and variable-arity procedures is
+straightforward.
+Contextual information ( γ) is used to identify situations in which certain transformations are legal. Four
+contexts are distinguished: test, used when processing an expression for its boolean value, eﬀect, used when
+processing an expression for side eﬀects only, value, used when the actual value is needed, and call , used when
+processing an expression in the operator position of an application. Naturally, side eﬀects are conserved in all
+contexts. Test, eﬀect, and value contexts are represented by the nullary constructors Test, Eﬀect, and Value.
+A call context γ is represented by the constructor App(op, γ1, lγ) where op is an Opnd structure (described
+below) for the actual parameter at the call site, γ1 is the context of the call itself, and σ(lγ) contains a ﬂag
+that is set if this call is inlined. This ﬂag is used when residualizing a call.
+The environment ρ maps source-program variables to residual-program variables and is used to rename
+(α-convert) bound variables to prevent inadvertent capture when code is duplicated by inlining. The initial
+environment ρ0 is the identity function on variables. The store σ is a triple of functions that respectively
+3
+=== page 4 ===
+I : Exp → Context → Env → Continuation → Store → Exp
+I(const c)γρκ =
+
+
+
+κ(const void) if γ = Eﬀect
+κ(const true) if γ = Test and c ⁄= false
+κ(const c) otherwise
+I(seq e1 e2)γρκ = Ie 1 Eﬀect ρλe′
+1. Ie 2γρλe′
+2. κ seq(e′
+1, e′
+2)
+I(if e1 e2 e3)γρκ = Ie 1 Test ρκ1
+where κ1e′
+1 =
+
+
+
+Ie 2γ1ρλe′
+2. κ seq(e′
+1, e′
+2) if result(e′
+1) = (const true)
+Ie 3γ1ρλe′
+3. κ seq(e′
+1, e′
+3) if result(e′
+1) = (const false)
+Ie 2γ1ρλe′
+2. Ie 3γ1ρκ2 otherwise, where
+κ2e′
+3 =
+{ κ seq(e′
+1, e′
+2) if e′
+2 = e′
+3 = (const c)
+κ(if e′
+1 e′
+2 e′
+3) otherwise
+γ1 =
+{ Value if γ = App(op, γ1, lγ)
+γ otherwise
+I(assign x e )γρκσ =
+
+
+
+Ie Eﬀect γρκσ if ρ(x) = Var(x′, op, s, lx′) and ref ⁄∈ s
+Ie Value γρκ1σ if ρ(x) = Var(x′, op, s, lx′ ) and ref ∈ s, where
+κ1e′σ1 = κ seq((assign x′ e′), (const c)) σ2
+σ2 = σ1[lx′ ↦→ {assign} ∪ σ1(lx′)]
+c = true if γ = Test else c = void
+I(call e1 e2)γρκσ = Ie 1γ1ρκ1σ1, where
+op = Opnd(e2, ρ, le2) le2 fresh
+γ1 = App(op, γ, lγ1) lγ1 fresh
+σ1 = σ[le2 ↦→ unvisited, l γ1 ↦→ ∅]
+κ1e′
+1σ2 =
+
+
+
+κe′
+1σ2 if inlined ∈ σ2(lγ1)
+visit(op, Value, κ2, σ2) otherwise, where
+κ2 = λe′
+2. κ(call e′
+1 e′
+2)
+I(primref p)γρκ =
+
+
+
+κ(const true) if γ = Test
+κ(const void) if γ = Eﬀect
+κ(primref p) if γ = Value
+fold(primref p)γρκ if γ = App(op, γ1, lγ)
+I(lambda x e )γρκσ =
+
+
+
+κ(const true) σ if γ = Test
+κ(const void) σ if γ = Eﬀect
+Ie Value ρ1κ1σ1 if γ = Value, where x abbreviates Var(x, null, s, lx)
+x′ abbreviates Var(x′, null, σ(lx), lx′) x′, lx′ fresh
+ρ1 = ρ[x ↦→ x′]
+σ1 = σ[lx′ ↦→ ∅]
+κ1 = λe′. κ(lambda x′ e′)
+fold(lambda x e )γρκσ if γ = App(op, γ1, lγ)
+I(ref x)γρκσ =
+
+
+
+κ(const void) σ if γ = Eﬀect, else
+κ(ref x′)σ1 if op = null or assign ∈ s
+where Var(x′, op, s, lx′ ) = ρ(x)
+σ1 = σ[lx′ ↦→ {ref} ∪ σ(lx′ )]
+visit(op, Value, κ1, σ) otherwise, where ρ(x) = Var(x′, op, s, lx′ )
+and κ1 = λeσ2. copy(ρ(x), result(e), γ, κ, σ2)
+Figure 3: The inlining algorithm.
+4
+=== page 5 ===
+fold(primref p)App(op, γ1, lγ)ρκσ = visit(op, Value, κ1, σ)
+where κ1e′
+1σ1 =
+
+
+
+κ(const c′)σ2 if result(e′
+1) = (const c) and p(c) = c′
+where σ2 = σ1[lγ ↦→ {inlined} ∪ σ1(lγ)]
+κ(primref p)σ1 otherwise
+fold(lambda x e )App(op, γ1, lγ)ρκσ = Ieγ 1ρ1κ1σ1
+where x abbreviates Var(x, null, s, lx)
+x′ abbreviates Var(x′, op, σ(lx), lx′ ) x′, lx′ fresh
+ρ1 = ρ[x ↦→ x′]
+σ1 = σ[lx′ ↦→ ∅]
+κ1e′σ2 =
+
+
+
+visit(op, Eﬀect, κ2, σ2) if ref ⁄∈ σ2(lx′ ) and assign ⁄∈ σ2(lx′ )
+visit(op, Eﬀect, κ3, σ2) if ref ⁄∈ σ2(lx′ ) and assign ∈ σ2(lx′ )
+visit(op, Value, κ3, σ2) otherwise
+κ2 = λe′
+1σ3. κ seq(e′
+1, e′) σ3[lγ ↦→ {inlined} ∪ σ3(lγ)]
+κ3 = λe′
+1σ3. κ (call (lambda x′ e′) e′
+1) σ3[lγ ↦→ {inlined} ∪ σ3(lγ)]
+copy(Var(x′, op, s, lx′ ), e, γ, κ, σ) =
+
+
+
+I(const c)γρ0κσ if e = (const c)
+κ(ref x1)σ if e = (ref x1) and assign ⁄∈ s1
+where x1 abbreviates Var(x1, op1, s1, lx1)
+fold eγρ0κσ if γ = App(op1, γ1, lγ)
+and e = (primref p)
+or e = (lambda x1 e1)
+κ(primref p)σ if γ = Value and e = (primref p)
+κ(const true) σ if γ = Test and e = (primref p)
+or e = (assign x1 e1)
+or e = (lambda x1 e1)
+κ(ref x′)σ1 otherwise, where σ1 = σ[x′ ↦→ {ref} ∪ σ(lx′ )]
+visit(Opnd(e, ρ, le), γ, κ, σ) =
+
+
+
+Ieγρκ 1σ if σ(le) = unvisited
+where κ1 = λe′σ1. κe′σ1[le ↦→ e′]
+κe′σ otherwise, where e′ = σ(le)
+seq(e1, e2) =
+
+
+
+e2 if e1 = (const void) else
+(seq (seq e1 e3) e4) if e2 = (seq e3 e4)
+(seq e1 e2) otherwise
+result(e) =
+{ e2 if e = (seq e1 e2)
+e otherwise
+Figure 4: The inlining algorithm (continued).
+5
+=== page 6 ===
+map locations lx to subsets of VarFlags, locations lγ to subsets of ContextFlags, and locations le to residual
+expressions in the core language or to the ﬂag unvisited. As a notational convenience, we use subscripts on
+location labels to select the appropriate component of the store. Thus σ(lx) abbreviates ( σ ↓ 1)(lx) and
+σ[lγ ↦→ ∅] abbreviates ⟨σ ↓ 1, (σ ↓ 2)[lγ ↦→ ∅], σ ↓ 3⟩.
+Source- and residual-program variables are represented using the constructor Var(x, op, s, lx), where x is
+the lexical identiﬁer corresponding to the variable, op is an operand structure, and s and σ(lx) are subsets
+of VarFlags that describe uses of the variable in the source and residual program, respectively. The ref ﬂag
+supports elimination of useless assignments and useless bindings, as described in Section 2.4 and Section 2.7.
+The assign ﬂag is used to prevent copy propagation and inlining through assigned variables. The parser
+introduces Var structures for variables and initializes the ﬂags in the initial store, σ0. The ﬁnal store
+contains ﬂags for the residual program variables and may be used in place of σ0 in a subsequent application
+of I. Where unambiguous we use x as a notational convenience for Var(x, op, s, lx).
+When a variable x is bound as the formal parameter of an inlined procedure or bound by a letrec
+expression, the op ﬁeld of Var(x, op, s, lx) contains an operand structure Opnd(e, ρ, le), where e is the source
+expression corresponding to the actual parameter or bound value, ρ is an environment binding free variables
+of e, and le contains the residual code for e or unvisited if the operand has not yet been processed.
+The remainder of this section explains how the algorithm handles the core forms of the language.
+2.1 Constants
+Handling constants is straightforward. When processed for boolean value or side eﬀects, constant values are
+reduced to true, false, or void. This simpliﬁes processing of conditional expressions and simpliﬁes the
+construction of residual sequence expressions.
+2.2 Sequences
+The expression (seq e1 e2) discards the value of e1 and returns the value of e2. Therefore, e1 is processed
+in an Eﬀect context, and e2 is processed in the current context, γ. When processed for eﬀect, constants,
+primitive references, lambda expressions, variable references, and eﬀect-free primitive calls reduce to the
+constant void. Residual sequences (constructed by seq, Figure 4) are nested only in the ﬁrst position. This
+permits constant-time access (via result) to the result expression of a residual sequencing form.
+2.3 Conditionals
+The guard of a conditional expression is processed for its boolean value using a Test context. When processed
+for boolean value, non-false constants, primitive references, lambda expressions, and certain eﬀect-free prim-
+itive calls reduce to the constant true. If the result of the residual guard expression is a constant, the ﬂow
+of control is known at compile time, so a sequence of the guard (which may contain eﬀects) and the selected
+branch is residualized. Folding conditional tests eliminates unreachable code.
+When the ﬂow of control through a conditional expression cannot be determined, and the residual ex-
+pressions for the two branches are equivalent in the current context, the algorithm residualizes a sequence
+of the test and one of the branches. For our purposes, two residual expressions are equivalent only if they
+are identical constants.
+It may appear that this transformation is seldom useful. Indeed, a programmer is not likely to write
+(if e1 false false) . The ﬂattening of values in Test and Eﬀect contexts can produce such cases, however.
+Consider the following example.
+(let ((x 3))
+(if (and (read) (= x 0))
+e1
+e2))
+Copy propagation and constant folding reduce the test (= x 0) to false. With (and (read) (= x 0))
+treated as (if (read) (= x 0) false) , the preceding transformations reduce the entire expression to
+(seq (read) e2) .
+6
+=== page 7 ===
+2.4 V ariable assignments
+If a local variable x is unreferenced, then an assignment (assign x e1) is useless and e1 can be processed for
+eﬀect. Because the algorithm may still be in the process of computing referenced ﬂags for residual-program
+variables (σ(lx′ )) when it encounters the assignment, it bases this decision on the conservative source-program
+referenced ﬂags ( s). If x is referenced in the source program, the expression e1 is processed in Value context,
+the assign ﬂag is set in σ(lx′ ), and an assignment to the α-converted variable x′ is residualized.
+2.5 Procedure calls
+The treatment of call illustrates the demand-driven nature of our algorithm. The argument at a call site
+is not processed before the body of the called procedure. Rather, when the algorithm encounters a call, it
+constructs an App context that contains the current context (the context of the call itself) and an operand
+structure for the argument at the call site. The expression in operator position is then processed using the
+newly constructed call context.
+The operand structure captures the current environment so that the argument can be processed on
+demand. Operand structures also play a role in cycle detection described in Section 3. The residual code is
+cached within the operand so that an argument is processed at most once. The visit procedure returns the
+cached residual code if present. Otherwise it processes the argument in the given context, caching the result.
+Operands are visited in Value context unless they are associated with unreferenced variables, in which case
+they are visited for eﬀect.
+Processing of arguments is deferred until the algorithm encounters references to the corresponding formal
+parameters or decides to residualize the call. If a call is inlined, the residual code returned is a version of
+the integrated procedure’s body specialized, via recursive application of the inliner, to its argument. If the
+call has not been inlined, the operand is processed for value using visit, and the call is residualized.
+Processing on demand allows arguments bound to unreferenced formal parameters of an inlined procedure
+to be processed for eﬀect rather than value. This often reduces the size and execution time of the residual
+program and may improve the accuracy of the referenced and assigned information collected for variables in
+the residual program. For example, if f is (lambda (x y z) (if (> z 0) (+ z y) x)) , the inlined call
+(f e1 e2 3) reduces to (seq e1 ((lambda (y) (+ 3 y)) e2)) . Because e1 is processed for eﬀect, the
+residual code for the call may actually be smaller when inlined. If variable references in the source of e1 no
+longer appear in the residual code, expressions bound to those variables may be processed for eﬀect as well.
+2.6 Primitive references
+The current context determines how the algorithm treats primitive references. In Test or Eﬀect contexts it
+residualizes true or void because a primitive reference cannot signal an error and always has a non-false
+value. In a Value context it simply residualizes the primitive reference. In a call context, the algorithm
+processes the operand for its value and attempts constant folding when the result is a constant. If successful,
+the call is marked inlined and the new constant is residualized; otherwise the primitive reference is residualized.
+2.7 Lambda expressions
+The algorithm handles lambda expressions much like primitive references. In Test and Eﬀect contexts lambda
+expressions reduce to the constants true and void, respectively. In a Value context the body is processed
+in an environment extended with a fresh variable for the formal parameter, and the lambda expression is
+reconstructed with the fresh variable and the optimized body.
+In a call context App(op, γ, lγ) the body is processed using the outer context of the call, γ, in an environ-
+ment mapping the formal parameter x to a fresh residual-program variable x′ bound to the operand op from
+the call site. The s ﬁeld of x′ is initialized with the contents of σ(lx) for the corresponding source-program
+variable x. That is, the source ﬂags of x′ inherit the residual ﬂags of x.
+If no reference to x′ is residualized while processing the body, then ref ⁄∈ σ2(lx′) and the operand can be
+processed for eﬀect. If x′ is also unassigned, then a sequence is constructed from the residualized operand
+and the specialized body to ensure applicative-order sequencing of eﬀects. Otherwise, a let binding (direct
+lambda call) is constructed for variables referenced or assigned in the residual code of the body. These
+7
+=== page 8 ===
+(letrec ((f (lambda (x) (if (zero? x) 1 (* x (f (- x 1))))))
+(g (lambda () (display "hello")))
+(h (assign x (lambda () g)))
+(a (lambda (x) (b x)))
+(b (lambda (x) (a x))))
+(f 5))
+Figure 5: Sample letrec expression.
+transformations eﬀectively inline a version of the procedure specialized to the call site for which the call
+context was originally constructed.
+2.8 Letrec expressions
+Handling a letrec expression is similar to handling a lambda expression in a call context: the body is
+processed in an extended (circular) environment and useless bindings are pruned. A binding can be pruned
+only after all expressions in its scope have been processed. Therefore, after processing the body of a letrec
+expression, the algorithm must process operands of as-yet unreferenced variables, such as g, h, a, and b in
+Figure 5. Operands of variables not referenced in the source program are visited for eﬀect. Processing of
+trivially eﬀect-free operands, such as the lambda expression bound to g, or operands of already referenced
+variables such as f, is left for the pruning phase. Other operands are conservatively processed for value.
+The binding for an unassigned and unreferenced variable can then be eliminated provided its operand is
+eﬀect-free, that is, it does not diverge, perform side eﬀects, or capture a continuation. The binding for g
+is retained because a reference to g is residualized when the operand of h is conservatively processed for
+value and the binding for h is retained because its operand performs a side eﬀect. The bindings for a and b
+are discarded. By visiting operands on demand, the algorithm generally obtains more complete information
+than would be obtained with any arbitrary processing order.
+2.9 V ariable references
+Variable references are the focal points for copy propagation and inlining. In Eﬀect context, a variable
+reference reduces to the constant void. In Value, Test and call contexts, the variable is renamed, and the
+operand bound to that variable, if any, is processed for value as a prelude to copy propagation and inlining.
+The initial processing of the operand conveniently biases the algorithm in favor of inlining at leaves of the
+call graph.
+Copy propagation and inlining are performed by copy, deﬁned in Figure 4, which takes the Var structure
+for the renamed variable, the result e of the processed operand, and the current context, continuation and
+store. Copies are propagated in cases one, four, and ﬁve of the deﬁnition. Inlining is attempted in the third
+case when e is a lambda expression processed in a call context.
+3 Restraining the Algorithm
+To simplify the presentation, we have not yet described the mechanisms that bound the run time of the
+algorithm, limit code growth due to inlining, and detect cycles. There are three mechanisms of interest.
+A linear bound is enforced on the run time of the algorithm by maintaining an eﬀort counter whenever
+an expression is processed more than once, i.e., for each attempt to inline an operand (see Section 2.9). The
+eﬀort counter advances each time I is called. If the eﬀort bound is exceeded, the inlining attempt is aborted
+and the call is residualized instead. Because the inlining attempt may be aborted, fold does not set the
+inlined ﬂag until processing is complete. The eﬀort counter is not reset for nested integrations, as this could
+lead to nonlinear processing time. Because the number of call sites in the original source program is ﬁxed
+and because we bound the amount of eﬀort expended processing each of these sites, the run time of the
+algorithm is linear in the size of the input program.
+8
+=== page 9 ===
+The eﬀort counter is an intuitive, no-nonsense mechanism that permits general-purpose optimization and
+which allows the linear-time constant of proportionality to be scaled. Other methods for bounding the run
+time of the algorithm may abandon entire classes of useful optimizations. For example, if only calls to leaf
+routines are inlined, then programs containing η-expansions are not fully optimized.
+Code growth is limited via a size counter that tracks the size of the residual code as it is produced.
+This counter is incremented whenever a form is residualized in the output. If the size threshold is exceeded
+while attempting to integrate a procedure, the inlining attempt is abandoned and the call is residualized
+instead. When inlining an operand bound to a variable referenced only once in the source program, no limit
+is imposed on the size of the residual code. Inlining procedures called only once does not directly increase the
+size of the residual program and, through specialization, may decrease code size. 1 While the eﬀort counter
+alone prevents indeﬁnite inline expansion, the size counter prevents excessive growth in any one part of the
+program.
+The eﬀort and size counters are passed as additional arguments to I. When constructing a call context,
+the current eﬀort counter is stored in each operand structure so that the cost of processing the operand
+may be charged to the original call site. In particular, this allows source-program operands to be processed
+without an eﬀort counter. The size counter is not stored in the operand structure. Rather, a new counter
+with no limit is used when the operand is ﬁrst processed for value. The resulting size count is cached along
+with the residual code in the operand structure. The cached size is added to the current size counter if a
+binding to this operand is residualized.
+Cycles are detected by consulting additional ﬂags within operand structures to recognize when the value of
+an operand is requested during the initial processing of that operand. An “outer-pending” ﬂag, tested and set
+by copy, is used to detect recursive references encountered while inlining a procedural operand, as in the ex-
+pression ((lambda (x) (x x)) (lambda (x) (x x))) . An “inner-pending” ﬂag, tested and set by visit,
+is used to detect recursive references within an operand as in (letrec ((f (lambda () (f)))) (f)) .
+These ﬂags can be extended to govern loop unrolling within a recursive procedure and unfolding at the
+call site. When a cycle is discovered while processing the operand for a variable, a variable reference is
+residualized.
+The cycle-detection mechanism generally interrupts recursive inlining long before the eﬀort counter is
+exceeded. This is important because it prevents the algorithm from wasting eﬀort that could otherwise be
+applied to inlining. To illustrate, suppose that while inlining a call to f, the algorithm encounters a call to
+g, where g is bound to a recursive procedure. If cycle-detection were disabled, then recursively visiting the
+operand of g would eventually exceed the eﬀort limit and the entire inlining attempt for f would be aborted.
+By detecting the cycle involving g early, the algorithm residualizes the call to g and resumes its eﬀort to
+inline f.
+Polyvariance is achieved by attempting to integrate a procedure at each of its call sites and relying on
+the size counter to abort any attempts for which the residual code produced would exceed the size limit.
+Thus, the algorithm bases the inlining decision at each call site on the size of the procedure when specialized
+to its arguments. In contrast, a monovariant approach bases the decision solely on the size of the procedure
+without taking into account the arguments. Polyvariance thus permits more aggressive inlining without an
+increase in the size threshold, resulting in better performance with tighter control over code growth.
+4 Extensions
+4.1 Primitive handlers
+The algorithm in Section 2 folds primitive calls only when all of the operands at the call site residualize with
+constant result expressions. In fact, by exploiting algebraic properties of primitives, constant folding may be
+possible even when some operands are not constants. For example, (member e1 ’()) is processed as if it
+were the equivalent expression (seq e1 false) . This provides member with the same polyvariant inlining
+beneﬁts that would automatically result had it been deﬁned as a user procedure.
+Our implementation currently performs only a few such transformations. We consider adding a new
+primitive handler only if: (1) it eliminates the need to process an operand for value, or (2) the transformation
+1Code size increases only if procedural arguments passed to a called-once procedure are inlined.
+9
+=== page 10 ===
+exposes opportunities for further folding. 2 The member example above satisﬁes both conditions: e1 can be
+processed for eﬀect, and exposing the constant false may allow folding of a conditional test.
+4.2 Pruning letrec bindings
+After processing the body of a letrec expression, the algorithm must process operands of as-yet unreferenced
+variables, such as g, h, a, and b in Figure 5. In the simpliﬁed algorithm, these operands are conservatively
+visited for value unless trivially eﬀect-free. Using an eﬀort counter, the algorithm can instead visit operands
+of as-yet unreferenced variables for eﬀect. To support this, operand structures are extended so that cached
+residual code produced in eﬀect context can be distinguished from that produced in value context. An
+operand is processed for eﬀect, and the resulting code cached, only if the operand has not already been
+processed. If the eﬀort counter is exceeded, the operand is visited conservatively for value. When an operand
+is visited for value, cached residual code is returned only if it was obtained in value context. Caching ensures
+that operands of as-yet unreferenced variables are processed at most twice: once for eﬀect using an eﬀort
+counter, and if necessary, once for value.
+4.3 Improving accuracy
+In Figure 3, the third case of the rule for variable references visits the operand in value context as a prelude
+to copy propagation or inlining. When a reference is processed in test context, immediately processing
+its operand for value may reduce accuracy. Consider the diﬀerence between (if (cons e1 e2) 1 2) and
+(let ((x (cons e1 e2))) (if x 1 2)) . In the ﬁrst expression, the call to cons is processed in test
+context. Because cons cannot return false, e1 and e2 can be processed for eﬀect, and the conditional
+test folds. In the second expression, processing the operand of x for value causes the call to cons to be
+residualized with e1 and e2 processed for value. This prevents the conditional expression from folding and
+may cause otherwise useless bindings referenced within e1 and e2 to be retained.
+To solve this problem, the rule for variable references is modiﬁed so that when processing a reference in
+test context, its operand is visited in test context using an eﬀort counter. An eﬀort counter must be used
+because it may be necessary to revisit the operand in value context if the variable is referenced elsewhere
+in the program. If the eﬀort limit is exceeded, the operand is processed conservatively in value context.
+Operand structures are extended to distinguish residual code produced in test context from that produced
+in value context. When an operand is visited for value, cached residual code is returned only if it was
+produced in a value context. With these changes in place, the second example above folds to 1 just as the
+ﬁrst did.
+In the deﬁnition of fold in Figure 4, the continuation κ3 constructs the equivalent of a let binding
+when the formal parameter of a called lambda expression appears to be referenced or assigned. Where the
+referenced or assigned information is conservative, this can be improved upon by two simple transformations.
+First, when the residual code for e2 is (const c) , (let ((x e1)) e2) can be treated instead as the
+equivalent expression (seq e1 (const c)) because x is clearly not used even if it appeared to be while
+processing e2. Similarly, when the residual code for e3 is (const c) , (let ((x e1)) (seq e2 e3)) can
+be treated instead as (seq (let ((x e1)) e2) (const c)) . With these two transformations in place,
+the following example reduces to 12 instead of a let binding with 12 as its body. This allows the constant
+to be propagated into other contexts where it may lead to constant folding.
+(let ((f (lambda (g) (g g))))
+(let ((z (lambda (n) (if (< n 10) (lambda (x) 5) (lambda (x) 15)))))
+(let ((y (lambda (m) (m 4))))
+(let ((x (y z)))
+(+ 7 (f x))))))
+4.4 Inlining recursive procedures
+A procedure is inlined by setting a size counter and an eﬀort counter (if not already set) then processing
+the procedure body in an environment mapping the formal parameters to fresh variables containing operand
+2For example, strength reductions that simply replace one call with another are left for a later pass of the compiler.
+10
+=== page 11 ===
+structures for the actual parameters at the call site. Calls to non-recursive procedures are inlined when the
+size of the resulting residual code does not exceed the size limit and the eﬀort limit is not exceeded. Calls
+to recursive procedures are inlined only if the above conditions hold and (1) no recursive calls appear in the
+residual code, or (2) the procedure body can be specialized to the actual parameters at the call site. Many
+calls satisfying condition (1) are already inlined as a natural consequence of the algorithm already presented.
+In this section we describe extensions which allow the algorithm to discover additional cases in which calls
+satisfy condition (1) and which allow the algorithm to inline calls satisfying condition (2).
+To illustrate the ﬁrst condition, consider the factorial function deﬁned below.
+(define f
+(lambda (x)
+(if (zero? x)
+1
+(* x (f (- x 1))))))
+Using the cycle detection mechanisms described in Section 3, the algorithm can recognize that a variable
+is bound to a recursive operand when that operand is initially processed for value. When attempting to
+inline a call to the recursive procedure bound to f, we ﬁrst extend the environment so that f maps to a
+fresh variable, f′, with no operand, then process the procedure body in the call context. Because f′ has
+no operand, recursive calls within the body are forced to residualize (see the last line in deﬁnition of copy,
+Figure 4). If, after processing the body, f′ is unreferenced, then no recursive calls were residualized. That
+is, the call folded completely, as happens for (f 0) , satisfying condition (1) above.
+If, after processing the body, f′ is referenced but the fresh formal parameters are not referenced, then
+copy propagation or inlining successfully replaced references to the formals within the body. This often
+means the operands of recursive calls to f are known. For example, processing the call (f 5) in this manner
+yields (* 5 (f ′ 4)). If some of the operands at the original call site have constant residual expressions, a
+size counter is set along with modest eﬀort and unfolding counters and we attempt to completely unfold the
+call. If these limits are not exceeded and no recursive calls remain in the resulting residual code, condition
+(1) is satisﬁed. For example, the call (f 5) reduces to 120.
+If condition (1) cannot be met, a call to a recursive procedure may still be inlined if the procedure body
+can be specialized to the arguments at the call site. For example, consider the deﬁnition of fold below.
+(define fold
+(lambda (f x b null? car cdr)
+(if (null? x)
+b
+(f (car x) (fold f (cdr x) b null? car cdr)))))
+When the operand bound to fold is initially processed, we record the residual code for the operands at
+each recursive call. When attempting to specialize fold we collect the set of formal parameters that are
+invariant with respect to copy propagation and inlining. For our purposes, a formal parameter is invariant if
+it is unassigned and if for all recursive calls the corresponding actual parameter is merely a reference to that
+formal parameter. In the case of fold, all formal parameters except x are invariant in this sense. The set of
+invariant formals can be computed in linear time because the residual code for each of the arguments at the
+recursive call sites is tested at most once. Once computed, this set is cached within the operand structure.
+Specialization is attempted if some formals are invariant and the residual expressions for their operands
+at the original call site are not variable references. This prevents trivial specialization. To specialize the
+procedure, we extend the environment with formal parameters mapped to fresh variables, set eﬀort and size
+counters and process the body. The fresh formal parameters contain operands only if the corresponding
+formal parameters are marked invariant. This ensures that the resulting optimized code is valid for all
+iterations. If the size and eﬀort limits are not exceeded, the original call is replaced by a call to a local
+letrec binding for the specialized procedure body.
+Eliminating unused invariant bindings is analogous to pruning unused letrec bindings. Processing of
+recursive call operands is deferred until the rest of the body has been processed. The operands of variables
+marked referenced or assigned at this point are visited for value. Operands for as-yet unreferenced variables
+are visited as described in Section 4.2. Bindings for unused formals are then eliminated from the specialized
+11
+=== page 12 ===
+Benchmark Lines Description
+boyer 528 Logic programming benchmark originally by Bob Boyer
+dynamic 1,503 Henglein’s dynamic type inferencer [13]
+graphs 558 Counts directed graphs with distinguished root
+and k vertices, each having out-degree at most 2
+lattice 214 Enumerates the lattice of maps between two lattices
+matrix 585 Tests whether matrix is maximal among all matrices
+obtained by reordering rows and columns
+maze 787 Hexagonal maze generator by Olin Shivers
+nbody 1,534 Implementation [17] of Greengard multipole algorithm [12]
+splay 971 Implementation of splay trees
+conform 395 Type checker by Jim Miller
+earley 455 Earley’s parser by Marc Feeley
+em-fun 416 Jeﬀrey Siskind’s functional implementation of an EM clustering algorithm
+em-imp 404 Siskind’s imperative implementation of an EM clustering algorithm
+interpret 842 Marc Feeley’s Scheme interpreter evaluating takl
+peval 496 Feeley’s simple Scheme partial evaluator
+simplex 182 Simplex algorithm
+Table 1: Description of benchmarks. Size excludes blank lines and comments.
+procedure body, and each recursive call is rewritten as a sequence that evaluates operands of unused formals
+for eﬀect, then makes the recursive call passing operands only for used formals.
+Specializing (fold * x 1 zero? (lambda (x) x) (lambda (x) (- x 1))) in this manner yields the
+same code as the earlier deﬁnition of factorial, modulo renaming. Although we do not explicitly perform
+specialization for mutually recursive functions, inlining often converts mutual recursion into direct recur-
+sion [15]. The resulting direct recursion can then be specialized as described above.
+5 Performance
+We have implemented the inlining algorithm as an additional pass within Chez Scheme , a commercial
+optimizing compiler for Scheme. Although described in Section 2 as an interpreter written in continuation-
+passing style (CPS), the inlining algorithm is implemented in direct style, relying on the applicative-order
+semantics of Scheme to sequence eﬀects. When a size or eﬀort counter exceeds its bound, the inlining
+attempt is abandoned via non-local exit to the point at which the counter was set, and a call is residualized
+instead. Because the continuations which provide these non-local exits are never reinstated, simple one-shot
+continuations suﬃce [8]. Operations on sets of ﬂags are implemented eﬃciently as operations on bit-vectors.
+When creating a fresh variable, for example, residual-variable ﬂags are copied to source-variable ﬂags by a
+single logical shift operation. We do not CPS-convert input programs; doing so would not materially simplify
+the algorithm and could exaggerate the beneﬁts obtained by inlining [1].
+Table 1 describes the benchmarks used to evaluate the inlining algorithm. The benchmarks in the
+ﬁrst part of the table were provided by Jagannathan and Wright [14] and have already been processed by
+their local simpliﬁcation pass, which performs many of the same optimizations as our inliner. To facilitate
+comparison with their results, performance data was collected on a 150 MHz SGI MIPS R4400 workstation.
+Table 2 shows the performance increase obtained when the benchmarks are optimized using diﬀerent
+size and eﬀort bounds. With the exception of nbody, all programs show consistent and signiﬁcant speedups.
+Proﬁling reveals that nbody spends most of its time indexing three levels deep into a structure of nested
+arrays. Thus, the variability we observe is likely due to cache eﬀects. When run on the Intel Pentium Pro,
+which better tolerates cache eﬀects, nbody shows consistent speedups ranging from 1.06 to 1.11. As is to
+be expected, increasing the eﬀort limit generally improves performance somewhat. Both graphs and peval
+improve substantially at higher eﬀort limits.
+Inlining more than doubles the performance of lattice, graphs, and conform. A large percentage of runtime
+12
+=== page 13 ===
+Eﬀort limit 100 Eﬀort limit 1000
+Size limit: 10 20 30 40 50 60 10 20 30 40 50 60
+boyer 1.03 1.04 1.04 1.04 1.04 1.04 1.03 1.04 1.06 1.06 1.07 1.06
+dynamic 1.05 1.07 1.07 1.08 1.06 1.05 1.08 1.10 1.05 1.05 1.10 1.07
+graphs 1.79 1.78 1.78 1.78 1.78 1.77 1.76 2.25 2.24 2.25 2.25 1.59
+lattice 4.30 4.37 4.39 4.40 4.39 4.39 4.30 4.57 4.48 4.57 4.56 4.57
+matrix 1.29 1.27 1.27 1.29 1.30 1.29 1.31 1.28 1.30 1.31 1.32 1.30
+maze 1.45 1.38 1.40 1.35 1.40 1.42 1.46 1.39 1.40 1.42 1.41 1.39
+nbody .95 .97 .98 1.04 1.04 1.05 .92 1.00 .98 .93 1.04 1.03
+splay 1.26 1.29 1.30 1.29 1.28 1.28 1.32 1.20 1.33 1.31 1.38 1.35
+conform 2.41 2.50 2.62 2.70 2.69 2.66 2.44 2.52 2.47 2.68 2.67 2.69
+earley 1.10 1.10 1.08 1.09 1.09 1.10 1.09 1.11 1.12 1.12 1.12 1.12
+em-fun 1.15 1.18 1.05 1.02 1.09 1.02 1.20 1.15 1.07 1.15 1.15 1.14
+em-imp 1.16 1.10 1.06 1.11 1.15 1.06 1.16 1.09 1.06 1.13 1.05 1.06
+interpret 1.07 1.03 1.09 1.09 1.10 1.10 1.08 .99 1.10 1.07 1.07 1.07
+peval 1.22 1.07 1.05 1.07 1.07 1.06 1.07 1.21 1.23 1.22 1.23 1.24
+simplex 1.32 1.32 1.30 1.32 1.32 1.32 1.31 1.32 1.31 1.32 1.30 1.30
+Table 2: Performance increase from inlining with diﬀerent size and eﬀort bounds.
+Eﬀort limit 100 Eﬀort limit 1000
+Size limit: 10 20 30 40 50 60 10 20 30 40 50 60
+boyer .97 .97 .99 1.00 1.00 1.00 .97 .99 .99 1.01 1.01 1.01
+dynamic .87 1.18 1.20 1.20 1.31 1.31 .86 1.26 1.30 1.37 1.55 1.57
+graphs .72 .71 .71 .71 .71 .71 .80 .85 .85 .85 .85 .90
+lattice 1.13 .91 .91 .91 .91 .91 1.13 .89 .89 .89 .89 .89
+matrix .96 1.01 1.03 1.03 1.03 1.03 .94 .99 1.01 1.00 1.00 1.00
+maze .74 .74 .78 .78 .78 .78 .74 .74 .78 .78 .78 .78
+nbody 1.20 1.22 1.25 1.25 1.25 1.25 1.24 1.27 1.33 1.34 1.40 1.46
+splay 1.00 1.00 1.02 1.06 1.06 1.06 .99 1.01 1.12 1.12 1.10 1.12
+conform .73 .80 .82 .86 .86 .86 .72 .75 .76 .80 .80 .80
+earley .91 .92 .96 .96 .96 .96 .82 .85 .89 .89 .91 .94
+em-fun .88 .92 1.07 1.09 1.09 1.09 .88 .91 1.15 1.17 1.13 1.12
+em-imp .87 .89 .89 .92 .92 .92 .85 .89 .88 .90 .90 .90
+interpret 1.19 1.26 1.31 1.31 1.31 1.31 1.17 1.23 1.28 1.29 1.29 1.35
+peval 1.01 1.04 1.04 1.04 1.04 1.04 1.00 1.03 1.03 1.03 1.03 1.03
+simplex .86 .86 .86 .86 .86 .86 .86 .86 .86 .86 .90 .90
+Table 3: Ratio of code size to original code size with diﬀerent size and eﬀort bounds. Numbers less than 1
+indicate a decrease in code size.
+13
+=== page 14 ===
+Eﬀort limit 100 Eﬀort limit 1000
+Size limit: 10 20 30 40 50 60 10 20 30 40 50 60
+boyer .03 .04 .03 .04 .04 .04 .02 .08 .07 .08 .09 .09
+dynamic .33 .48 .52 .50 .54 .53 .34 .56 .57 .68 .81 1.06
+graphs .08 .08 .09 .09 .08 .07 .11 .13 .14 .13 .15 .14
+lattice .08 .08 .09 .08 .07 .08 .09 .11 .12 .10 .11 .12
+matrix .11 .11 .11 .11 .13 .11 .14 .18 .20 .21 .21 .21
+maze .11 .11 .13 .12 .13 .12 .11 .12 .13 .13 .14 .13
+nbody .20 .20 .20 .22 .20 .22 .29 .47 .48 .51 .57 .57
+splay .10 .10 .10 .09 .10 .11 .13 .15 .13 .13 .14 .16
+conform .08 .12 .13 .14 .14 .15 .24 .27 .28 .32 .34 .31
+earley .13 .15 .15 .15 .15 .17 .26 .31 .40 .41 .44 .45
+em-fun .17 .19 .20 .21 .21 .22 .40 .45 .66 .70 .68 .64
+em-imp .16 .18 .18 .18 .19 .18 .34 .45 .46 .50 .54 .51
+interpret .28 .29 .33 .34 .34 .34 .29 .31 .47 .51 .56 .55
+peval .08 .08 .09 .12 .13 .13 .17 .19 .19 .19 .22 .19
+simplex .05 .06 .06 .06 .05 .05 .09 .10 .10 .14 .14 .13
+Table 4: Run time of the algorithm (in seconds) with diﬀerent size and eﬀort bounds.
+calls made by lattice (73%) and graphs (43%) are to a user-deﬁned memv procedure that searches a list for a
+given key. With a size limit of 4 our algorithm completely unfolds calls to memv in both programs because
+the target list happens to be a short constant at each call site for memv. The speedup of 4.57 for lattice at
+size limit 20 represents an additional speedup of 1.15 beyond the speedup of 3.97 due to unfolding calls to
+memv at size limit 4. The speedup of 2.25 for graphs at size limit 20 represents an additional speedup of
+1.43 beyond the speedup of 1.57 due to unfolding calls to memv at size limit 4. The algorithm cannot unfold
+any of the recursive calls within conform. The large speedup is due simply to the fact that conform contains
+many small procedures that can be inlined.
+Table 3 shows the eﬀect of diﬀerent size and eﬀort bounds on the size of the resulting object code. The
+table reports the ratio of code size after optimization to the original code size. For many programs, inlining
+actually decreases code size. For most programs, code size increases gradually as the size limit increases.
+This conﬁrms the intuition that the size counter is an eﬀective mechanism for regulating code growth.
+Table 4 shows the run time of the algorithm for diﬀerent size and eﬀort bounds. The algorithm completes
+both analysis and transformation of each program (except dynamic) in less than one second. At the highest
+settings for size and eﬀort limits, dynamic is processed in just over one second. Increasing the eﬀort limit by
+an order of magnitude typically only doubles the run time of the algorithm. When the size limit is varied,
+the run time of the algorithm increases roughly in proportion to the increase in code size.
+6 Related work
+Jagannathan and Wright [14] use a polyvariant ﬂow analysis to identify inlining opportunities and to esti-
+mate the size of a procedure when specialized for a particular call site. Their approach is oﬄine: all inlining
+decisions are made prior to any transformation. Our algorithm combines a less accurate analysis (eﬀec-
+tively sub-0CF A [4]) with online transformation and polyvariant specialization. The time required by their
+ﬂow analysis varies widely and can be excessive—110 seconds to analyze dynamic—rendering their method
+impractical for use in a production compiler.
+Ashley [3] evaluated the eﬀectiveness of four diﬀerent ﬂow analyses for inlining. The analyses range from
+a fast analysis less accurate than 0CF A to a polyvariant analysis similar to 1CF A. His inlining algorithm is
+based on that of Jagannathan and Wright but exposes more opportunities for inlining.
+Table 5 provides a rough comparison of the best speedups obtained by the ﬂow-directed inlining algorithm
+of Jagannathan and Wright with the best speedups obtained by our algorithm (labeled POLI, for polyvariant
+online linear inliner ). The table also compares processing time and the ranges of object code size for the
+14
+=== page 15 ===
+Performance Increase Processing Time Code Size Ratios
+(seconds)
+Baseline block non-block
+Algorithm POLI POLI PCF A
+boyer 1.07 1.34 1.72
+dynamic 1.10 1.20 1.20
+graphs 2.25 2.45 1.30
+lattice 4.57 6.40 1.27
+matrix 1.32 1.35 1.11
+maze 1.46 1.88 1.67
+nbody 1.04 1.38 1.11
+splay 1.38 1.35 1.20
+POLI PCF A
+.09 1.4
+.56 110.3
+.13 .3
+.11 .2
+.21 .4
+.11 .5
+.22 2.6
+.14 4.0
+block non-block
+POLI POLI PCF A
+.97 – 1.01 .82 – .86 .95 – 1.10
+.86 – 1.57 .78 – 1.43 1.52 – 2.48
+.71 – .90 .65 – .82 .79 – .87
+.89 – 1.13 .72 – .92 1.02 – 3.09
+.94 – 1.03 .86 – .94 .93 – 1.21
+.74 – .78 .48 – .51 .89 – .98
+1.20 – 1.46 1.08 – 1.31 1.25 – 2.62
+.99 – 1.12 .94 – 1.06 .94 – .95
+Table 5: Performance increase, processing time and range of code size ratios for our algorithm (POLI) and
+the polyvariant ﬂow-directed inlining of Jagannathan and Wright (PCF A). The columns labelled “non-block”
+indicate results relative to a baseline that is not block compiled. All programs were compiled and run using
+Chez Scheme . All data was collected on the 150 MHz SGI MIPS R4400.
+two methods. The comparison is complicated by the fact that their optimizer eﬀectively block compiles the
+benchmarks, yet their baseline for comparison is not block-compiled. Enabling block compilation reduces
+baseline object-code size and improves baseline performance considerably. To compensate for the diﬀerence
+in benchmarking methodology we present both our absolute results and the results we obtain relative to
+a baseline that is not block compiled. It appears that we achieve equivalent or better speedups for all
+benchmarks except boyer and better code size ratios for all benchmarks except splay, yet our algorithm
+completes both analysis and transformation in far less time than their analysis alone.
+Table 6 compares the performance increase, processing time, and code size ratios for Ashley’s inlining
+algorithm justiﬁed by sub-0CF A and 1CF A analyses with the results obtained by our algorithm with eﬀort
+limits of 100 and 1000. All data was generated using the same compiler and benchmarking methodology. In
+particular, the baseline and optimized programs were block-compiled in all cases. The data was collected
+on virtually identical hardware (our machine has half the physical memory and second-level cache). All
+results in the table reﬂect a size threshold of 30. Our algorithm achieves better or equivalent speedups for
+virtually all of the benchmarks and typically completes both analysis and transformation in less time than
+is required for ﬂow analysis alone. The volatility of the 1CF A analysis is highlighted by the fact that it
+exhausted virtual memory (128Mb core, 100Mb swap) while attempting to analyze interpret. Our code size
+ratios are consistently better than those obtained using either ﬂow analysis. This supports our claim that
+online transformation provides more accurate size information on which to base inlining decisions.
+The intuitive appeal of an oﬄine ﬂow-directed approach is that the results of ﬂow analysis might be used
+to justify other optimizations in addition to inlining. In fact, Ashley found that inlining violates the soundness
+of ﬂow information about procedures which could otherwise be used by procedure call optimizations in later
+passes of the compiler. This means that ﬂow analysis must be repeated after inlining.
+Our one-pass algorithm diﬀers signiﬁcantly from the iterated multi-pass algorithm used by Appel in
+the SML/NJ compiler [1]. Appel uses an oﬄine method in which a data gathering pass is run alternately
+with a transformation pass that performs several optimizations including constant folding, β-contraction,
+uncurrying, and inlining of functions called only once. This transformation phase is iterated until the number
+of contractions found is below some threshold. Next, inline expansion is performed using several heuristics
+to estimate the cost and beneﬁt of inlining. To improve these estimates, this “round” of optimization is
+iterated beginning with the contraction phase. Although our algorithm can be iterated, we have found that
+few programs actually beneﬁt from additional passes.
+Appel and Jim recently described a linear-time algorithm that performs constant folding, dead-variable
+elimination, and inlining of functions called only once [2]. They have implemented an O(n2) variant of the
+algorithm to replace the contraction phase of the SML/NJ compiler described above. The new algorithm
+is online in that usage counts for variables are updated as the optimizations are performed. The algorithm
+15
+=== page 16 ===
+Performance Increase Processing Time (seconds) Code Size Ratio
+<0cfa 1cfa 100 1000
+boyer 1.01 1.03 1.01 1.02
+dynamic 1.11 1.05 1.10 1.10
+graphs 1.20 1.27 1.70 2.18
+lattice 1.03 1.33 3.92 4.06
+matrix 1.05 1.09 1.22 1.21
+maze 1.27 1.27 1.28 1.29
+nbody 1.06 1.10 1.09 1.06
+splay 1.09 1.11 1.23 1.26
+conform 1.72 1.75 1.94 1.95
+earley 1.10 1.11 1.07 1.10
+interpret 1.12 — 1.14 1.15
+peval 1.15 1.15 1.14 1.15
+simplex 1.39 1.39 1.43 1.43
+<0cfa 1cfa 100 1000
+.01 .07 .02 .03
+.32 2.09 .20 .23
+.05 .20 .03 .05
+.01 .19 .03 .04
+.05 3.02 .06 .09
+.05 .19 .03 .04
+.13 1.98 .08 .19
+.06 .95 .02 .05
+.04 .31 .05 .12
+.07 .45 .06 .15
+.39 — .13 .19
+.07 .41 .04 .07
+.03 .19 .03 .04
+<0cfa 1cfa 100 1000
+1.47 2.33 .98 1.01
+3.56 4.72 1.46 1.61
+.73 .82 .68 .72
+1.20 1.51 .94 .92
+1.11 1.23 1.04 1.02
+.88 .89 .75 .75
+1.29 1.37 1.19 1.25
+1.42 1.46 1.07 1.18
+1.06 1.19 .86 .81
+1.06 1.13 1.00 .94
+2.06 — 1.47 1.45
+1.20 1.31 1.04 1.03
+.89 .92 .81 .81
+Table 6: Comparison of performance increase, processing time, and ratio of code size to original code size for
+two ﬂow-directed algorithms and our algorithm run with eﬀort limits of 100 and 1000. All data was gathered
+on the 200 MHz Intel Pentium Pro. All programs were compiled and run using Chez Scheme . Processing
+time for <0cfa and 1cfa cases includes analysis time only, i.e., it does not reﬂect the cost of inlining or
+subsequent simpliﬁcation. A size threshold of 30 was used in all cases.
+is demand-driven in that bodies of binding forms are processed before processing the bindings. The new
+algorithm typically performs as many contractions in one pass as their earlier oﬄine algorithm performs in
+three. They do not consider the more diﬃcult problem of inlining functions called more than once.
+Bondorf uses an abstract interpreter written in continuation-passing style (CPS) to improve the accuracy
+of binding-time analysis in an oﬀ-line partial evaluator [7]. The CPS structure of the interpreter enables
+him to move static contexts into binding forms, thereby reducing the need to CPS-convert source programs
+as part of binding-time improvement. We achieve a similar eﬀect in direct style via our contexts, which
+abstract the relevant information about the continuation in which expression values are used.
+Biswas [6] describes a demand-driven set-based analysis and uses this to obtain a polynomial-time ( O(n3))
+algorithm for dead-code elimination in a purely functional higher-order language. No empirical evidence is
+given to support the eﬀectiveness of the optimization.
+Dean and Chambers [11] describe an online approach in which the cost and beneﬁt of inlining at a call
+site are estimated by examining the code produced when the routine is tentatively inlined and optimized for
+the call site. To amortize the high cost of these inlining trials, they cache the results in a persistent database
+indexed by a description of the static information at the call site that justiﬁed optimizations that made
+inlining acceptable. By using inlining trials instead of oﬄine scoring estimates, they were able to reduce
+overall compile time and code size with minimal loss of run-time performance. Our algorithm can be viewed
+as incorporating a lightweight form of inlining trials.
+Wegman and Zadeck [16] present a fast global constant propagation algorithm and show how it can
+be extended to perform many of the specializations needed when procedures are inlined. Their algorithm
+propagates constants through the static single-assignment (SSA) graph [10] using a demand-driven traversal
+of the control-ﬂow graph that facilitates elimination of unreachable code which, in turn, improves the accuracy
+of the information collected. The inlining algorithm they describe does not address key issues such as
+identifying inlining candidates, limiting code growth, and achieving termination in the presence of recursion.
+Their algorithm is not online, polyvariant, or context-sensitive in the sense we have described.
+Ball describes an analysis that determines which parameters contribute to the value of the expressions in a
+procedure body [5]. When constant parameters are available at a call site he uses the parameter dependency
+information to guide inlining decisions with an estimate of code savings and performance gain that is based
+on predictions about the impact of subsequent optimizations. We suspect the speed of our algorithm could be
+improved by using the type-group analysis of Dean and Chambers, or the more direct parameter dependency
+16
+=== page 17 ===
+analysis of Ball, to exploit polyvariance only where it is likely to be useful.
+7 Conclusion
+We have presented a procedure inlining algorithm that is both fast and eﬀective. The algorithm improves
+performance dramatically for several benchmark programs without sacriﬁcing performance on any. Moreover
+our algorithm is fast enough to process programs of several thousand lines in under one second on available
+hardware. The run time of our algorithm is linear in the size of the input program, which is important
+for scalable optimizations. Because it is both fast and eﬀective, the algorithm is well-suited for use in a
+production compiler. The algorithm also provides a competent basis for comparison that can be used to
+isolate the additional beneﬁt, if any, obtained through more involved analysis techniques. Finally, we have
+presented evidence that online techniques are faster than oﬄine, analysis-intensive techniques, yet are equally
+eﬀective for inlining.
+There are several directions we intend to pursue as future work. Inlining decisions might be improved
+by investing more eﬀort in frequently executed parts of the program. Burger [9] has developed a framework
+in which proﬁling data can be collected and used to dynamically recompile programs as they run. When
+recompiling, his implementation currently performs only low-level optimizations such as block reordering.
+We plan to extend the scope of recompilation to include front-end optimizations such as inlining.
+Because inlining can simplify control ﬂow and eliminate polymorphism, we intend to see whether the run
+time of a polyvariant ﬂow analysis can be improved by running our algorithm as a pre-pass. We also want
+to determine what additional beneﬁt can be obtained by extending our algorithm to exploit the results of
+ﬂow analysis. We plan to study these eﬀects using the polyvariant ﬂow analysis of Ashley [4].
+Our implementation inlines procedures with free variables only when those variables can be eliminated
+during optimization or when the scope of the variables includes the call site. In the second case, inlining may
+add new free variables to closures. Although inlining often decreases and never increases the total amount
+of allocation for the benchmarks we tried, we believe there are cases where increasing closure size can impair
+performance. We plan to see whether performance can be improved by investigating the interaction between
+inlining, closure conversion, and lambda-lifting.
+Acknowledgements: Mike Ashley and Bob Burger contributed to the development of the inlining algo-
+rithm. Mike Ashley, Carl Bruggeman, Bob Burger, and Mark Leone provided helpful comments on drafts of
+this paper. We thank Suresh Jagannathan and Andrew Wright for providing us with details on their inlining
+algorithm and the benchmark code they used to test it, and Andy Hanson for allowing us to run benchmarks
+on his SGI workstation.
+References
+[1] Andrew W. Appel. Compiling with Continuations . Cambridge University Press, 1992.
+[2] Andrew W. Appel and Trevor Jim. Shrinking lambda expressions in linear time. To appear in Journal
+of Functional Programming.
+[3] J. Michael Ashley. The eﬀectiveness of ﬂow analysis for inlining. To appear in Proceedings of the 1997
+ACM SIGPLAN International Conference on Functional Programming .
+[4] J. Michael Ashley. A practical and ﬂexible ﬂow analysis for higher-order languages. In Proceedings of
+the ACM Symposium on Principles of Programming Languages , pages 184–194, 1996.
+[5] J. Eugene Ball. Predicting the eﬀects of optimization on a procedure body. SIGPLAN Notices ,
+14(8):214–220, August 1979. Proceedings of the ACM SIGPLAN ’79 Symposium on Compiler Con-
+struction.
+[6] Sandip K. Biswas. A demand-driven set-based analysis. In Proceedings of the ACM Symposium on
+Principles of Programming Languages , pages 372–385, 1997.
+17
+=== page 18 ===
+[7] Anders Bondorf. Improving binding times without explicit CPS-conversion. In Proceedings of the 1992
+ACM Conference on LISP and Functional Programming , pages 1–10, 1992.
+[8] Carl Bruggeman, Oscar Waddell, and R. Kent Dybvig. Representing control in the presence of one-shot
+continuations. In Proceedings of the ACM SIGPLAN ’96 Conference on Programming Language Design
+and Implementation , pages 99–107, 1996.
+[9] Robert G. Burger. Eﬃcient Compilation and Proﬁle-Driven Recompilation in Scheme . PhD thesis,
+Indiana University, 1997.
+[10] R. Cytron, J. Ferrante, B. K. Rosen, M. N. Wegman, and F. K Zadeck. Eﬃciently computing static
+single assignment form and the control dependence graph. Technical Report RC 14756, IBM, 1991.
+[11] Jeﬀrey Dean and Craig Chambers. Towards better inlining decisions using inlining trials. In Proceedings
+of the 1994 ACM Conference on LISP and Functional Programming , pages 273–282, 1994.
+[12] L. Greengard. The Rapid Evaluation of Potential Fields in Particle Systems . ACM Press, 1987.
+[13] Fritz Henglein. Global tagging optimization by type inference. In Proceedings of the 1992 ACM Con-
+ference on LISP and Functional Programming , pages 205–215, 1992.
+[14] Suresh Jagannathan and Andrew Wright. Flow-directed inlining. In Proceedings of the ACM SIGPLAN
+’96 Conference on Programming Language Design and Implementation , pages 193–205, 1996.
+[15] Owen Kaser, C. R. Ramakrishnan, and Shaunak Pawagi. On the conversion of indirect to direct
+recursion. ACM Letters on Programming Languages and Systems , 2(4):151–164, mar 1993.
+[16] M. N. Wegman and F. K. Zadeck. Constant propagation with conditional branches. ACM Transactions
+on Programming Languages and Systems , 3(2):181–210, 1991.
+[17] F. Zhao. An O( n) algorithm for three-dimensional n-body simulations. Master’s thesis, Massachusetts
+Institute of Technology, 1987.
+18

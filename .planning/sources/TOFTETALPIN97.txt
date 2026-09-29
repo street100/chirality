@@ -1,0 +1,2866 @@
+=== page 1 ===
+File: 643J 261301 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3850 Signs: 2082 . Length: 58 pic 2 pts, 245 mm
+Information and Computation  IC2613
+information and computation 132, 109176 (1997)
+Region-Based Memory Management 1
+Mads Tofte
+Department of Computer Science , University of Copenhagen ,
+Universitetsparken 1, DK2100 Copenhagen, Denmark
+and
+Jean-Pierre Talpin
+IRISA (Inria-Rennes and CNRS URA 227), Campus de Beaulieu ,
+35000 Rennes Cedex , France
+This paper describes a memory management discipline for programs
+that perform dynamic memory allocation and de-allocation. At runtime, all
+values are put into regions. The store consists of a stack of regions. All
+points of region allocation and de-allocation are inferred automatically,
+using a type and effect based program analysis. The scheme does not
+assume the presence of a garbage collector. The scheme was first
+presented in 1994 (M. Tofte and J.-P. Talpin, in ``Proceedings of the
+21st ACM SIGPLANSIGACT Symposium on Principles of Programming
+Languages,'' pp. 188201); subsequently, it has been tested in The ML
+Kit with Regions, a region-based, garbage-collection free implementation
+of the Standard ML Core language, which includes recursive datatypes,
+higher-order functions and updatable references L. Birkedal, M. Tofte,
+and M. Vejlstrup, (1996), in ``Proceedings of the 23rd ACM SIGPLAN
+SIGACT Symposium on Principles of Programming Languages,''
+pp. 171183. This paper defines a region-based dynamic semantics for a
+skeletal programming language extracted from Standard ML. We present
+the inference system which specifies where regions can be allocated and
+de-allocated and a detailed proof that the system is sound with respect to
+a standard semantics. We conclude by giving some advice on how to
+write programs that run well on a stack of regions, based on practical
+experience with the ML Kit. ] 1997 Academic Press
+Contents
+1. Introduction.
+2. Related work.
+article no. IC962613
+109 0890-540197 25.00
+Copyright  1997 by Academic Press
+All rights of reproduction in any form reserved.
+1 An earlier version of this work was presented at the 21st ACM SIGPLAN-SIGACT Symposium on
+Principles of Programming Languages, Portland, Oregon, January 1994.
+=== page 2 ===
+File: 643J 261302 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3429 Signs: 2963 . Length: 52 pic 10 pts, 222 mm
+3. The source language , SExp. 3.1. Notation. 3.2. Static semantics for source. 3.3. Dynamic semantics for
+source.
+4. The target language , TExp. 4.1. Dynamic semantics for target. 4.2. Example: function values.
+4.3. Example: region polymorphism. 4.4. Design choises. 4.5. Properties of region-based evaluation.
+4.6 Syntactic equality of expressions.
+5. Region inference. 5.1. Semantic objects. 5.2. The inference system. 5.3. Region inference is a refinement
+of Milner's type system. 5.4. Substitution lemma.
+6. Using effects to describe continuations .
+7. Consistency.
+8. Properties of consistency . 8.1. Rule-based co-induction. 8.2. Preservation of consistency. 8.3. Region
+renaming. 8.4. Region allocation. 8.5. Recursion.
+9. Proof of the correctness of the translation .
+10. Algorithms.
+11. Language extensions . 11.1. References. 11.2. Exceptions. 11.3. Recursive datatypes.
+12. Strengths and weaknesses . 12.1. Small examples. 12.1.1. Polymorphic recursion. 12.1.2. Tail recursion.
+12.1.3. Higher-order functions. 12.2. Larger benchmarks. 12.3. Automatic program transformation.
+12.4. Conclusion.
+Appendix A : Example three-address code
+Appendix B : Nomenclature
+1. INTRODUCTION
+Computers have finite memory. Very often, the total memory allocated by a
+program as it is run on a computer far exceeds the size of the computer's memory.
+Thus, a practical discipline of programming must provide some form of memory
+recycling.
+One of the key achievements of early work in programming languages was the
+invention of the notion of block structure and the associated implementation
+technology of stack-based memory management for recycling of memory. In block-
+structured languages, every point of allocation is matched by a point of de-alloca-
+tion and these points can easily be identified in the source program (Naur, 1963;
+Dijkstra, 1960). Properly used, the stack discipline can result in very efficient use
+of memory, the maximum memory usage being bounded by the depth of the call
+stack rather than the number of memory allocations.
+The stack discipline has its limitations, however, as witnessed by restrictions in
+the type systems of block-structured languages. For example, procedures are typi-
+cally prevented from returning lists or procedures as results. There are two main
+reasons for such restrictions.
+First, for the stack discipline to work, the size of a value must be known at latest
+when space for that value is allocated. This allows, for example, arrays which are
+local to a procedure and have their size determined by the arguments of the proce-
+dure; by contrast, it is not in general possible to determine how big a list is going
+to become, when generation of the list begins.
+Second, for the stack-discipline to work, the life-time of values must comply with
+the allocation and de-allocation scheme associated with block structure. When
+procedures are values, there is a danger that a procedure value refers to values
+which have been de-allocated. For example, consider the following program:
+110 TOFTE AND TALPIN
+=== page 3 ===
+File: 643J 261303 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3887 Signs: 3130 . Length: 52 pic 10 pts, 222 mm
+(let x=(2, 3)
+in (fn y O (*1 x, y))
+end
+)(5)
+This expression is an application of a function (denoted by (let }}} end)) to the
+number 5. The function has formal parameter y and body (*1x, y), where *1
+stands for first projection. ( fn is pronounced * in SML.) Thus the operator expres-
+sion is supposed to evaluate to (fn y O (*1 x, y)), where x is bound to the pair
+(2, 3), so that the whole expression evaluates to the pair (2, 5). However, if we
+regard the let }}} end construct as a block construct (rather than just a lexical
+scope), we see why a stack-based implementation would not work: we cannot de-
+allocate the space for x at the end, since the first component of x is still needed by
+the function which is returned by the entire let expression.
+One way to ease the limitations of the stack discipline is to allow programmer
+controlled allocation and de-allocation of memory, as is done in C. (C has two
+operations, malloc and free, for allocation and de-allocation, respectively.)
+Unfortunately, it is in general very hard for a programmer to know when a block
+of memory does not contain any live values and may therefore be freed; conse-
+quently, this solution very easily leads to so-called space leaks, i.e., to programs that
+use much more memory than expected.
+Functional languages (such as Haskell and Standard ML) and some object-
+oriented languages (e.g., JAVA) instead let a separate routine in the runtime
+system, the garbage collector , take care of de-allocation of memory [3; 14; 15].
+Allocation is done by the program, often at a very high rate. In our example, the
+three expressions (2, 3), (fn y O (*1 x, y)), and (*1 x, y) each allocate
+memory each time they are evaluated. The part of memory used for holding such
+values is called the heap; the ro^ le of the garbage collector is to recycle those parts
+of the heap that hold only dead values, i.e., values which are of no consequence to
+the rest of the computation.
+Garbage collection can be very fast, provided the computer has enough memory.
+Indeed, there is a much quoted argument that the amortized cost of copying gar-
+bage collection tends to zero as memory tends to infinity [2, p. 206]. It is not the
+case, however, that languages such as Standard ML free the programmer com-
+pletely from having to worry about memory management. To write efficient SML
+programs, one must understand the potential dangers of, for example, accidental
+copying or survival of large data structures. If a program is written without concern
+for space usage, it may well use much more memory than one would like; even if
+the problem is located (using a space profiler, for example), turning a space-wasting
+program into a space-efficient one may require major changes to the code.
+The purpose of the work reported in this paper is to advocate a compromise
+between the two extremes (completely manual vs completely automatic memory
+management). We propose a memory model in which memory can be thought of
+as a stack of regions; see Fig. 1. Each region is like a stack of unbounded size which
+grows upwards in the picture until the region in its entirety is popped off the region
+111REGION-BASED MEMORY MANAGEMENT
+=== page 4 ===
+File: 643J 261304 . By:XX . Date:20:02:97 . Time:10:28 LOP8M. V8.0. Page 01:01
+Codes: 2641 Signs: 1587 . Length: 52 pic 10 pts, 222 mm
+FIG. 1. The store is a stack of regions; every region is uniquely identified by a region name
+(e.g., r0) and is depicted by a box in the picture.
+stack. For example, a typical use of a region is to hold a list. A program analysis
+automatically identifies program points where entire regions can be allocated and
+de-allocated and decides, for each value-producing expression, into which region
+the value should be put.
+More specifically, we translate every well-typed source language expression, e,
+into a target language expression, e$, which is identical with e, except for certain
+region annotations. The evaluation of e$ corresponds, step for step, to the evalua-
+tion of e. Two forms of annotation are
+e1 at \
+letregion \ in e2 end
+The first form is used whenever e1 is an expression which directly produces a value.
+(Constant expressions, *-abstractions and tuple expressions fall into this category.)
+The \ is a region variable ; it indicates that the value of e1 is to be put in the region
+bound to \.
+The second form introduces a region variable\ with local scope e2 . At runtime, first
+an unused region, identified by a region name, r, is allocated and bound to \. Then e2
+is evaluated (probably using the region named r). Finally, the region is de-allocated.
+The letregion expression is the only way of introducing and eliminating regions.
+Hence regions are allocated and de-allocated in a stack-like manner.
+The target program which corresponds to the above source program is
+e$#letregion \4 , \5
+in letregion \6
+in let x=(2 at \2 , 3a t \6)a t \4
+in (*y.(*1x ,y )a t \1)a t \5
+end
+end
+5a t \3
+end
+112 TOFTE AND TALPIN
+=== page 5 ===
+File: 643J 261305 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3877 Signs: 3467 . Length: 52 pic 10 pts, 222 mm
+We shall step through the evaluation of this expression in detail in Section 4.
+Briefly, evaluation starts in a region stack with three regions ( \1 , \2 , and \3);
+evaluation then allocates and de-allocates three more regions ( \4 , \5 , and \6) and
+at the end, \1 , \2 , and \3 contain the final result.
+The scheme forms the basis of the ML Kit with Regions, a compiler for the
+Standard ML Core language, including higher-order functions, references and
+recursive datatypes. The region inference rules we describe in this paper address life
+times only. A solution to the other problem, handling values of unknown size, is
+addressed in [5]. An important optimisation turns out to be to distinguish between
+regions, whose size can be determined statically and those that cannot. The former
+can be allocated on a usual stack.
+Using C terminology, region analysis infers where to insert calls to malloc and
+freebut beware that the analysis has only been developed in the context of
+Standard ML and relies on the fact that SML is rather more strongly typed than
+C. For a strongly typed imperative language like JAVA, region inference might be
+useful for freeing memory (unlike C, JAVA does not have free). For readers who
+are interested in code generation, Appendix A shows the three-address program
+which the ML Kit produces from the above program, using both region inference
+and the additional optimisations described in [5]. However, this paper is primarily
+about the semantics of regions, not their implementation.
+Experience with the Kit is that, properly used, the region scheme is strong
+enough to execute demanding benchmarks and to make considerable space savings,
+compared to a garbage-collected system [5]. We have found that most of the
+allocation is handled well by the automatic region analysis; occasionally it is too
+conservative and here a garbage collector would probably be useful, especially if the
+programmer does not know the region inference rules; for now, we have chosen
+instead to make (usually small) transformations to the source programs to make
+them more ``region friendly.'' We shall describe some of those transformations
+towards the end of this paper.
+A very important property of our implementation scheme is that programs are
+executed ``as they are written'', with no additional costs of unbounded size (see
+Appendix A for a detailed example). The memory management directives which are
+inserted are each constant time operations. This opens up the possibility of using
+languages with the power of Standard ML for applications where guarantees about
+time and space usage are crucial, for example in real time programming or embedded
+systems.
+The key problem which is addressed in this paper is to prove that the region
+inference system is safe, in particular, that de-allocation really is safe, when the
+analysis claims that it is safe.
+We do this as follows. We first define a standard operational semantics for our
+skeletal source language, giving both a static and a dynamic semantics (Section 3).
+We then define a region-based operational semantics for a target language; the
+target language is identical to the source language, except that programs have been
+annotated with region information (Section 4). In the dynamic semantics of the
+source language, there is no notion of store; in the target language semantics,
+however, there is a store which is organised as a stack of regions. We then specify
+113REGION-BASED MEMORY MANAGEMENT
+=== page 6 ===
+File: 643J 261306 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3601 Signs: 3242 . Length: 52 pic 10 pts, 222 mm
+the translation from source language to target language in the form of an inference
+system (Section 5). We then define a representation relation between values in a
+standard semantics for our skeletal language and values in a region-based semantics
+(Section 7) and show that, for every subexpression e of the original program, as far
+as the rest of the computation (after the evaluation of e) is concerned, e and its
+image in the target program evaluate to related values, when evaluated in related
+environments (Section 9). Restricting attention to what the rest of the computation
+can observe turns out to be crucial: some connections between values in the source
+language semantics and in the region-based semantics are lost when memory is re-
+used in the region-based semantics. The key point is that on that part of target
+machine which can be observed by the rest of the computation, every value used
+in the source language is faithfully represented by a value in the target language.
+This representation relation is defined as the maximal fixed point of a certain
+monotonic operator. Properties of the relation are proved using a method of proof
+which we call rule-based co-induction (Section 8.1).
+Algorithms for region inference are beyond the scope of this paper; however, we
+shall give some hints about how the region inference rules we present can be
+implemented (Section 10).
+2. RELATED WORK
+The main differences between the region stack and the traditional stack discipline
+for block-structured languages are as follows. First, when a value is created in our
+scheme, it is not necessarily put into the topmost region. In the case of function
+closures, for example, the closure is put as far down the stack as is necessary in
+order to be sure that the closure will still exist should it ever be accessed. Second,
+not all regions have a size which can be determined at the time the region is
+allocated. Finally, the scheme works for higher-order functions and recursive
+datatypes and allocation is based on the basis of the type system of the language,
+not the grammar.
+Ruggieri and Murtagh [22] propose a stack of regions in conjunction with a
+traditional heap. Each region is associated with an activation record (this is not
+necessarily the case in our scheme). They use a combination of interprocedural and
+intraprocedural data-flow analysis to find suitable regions to put values in. We use
+a type-inference based analysis, and this is crucial for the handling of polymorphism
+and higher-order functions.
+Inoue and Yagi [13] present an interesting technique for compile-time analysis
+of runtime garbage cells in lists. Their method inserts pairs of HOLD and
+RECLAIM' instructions in the target language. HOLD holds on to a pointer, p
+say, to the root cell of its argument and RECLAIM ' collects those cells that are
+reachable from p and fit the path description '. HOLD and RECLAIM pairs are
+nested, so the HOLD pointers can be held in a stack, not entirely unlike our stack
+of regions. In our scheme, however, the unit of collection is one entire region, i.e.,
+there is no traversal of values in connection with region collection. The path
+descriptions of Inoue and Yagi make it possible to distinguish between the
+114 TOFTE AND TALPIN
+=== page 7 ===
+File: 643J 261307 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3486 Signs: 2644 . Length: 52 pic 10 pts, 222 mm
+individual members of a list. This is not possible in our scheme, as we treat all the
+elements of the same list as equal. Inoue and Yagi report a 100 0 reclamation rate
+for garbage list cells produced by Quicksort [13, p. 575]. We obtain a 100 0
+reclamation rate (but for 1 word) for all garbage produced by Quicksort, without
+garbage collection [26].
+Hudak [11] describes a reference counting scheme for a first-order call-by-value
+functional language. Turner et al. [27] use a type system inspired by linear logic to
+distinguish between variables which are used at most once and variables which may
+be used more than once. These analyses provide somewhat different information
+from ours: we only distinguish between ``no use'' and ``perhaps some use.''
+Georgeff [10] describes an implementation scheme for typed lambda expressions
+in so-called simple form together with a transformation of expressions into simple
+form. The transformation can result in an increase in the number of evaluation
+steps by an arbitrarily large factor [10, p. 618]. Georgeff also presents an
+implementation scheme which does not involve translation, although this relies on
+not using call-by-value reduction, when actual parameters are functions.
+The device we use for grouping values according to regions is unification of
+region variables, using essentially the idea of Baker (1990), namely that two value-
+producing expressions e1 and e2 should be given the same `` at \'' annotation, if and
+only if type checking, directly or indirectly, unifies the type of e1 and e2 . Baker does
+not prove safety, however, nor does he deal with polymorphism.
+To obtain good separation of lifetimes, we use explicit region polymorphism ,b y
+which we mean that regions can be given as arguments to functions at runtime. For
+example, a declaration of the successor function fun succ(x)=x+1 is compiled
+into
+fun succ[\, \$](x)=letregion \"
+in (x+(1a t \")) at \$
+end
+Note that succ has been decorated with two extra formal region parameters
+(enclosed in square brackets to distinguish them from value variables such as x).
+The new succ function has type scheme
+\\, \$.( int, \) wwwww 
+[get( \), put( \$)]
+(int, \$)
+meaning that, for any \ and \$, the function accepts an integer at \ and produces
+an integer at \$ (performing a get operation on region \ and a put operation on
+region \$ in the process). Now succ will put its result in different regions, depending
+on the context:
+}}} succ[\12 , \9](5 at \12) }}} succ[\1 , \4]( y)
+We make the additional provision that a recursive function, f, can call itself with
+region arguments which are different from its formal region parameters and which
+115REGION-BASED MEMORY MANAGEMENT
+=== page 8 ===
+File: 643J 261308 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3724 Signs: 3055 . Length: 52 pic 10 pts, 222 mm
+may well be local to the body of the recursive function. Such local regions resemble
+the activation records of the classical stack discipline.
+We use ideas from effect inference [12, 16, 17] to find out where to wrap
+letregion \ in ... end around an expression. Most work on effect inference uses
+the word ``effect'' with the meaning ``side-effect'' or, in concurrent languages, ``com-
+munication effect'' [21a]. However, our effects are side-effects relative to the under-
+lying region-based store model, irrespective of whether these effects stem from
+imperative features or not.
+The idea that effect inference makes it possible to delimit regions of memory and
+delimit their lifetimes goes back to early work on effect systems. Lucassen and Gif-
+ford [16] call it effect masking ; they prove that (side-) effect masking is sound with
+respect to a store semantics where regions are not reused. Talpin [23] and Talpin
+and Jouvelot [24] present a polymorphic effect system with (side-) effect masking
+and prove that it is sound, with respect to a store semantics where regions are not
+reused.
+The first version of the proof of the present paper was recorded in a technical
+report [25], which in turn was used as the basis for the proof outline in [26]. In
+order to simplify the proofs, several modifications to the early proofs have been
+made. The main differences are: (a) we have adopted the value restriction on poly-
+morphism, resulting in simpler proofs; in particular, a difficult lemmaLemma 4.5
+in [25]is not required under the value restriction; (b) the dynamic semantics of
+the target language has been extended with region environments; (c) the definition
+of consistency has been strengthened to prevent closures with free region variables
+(these used to complicate the proof) (d) the proofs have been rewritten and
+reorganised around the idea of rule-based co-induction.
+Aiken et al. [1] have developed a program analysis which can be used as a post-
+pass to the analysis described in the present paper. Their analysis makes it possible
+to delay the allocation of regions and to promote the de-allocation, sometimes
+leading to asymptotic improvements in space usage and never leading to worse
+results than region inference without their analysis added.
+3. THE SOURCE LANGUAGE, SExp
+The skeletal language treated in this paper is essentially Milner's polymorphically
+typed lambda calculus [18]. We assume a denumerably infinite set Var of ( program)
+variables. We use x and f to range over variables. Finally, c ranges over integer con-
+stants. The grammar for the source language is:
+e :: =c | x | *x.e | e1 e2 | let x=e1 in e2 end
+| letrec f(x)=e1 in e2 end
+Let SExp denote the set of source language expressions. The addition of pairs and
+tuples to the theory is straightforward. (References, exceptions, and recursive
+datatypes have been added in the implementation, but correctness of the translation
+of these constructs has not been proved.) Call-cc, concurrency primitives, and other
+substantial extensions of Standard ML have not been studied. Nor is it clear
+116 TOFTE AND TALPIN
+=== page 9 ===
+File: 643J 261309 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3623 Signs: 2786 . Length: 52 pic 10 pts, 222 mm
+whether region inference can be made to bear on lazy functional languages. The fact
+that ML is typed is essential; the fact that it has polymorphism is not essential for
+what follows.
+3.1. Notation
+In the rest of this paper we shall use the following terminology. A finite map is
+a map with finite domain. Given sets A and B, the set of finite maps from A to B
+is denoted A wfin B. The domain and range of a finite map f are denoted Dom( f )
+and Rng( f ), respectively. When f and g are finite maps, f+g is the finite map
+whose domain is Dom( f ) _ Dom(g) and whose value is g(x), if x # Dom(g), and
+f(x) otherwise. For any map f and set A, we write f a A to mean the restriction of
+f to A. We sometimes write a tuple of region variables, for example, in the form
+\1 }}} \k , i.e, without parentheses and commas.
+We often need to select components of tuplesfor example, the region name of
+an address. In such cases, we rely on variable names to indicate which component
+is being selected. For example, `` ro fa '' means ``the region name component of a''.
+(As we shall see, an address is a pair of the form ( r, o), where r is a region name
+and o is an offset.)
+3.2. Static Semantics for Source
+Following Damas and Milner (1982), we have ML types and ML type schemes
+defined by
+{ML :: =int | : | {ML  {ML ML type
+_ML :: =\:1 }}} :n .{ML ML type scheme ( n0),
+where : ranges over a denumerably infinite set TyVar of type variables. An ML type
+{ML
+0 is an instance of an ML type scheme _ML=\:1 }}} :n .{ML, written _ML{ML
+0 ,
+if there exist {ML
+1 , ..., {ML
+n such that {ML[{ML
+1 :1 , ..., {ML
+n :n]= {ML
+0 .A n ML type
+environment is a finite map from program variables to ML type schemes. We use
+TEML to range over type environments. When o is an ML type, type scheme, or
+type environment, ftv( o) denotes the set of type variables that occur free in o.
+In Milner's original type discipline, polymorphism is associated with let. It has
+turned out that there are advantages to restricting polymorphism so that in let
+x=e1 in e2 end, x only gets a type scheme if e1 is a syntactic value. (In the present
+language, a syntactic value is an integer constant or a lambda abstraction.) This
+restriction is known as the value restriction . Besides making it easier to prove
+soundness in connection with references and other language extensions, imposing
+this restriction also makes the proofs of correctness of region inference simpler (we
+have done both). In fact, we shall take the restriction one step further, and only
+allow polymorphism in connection with letrec. Any program which satisfies the
+value restriction can be turned into an equivalent program which only has
+letrec-polymorphism, by simply turning every let x=e1 in e2 end into
+letrec x$(z)= e1 in e2[x$(0)x] end where x$ and z are fresh variables. In the
+117REGION-BASED MEMORY MANAGEMENT
+=== page 10 ===
+File: 643J 261310 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 2876 Signs: 1421 . Length: 52 pic 10 pts, 222 mm
+theory that follows we therefore only have polymorphism in connection with
+letrec. With this convention, let x=e1 in e2 end is just syntactic sugar for
+(*x.e2)(e1). We show the rules for let even so, to make it easier to follow the
+examples:
+TE ML(x)= _ML _ML{ML
+TE ML |&x:{ML
+TEML+[x [ {ML
+1 ] |&e: {ML
+2
+TEML |&*x.e: {ML
+1  {ML
+2
+TE ML |&e1 : {ML
+0  {ML TE ML |&e2 :{ML
+0
+TE ML |&e1 e2 :{ML
+TE ML |&e1 : {ML
+1 TE ML+[x [ {ML
+1 ] |&e2 : {ML
+TE ML |&let x=e1 in e2 end:{ML
+TE ML+[f [ {ML] |&*x.e1 :{ML [:1 , ..., :n] & ftv(TE ML)= <
+TE ML+[f [ \:1 }}} :n .{ML] |&e2 :{ML
+2
+TE ML |&letrec f(x)= e1 in e2 end:{ML
+2
+3.3. Dynamic Semantics for Source
+A non-recursive closure is a triple (x, e, E) , where E is an environment, i.e., a
+finite map from variables to values. We use E to range over environments; the set
+of environments is denoted Env. A recursive closure takes the form (x, e, E, f) ,
+where f is the name of the recursive function in question. A value is either an integer
+constant or a closure. We use v to range over values; the set of values is denoted
+Val.
+Evaluation rules appear below. They allow one to infer statements of the form
+E |&e  v, read: in environment E the expression e evaluates to value v . A closure
+representing a recursive function is ``unrolled'' just before it is applied (rule (5)):
+Expressions [E |&e  v].
+E |&c  c (1)
+E(x)= v
+E |&x  v (2)
+E |&*x.e  (x, e, E) (3)
+E |&e1  (x 0 , e0 , E0)E |&e2  v2 E0+[x0 [ v2] |&e0  v
+E |&e1 e2  v (4)
+E |&e1  (x 0 , e0 , E0 , f) E |&e2  v2
+E0+[f [ (x 0 , e0 , E0 , f)] +[x0 [ v2] |&e0  v
+E |&e1 e2  v (5)
+118 TOFTE AND TALPIN
+=== page 11 ===
+File: 643J 261311 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3488 Signs: 2051 . Length: 52 pic 10 pts, 222 mm
+E |&e1  v1 E+[x [ v1] |&e2  v
+E |&let x=e1 in e2 end  v (6)
+E+[f [ (x, e1 , E, f)] |&e2  v
+E |&letrec f(x)=e1 in e2 end  v (7)
+4. THE TARGET LANGUAGE, TExp
+We assume a denumerably infinite set RegVar= [\ 1 , \2 , ...] of region variables ;
+we use \ to range over region variables. The grammar for the target language,
+TExp, is
+e :: =c | x | f[\1 , ..., \n] at \ | *x.e at \
+| e1 e2 | let x=e1 in e2 end
+| letrec f [\1 , ..., \k](x)a t \=e1 in e2 end
+| letregion \ in e end
+As is common, functions are represented by closures; but region-polymorphic func-
+tions (introduced by letrec f [}}}] (x)= } } } ) are represented by so-called region
+function closures, which are different from closures. In the expression form *x.e at
+\, the \ indicates the region into which the closure representing *x.e should be put.
+(Hence, the at \ qualifies *x.e, not e.) In
+letrec f [\1 , ..., \k](x)a t \=e1 in e2 end
+the \ indicates where the region function closure for f should be put. A subsequent
+application f [\$1 , ..., \$n] at \$ extracts this region function closure from the store,
+applies it to actual arguments \$1 , ..., \$k , and creates a function closure in \$.
+For any finite set [\ 1 , ..., \k] of region variables ( k0), we write letregion
+\1 , ..., \k in e end for letregion \1 in }}} letregion \k in e end }}} end.
+We shall not present a separate static semantics for the target language, for such
+a semantics can be extracted from the translation rules in Section 5. We thus
+proceed to the dynamic semantics.
+4.1. Dynamic Semantics for Target
+Assume a denumerably infinite set RegName= [r1, r2, ...] of region names ;w e
+use r to range over region names. Region names serve to identify regions at run-
+time. Further, assume a denumerable infinite set, OffSet, of offsets; we use o to
+range over offsets.
+A region is a finite map from offsets to storable values. A storable value is either
+an integer constant, a function closure, or a region function closure. We use sv to
+range over storable values; the set of storable values is denoted StoreVal. A variable
+environment is a finite map from program variables to values. We use VE to range
+119REGION-BASED MEMORY MANAGEMENT
+=== page 12 ===
+File: 643J 261312 . By:CV . Date:20:03:97 . Time:13:01 LOP8M. V8.0. Page 01:01
+Codes: 3926 Signs: 3414 . Length: 52 pic 10 pts, 222 mm
+over variable environments; the set of variable environments is denoted TargetEnv.
+A region environment is a finite map from region variables to region names. We use
+R to range over region environments; the set of region environments is denoted
+RegEnv. A function closure is a quadruple (x, e$, VE, R), where x is a program
+variable, e$ is a target language expression, and VE and R give meaning to the
+free program and region variables of *x.e$. A region function closure is a tuple
+of the form (\ 1 }}} \k , x, e, VE, R). Region function closures represent region-
+polymorphic functions; the region variables \1 , ..., \k are required to be distinct and
+are referred to as the formal parameters of the region function closure.
+An address is a pair ( r, o) of a region name and an offset. We use a to range over
+addresses and Addr to denote the set of addresses. For any address a, we write r
+of a to mean the first component (i.e., the region name) of a.A store is a finite map
+from region names to regions. We use s to range over stores; the set of stores is
+denoted Store.
+A value is an address. We use v to range over values; the set of values is denoted
+TargetVal.
+We shall be brief about indirect addressing: whenever a=( r, o) is an address, we
+write s(a) to mean s(r)(o). Similarly, we write s+[(r, o) [ sv] as a shorthand for
+s+[r [ (s(r)+ [o [ sv])]. Moreover, we define the planar domain of s , written
+Pdom(s), to be the finite set [(r, o) # Addr | r # Dom(s) 7 o # Dom(s(r)) ]. Finally,
+we write `` s""[r]'' (read: s without r ) to mean the store s a (Dom(s)"[r] ).
+The inference rules for the dynamic semantics of TExp are shown below. They
+allow one to infer sentences of the form s, VE, R |&e$  v$, s$, read: In store s ,
+variable environment VE, and region environment R , the target expression e $ evaluates
+to value v $ and (a perhaps modified ) store s$.
+Rule 10 the evaluation rule for application of a region function closure. A func-
+tion closure is created from the region closure. One can imagine that a runtime-
+error occurs if the premises cannot be satisfied (for example, because \$i  Dom(R),
+for som \$i). However, the correctness proof shows that the premises always can be
+satisfied for programs that result from the translation.
+Rule 14 concerns region-polymorphic and (possibly) recursive functions. For
+reasons explained in Section 5.2, we have chosen to combine the introduction of
+recursion and region polymorphism in one language construct. Functions defined
+with letrec need not be recursive, so one can also use the letrec construct to
+define region functions that produce non-recursive functions. Rule 14 creates a
+region closure in the store and handles recursion by creating a cycle in the store:
+first a ``fresh address'' is chosen (by side-conditions r=R(\), o  Dom(s(r)); the
+environment VE$= VE+[f [ (r, o)] is stored in the region function closure
+(\ 1 , ..., \k , x, e1 , VE$, R), which in turn is stored in the fresh address chosen
+earlier. Any reference to f in e1 will then yield the region function closure itself, by
+Rule 10, as desired (since letrec introduces recursion). Moreover, in any function
+application, the operator expression will evaluate to a pointer to an ordinary
+function closure (x, e, VE0 , R0), even if the operator expression is of the
+form f [\$1 , ..., \$k] at \. Consequently, a single rule for function application
+suffices.
+Finally, the pushing and popping of the region stack is seen in Rule 15.
+120 TOFTE AND TALPIN
+=== page 13 ===
+File: 643J 261313 . By:XX . Date:20:02:97 . Time:10:29 LOP8M. V8.0. Page 01:01
+Codes: 2895 Signs: 1367 . Length: 52 pic 10 pts, 222 mm
+Expressions [s, VE, R |&e  v, s$].
+R(\)= ro  Dom(s(r))
+s, VE, R |&c at \  (r, o), s+[(r, o) [ c] (8)
+VE(x)= v
+s, VE |&x  v, s (9)
+VE( f )= as (a)= (\ 1 , ..., \k , x, e, VE0 , R0)
+r=R( p) o  Dom(s(r)) sv=(x, e, VE0 , R0+[\i [ R( \$i); 1 ik])
+s, VE, R |& f [ \$1 , ..., \$k] at \  (r, o), s+[(r, o) [ sv] (10)
+r=R( \) o  Dom(s(r))
+s, VE, R |&*x.e at \  (r, o), s+[(r, o) [ (x, e, VE, R)] (11)
+s, VE, R |&e1  a1 , s1 s1(a1)= (x 0 , e0 , VE0 , R0)
+s1 , VE, R |&e2  v2 , s2 s2 , VE0+[x0 [ v2], R0 |&e0  v, s$
+s, VE, R |&e1 e2  v, s$ (12)
+s, VE, R |&e1  v1 , s1 s1 , VE+[x [ v1], R |&e2  v, s$
+s, VE, R |&let x=e1in e2 end  v, s$ (13)
+r=R( \) o  Dom(s(r)) VE$= VE+[f [ (r, o)]
+s+[(r, o) [ (\ 1 , ..., \k , x, e1 , VE$, R)] , VE$, R |&e2  v, s$
+s, VE, R |&letrec f [\1 , ..., \k](x)a t \=e1 in e2 end  v, s$ (14)
+r  Dom(s) s+[r [ [] ], VE, R+[\ [ r] |&e  v, s1
+s, VE, R |&letregion \ in e end  v, s1""[r] (15)
+We now illustrate the use of the rules by two examples, comment on the design deci-
+sions embodied in the rules and finally prove some properties about the semantics.
+4.2. Example: Function Values
+Let us consider the evaluation of the expression e$ from Section 1. Since \1 , \2 ,
+and \3 occur free in e$, they must be allocated before the evaluation of e$ begins.
+We show three snapshots from the evaluation of e$, namely (a) just after the closure
+has been allocated, (b) just before the closure is applied, and (c) at the end; we
+assume six regions with names r1 , ..., r6 , which become bound to \1 , ..., \6 , respec-
+tively. Notice the dangling, but harmless, pointer at (b):
+121REGION-BASED MEMORY MANAGEMENT
+=== page 14 ===
+File: 643J 261314 . By:XX . Date:20:02:97 . Time:10:29 LOP8M. V8.0. Page 01:01
+Codes: 2292 Signs: 1335 . Length: 52 pic 10 pts, 222 mm
+4.3. Example: Region Polymorphism
+This example illustrates region polymorphism and the use of polymorphic recur-
+sion. Consider the following source expression, which computes the 15th Fibonacci
+number:
+letrec fib(x)=if x=0 then 1
+else if x=1 then 1
+else fib(x&2)+fib(x&1)
+in fib(15) end
+The corresponding target expression is shown in Fig. 2. In the target expression,
+the fib function takes two arguments, namely \3 , which is the region where x is
+located, and \4 , which is the place where fib is supposed to put its result. Due to
+the presense of polymorphic recursion in the region inference system, the recursive
+calls of fib use regions different from \3 and \4 (and the two recursive calls use
+separate regions). For example, the first call first reserves space for the result of the
+call ( \5), then reserves space for the actual argument ( \8), then creates the actual
+argument, performs the call, de-allocates the actual argument, and uses the result,
+till it can be discarded (after the +).
+The letrec stores the following cyclic region function closure in the store at
+some new address, a:
+(\ 3 \4 ,x, if ..., [fib [ a], [\ 1 [ r1 , \2 [ r2])
+Assuming that \13 is bound to r3 , the application of fib to 15 near the end of the
+program stores the following function closure in the region denoted by \12 :
+(x, if ..., [fib [ a], [\ 1 [ r1 , \2 [ r2 , \3 [ r3 , \4 [ r1])
+122 TOFTE AND TALPIN
+=== page 15 ===
+File: 643J 261315 . By:XX . Date:20:02:97 . Time:10:30 LOP8M. V8.0. Page 01:01
+Codes: 2129 Signs: 1556 . Length: 52 pic 10 pts, 222 mm
+FIG. 2. The Fibonacci function annotated with regions. The result will be a single integer in \1 .
+We see that region inference has produced allocations and de-allocations very
+similar to those of a traditional stack-based implementation. Indeed, the maximal
+memory usage in this example is proportional to the maximum depth of the recur-
+sion, as it would be in a pure stack discipline.
+4.4. Design Choices
+The region-based semantics relies on a number of design choices, some of which
+are crucial.
+First, it is crucial that the sets RegName and OffSet can be any (denumerable)
+sets. We do not assume that these sets are ordered or that there is any notion of
+address locality. Thus no particular physical implementation of the region stack is
+built into the theory. This is essential since real computers have a flat address space,
+whereas the region stack conceptually is two-dimensional. The particular implemen-
+tation choice used in the ML Kit is described in [5].
+Second, it is crucial that the semantics uses so-called ``flat environments''; the
+alternative (``linked environments'') is to represent the environment as a linked list
+of environment frames. This is a popular representation in block-structured
+languages and in some functional languages. With linked environments, closure
+creation is cheap, but it does not work with regions, at least if the environment
+frames are interspersed with regions on one stack! In Example 4.2, it is essential
+that we copy the environment into the closure for *y.(*1x ,y )a t \1 so that
+123REGION-BASED MEMORY MANAGEMENT
+=== page 16 ===
+File: 643J 261316 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3655 Signs: 2855 . Length: 52 pic 10 pts, 222 mm
+the binding for x is not destroyed when we leave the scope of x and \6 and hence
+pop the stack.
+There are also some inessential choices. There is no need to represent all objects
+boxed (in the ML Kit, integers and other values that fit in one machine word are
+represented unboxed). Recursion could probably have been implemented using
+unfolding of closures rather than cycles in the store. Finally, there is no deep need
+to keep the region environment and the variable environment separate in closures
+(the ML Kit merges the two) but we do so to make it clear that region names are
+not values.
+4.5. Properties of Region-Based Evaluation
+We can now state formally that the complete evaluation of an expression does
+not decrease the store. For arbitrary finite maps f1 and f2 , we say that f2 extends
+f1 , written f1 f2 , if Dom( f1)Dom( f2) and for all x # Dom( f1), f1(x)= f2(x). We
+then say that s2 succeeds s1 , written s2 c= s1 (or s1 C= s2), if Dom( s1)Dom( s2) and
+s1(r) s2(r), for all r # Dom(s1).
+Lemma 4.1. If s , VE, R |&e  v, s$ then Dom(s)=Dom( s$) and s C= s$.
+The proof is a straightforward induction on the depth of inference of s, VE,
+RE |&e  v, s$. The formula Dom( s)=Dom( s$) in Lemma 4.1 expresses that the
+store resulting from the elaboration has neither more nor fewer regions than the
+store in which the evaluation begins, although other regions may have been
+allocated temporarily during the evaluation. The evaluation of e may write values
+in existing regions, so it is possible to have s(r)/ s$(r), for some r. However, e never
+removes or overwrites any of the values that are in s.
+4.6. Syntactic Equality of Expressions
+Let e$ be a target expression. The set of program variables that occur free in e$
+is written fpv( e$). The set of region variables that occur free in e$ is frv( e$).
+Both in the source language and in the target language, we shall consider two
+expressions equal, if they can be obtained from each other by renaming of bound
+variables. This extends to closures. For example, (x 1 , e1 , VE1) and (x 2 , e2 , VE2)
+are considered equal if VE1=VE2 and *x1 .e1 and *x2 .e2 are equal in the above
+sense. Moreover, we even allow that the free variables of *x2 .e2 may be a renaming
+of the free variables of *x1 .e1 , provided of course that the corresponding change
+has been made in the domain of VE1 to obtain VE2 . (Loosely speaking, this
+corresponds to admitting value environments as declarations and then allowing the
+usual renamings permitted in an expression of the form let VE1 in *x1 .e1 end.)
+Finally, we consider (x, e, VE1) and (x, e, VE2) equal, if VE1 a fpv(*x.e)=
+VE2 a fpv(*x.e). This allows us to introduce and delete unused program variables
+in the domains of environments inside closures.
+Similarly, for any region closure (\ , x, e, VE, R) we allow the renamings of
+\ , x, fpv(e) and frv( e) and the introduction or elimination of unused program
+124 TOFTE AND TALPIN
+=== page 17 ===
+File: 643J 261317 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2899 Signs: 1852 . Length: 52 pic 10 pts, 222 mm
+variables that one would expect if the closure were written let VE, R in *\ , x1 .e1
+end.
+Equality on semantic objects in each of the two dynamic semantics is then
+defined to be the smallest equivalence relation which is closed under the three trans-
+formations described above.
+5. REGION INFERENCE
+The rules that specify which translations are legal are called the region inference
+rules. In Section 5.1 we present region types and other semantic objects that occur
+in the region inference rules; the rules themselves are presented in Section 5.2. In
+Sections 5.3 and 5.4 we state and prove properties of the region inference system;
+for example, that the translation is a refinement of Milner's type discipline.
+5.1. Semantic Objects
+Region Types . We assume three denumerably infinite, pairwise disjoint sets:
+: # TyVar type variables
+\ or p # RegVar region variables
+= # EffectVar effect variables
+To avoid too many subscripts and primes, we use both p (for ``place'') and \ to
+range over region variables. An atomic effect is a term of the form
+' :: =put( \)| get( \)| = atomic effect
+We use ' to range over atomic effects. An effect is a finite set of atomic effects. We
+use . to range over effects. For a concrete example, the effect of expression e$i n
+Example 4.2 is [put( \1), put( \2), put( \3)].
+Types and types with places are given by
+{ :: =int | : | + w=.. + type
++ :: =({, \) type with place
+In a function type
++ w
+=..
++$ (16)
+the object =.. is called an arrow effect . Formally, an arrow effect is a pair of an
+effect variable and an effect; we refer to = and . as the handle and the latent effect,
+respectively. If a function f has type (16) then the latent effect . is to be interpreted
+as the effect of evaluating the body of f. Effect variables are useful for expressing
+dependencies between effects. For example, the target expression
+e$#(*f. (*x.f (x)) at \4) at \5
+125REGION-BASED MEMORY MANAGEMENT
+=== page 18 ===
+File: 643J 261318 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3490 Signs: 2507 . Length: 52 pic 10 pts, 222 mm
+can be given type
+{e$=
+_
+((:1 , \1) ww 
+=1 .<
+(:2 , \2), \3) wwww 
+=2 .[put( \4)]
+(17)
+((:1 , \1) wwwww 
+=3 .[get( \3), =1]
+(:2 , \2), \4)
+In (17) the last occurrence of =1 indicates that for all e1 and e2 of the appropriate
+type, if e1 evaluates to some function, g, and e2 evaluates to some value, v, then
+the evaluation of ( e$e1)e2 may involve an application of g. (As it happens, the
+evaluation would indeed involve an application of g, but the type does not
+express that.)
+Equality of types is defined by term equality, as usual, but up to set equality of
+latent effects. For example, the arrow effects =.[put(\), get(\$) ] and =.[get(\$),
+put(\)] are considered equal.
+One might wonder why we have a pair =.. on the function arrow rather than
+just, say, an effect .. The reason is that the region inference algorithms we use rely
+on unification, just as ML type inference does [7]. Thus the effect sets on function
+arrows pose a problem for the existence of principal unifiers. A solution is to use
+arrow effects together with certain invariants about the use of effect variables. The
+basic idea is that effect variables uniquely ``stand for'' effects: if =1 ..1 and =2 ..2 both
+occur in a proof tree formed by the inference algorithm and =1==2 then it will
+also be the case that .1=.2 . Moreover, if two arrow effects =1 ..1 and =2 ..2 both
+occur in a proof tree and =2 # .1 then .2 .1 : the presence of =2 in .1 implies
+that .2 subsumes the entire effect .1 which =1 stands for. With these repre-
+sentation invariants and using the special notion of substitution defined below,
+one can prove the existence of principal unifiers, even though types ``contain''
+effects (which are sets). A detailed account of how this is done is beyond
+the scope of this paper. Also, the invariants mentioned above are not needed for
+proving the soundness of region inference, so we shall not consider them in what
+follows.
+Substitution.A type substitution is a map from type variables to types; we use
+St to range over type substitutions. A region substitution is a map from region
+variables to region variables; we use Sr to range over region substitutions. An effect
+substitution is a map from effect variables to arrow effects; we use Se to range over
+effect substitutions. A substitution is a triple ( St , Sr , Se); we use S to range over
+substitutions. Substitution on types, region variables, and effects is defined as
+follows. Let S=(St , Sr , Se); then
+Effects.
+S(.)= [put(Sr ( \)) | put( \)# .]
+_ [get(Sr ( \)) | get( \)# .]
+_ [' | _=, =$, .$. = # . 7=$. .$= Se(=) 7 ' # [=$] _ .$].
+126 TOFTE AND TALPIN
+=== page 19 ===
+File: 643J 261319 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3541 Signs: 1727 . Length: 52 pic 10 pts, 222 mm
+Types and Region Variables .
+S(int)= int S(:)=St(:) S( \)= Sr( \)
+S({, \)=( S({), S( \))
+S( + w
+=..
++$)= S( +) wwwww 
+=$.( .$ _ S(.))
+S( +$ ), where =$. .$= Se(=).
+For a concrete example, consider the substitution S=( Sr , St , Se), where
+Se(=)= {
+=8 .[get( \1), put( \2)]
+=
+if ===1 ;
+otherwise
+St(:)= {
+int
+:
+if :=:1 or :=:2 ;
+otherwise
+Sr( \)= \ for all \
+where =1 , \1 , \2 , :1 and :2 refer to (17). Now we have
+S({e$)=
+_
+((int, \1) wwwwww 
+=g .[get( \1), put( \2)]
+(int, \2), \3) wwww 
+=2.[put( \4)]
+(18)
+((int, \1) wwwwwwwwww 
+=3. [get( \1), get( \3), put( \2), =8]
+(int, \2), \4)
+This more specific type for e$ is appropriate if e$ occurs in the application expression:
+e$(( *n:( int, \1).( n+1) at \2) at \3) (19)
+for which one will then be able to infer the type and place
+((int, \1) wwwwwwwwww 
+=3 . [get( \1), get( \3), put( \2), =8]
+(int, \2), \4).
+In applying substitutions to semantic objects with bound names (e.g., a type
+scheme) bound variables are first renamed to avoid capture, when necessary.
+Substitutions compose; Id is the identity substitution.
+The support of a type substitution St , written Supp( St), is the set [: # TyVar |
+St(:){ :]. Similarly for region substitutions. The support of an effect substitution
+Se , written Supp( Se), is the set [= # EffectVar |Se(=){ =.<]. The support of a sub-
+stitution S=(St , Sr , Se), written Supp( S), is defined as Supp( St) _ Supp(Sr) _
+Supp(Se). Whenever St , Sr , and Se are finite maps of the appropriate types we take
+the liberty of considering the triple ( St , Sr , Se) a substitution, without explicitly
+extending the finite maps to total maps.
+Type Schemes . Type schemes resemble the type schemes of Damas and Milner
+[7] but with additional quantification over region variables and effect variables,
+_ :: =\() . { simple type scheme
+| \\1 }}} \k :1 }}} :n =1 }}} =m .{ compound type scheme,
+127REGION-BASED MEMORY MANAGEMENT
+=== page 20 ===
+File: 643J 261320 . By:XX . Date:20:02:97 . Time:10:30 LOP8M. V8.0. Page 01:01
+Codes: 2548 Signs: 1879 . Length: 52 pic 10 pts, 222 mm
+where n0, k0 and m0. The following definitions are stated for compound
+type schemes but are easily extended to simple type schemes. For a type scheme
+_=\\1 }}} \k :1 }}} :n =1 }}} =m .{ , the bound variables of _ , written bv( _), are the set
+[\ 1 , ..., \k , :1 , ..., :n , =1 , ..., =m].
+We sometimes write the sequences of bound variables as vectors: : , \ , and = , respec-
+tively. Two type schemes are equivalent if they can be obtained from each other by
+renaming and reordering of bound variables. A type {$i sa n instance of _ , written
+_{$, if there exists a substitution S such that Supp( S)bv( _) and S({)= {$.
+When we want to make S explicit, we say that {$ is an instance of _ via S , written
+_{$ via S . Equivalent type schemes have the same instances.
+We sometimes write { as a shorthand for the simple type scheme \() . {, not to
+be confused with the compound type scheme \() . { , since compound type schemes
+have a special significance: they are used exclusively as types of region-polymorphic
+functions, even for those region-polymorphic functions that take an empty list of
+actual region parameters. The underlining serves to make it clear whether a type
+scheme is to be regarded as simple or compound.
+A type environment is a finite map from program variables to pairs of the form
+(_, \). We use TE to range over type environments.
+The semantic objects are summarised in Fig 3. The notion of free variables extend
+to larger semantic objects, such as type environments. (For example, a type variable
+is said to occur free in TE if it occurs free in TE(x), for some x.) For any semantic
+object A, frv( A) denotes the set of region variables that occur free in A; ftv( A)
+denotes the set of type variables that occur free in A; fev( A) denotes the set of effect
+variables that occur free in A; and fv( A) denotes the union of the above.
+FIG. 3 . Semantic objects of region inference.
+128 TOFTE AND TALPIN
+=== page 21 ===
+File: 643J 261321 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3454 Signs: 1626 . Length: 52 pic 10 pts, 222 mm
+5.2. The Inference System
+The inference rules allow the inference of statements of the form
+TE |&e O e$: +, .
+read: in TE , e translates to e $, which has type and place + and effect . . The region
+inference rules are non-deterministic: given TE and e, there may be infinitely many
+e$, +, and . satisfying TE |&e O e$: +, .. This non-determinism is convenient to
+express type-polymorphism, but we also use it to express freedom in the choice of
+region variables. Indeed, the region inference rules allow one to put all values in a
+single region, although, in practice, this would be the worst possible choice.
+Region-based Translation of Expressions [TE |&e  e$: +, .]
+TE |&c O c at \:( int, \), [put(\)] (20)
+TE(x)=( {, \)
+TE |&x O x:( {, \), < (21)
+TE( f )=( _, \$) _=\\1 }}} \k : = .{1
+_{ via S. =[get(\$), put(\)]
+TE |&f O f [S(\1), ..., S(\k)] at \:( {, \), . (22)
+TE+[x [ +1] |&e O e$: +2 , .
+..$ {=+1w
+=..$
++2 frv(e$)frv( TE, {)
+TE |&*x.e O *x.e$ at \:( {, \), [put(\)] (23)
+TE |&e1 O e$1 :( +$ w
+=..
++, \), .1 TE |&e2 O e$2 :+$, .2
+TE |&e1 e2 O e$1 e$2 : +, . _ .1 _ .2 _ [=, get( \)] (24)
+TE |&e1 O e$1 :( {1 , \1), .1
+TE+[x [ ({1 , \1)] |&e2  e$2 :+, .2
+TE |&let x=e1 in e2 end O let x=e$1 in e$2 end:+, .1 _ .2
+(25)
+TE+[f [ (\\ = .{ , \0)] |&*x.e1 O *x.e$1 at \0 :( {, \0), .1
+fv(: , \ , = ) & fv(TE, .1)= <
+TE+[f [ (\: \ = .{ , \0)] |&e2  e$2 : +, .2
+TE |&letrec f(x)= e1 in e2 end O
+letrec f [\ ](x)a t \0=e$1 in e$2 end:+, .1 _ .2
+(26)
+TE |&e O e$: +, .\  frv(TE, +)
+TE |&e O letregion \ in e$ end:+, ."[put( \), get( \)] (27)
+TE |&e O e$: +, .=  fev(TE, +)
+TE |&e O e$: +, ."[=] (28)
+In Rule 21, note that the effect of referring to x is empty; this is because the
+effects only relate to access of the region store s, not the environments VE and R.
+In Rule 22 the instances of the bound region variables become actual region
+129REGION-BASED MEMORY MANAGEMENT
+=== page 22 ===
+File: 643J 261322 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3655 Signs: 2838 . Length: 52 pic 10 pts, 222 mm
+parameters in the target expression. The resulting effect includes get(\$) and put(\),
+for we access the region closure in \$ and create an ordinary function closure in \.
+In Rule 23, the effect of creating the function closure at region \ is simply
+[put( \)]. Following Talpin and Jouvelot [24], one is allowed to make the infor-
+mation about the function less precise by increasing the latent effect. This is useful
+in cases where two expressions must have the same functional type (including the
+latent effects on the arrows) but may evaluate to different closures. The freedom to
+increase effects is also useful when one wants to prove that every well-typed Exp-
+program of Milner [18] can be translated with the region inference rulessee
+Lemma 5.2 below. We shall explain the side-condition frv( e$)frv( TE, {)i na
+moment.
+In Rule 24 we see that the latent effect is brought out when the function is
+applied. The get(\) in the resulting effect is due to the fact that we must access the
+closure at \ in order to perform the function application.
+In Rule 25 notice that the type scheme of x has no bound variables of any kind.
+The absence of bound type variables is due to the value restriction (see Section 3.2).
+The absence of bound region variables is due to the fact that introducing bound
+region variables (and hence delaying the evaluation of e$1) may change the seman-
+tics of the program if e$1 is not a value. (When e$1 is a value, one can rewrite the let
+to a letrec and use Rule 26 to obtain region polymorphism.) Finally, one could
+allow quantification of effect variables in Rule 25, as indeed we did in [25], but
+effect quantification in simple type schemes appears to be of limited practical use
+and it complicates the proof of Lemma 8.3 below considerably [25], so we have
+abandoned it.
+In Rule 26, note that f is region-polymorphic, but not type-polymorphic, inside
+e1 , its own body. In e2 , however, f is polymorphic in types, regions and effects.
+Without the limitation on type-polymorphism inside e1 , region inference would not
+be decidable.
+Rule 27 concerns the introduction of letregion expressions. The basic idea,
+which goes back to early work on effect systems [17], is this. Suppose
+TE |&e O e$: +, . and assume that \ is a region variable which does not occur free
+in TE or in + (typically, \ occurs free in ., indicating that \ is used in the computa-
+tion of e$). Then \ is purely local to the evaluation of e $, in the sense that the rest
+of the computation will not access any value stored in \ .
+Example. Once again, consider the expression e$ from Section 1. Let e$0 be the
+subexpression
+e$0#let x=(2 at \2 , 3a t \6)a t \4
+in (*y.(*1x, y)a t \1)a t \5
+end
+The type environment in force when this expression is produced is TE0=[] ; the
+type and place of e$0 is
++0=(( int, \3) wwwwwww 
+=1 .[get( \3), put( \1)]
+((int, \2) V (int, \3), \1), \5);
+130 TOFTE AND TALPIN
+=== page 23 ===
+File: 643J 261323 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3741 Signs: 2780 . Length: 52 pic 10 pts, 222 mm
+and the effect of e$0 is .0=[put(\2), put(\6), put(\4), put(\5)]. Note that \6 is the
+only region variable which occurs free in .0 but occurs free neither in TE0 nor in
++0 . Rule 27 allows us to discharge \6 , resulting in the effect [put(\2), put(\4),
+put(\5)] and the `` letregion \6 in ... end'' in e$.
+Next, Rule 28 allows one to discharge an effect variable from the effect of an
+expression; no letregion is introduced, since the discharge does not influence
+evaluation.
+We owe the reader an explanation for the side-condition frv( e$)frv( TE, {)i n
+Rule 23. It is often the case that every region variable which occurs free in a trans-
+lated expression occurs free either in the type or in the effect of the expression.
+However, here is an example where this does not hold,
+[] |&( *f.1)( *x.2) O ((*f.1 at \1) at \2)(( *x.2 at \3) at \4):( int, \1), .
+where .=[put(\2), put(\4), get(\2), put(\1)]. Here we see that \3 is free in the
+target expression but occurs free neither in the effect nor in the resulting type and
+place. The reason is that 2 at \3 will never be evaluated (i.e., it is ``dead code''). The
+purpose of the side-condition on Rule 23 is to prevent the body of the function from
+containing free region variables which only occur in dead code. Such region
+variables complicate arguments about renaming of region variables, specifically
+they complicate the proof of Lemma 8.3, if allowed. We therefore impose the side-
+condition on Rule 23. Note, however, that one can always satisfy this side-condition
+by repeatedly applying Rule 27 to the function body, just before applying Rule 23,
+for in Rule 27 there is no requirement that \ must occur free in ..
+As mentioned earlier, the region inference rules give rise to a static semantics
+for the target language: one just consistency replaces sentences of the form
+TE |&e O e$: +, . by TE |&e$: +, .. However, we prefer the present formulation,
+which emphasises that the rules specify a translation.
+5.3. Region Inference Is a Refinement of Milner's Type System
+In this section we prove that the region inference system is a refinement of
+Milner's type discipline [18] in the sense that an expression can be translated with
+the region rules if and only if it is well typed according to Milner's type discipline,
+as defined in Section 3.2. In particular, this shows that the problem of determining
+whether a closed expression can be region-annotated is decidable.
+We first show that an expression can be translated only if it is well typed. To this
+end, we define a function, ?, (for ``projection'') from semantic objects in the region
+rules to the semantic objects in the Milner rules:
+?(:)= :; ?(int)= int; ?( + w
+=..
++$)= ?(+)  ?(+$)
+?({, \)= ?({); ?(\\ : = .{)=\: .?({); ?(_, \)= ?(_); ?(TE)= ? b TE.
+Lemma 5.1. If TE |&e O e$: +, . then ? (TE)|&e:?(+).
+131REGION-BASED MEMORY MANAGEMENT
+=== page 24 ===
+File: 643J 261324 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3850 Signs: 2390 . Length: 52 pic 10 pts, 222 mm
+The proof is a straightforward induction on the depth of TE |&e O e$: +, ..
+Next we show that every well-typed term can be translated. To this end we define
+a relation, R, between Milner's objects and ours. Let \0 be some fixed region variable
+and let =0 be some fixed effect variable. The basic idea is to choose \0 everywhere
+we need a region variable in the translation and to choose =0 .[get(\0), put(\0), =0]
+everywhere we need an arrow effect in the translation. Unfortunately, we cannot
+simply make R a map, because of the distinction between simple and compound
+type schemes. So we define R inductively as follows:
+:R: int R int
+{R+ { $ R+ $
+({  {$) R(+ wwwwwww 
+=0 .[get(\0), put(\0), =0]
++$)
+{R{ $
+\() . {R \() . {$
+{R{ $
+\: .{R \: .{$
+{R{ $
+{R ({$, \0)
+_R_ $
+_R (_$, \0)
+Dom(TE)=Dom( TE$) \x # Dom(TE). TE(x) RT E$(x)
+TE R TE$
+Clearly, for every TE there exists a TE$ such that TE R TE$.
+Lemma 5.2. If TE |&e:{ and TE R TE $ then TE $|&e O e$: +, . for some e$, + and
+. which satisfy { R + , frv( +)= [\ 0], frv( e$) [\ 0] and . [get(\0), put(\0), =0].
+Proof. By induction on the depth of inference of TE |&e:{. We show only two
+cases, as the rest are straightforward.
+[e#x]. By assumption we have TE(x)= _ and _{. Since TE R TE$w e
+then have TE$(x)=( _$, \0) for some _$ which satisfies _R_ $. Now _$ may be
+simple or compound, but if it is compound it has no quantified region variables. Let
++=( {$, \0) be the unique type with place satisfying {R+ . Then _$ {$ and the
+desired conclusion follows either by Rule 21 or by Rule 22.
+[e#*x.e1]. Here {={1  {2 for some {1 and {2 and TE |&*x.e1 :{ must have
+been inferred from the premise TE+[x [ {1] |&e1 :{2 . We have ( TE+[x [ {1])
+R(TE$+ [x [ +1]), where +1 is the unique type with place related to{1 . By induction
+there exist e$1, +2 and .0 such that TE$+ [x [ +1] |&e1 O e$1 :+2 , .0 ,
+frv(+2)= [\ 0], frv( e$1) [\ 0] and .0 [get(\0), put(\0), =0]. Now Rule 23 con-
+veniently allows us to use this inclusion to prove TE$|&*x.e1 O *x.e$1 at
+\0 :( +1 wwwwwww 
+=0 .[get(\0), put(\0), =0]
++2 , \0), [put(\0)] from which the desired results
+follows. K
+5.4. Substitution Lemma
+Lemma 5.3. For all substitutions S , if TE |&e O e$: +, . then S (TE)|&e O
+S(e$): S(+), S(.).
+The proof is a straightforward induction on the depth of the inference of
+TE |&e O e$: +, ., using appropriate variants of S in the case for letrec.
+Next, we shall state a lemma to the effect that the operation of making type
+schemes in the type environment more type-polymorphic does not decrease the set
+132 TOFTE AND TALPIN
+=== page 25 ===
+File: 643J 261325 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3414 Signs: 2513 . Length: 52 pic 10 pts, 222 mm
+of possible translations. Formally, we say that _1 is at least as type-polymorphic as
+_2 , written _1 c= _2 ,i f _1 and _2 are identical, or _1 and _2 are both compound
+and _1=\: ._2 , for some : . Furthermore, we write TE1 c= TE2 if Dom( TE1)=
+Dom(TE2) and, for all x # Dom(TE1), if ( _1 , \1)=TE1(x) and ( _2 , \2)= TE2(x)
+then _1 c= _2 and \1=\2 .
+Lemma 5.4. If TE |&e O e$: +, . and TE $ c= TE then TE $|&e O e$: +, ..
+We omit the proof, which is a straightforward induction on the depth of inference
+of TE |&e O e$: +, .. We note, however, that the similar statement concerning
+region polymorphism (replacing _=\: = .{ by _$=\\ : = .{ ) is not true, because
+applications of region functions in the target expression can be affected by such a
+change.
+Fortunately, it is precisely the ability to make assumed type schemes more type-
+polymorphic that we need.
+6. USING EFFECTS TO DESCRIBE CONTINUATIONS
+For the proof of the soundness of the translation scheme, we need to relate the
+values of the dynamic semantics of the source and target language. We refer to this
+relation as the consistency relation.
+Since all values are addresses in the target language semantics, the consistency
+relation must involve stores. Consistency also naturally depends on types: at type
+int, source level integers can only be consistent with pointers to integers in the
+target; at a functional type, only closures can be related, and so on. The region
+inference rules yield expressions, types with places, and effectsall of which can
+contain free occurrences of region variables. To relate these region variables to the
+region names which identify regions at runtime, we need a region environment, R,
+and the following definition:
+Definition 6.1. A region environment R connects effect . to store s, if frv( .)
+Dom(R) and for all \ # frv(.), R( \) # Dom(s).
+Based on these considerations, assume that we have defined consistency as a
+relation
+CRegEnv_TypeWithPlace_Val_Store_TargetVal
+where C(R, +, v, s, v$) is read: in region environment R and store s, source value v is con-
+sistent with target value v$ at type with place +. The obvious idea would now be some-
+how to lift this relation first from types with places to type schemes, C(R, _, v, s, v$),
+and then, by pointwise extension, to environments, ( R, TE, E, s, VE). We might then
+try to prove the following statement:
+Conjecture 6.1. If TE |&e O e$: +, ., and E |&e  v and C(R, TE, e, s, VE) and R
+connects . to s then there exists a store s $ and a target value v $ such that s , VE,
+R |&e$  v$, s$ and C(R, +, v, s$, v$).
+133REGION-BASED MEMORY MANAGEMENT
+=== page 26 ===
+File: 643J 261326 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3774 Signs: 3146 . Length: 52 pic 10 pts, 222 mm
+However, there is a problem with this conjecture. Informally, it states that con-
+sistency is preserved by evaluation. Unfortunately, we cannot expect that to hold!
+To see what the problem is, consider Example 4.2 once more. According to the
+conjecture, at point (b) we should have that the source language closure
+(y, (*1x,y), [x [ (2, 3) ]) and the closure found in region r5 are consistent. In
+a sense they are consistent: application of the two closures map consistent
+arguments to consistent results. But notice that the consistency which used to exist
+between the source environment [x [ (2, 3) ] and its representation in the target
+semantics was partly destroyed when the region r6 was popped from the region
+stack. Thus we see that, intuitively speaking, consistency gradually deteriorates
+during computation. The saving factor, it turns out, is that there is always enough
+consistency left for the rest of the computation to succeed, without running into any
+of the inconsistencies!
+To make these intuitions precise, we need some notion of ``consistency with
+respect to the rest of the computation.'' One possibility is to work explicitly with
+continuations or evaluation contexts. However, we have not explored this
+possibility, since all we need for the purpose of the soundness proof is a very simple
+summary of which regions are accessed by the rest of the computation. Specifically,
+it suffices to summarise the rest of the computation by an effect, .$, which describes
+which of the currently existing regions are accessed by the rest of the computation.
+Thus we define a relation
+CRegEnv_TypeWithPlace_Val_Store_TargetVal_Effect,
+where C(R, +, v, s, v$, .$), also written C(R, +, v, s, v$) w.r.t. .$, is read: at type with
+place +, in region environment R and store s , source value v is consistent with target
+value v$ with respect to the effect . $ (where .$ represents the effect of the rest of the
+computation). In our example, .$i s [put(\3), get(\5), put(\1)], connected via the
+region environment to regions r3 , r5 and r1 . The fact that the rest of the computa-
+tion does not access the current contents of r6 is evident from the fact that no
+region variable free in .$ is connected to r6 ! That is why the environments in the
+two closures are consistent with respect to the rest of the computation. The second
+version of our conjecture becomes:
+Conjecture 6.2. If TE |&e O e$: +, . and E |&e  v and C(R, TE, e, s, VE) w.r.t.
+(. _ .$) and R connects . _ .$t o s then there exist a store s$ and a target value
+v$ such that s, VE, R |&e$  v$, s$ and C(R, +, v, s$, v$) w.r.t. .$.
+In other words, if we start out with consistency to cover both the evaluation of
+e$ (whose effect is .) and the rest of the computation (whose effect is .$) then after
+the computation of e$, we will have enough consistency left for the rest of the
+computation.
+However, Conjecture 6.2 is not quite strong enough to be proved by induction.
+Consider a source language closure (x, e, E) and a target closure (x, e$, VE, R),
+which we think of as representing (x, e, E). When the source closure is applied, the
+body e will be evaluated in an environment E+[x [ v2], where v2 is the argument
+134 TOFTE AND TALPIN
+=== page 27 ===
+File: 643J 261327 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2770 Signs: 1579 . Length: 52 pic 10 pts, 222 mm
+to the function. Assuming that v$2 is some target value consistent with v2 , the corre-
+sponding evaluation in the target language takes the form s, VE+[x [ v$2],
+R |&e$  } } } . However, the region environment in which e$ is evaluated is not
+necessarily the same as the region environment R$ which is in force at the point
+where the application takes place, for more regions may have been allocated
+since the closure was created. Moreover, R$ is important for establishing that
+E+[x [ v2] and VE+[x [ v$2] are consistent, since v2 and v$2 will be known to
+be consistent in R$, not in R. And we must establish consistency of E+[x [ v2]
+and VE+[x [ v$2] in order to use induction to prove that the results of the func-
+tion applications are consistent.
+Example. Consider the target expression
+letregion \1
+in let x=3 at \1
+in letregion \2
+in let f=(*y.( x+y) at \0) at \2
+in letregion \3
+in f(4a t \3)
+end
+end
+end
+end
+end
+Consider the point of the evaluation just after the closure for f has been created.
+Let us say that the region environment is R1=[\ 0 [ r0 , \1 [ r1 , \2 [ r2]. Then
+the store is
+s1=[r0 [ [] , r1 [ [ox [ 3], r2 [
+[of [ (y,( x+y) at \0 , [x [ (r1 , ox)], R1)] .
+We can reasonably expect to have
+C(R1 , [x [ (int, \1)], [x [ 3], s1 , [x [ (r1 , ox)]) w.r.t. .1 , (29)
+where .1=[get(\1), get(\2), put(\0)], which is the net effect of the remainder of
+the computation at that point. (``Expect'' because we have not defined C yet.) Next,
+consider the point where the actual argument 4 to f has been stored, the closure
+for f has been fetched and we are just about to evaluate the body of f. Now the
+135REGION-BASED MEMORY MANAGEMENT
+=== page 28 ===
+File: 643J 261328 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3585 Signs: 2629 . Length: 52 pic 10 pts, 222 mm
+region environment has become R2=R1+[\ 3 [ r3], the store has become
+s2=s1+[r3 [ [o4 [ 4]] and we can reasonably expect to have
+C(R2 ,( int, \3), 4, s 2 ,( r3 , o4)) w.r.t. .2 , (30)
+where .2=[get(\1), get(\3), put(\0)], i.e., the effect of the continuation at that
+point. From (29) and (30) we can reasonably expect to obtain
+C(R2 , [x [ (int, \1), y [ (int, \3)]
+[x [ 3, y [ 4], s2 , [x [ (r1 , ox), y [ (r3 , o4)]) w.r.t. .2
+But evaluation of the function body is going to take place in R1 (see Rule 12). Thus
+the theorem needs to be strong enough to handle the situation that the region
+environment in which consistency is established is not the same as the region
+environment in which the expression is evaluated. Incidentally, this is similar to the
+situation in block-structured languages, where an an inner block can call a function
+declared in an enclosing block. (Indeed, it appears that although the variable
+environments do not obey a stack discipline, the region environments do.)
+We therefore prove that the theorem holds not just for R but also for other
+region environments R$ which ``agree'' with R:
+Definition 6.2. Let R and R$ be region environments and let . be an effect. We
+say that R and R$ agree on .,i f R a frv(.)= R$ a frv(.).
+We are now able to state the main theorem, which we shall prove, once we have
+defined the consistency relation:
+Theorem 6.1. If TE |&e O e$: +, . and C(R, TE, E, s, VE ) w.r.t. . _ .$ and
+E |&e  v and R connects . _ .$ to s and R $ and R agree on . _ .$ and
+frv(e$)Dom R$ then there exist s $ and v $ such that s , VE, R$|&e$  v$, s$ and
+C(R$, +, v, s$, v$) w.r.t. .$.
+The premise ``frv(e$)Dom R$'' is included only to make the proof simpler; it helps
+to ensure that closures in the target language will not contain free region variables.
+Note that we use the effect of the rest of the computation as an approximation
+to what data is ``live.'' The notion usually employed by garbage collectors (namely
+that data is live, if it is reachable in the memory graph) is incomparable: we have
+already seen that data which is reachable in the memory graph is actually dead and
+can be de-allocated using region inference; conversely, sometimes data which we
+keep alive in a region is not actually used by the rest of the computation and a
+garbage collector would detect it.
+7. CONSISTENCY
+For simplicity, we first present the consistency relation in the form of inference
+rules without reference to the underlying mathematics. We shall later explain that
+the rules can be viewed as describing a maximal fixed point of a certain monotonic
+operator. For now, it suffices to read the rules as follows: the conclusion of a rule
+holds if and only if the premises hold.
+136 TOFTE AND TALPIN
+=== page 29 ===
+File: 643J 261329 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3424 Signs: 2723 . Length: 52 pic 10 pts, 222 mm
+Rules 3135 characterize consistency between source values and storable target
+values sv (defined in Section 4.1). These rules are used in Rules 36 and 37, to
+characterize consistency between source and target values (recall that target values
+are addresses). It is precisely in rules Rule 36 and 37 we see the significance of the
+idea of representing the rest of the computation by the effect .:i f get(\)  ., then
+any claim about consistency of values at region \ is allowed, for \ then denotes
+``garbage''. However, by Rule 36, if v$=( r, o) # Pdom(s) and r=R(\) then the value
+stored at address v$ has to be consistent with the source value, v, as described
+by Rules 34 and 35. (Recall that ( r, o) # Pdom(s) abbreviates r # Dom(s) 7
+o # Dom(s(r)).) Rule 38 says that consistency of environments is the pointwise
+extension of consistency of values.
+Rule 31 should be straightforward. In Rule 32, note that TE does not occur in the
+conclusion of the rule: one has to ``invent'' a TE which can justify the target expres-
+sion as a compilation result of the source expression. Also, the environments E and
+VE must be consistent at TE. The region environment R may be regarded as the
+region environment which is in force when the closures are applied; as we saw
+earlier, this is not necessarily the same as the region environment which was in
+force when the target closure was created ( R$ in the rule). For the purpose of the
+soundness theorem, we clearly need to know that R and R$ are related somehow,
+and it turns out that it suffices to require that they agree on .. The condition
+frv(e$)( R$) ensures that the target closure contains no free region variables; the
+two first premises of the rule already ensure that fpv( e$)Dom( VE ), i.e., that the
+closure contains no free program variables. Again this is good hygiene, which is
+useful in the proofs (specifically of Lemma 8.3).
+Rule 33 is similar to Rule 32, but deals with recursion. For the premises to be
+satisfied, TE mush have f in its domain. Moreover, since recursion is handled by
+unfolding in the source language semantics, it is E+[f [ (x, e, E, f)] and VE
+that have to be consistent, rather than just E and VE.
+Rule 34 is similar to Rule 33, but it relates recursive closures and region function
+closures at compound type schemes. For simple type schemes, one uses Rule 35
+together with Rules 3133.
+Types and Storable Values [C(R, +, v,s , sv) w.r.t. .].
+i # Int
+C(R,( int, \), i, s, i ) w.r.t. . (31)
+TE |&*x.e O *x.e$ at \:( {, \), [put( \)]
+C(R$, TE, E, s, VE ) w.r.t. .
+R$ and R agree on . frv(e$)Dom( R$)
+C(R,( {, \), (x, e, E) , s, (x, e$, VE, R$)) w.r.t. . (32)
+TE |&*x.e O *x.e$ at \:( {, \), [put( \)]
+C(R$, TE, E+[f [ (x, e, E, f)] , s, VE ) w.r.t. .
+R$ and R agree on . frv(e$)Dom( R$)
+C(R,( {, \), (x, e, E, f) , s, (x, e$, VE, R$) )) w.r.t. . (33)
+137REGION-BASED MEMORY MANAGEMENT
+=== page 30 ===
+File: 643J 261330 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2940 Signs: 1754 . Length: 52 pic 10 pts, 222 mm
+Type Schemes and Storable Values [C(R,( _, \), v, s, sv) w.r.t. .].
+TE+[f [ (_, \)] |&*x.e O *x.e$ at \:( {, \), [put( \)]
+_=\\1 }}} \k :1 }}} :n=1 }}} =m .{ bv(_) & fv(TE, \)= <
+R$ and R agree on . frv(e$)Dom( R$) _ [\ 1 , ..., \k]
+C(R$, TE+[f [ (_, \)], E+[f [ (x, e, E, f)] , s, VE ) w.r.t. .
+C(R,( _, \), (x, e, E, f) , s, (\ 1 , ..., \k , x, e$, VE, R$)) w.r.t. . (34)
+C(R,( {, \), v, s, sv) w.r.t. .
+C(R,( \() . {, \), v, s, sv) w.r.t. . (35)
+Type Schemes and Addresses [C(R,( _, \), v, s, v$ ) w.r.t. .].
+v$=( r, o) R( \)= rv $ # Pdom(s) C(R,( _, \), v, s, s(v$)) w.r.t. .
+C(R,( _, \), v, s, v$) w.r.t. . (36)
+get( \)  .
+C(R,( _, \), v, s, v$) w.r.t. . (37)
+Environments [C(R, TE, E, s, VE ) w.r.t. .].
+Dom TE=Dom E=Dom VE
+\x # Dom TE.C(R, TE(x), E(x), s, VE(x)) w.r.t. .
+C(R, TE, E, s, VE ) w.r.t. . (38)
+The relation C is defined as the maximal fixed point of an operator F: P(C) 
+P(C), where P means powerset and C is defined by:
+C=RegEnv_TypeWithPlace_Val_Store_StoreVal_Effect
+_ RegEnv_(TypeScheme_RegVar)_Val_Store_StoreVal_Effect
+_ RegEnv_(TypeScheme_RegVar)_Val_Store_TargetVal_Effect
+_ RegEnv_TyEnv_Env_Store_TargetEnv_Effect.
+The members of C are referred to as ( consistency) claims. We use # to range over
+claims and 1 to range over sets of claims. For example, a claim of the form
+(R,( _, \), v, s, sv, .) is read: (it is claimed that) storable value sv is consistent with
+source value v and has type scheme _ and resides at \ in the store s and region
+environment R, with respect to effect ..
+Note that ( P(C), ) is a complete lattice. We now define an operator
+F: P(C)  P(C). The definition is expressed using the syntax of inference rules,
+but it could equally well be expressed as a non-recursive definition by cases; for
+given 1C, F(1) is defined as the unique set [# # C | # # F(1) can be inferred by
+one of the inference rules ]. Since the rules are very similar to rules 3138 we shall
+not explain them further.
+138 TOFTE AND TALPIN
+=== page 31 ===
+File: 643J 261331 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2699 Signs: 1330 . Length: 52 pic 10 pts, 222 mm
+Types and Storable Values [(R, +, s, sv, .)# F(1)].
+i # Int
+(R,( int, \), i, s, i, .)# F(1) (39)
+TE |&*x.e O *x.e$ at \:( {, \), [put( \)]
+(R$, TE, E, s, VE, .)# 1
+R$ and R agree on . frv(e$)Dom( R)
+(R,( {, \), (x, e, E), s, (x, e$, VE, R$), .)# F(1) (40)
+TE |&*x.e O *x.e$ at \:( {, \), [put( \)]
+(R$, TE, E+[f [ (x, e, E, f)] , s, VE, .)# 1
+R$ and R agree on . frv(e$)Dom( R$)
+(R,( {, \), (x, e, E, f) , s, (x, e$, VE, R$), .)# F(1) (41)
+Type Schemes and Storable Values [(R,( _, \), v, s, sv, .)# F(1)].
+TE+[f [ (_, \)] |&*x.e O *x.e$ at \:( {, \), [put( \)]
+_=\\1 }}} \k :1 }}} :n =1 }}} =m .{ bv(_) & fv(TE, \)= <
+R$ and R agree on . frv(e$)Dom( R$) _ [\ 1 , ..., \k]
+(R$, TE+[f [ (_, \)], E+[f [ (x, e, E, f)] , s, VE, .)# 1
+(R,( _, \), (x, e, E, f) , s, (\ 1 , ..., \k , x, e$, VE, R$), .)# F(1 ) (42)
+(R,( {, \), v, s, sv, .)# 1
+(R,( \() . {, \), v, s, sv, .)# F(1) (43)
+Type Schemes and Addresses [(R,( _, \), v, s, v$, .)# F(1)].
+v$=( r, o) R( \)= rv $ # Pdom(s)( R,( _, \), v, s, s(v$), .)# 1
+(R,( _, \), v, s, v$, .)# F(1) (44)
+get( \)  .
+(R,( _, \), v, s, v$, .)# F(1) (45)
+Environments [(R, TE, E, s, VE, .)# F(1)].
+Dom TE=Dom E=Dom VE
+\x # Dom TE.( R, TE(x), E(x), s, VE(x), .)# 1
+(R, TE, E, s, VE, .)# F(1) (46)
+The operator F is monotonic: 11$ implies F(1) F(1$). Thus, by Tarski's
+fixed point theorem, there exists a greatest fixed point for F and this greatest fixed
+point is also the greatest set 1 satisfying 1F(1). Let 1 * be this greatest fixed
+point.
+Definition 7.1. We take C to be 1 * and we write, for example, C(R, +, v, s, v$)
+w.r.t. . to mean ( R, +, v, s, v$, .)# C.
+139REGION-BASED MEMORY MANAGEMENT
+=== page 32 ===
+File: 643J 261332 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3395 Signs: 2587 . Length: 52 pic 10 pts, 222 mm
+We use co-induction to prove properties of the consistency relation: to prove that
+a set 1 of claims is consistent, (i.e., that 11 *) it suffices to prove 1F(1).
+8. PROPERTIES OF CONSISTENCY
+In this section we prove important lemmas about the consistency relation C.
+Besides being useful in the proof of the main theorem (Theorem 6.1) they address
+issues such as why it is safe to re-use a de-allocated region even when there are
+dead pointers into it. The lemmas will be proved using a special style of co-induc-
+tive proof, which we call rule-based co-induction.
+8.1. Rule-Based Co-induction
+Rule-based co-inductive proof is a style of proof which makes it possible to pre-
+sent a co-inductive proof in a form which resembles ordinary induction on depth
+of inference. The scenario is that a set, C, is given, together with an operator
+F: P(C)  P(C) which is monotonic with respect to set inclusion. F is defined by
+a finite set of inference rules (in our case, Rules 3946). Let 1 * be the maximal
+fixed point of F: 1 *= [1C | 1F(1)]. Now consider a lemma which states
+that, for some given relation RC_C:
+\#, #$# C if # # 1 * and #R#$ then #$# 1 *. (47)
+Let 1R=[#$# C | _# # 1 * .#R#$]. We refer formally to the members #$o f 1R as the
+consequences of the lemma. Then (47) can be stated 1R1 *. By the principle of
+co-induction, it suffices to prove 1RF(1R), i.e., that
+\#$# C if there exists # # 1 * such that #R#$ then #$# F(1R).
+Thus the co-inductive proof can be organised as follows: take any #$# C. Let # # 1 *
+be such that #R#$. Show #$# F(1R), i.e., show that #$ can be inferred by the inference
+rules that define F, using only premises which are themselves consequences of the
+lemma. Often, this is proved by a case analysis on # (note: not #$), since # # 1 *
+implies that # can be inferred by an application of one of the rules that define F
+from premises which are themselves in 1 *. Note that proving #$# F(1R) is equiv-
+alent to inferring #$# 1 *, using the fixed-point rules for F (in our case:
+Rules 3138) and only using premises #i$ which are themselves consequences of the
+lemma (i.e., \i _#i # 1 * .#i R#i$). Thus we can word the co-inductive proof almost as
+if it were a normal inductive proof on the depth of inference related to mininal fixed
+points, using the fixed point rules for F rather than the rules that define F.
+We name this style of co-inductive proof rule-based co-induction . We emphasise
+that a rule-based co-inductive proof is not a proof on ``depth of inference''for the
+co-inductive proof establishes claims that are not conclusions of any finite proof
+tree constructed by the fixed point rules.
+140 TOFTE AND TALPIN
+=== page 33 ===
+File: 643J 261333 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3101 Signs: 2084 . Length: 52 pic 10 pts, 222 mm
+8.2. Preservation of Consistency
+The first lemma states that consistency is preserved under decreasing effect and
+increasing store. This is to be expected: it is easier to obtain consistency with
+respect to an observer if the observer observes a little rather than a lot; and the
+larger the store is, the easier it is for it to contain bits of target values which are
+consistent with a given source value.
+Lemma 8.1. If C(R, +, v, s1 , v$ ) w.r.t. .1 and . 2 .1 and s 1 C= s2 then
+C(R, +, v, s2 , v$ ) w.r.t. .2 .
+Lemma 8.1 is a special case of the following lemma:
+Lemma 8.2. If C(R1 , +, v, s1 , v$ ) w.r.t. .1 and . 2 .1 and R 2 and R 1 agree on
+.2 and s 1 a (Rng(R2 a frv(.2))) C= s2 then C(R2 , +, v, s2 , v$ ) w.r.t. .2 . Similarly for
+the other forms of C.
+Notice that the domain of s1 need not be a subset of the domain of s2 for
+Lemma 8.2 to apply. This is crucial in the proof of the main theorem, in the case
+for letregion. Here s1 will be the store resulting from a computation which
+involves local regions; s2 will be the result of removing the local regions from s1 .
+The region variables that are free in .1 , but not in .2 , will be the variables of the
+local regions.
+Proof. We prove Lemma 8.2 and the corresponding statements concerning the
+other forms of consistency by rule-based co-induction. The cases for the inference
+rules (31) to (38) are arranged according to judgement forms. In all cases, we
+assume
+.2 .1 (48)
+R2 and R1 agree on .2 (49)
+s1 a (Rng(R2 a frv(.2))) C= s2 (50)
+Types and Storable Values [C(R, +, v, s, sv) w.r.t. .]. Assume
+C(R1 , +, v, s1 , sv) w.r.t. .1 . (51)
+By the remarks in Section 8 it suffices to prove that C(R2 , +, v, s2 , sv) w.r.t. .2 can
+be inferred using Rules 3138, from premises which are themselves conclusions of
+the lemma.
+Recall that Rules 3138 express that C is a fixed-point of F: one has (51) if and
+only if either the ``premises'' (i.e., the formulae above the line) of Rule 31 hold, or
+the premises of Rule 32 hold, or the premises of Rule 33 hold. We deal with each
+case in turn:
+[Rule 31]. Here +=(int, \), for some \, and v=sv=i, for some i # Int. But
+then C(R2 , +, v, s2 , sv) w.r.t. .2 , by Rule 31.
+141REGION-BASED MEMORY MANAGEMENT
+=== page 34 ===
+File: 643J 261334 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3153 Signs: 1750 . Length: 52 pic 10 pts, 222 mm
+[Rule 32]. Here there exist {, \, TE, x, e, E, e$, VE, R$ such that (51) is inferred
+from premises
+TE |&*x.e O *x.e$ at \:( {, \), [put(\)] (52)
+C(R$, TE, E, s1 , VE ) w.r.t. .1 (53)
+R$ and R1 agree on .1 frv(e$)Dom( R$) (54)
+and +=( {, \), v=(x, e, E) , and sv=(x, e$, VE, R$). But then, by (54), (48) and
+(49) we have
+R$ and R2 agree on .2 . (55)
+Obviously, R$ agrees with itself on .2 and, by (55) and (50), s1 a (Rng(R$ a frv(.2)))
+C= s2 . Thus, using also (48) and (53), we have that the claim
+C(R$, TE, E, s2 , VE ) w.r.t. .2 (56)
+is a consequence of the lemma. 2 Thus by Rule 32 on (52), (55) and (56) we have
+C(R2 , +, v, s2 , sv) w.r.t. .2 , as desired (since (56) is a consequence of the lemma).
+[Rule 33]. Similar to the previous case.
+Type Schemes and Storable Values [C(R,( _, \), v, s, sv) w.r.t. .]. Assume
+C(R1 ,( _, \), v, s1 , sv) w.r.t. .1 , which can be inferred by Rule 34 or by Rule 35. The
+case for Rule 34 is similar to the case for Rule 32. So consider the case for Rule 35.
+Here _ takes the form \() . { and we have C(R1 ,( {, \), v, s1 , sv) w.r.t. .1 . Thus the
+claim C(R2 ,( {, \), v, s2 , sv) w.r.t .2 is a consequence of the lemma. But then, by
+Rule 35, we have C(R2 ,( _, \), v, s2 , sv) w.r.t. .2 , as required (since the premise
+used, i.e., C(R2 ,( {, \), v, s2 , sv) w.r.t. .2 , is a consequence of the lemma).
+Type Schemes and Addresses [C(R,( _, \), v, s, v$) w.r.t. .]. Assume that
+C(R1 ,( _, \), v, s1 , v$) w.r.t. .1 (57)
+inferred by Rule 36 or Rule 37. Case analysis:
+[get( \)# .2] Then get( \)# .1 , so by (36) there exist r, o such that v$=( r, o)
+and
+R1(\)= r (58)
+v$ # Pdom(s1) (59)
+C(R1 ,( _, \), v, s1 , s1(v$ )) w.r.t. .1 . (60)
+By (49) on (58) we have
+R2( \)= r (61)
+142 TOFTE AND TALPIN
+2 Strictly speaking, we should say ``we have that the claim ( R$, TE, E, s2 , VE, .2) is a consequence
+of the lemma'', but the chosen formulation seems easier to read, so we adopt it throughout.
+=== page 35 ===
+File: 643J 261335 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3240 Signs: 2227 . Length: 52 pic 10 pts, 222 mm
+Thus (59) and (50) give
+v$ # Pdom(s2) and s2(v$)= s1(v$). (62)
+By (60), (48), (49) and (50) we have that the claim C(R2 ,( _, \), v, s2 ,
+s1(v$)) w.r.t. .2 is a consequence of the lemma; i.e., by (62), that the claim
+C(R2 ,( _, \), v, s2 , s2(v$)) w.r.t. .2 (63)
+is a consequence of the lemma. Thus Rule 36 on (61), (62), and (63) gives
+C(R2 ,( _, \), v, s2 , v$) w.r.t. .2 , since the premise used is a consequences of the
+lemma.
+[get( \)  .2]. Then C(R2 ,( _, \), v, s2 , v$) w.r.t. .2 by Rule 37.
+Environments [C(R, TE, E, s, VE ) w.r.t. .]. The case for Rule 38 is straight-
+forward.
+8.3. Region Renaming
+In order to prove that re-use of old regions is safe (Lemma 8.4), we shall want
+to rename region variables that occur free in some semantic object A but do not
+occur free in the effect of the rest of the computation, to other region variables that
+do not occur free in the effect of the rest of the computation. Let Sr be a region sub-
+stitution. The yield of Sr , written Yield( Sr), is the set [Sr(\)| \ # Supp(Sr)].
+Definition 8.1. Let A be a semantic object, let . be an effect, and let
+S=( St , Sr , Se) be a substitution. We say that S is a region renaming of A with
+respect to . if S a frv(A) is injective, (Supp( Sr) _ Yield(Sr)) & frv(.)= < and
+Supp(Se)=Supp( St)= <.
+It is not in general the case that C(R, +, v, s, v$) w.r.t. . implies C(R, S(+), v, s, v$)
+w.r.t. ., for all substitutions S; the reason is that S might map region variables in
+the set frv( +)"frv(.) to variables that are free in ., thereby making consistency
+harder to achieve. However, the following special case holds:
+Lemma 8.3. If C(R, +, v, s, v$) w.r.t. . and S is a region renaming of + with
+respect to . then C(R, S(+), v, s, v$) w.r.t. .. Similarly for the other consistency
+judgement forms.
+Intuitively: as far as . is concerned, a region variable \ # frv( +)"frv(.) denotes
+a garbage region which is no different from any other garbage region!
+Proof. By rule-based co-induction on C(R, +, v, s, v$) w.r.t. . (and the other
+consistency judgement forms). The cases are ordered according to judgement forms.
+Types and Storable Values [C(R, +, v, s, sv) w.r.t. .]. Assume that S is a region
+renaming of + with respect to . and that
+C(R, +, v, s, sv) w.r.t. .. (64)
+Now (64) must be the conclusion of one of the following rules:
+143REGION-BASED MEMORY MANAGEMENT
+=== page 36 ===
+File: 643J 261336 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3591 Signs: 2402 . Length: 52 pic 10 pts, 222 mm
+[Rule 31]. By (64) we have +=(int, \), for some \, and v=sv # Int. Thus
+C(R, S( +), v, s, sv) w.r.t. ..
+[Rule 32]. By (64) there exist TE, x, e, e$, R$, E, {, \ and VE such that
+TE |&*x.e O *x.e$ at \:( {, \), [put( \)] (65)
+C(R$, TE, E$, s, VE ) w.r.t. . (66)
+R$ and R agree on . frv(e$)Dom( R$) (67)
++=( {, \), v=(x, e, E) , sv=(x, e$, VE, R$), (68)
+where E$=E. (The reason for introducing E$ will become clear later.) To prove
+C(R, S( +), v, s, sv) w.r.t. . we wish to find TE0 , R0 , and e$0 satisfying
+TE0 |&*x.e O *x.e$0 at S( \): S({, \), [put(S( \)) ] (69)
+C(R0 , TE0 , E$, s, VE ) w.r.t. . (70)
+R0 and R agree on . frv(e$0)Dom( R0) (71)
+sv=(x, e$0 , VE, R0) (72)
+and that the claim (70) is itself a consequence of the lemma. Comparing (65) and
+(69), a tempting idea is simply to apply S throughout (65), taking e$0 to be S(e$).
+However, S is not necessarily a region renaming on TE, so (70) would not
+necessarily be a consequence of the lemma.
+Therefore, let [\ 1 , ..., \n]=frv(TE)"frv(+, .) and let [\$1, ..., \$n] be distinct new
+region variables, new in the sense that [\$1, ..., \$n] & frv(S(+), .)= <. Let
+S$= S+[\ i [ \i$|1 in], let TE0=S$(TE), and let e$0=S$(e$). Then S$i sa
+region renaming of ( TE, +) with respect to .. Further, R0 is defined as follows. Let
+Dom(R0) be frv( e$0). Since (65) must have been inferred by Rule 23, we have
+frv(e$)frv( TE, {). Thus S$ is injective on frv( e$). Then for every region variable
+\$ # frv(e$0) there exists one and only one region variable \ # frv(e$) such that
+S$(\)= \$. Define R0(\$) to be R$(\). By these definitions, (x, e$, VE, R$) and
+(x, e$0, VE, R0) are equal. By Lemma 5.3 on (65) and the fact that S$({, \)= S({, \)
+we obtain (69), as desired. Notice that R0 and R$ agree on ., since S$ is a region
+renaming with respect to .. Thus (71) also holds. Then, by Lemma 8.2 on (66) we
+have C(R0 , TE, E$, s, VE) w.r.t. .. But then, since S$ is a region renaming of TE
+with respect to . we have that the claim (70) is itself a consequence of the lemma,
+as desired. Finally Rule 32 on (68)(72) gives C(R, S(+), v, s, sv) w.r.t. ., as desired.
+[Rule 33]. Almost identical to the previous case: use E$= E+[f [ (x, e, E, f)]
+and v=(x, e, E, f) instead of E$=E and v=(x, e, E) . Conclude using Rule 33
+instead of using Rule 32.
+Type Schemes and Storable Values [C(R,( _, \), v, s, sv) w.r.t. .]. Assume that
+(_$, \$)= S(_, \), that S is a region renaming of ( _, \) with respect to ., and that
+C(R,( _, \), v, s, sv) w.r.t. .. (73)
+Then (73) is the conclusion of one of the following rules:
+144 TOFTE AND TALPIN
+=== page 37 ===
+File: 643J 261337 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3171 Signs: 1660 . Length: 52 pic 10 pts, 222 mm
+[Rule 34]. Then there exist TE, f, x, e, e$, \1 }}} \k , :1 }}} :n , =1 }}} =m , {, VE
+and R$ such that
+TE+[f [ (_, \)] |&*x.e O *x.e$ at \:( {, \), [put( \)] (74)
+_=\\1 }}} \k \:1 }}} :n \=1 }}} =m .{ and bv( _) & fv(TE, \)=<
+R$ and R agree on . frv(e$)Dom( R$) _ [\ 1 , ..., \k] (75)
+C(R$, TE+[f [ (_, \)], E+[f [ (x, e, E, f)] , s, VE) w.r.t. . (76)
+v=(x, e, E, f) , sv=(\ 1 , ..., \k , x, e$, VE, R$). (77)
+As in the previous two cases, S is not necessarily a region renaming of
+TE+[f [ (_, \)]. Let [\ old
+1 , ..., \old
+l ]=( [\ 1 , ..., \k] _ frv(TE, {))"frv(( _, \), .).
+Let [\ new
+1 , ..., \new
+l ] be distinct new region variables, new in the sense that
+[\new
+1 , ...,\new
+l ] & frv(S(_, \), .)=<. LetS$=S+([] , [\old
+1 [ \new
+1 , ...,\old
+l [ \new
+l ], [] ).
+Then
+S$ is a region renaming on ( [\ 1 , ..., \k] , TE, {, \) with respect to .. (78)
+Let TE$= S$(TE) and let e$0=S$(e$). By Lemma 5.3 on (74) we have
+TE$+ [f [ (S$(_), \$) ] |&*x.e O *x.e$0 at \$: ( S${, \$), [put(\$) ], (79)
+where we have used S$( \)= \$. Since S$ is the identity on every type and effect
+variable, we have
+S$(_)= \S$\1 }}} S$\k :1 }}} :n =1 }}} =m .S$({). (80)
+Moreover,
+([S$\1 , ..., S$\k], [:1 , ..., :n], [=1 , ..., =m]) & fv(TE$, \$)= < (81)
+since S$ is injective on frv( [\ 1 , ..., \k], TE, \). Define R0 as follows. Let
+Dom(R0)=frv( e$0)"[S $(\1), ..., S$( \k)]. From (74) and Rule 23 we get frv( e$)
+frv(TE+[f [ (_, \)], {). By (78), for every \$# e$0 there exists a unique \ # frv(e$)
+such that S$( \)= \$. Let R0( \$)= R$( \). The closures (\ 1 , ..., \k , x, e$, VE, R$)
+and (S $\1 , ..., S$\k , x, e$0 , VE, R0) are now equal. Moreover, by (78), R0 and R$
+agree on .. But then, by (75), we have
+R0 and R agree on . frv(e$0)Dom( R0) _ [S$\1 , ..., S$\k]. (82)
+By Lemma 8.2 on (76), using that R0 and R$ agree on ., we get
+C(R0 , TE+[f [ (_, \)], E+[f [ (x, e, E, f)] , s, VE) w.r.t. .. (83)
+145REGION-BASED MEMORY MANAGEMENT
+=== page 38 ===
+File: 643J 261338 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2999 Signs: 2002 . Length: 52 pic 10 pts, 222 mm
+Notice that S$ is a region renaming of TE+[f [ (_, \)] with respect to .. Thus
+from (83) we get that the claim
+C(R0 , TE$+ [f [ (S$(_), \$) ], E+[f [ v], s, VE) w.r.t. . (84)
+is a consequence of the lemma. By Rule 34 on (79), (80), (81), (82), and (84) we
+have
+C(R,( S$(_), \$), (x, e, E, f) , s, (S $\1 , ..., S$\k , x, e$0, VE, R0)) w.r.t. ., (85)
+which is the desired result.
+[Rule 35]. By (73) and Rule 35 we have that _ is simple and takes the form
+\() . { and C(R,( {, \), v, s, sv) w.r.t. .. Thus the claim C(R, S$({, \), v, s, sv) w.r.t. .
+is a consequence of the lemma. Thus C(R,( S$(_), \$), v, s, sv) w.r.t. ., as desired.
+The cases for the remaining rules (Rules 3638) are straightforward.
+8.4. Region Allocation
+Consistency is not in general preserved under increasing effects or shrinking
+stores. For example, for all addresses a, we have C([\ [ r],( int, \), 3, [] , a)
+w.r.t. . if .=<, but not if .=[get(\)], since the store is empty. Yet there is one
+point where we do need to increase effects, namely in the case of the main proof
+concerning expressions of the form
+e$#letregion \ in e$1 end.
+Starting from an assumption of the form C(R, TE, E, s, VE) w.r.t. . we wish
+to extend s with a new region, yielding s$=s+[r [ [] ], increase . to
+. _ [put(\), get(\)] (the get and put effects representing the effects of e$1 on the
+new region) and still be able to claim C(R+[\ [ r], TE, E, s$, VE) w.r.t.
+. _ [put(\), get(\)]. That this is possible is not trivial, for the region r may have
+been in use earlier (and there may even be dead pointers into the old region named
+r). However, if we extend the observing effect with a region variable which is not
+free in the type environment, then consistency really is preserved:
+Lemma 8.4. If C(R, TE, E, s, VE) w.r.t. . and \  frv(TE, .), r  Dom(s) and
+frv(.$) [\] then C(R+[\ [ r], TE, E, s+[r [ [] ] , VE) w.r.t. .$ _ ..
+Similarly for the other forms of C.
+Proof. The proof is by rule-based co-induction. We assume
+frv(.$) [\] (86)
+r  Dom(s). (87)
+For brevity, let s$= s+[r [ [] ] . We now have a case analysis with one case for
+each of Rules 31 to 38.
+146 TOFTE AND TALPIN
+=== page 39 ===
+File: 643J 261339 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2489 Signs: 1340 . Length: 52 pic 10 pts, 222 mm
+Types and Storable Values [C(R, +, v, s, sv) w.r.t. .]. Assume
+C(R,( {, \0), v, s, sv) w.r.t. . (88)
+\  frv(( {, \0), .). (89)
+Then (88) is the conclusion of one of the following rules:
+[Rule 31]. Here v=sv=i, for some i # Int and {=int. Hence C(R+[\ [ r],
+({, \0), v, s$, sv) w.r.t. . _ .$ by Rule 31 itself.
+[Rule 32]. Here (88) is inferred from premises
+TE |&*x.e O *x.e$ at \0 :( {, \0): [put(\0)] (90)
+C(R0 , TE, E, s, VE) w.r.t. . (91)
+R0 and R agree on . frv(e$)Dom( R0) (92)
+v=(x, e, E) and sv=(x, e$, VE, R0) (93)
+Without loss of generality we can assume
+\  frv(TE) (94)
+for if \ # frv(TE) we can do the following. Let \$ be a fresh region variable, fresh
+in the sense that \$  frv(TE, ., {). Consider the substitution S=[\ [ \$]. By (89)
+and Lemma 5.3 on (90) we have
+S(TE)|&*x.e O *x.S(e$) at \0 :( { ,\0): [put(\0)]. (95)
+Moreover, S is a region renaming of TE with respect to ., so Lemma 8.3 on (91)
+gives
+C(R0 , S(TE), E, s, VE) w.r.t. .. (96)
+Let R$0 be the region environment defined as follows. If \  Dom(R0) then let
+R$0=R0 . Otherwise let R$0 have domain Dom( R$0)=Dom( R0)"[\] _ [\$] and
+values
+R$0(\$0)= {
+R0(\$0)
+R0(\)
+if \$0{\
+if \$0=\$.
+Let sv$= (x, S(e$), VE, R$0). Since frv( e$)Dom( R0) we have that sv and sv$ are
+equal and frv( S(e$))Dom( R$0). Also, R$0 and R0 agree on . (since either \$ nor
+\ is free in .). Thus by Lemma 8.2 on (96) we have
+C(R$0 , S(TE), E, s, VE) w.r.t. .. (97)
+Thus we can assume that (94) holds.
+147REGION-BASED MEMORY MANAGEMENT
+=== page 40 ===
+File: 643J 261340 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2681 Signs: 1386 . Length: 52 pic 10 pts, 222 mm
+By (91) and (94) we have that the claim
+C(R0+[\ [ r], TE, E, s$, VE) w.r.t. . _ .$ (98)
+is itself a conclusion of the lemma. Moreover, from (92) and (86) we have
+R0+[\ [ r] and R+[\ [ r] agree on . _ .$. (99)
+By Rule 32 on (90), (98), (99) and the fact that frv( e$)Dom( R0+[\ [ r]) we get
+C(R+[\ [ r],( {, \0), v, s$, sv$) w.r.t. . _ .$ (100)
+where sv$= (x, e$, VE, R0+[\ [ r]) . By (90) and Rule 23 we have frv( e$)
+frv(TE, {) so by (89) and (94) we have \  frv(e$). Thus sv and sv$ are equal; thus
+(100) is the desired result.
+[Rule 33]. Similar to the previous case.
+Type Schemes and Storable Values [C(R,( _, \0), v, s, sv) w.r.t. .]. Assume that
+C(R,( _, \0), v, s, sv) w.r.t. . (101)
+\  frv(( _, \0), .), (102)
+where (101) must be the conclusion of one of the following rules:
+[Rule 34]. Here _ is compound and there exist TE, f, x, e, \1 , ..., \k , :1 , ..., :n ,
+=1 , ..., =m , R0 , and VE such that
+TE+[f [ (_, \0)] |&*x.e O *x.e$ at \0 :( {, \0), [put(\0)] (103)
+_=\\1 }}} \k \:1 }}} :n \=1 }}} =m .{ bv(_) & fv(TE, \0)= < (104)
+R0 and R agree on . frv(e$)Dom( R0) _ [\ 1 ,..., \k] (105)
+C(R0 , TE+[f [ (_, \0)], E+[f [ (x, e, E, f)] , s, VE) w.r.t. . (106)
+v=(x, e, E, f) and sv=(\ 1 , ..., \k , x, e$, VE, R0). (107)
+As in the case for Rule 32 we may assume
+\  frv(TE+[x [ (_, \0)]) (108)
+without loss of generality. By (106) and (108) we get that the claim
+C(R0+[\ [ r], TE+[f [ (_, \0)], E+[f [ (x, e, E, f)] , s$, VE) w.r.t. . _ .$
+(109)
+is a consequence of the lemma. Let R$0=R0+[\ [ r] and let R$= R+[\ [ r].B y
+(105) and (102) we have
+R$0 and R$ agree on . _ .$ (110)
+148 TOFTE AND TALPIN
+=== page 41 ===
+File: 643J 261341 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3296 Signs: 2091 . Length: 52 pic 10 pts, 222 mm
+Thus by Rule 34 on (103), (110) and (109) we have
+C(R$, (_, \0), v, s$, (\ 1 , ..., \k , x, e$, VE, R$0)) w.r.t. . _ .$ (111)
+From (103) and Rule 23 we have frv( e$)frv( TE+[f [ (_, \0)], {). This with (108)
+gives that if \ # frv(e$) then \ # [\ 1 , ..., \k]. Thus sv and (\ 1 , ..., \k , x, e$, VE, R$0)
+are equal, so (111) really is the desired result.
+[Rule 35]. Here _ is simple. Write _ in the form \() . {. Then \  frv(( {, \0), .),
+by (102). By (101) and Rule 35 we have C(R,( {, \0), v, s, sv) w.r.t. .. But then the
+claim C(R+[\ [ r],( {, \0), v, s$, sv) w.r.t. . _ .$ is a consequence of the lemma.
+Thus C(R+[\ [ r],( _, \0), v, s$, sv) w.r.t. . _ .$, by Rule 35.
+Type Schemes and Addresses [C(R,( _, \0), v, s, v$) w.r.t. .]. Assume that
+C(R,( _, \0), v, s, v$) w.r.t. . (112)
+\  frv(_, \0 , .). (113)
+Then (112) is the conclusion of one of the following rules:
+[Rule 36]. Here R(\0)= ro fv $, v$ # Pdom(s) and
+C(R,( _, \0), v, s, s(v$)) w.r.t. .. (114)
+By (113) we have ( R+[\ [ r])( \0)= R(\0)= ro fv $. Since r  Dom(s) we have
+v$ # Pdom(s$) and s$(v$)= s(v$). By (114) and (113) we have that the claim
+C(R+[\ [ r],( _, \0), v, s$, s$(v$)) w.r.t. . _ .$ is a consequence of the lemma.
+Then, by Rule 36, we have C(R+[\ [ r],( _, \0), v, s$, v$) w.r.t. . _ .$, as desired.
+[Rule 37]. Since get(\0)  . and (86) and, by (113), \{\0 , we have get(\0) 
+. _ .$. Thus C(R+[\ [ r],( _, \0), v, s$, v$) w.r.t. . _ .$, by Rule 37 itself.
+Environments [C(R, TE, E, s, VE) w.r.t. .]. The case for Rule 38 is straight-
+forward. K
+Lemma 8.5. If C(R, TE, E, s, VE) w.r.t. . then C(R, TE, E, s, VE) w.r.t. . _ [=].
+Similarly for the other forms of C.
+Proof. Straightforward co-inductive proof. K
+8.5. Recursion
+The source and target languages handle recursion differently. The source
+language ``unrolls'' a closure each time a recursive function is appliedsee Rule 5.
+In the target language a closure for a recursive function contains a pointer back to
+itselfsee Rule 14. To prove the correctness of our translation, we must show that
+the two representations are consistent at the point where we create the cycle in the
+store.
+Lemma 8.6. If C(R, TE, E, s, VE) w.r.t. . and _ is a compound type scheme
+\\ : = .{ , with bv(_) & fv(TE, \)= <, and TE +[f [ (_, \)]|&*x.e O *x.e$ at \:
+149REGION-BASED MEMORY MANAGEMENT
+=== page 42 ===
+File: 643J 261342 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3081 Signs: 1915 . Length: 52 pic 10 pts, 222 mm
+({, \), [put(\)] and R $ and R agree on . and frv(e$)Dom( R$) _ frv(\ ) and
+R(\)=r and r # Dom(s) and o  Dom(s(r)) then
+C(R, TE+[f [ (_, \)], E+[f [ (x, e, E, f)] ,
+s+[(r, o) [ (\ , x, e$, VE$, R$)] , VE$) w.r.t. .,
+where VE $= VE+[f [ (r, o)].
+Proof. Let TE$= TE+[f [ (_, \)], E$= E+[f [ (x, e, E, f)] , VE$=VE+
+[f [ (r, o)] and s$= s+[(r, o) [ (\ , x, e$, VE$, R$)]. By Lemma 8.2 it suffices to
+prove
+C(R$, TE$, E$, s$, VE$) w.r.t. ..
+The proof is by co-induction. Let
+q1=(R$, (_, \), (x, e, E, f) , s$, (\ , x, e$, VE$, R$), .)
+q2=(R$, (_, \), (x, e, E, f) , s$, (r, o), .)
+q3=(R$, TE$, E$, s$, VE$, .).
+Let 1$= 1 * _ [q1 , q2 , q3] and show 1$ F(1$). We consider q1 , q2 , and q3 in
+turn.
+[q1]. Since q3 # 1$ and _=\\ : = .{ , with bv( _) & fv(TE, \)= <, and TE+
+[f [ (_, \)]|&*x.e O *x.e$ at \:( {, \), [put(\)] and R$ agrees with itself on .
+and frv( e$)Dom( R$) _ frv(\ ) we have q1 # F(1$), by rule 42.
+[q2]. If get(\)  . then q2 # F(1$), by Rule 45. Assume get(\)# .. Since R and
+R$ agree on . we have R$(\)= R(\)= r. Since also r # Dom(s$) and q1 # 1$ we have
+q2 # F(1$), by rule 44.
+[q3]. By Lemma 8.2 on C(R, TE, E, s, VE) w.r.t. . we have C(R$, TE, E, s$, VE)
+w.r.t. .. Thus Dom(TE)=Dom( E)=Dom( VE) and for every x # Dom(TE) we have
+C(R$, TE(x), E(x), s$, VE(x)) w.r.t. ., i.e., for x{f, C(R$, TE$(x), E$(x), s$, VE$(x))
+w.r.t. .. Since also q2 # 1$ we have q3 # F(1$) by Rule 46.
+9. PROOF OF THE CORRECTNESS OF THE TRANSLATION
+This section is the proof of Theorem 6.1. The proof is by depth of the derivation
+of E |&e  v, each with an inner induction on the depth of inference of
+TE |&e O e$: +, .. There are seven cases, one for each rule in the dynamic semantics
+of the source language. For each of these cases, the inner induction consists of a
+base case, in which TE |&e O e$: +, . was inferred by one of the syntax-directed
+rules (i.e., rules 2026) plus an inductive step, where Rule 27 or 28 was applied. It
+turns out the the inner inductive steps are independent of e, so we start out by
+doing them once and for all. Then we deal with each of the seven syntax-directed
+cases.
+150 TOFTE AND TALPIN
+=== page 43 ===
+File: 643J 261343 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2075 Signs: 925 . Length: 52 pic 10 pts, 222 mm
+In all the cases, we assume
+TE |&e O e$: +, . (115)
+C(R, TE, E, s, VE) w.r.t. . _ .$ (116)
+E |&e  v (117)
+R connects . _ .$t o s (118)
+R$ and R agree on . _ .$ (119)
+frv(e$)Dom R$. (120)
+[Inner inductive step (a): Rule 27 was applied]. Assume that (115) takes the
+form
+TE |&e O letregion \ in e$1 end : +, . (121)
+and is inferred by Rule 27 from the premises
+TE |&e O e$1 : +, .+ (122)
+.=.+ "[put(\), get(\)] (123)
+\  frv(TE, +). (124)
+By Lemma 5.3 we can choose \ such that \  frv(.$) as well as (123)(124).
+Thus \  frv(TE, . _ .$). Let r be an address satisfying r  Dom(s). Let R+=
+R+[\ [ r] and s+=s+[r [ [] ] . Then by Lemma 8.4 on (116) we get
+C(R+, TE, E, s+, VE) w.r.t. .+ _ .$. (125)
+Let R$+=R$+ [\ [ r]. By (118) we have
+R+ connects .+ _ .$t o s+ (126)
+and by (119)
+R$+ and R+ agree on .+ _ .$. (127)
+By (120) we have
+frv(e$1)Dom R$+. (128)
+By the inner induction applied to (122), (125), (117), (126), (127), and (128) there
+exist s$1 and v$ such that
+s+, VE, R$+ |&e$1  v$, s$1 (129)
+C(R$+, +, v, s$1 , v$) w.r.t. .$ (130)
+151REGION-BASED MEMORY MANAGEMENT
+=== page 44 ===
+File: 643J 261344 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3107 Signs: 2038 . Length: 52 pic 10 pts, 222 mm
+Let s$= s$1""[r]. Rule 15 on (129) gives
+s, VE, R$|&letregion \ in e$1 end  v$, s$
+Note that R$+ and R$ agree on .$( a s\  frv(.$)). Also, s$1 a (Rng(R$ a frv(.$))) C=s$
+by (118) and (119). Then by Lemma 8.2 on (130) we get C(R$, +, v, s$, v$) w.r.t. .$, as
+required.
+[Inner inductive step (b): Rule 28 was applied]. Assume that (115) is inferred
+by Rule 28 on premises TE |&e O e$: +, .+, .=.+"[=] and =  fev(TE, +). By
+Lemma 8.5 on (116) we get C(R, TE, E, s, VE) w.r.t. .+ _ .$. Also, R connects
+.+ _ .$t o s; R$ and R agree on .+ _ .$ and frv( e$)Dom( R$). Thus by the inner
+induction there exist s$ and v$ such that s, VE, R$|&e$  v$, s$ and C(R$, +, v, s$, v$)
+w.r.t. .$, as desired.
+[The syntax-directed cases].
+[Constant, Rule 1]. Since R connects [put(\)] _ .$t o s and R$ and R agree
+on [put(\)] _ .$ we have that r=R$(\) exists and r # Dom(s). Take o  Dom(s(r)).
+By Rule 8 we then have s, VE, R$|&c at \  (r, o), s+[(r, o) [ c]. Letting
+v$=( r, o) and s$= s+[(r, o) [ c] we furthermore get C(R$, (int, \), v, s$, v$) w.r.t.
+.$, by (36), (35) and (31), as desired.
+[Variable, Rule 2]. There are two cases, depending on whether TE associates
+a simple or a compound type scheme with the variable. We deal with each of these
+in turn:
+[Variable with simple type scheme]. Assume that (115) was inferred using
+Rule 21. Then e=e$= x, for some variable x. Moreover, TE(x)=( _, p), for some p
+and simple _. Let { be the type for which _=\() . {. Then +=( {, p) and .=<. The
+evaluation (117) must have been by Rule 2, so we have v=E(x). Let s$= s.B y
+(115) and (116) we have x # Dom(VE). Thus, letting v$= VE(x), we have
+s, VE, R$|&x  v$, s$, as desired. By Rule 38 on (116) we have C(R,( _, p), v, s$, v$)
+w.r.t. .$, i.e., C(R,( {, p), v, s$, v$) w.r.t. .$, as desired (recall that we identify \() . {
+and {).
+[Variable with compound type scheme]. Assume that (115) was obtained
+by Rule 22. Then e is a variable, f; e$ is of the form f[S(\1), ..., S(\k)] at p and
++=( {, p), for some {; and
+TE |&f O f[S\1 , ..., S\k] at p:( {, p), . (131)
+was inferred by application of Rule 22 to the premises
+TE( f )=( _, p$) _=\\1 }}} \k : = .{1 (132)
+_{ via S (133)
+.=[get( p$), put( p)]. (134)
+152 TOFTE AND TALPIN
+=== page 45 ===
+File: 643J 261345 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2685 Signs: 1472 . Length: 52 pic 10 pts, 222 mm
+Then (117) must have been inferred by Rule 2, so we have v=E( f ). By (116) and
+f # Dom(TE) we have
+C(R,( _, p$), v, s, v$1) w.r.t. . _ .$
+where v$1=VE( f ). Since get( p$) # ., the definition of C (rules 36 and 34) gives
+v$1 # Pdom(s) and ro fv $1=R( p$) and v is a recursive closure
+v=(x 0 , e0 , E0 , f0) (135)
+and s(v$1)= (\ 1 , ..., \k , x0 , e$0 , VE0 , R0), for some e$0 , VE0 and R0 . Furthermore,
+there exist TE0 , :1 , ..., :n , =1 , ..., =m and {0 such that
+C(R0 , TE0+[f 0 [ (_, p$)], E0+[f 0 [ v], s, VE0) w.r.t. . _ .$ (136)
+TE0+[f 0 [ (_, p$)] |&*x0 .e0 O *x0 .e$0 at p$: ({0 , p$), [put( p$)] (137)
+bv(_) & fv(TE0 , p$)= < (138)
+R0 and R agree on . _ .$ (139)
+frv(e$0)Dom R0 _ [\ 1 , ..., \k]. (140)
+Without loss of generality, we can assume that \1 , ..., \k are chosen so as to satisfy
+[\ 1 , ..., \k] & frv(.$)= <. (141)
+By (134), (118), and (119) we have R$( p) # Dom(s). Let r$= R$( p). Let o$b ea n
+offset not in Dom( s(r$)). Let v$=( r$, o$), let R$0=R0+[\ i [ R$(S(\i)); 1 ik]
+and let sv=(x 0 , e$0 , VE0 , R$0). Notice that R$(S(\i)) exists, by (120). Let s$=
+s+[(r$, o$) [ sv]. It follows from Rule 10 that
+s, VE, R$|&f[S(\1), ..., S(\k)] at p  v$, s$, (142)
+as desired. It remains to prove that
+C(R$, ({, p), v, s$, v$) w.r.t. .$ (143)
+We now consult Rules 3138 concerning C.I f get( p)  .$, we are done. But even if
+get( p)# .$ we have v$ # Pdom(s$) and ro fv $=r$= R$( p) as required by Rule 36. It
+remains to prove that
+C(R$, ({, p), v, s$, sv) w.r.t. .$. (144)
+Let TE=TE0+[f 0 [ (_, p$)]. Since (137) must have been inferred by Rules 23
+and 28 we equally have
+TE |&*x0 .e0 O *x0 .e$0 at p:( {, p), [put( p)] (145)
+153REGION-BASED MEMORY MANAGEMENT
+=== page 46 ===
+File: 643J 261346 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2220 Signs: 1157 . Length: 52 pic 10 pts, 222 mm
+From (119), (139) and [\ 1 , ..., \k] & frv(.$)= < we get
+R$0 and R$ agree on .$. (146)
+From Lemma 8.2 on (136) we get
+C(R$0 , TE, E0+[f 0 [ v], s$, VE0) w.r.t. .$. (147)
+From (140) we get
+frv(e$0)Dom R$0 . (148)
+By Rule 33 on (145), (146), (147), and (148) we have C(R$, ({, p), v, s$, (x 0 , e$,
+VE0 , R$0)) w.r.t. .$ as desired.
+[Lambda abstraction, Rule 3]. Assume that (115) was inferred by Rule 23;
+then (115) takes the following form:
+TE |&*x.e1 O *x.e$1 at p: +, [put( p)]. (149)
+Moreover, (117) was inferred by Rule 3 yielding
+v=(x, e1 , E) . (150)
+Since R connects . to s we have R( p) # Dom(s). Let r=R( p) and let o be an offset
+not in Dom( s(r)). Let v$=( r, o) and s$=s+[v$ [ (x, e$1 , VE, R$)] . By (119) we
+have R$( p)= r. Thus by Rule 11 we have
+s, VE, R$|&*x.e$1 at p  v$, s$. (151)
+Notice that C(R$, TE, E, s$, VE) w.r.t. .$, by Lemma 8.2 and (119). Also frv( e$1)
+Dom R$, by (120). Thus by Rules 32, 35, and 36 (or by (37)) we have
+C(R, +, v, s$, v$) w.r.t. .$ as required.
+[Application of non-recursive closure, Rule 4]. Here e#e1 e2 , for some e1
+and e2 , and e$#e$1 e$2 , for some e$1 and e$2 and (115) was inferred by Rule 24 on the
+premises
+TE |&e1 O e$1 :( +$ ww 
+=..0
++, p), .1 (152)
+TE |&e2 O e$2 : +$, .2 (153)
+.=.1 _ .2 _ [=, get( p)] _ .0 . (154)
+154 TOFTE AND TALPIN
+=== page 47 ===
+File: 643J 261347 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2703 Signs: 1229 . Length: 52 pic 10 pts, 222 mm
+Moreover, (117) was inferred by Rule 4 on the premises
+E |&e1  v1 , v1=(x 0 , e0 , E0) (155)
+E |&e2  v2 (156)
+E0+[x0 [ v2] |&e0  v. (157)
+Let .$1=.2 _ [=, get( p)] _ .0 _ .$, i.e., the effect that remains after the computa-
+tion of e$1 . Note that . _ .$= .1 _ .$1 ; so from (116), (118), and (119) we get
+C(R, TE, E, s, VE) w.r.t. .1 _ .$1 (158)
+R connects .1 _ .$1 to s (159)
+R$ and R agree on .1 _ .$1 . (160)
+Also, from (120), we get
+frv(e$1)Dom R$ 7 frv(e$2)Dom R$. (161)
+By induction on (152), (158), (155), (159), (160), and (161) there exist s1 and v$1
+such that
+s, VE, R$|&e$1  v$1 , s1 (162)
+C(R$, ( +$ ww 
+=..0
++, p), v1 , s1 , v$1) w.r.t. .$1 . (163)
+Notice that get( p)# .$1 . Thus, by the definition of C, (163) tells us that
+v$1 # Pdom(s1) and ro fv $1=R$( p) and there exist e$0 , VE0 , TE0 and R0 such that
+s1(v$1)= (x 0 , e$0 , VE0 , R0) (164)
+TE0 |&*x0 .e0 O *x0 .e$0 at p:( +$ ww 
+=..0
++, p), [put( p)] (165)
+C(R0 , TE0 , E0 , s1 , VE0) w.r.t. .$1 (166)
+R0 and R$ agree on .$1 (167)
+frv(e$0)Dom R0 . (168)
+Let .$2=[=, get( p)] _ .0 _ .$, i.e., the effect that remains after the computation of
+e$2 . By Lemma 4.1 on (162) we have s C= s1 . Furthermore, we have .2 _ .$2
+. _ .$, so by Lemma 8.1 on (116) we have
+C(R, TE, E, s1 , VE) w.r.t. .2 _ .$2 . (169)
+Also, from (118) and (119) we get
+R connects .2 _ .$2 to s1 (170)
+R$ and R agree on .2 _ .$2 . (171)
+155REGION-BASED MEMORY MANAGEMENT
+=== page 48 ===
+File: 643J 261348 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2402 Signs: 1225 . Length: 52 pic 10 pts, 222 mm
+By induction on (153), (169), (156), (170), (171), and (161) there exist s2 and v$2
+such that
+s1 , VE, R$|&e$2  v$2 , s2 (172)
+C(R$, +$, v2 , s2 , v$2) w.r.t. .$2 . (173)
+Let TE+
+0 =TE0+[x0 [ +$]. Now (165) must have been inferred by Rules 23
+and 28. Thus there exists a .$0 such that .$0.0 and
+TE+
+0 |&e0 O e$0 : +, .$0 . (174)
+We have s 1 C= s2 , by Lemma 4.1 on (172). By Lemma 8.2 on (166), (167), and
+.$0.0 we then have
+C(R$, TE0 , E0 , s2 , VE0) w.r.t. .$0 _ .$ (175)
+and by Lemma 8.1 on (173) and .$0.0 we get
+C(R$, +$, v2 , s2 , v$2) w.r.t. .$0 _ .$. (176)
+Let E+
+0 =E0+[x0 [ v2] and let VE+
+0 =VE0+[x0 [ v$2]. Combining (175) and
+(176) we get
+C(R$, TE+
+0 , E+
+0 , s2 , VE+
+0 ) w.r.t. .$0 _ .$. (177)
+Also, by (118), (119), and s C= s2 we get
+R$ connects .$0 _ .$t o s2 (178)
+and by (167)
+R0 and R$ agree on .$0 _ .$. (179)
+Then by induction on (174), (177), (157), (178), (179), and (168) there exist s$ and
+v$ such that
+s2 , VE+
+0 , R0 |&e$0  v$, s$ (180)
+C(R0 , +, v, s$, v$) w.r.t. .$. (181)
+From (162), (164), (172), and (180) we get s, VE, R$|&e$1 e$2  v$, s$, as desired.
+Moreover, by Lemma 8.2 on (181) and (167), we have C(R$, +, v, s$, v$) w.r.t. .$, as
+desired.
+[Application of recursive closure, Rule 5]. This case is similar to the previous
+case, but we include it for the sake of completeness. We have e#e1 e2 , for some e1
+156 TOFTE AND TALPIN
+=== page 49 ===
+File: 643J 261349 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2587 Signs: 1140 . Length: 52 pic 10 pts, 222 mm
+and e2 , and e$#e$1 e$2 , for some e$1 and e$2 and, by Rule 24, there exist +$, p, =, .0 ,
+.1 and .2 such that
+TE |&e1 O e$1 :( +$ ww 
+=..0
++, p), .1 (182)
+TE |&e2 O e$2 : +$, .2 (183)
+.=.1 _ .2 _ .0 _ [get( p), =]. (184)
+Also, assume that (117) was inferred by application of Rule 5 on premises
+E |&e1  v1 v1=(x 0 , e0 , E0 , f) (185)
+E |&e2  v2 (186)
+E0+[f [ v1]+[x0 [ v2] |&e0  v. (187)
+To use induction the first time, we split the effect . _ .$ into .1 _ .$1 , where .$1=
+.2 _ .0 _ [get( p), =] _ .$. By (116), (118) and (119) we have
+C(R, TE, E, s, VE) w.r.t. .1 _ .$1 (188)
+R connects .1 _ .$1 to s (189)
+R$ and R agree on .1 _ .$1 . (190)
+Also, by (120), we have
+frv(e$1)Dom R$ 7 frv(e$2)Dom R$. (191)
+By induction on (182), (188), (185), (189), (190), and (191), there exist v$1 and s1
+such that
+s, VE, R$|&e$1  v$1 , s1 (192)
+C(R$, ( +$ ww 
+=..0
++, p), v1 , s1 , v$1) w.r.t. .$1 . (193)
+Notice that get( p)# .$1 . Thus by (193) and the rules for C (Rules 33, 35, and 36)
+we have v$1 # Pdom(s1) and ro fv $1=R$( p) and there exist e$0 , VE0 , TE0 , and R0
+such that
+s1(v$1)= (x 0 , e$0 , VE0 , R0) (194)
+TE0 |&*x0 .e0 O *x0 .e$0 at p:( +$ ww 
+=..0
++, p), [put( p)] (195)
+C(R0 , TE0 , E0+[f [ v1], s1 , VE0) w.r.t. .$1 (196)
+R0 and R$ agree on .$1 (197)
+frv(e$0)Dom R0 . (198)
+157REGION-BASED MEMORY MANAGEMENT
+=== page 50 ===
+File: 643J 261350 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2304 Signs: 1080 . Length: 52 pic 10 pts, 222 mm
+To use induction a second time, we split the remaining effect .$1 into .2 _ .$2 , where
+.$2=.0 _ [get( p), =] _ .$. We have s C= s1 , by Lemma 4.1. Then, by Lemma 8.1 on
+(116), we have
+C(R, TE, E, s1 ,VE) w.r.t. .2 _ .$2 . (199)
+Moreover, (118) and (119) imply that
+R connects .2 _ .$2 to s1 (200)
+R$ and R agree on .2 _ .$2 . (201)
+By induction on (183), (199), (186), (200), (201), and (191) there exist s2 and v$2
+such that
+s1 , VE, R$|&e$2  v$2 , s2 (202)
+C(R$, +$, v2 , s2 , v$2) w.r.t. .$2 . (203)
+Let TE+
+0 =TE0+[x0 [ +$]. Now (195) must have been inferred by Rules 23 and
+28. Thus there exists an effect .$0 with .$0.0 and
+TE+
+0 |&e0 O e$0 : +, .$0 . (204)
+By Lemma 8.2 on (196) and (197) we have
+C(R$, TE0 , E0+[f [ v1], s2 , VE0) w.r.t. .$2 . (205).
+Let E+
+0 =E0+[f [ v1]+[x0 [ v2] and let VE+
+0 =VE0+[x0 [ v$2]. From (205)
+and (203) and .$0.0 we have
+C(R$, TE+
+0 , E+
+0 , s2 , VE+
+0 ) w.r.t. .$0 _ .$. (206)
+From (197) we get
+R0 and R$ agree on .$0 _ .$. (207)
+By (118), (119) and s C= s2 we get
+R$ connects .$0 _ .$t o s2 . (208)
+By induction on (204), (206), (187), (208), (207), and (198) there exist s$ and v$
+such that
+s2 , VE+
+0 , R0 |&e$0  v$, s$ (209)
+C(R0 , +, v, s$, v$) w.r.t. .$. (210)
+158 TOFTE AND TALPIN
+=== page 51 ===
+File: 643J 261351 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2328 Signs: 1073 . Length: 52 pic 10 pts, 222 mm
+Rule 12 on (192), (202), (194), and (209) gives s, VE, R$|&e$1 e$2  v$, s$, as desired.
+Moreover, Lemma 8.2 on (210) and (207) gives the desired C(R$, +, v, s$, v$)
+w.r.t. .$.
+[let expressions, Rule 6]. Assume that (115) was inferred by Rule 25; then
+(115) takes the form
+TE |&let x=e1 in e2 end O let x=e$1 in e$2 end : +, .. (211)
+Moreover, (115) and (117) must be inferred by Rules 25 and 6 from the premises
+TE |&e1 O e$1 :( {1 , p1), .1 (212)
+TE+[x [ ({1 , p1)] |&e2 O e$2 : +, .2 (213)
+.=.1 _ .2 (214)
+E |&e1  v1 (215)
+E+[x [ v1] |&e2  v. (216)
+Let .$1 be the effect that remains after the evaluation of e$1 ; i.e., let .$1=.2 _ .$.
+Note that . _ .$=.1 _ .$1 , so by (116), (118) and (119) we have
+C(R, TE, E, s, VE) w.r.t. .1 _ .$1 (217)
+R connects .1 _ .$1 to s (218)
+R$ and R agree on .1 _ .$1 . (219)
+By (120) we have
+frv(e$1)Dom R$ 7 frv(e$2)Dom R$. (220)
+By induction on (212), (217), (215), (218), (219), and (220) there exist s1 and v$1
+such that
+s, VE, R$|&e$1  v$1 , s1 (221)
+C(R$, ({1 , p1), v1 , s1 , v$1) w.r.t. .$1 . (222)
+By Lemma 8.2 on (222) we get
+C(R,( {1 , p1), v1 , s1 , v$1) w.r.t. .$1 . (223)
+By Lemma 8.1 on (116) we get
+C(R, TE, E, s1 , VE) w.r.t. .$1 . (224)
+159REGION-BASED MEMORY MANAGEMENT
+=== page 52 ===
+File: 643J 261352 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2917 Signs: 1237 . Length: 52 pic 10 pts, 222 mm
+Combining these two, we get
+C(R, TE+[x [ ({1 , p1)], E+[x [ v1], s1 , VE+[x [ v$1]) w.r.t. .2 _ .$. (225)
+By (118) and (119) and s C= s1 we have
+R connects .2 _ .$t o s1 (226)
+R$ and R agree on .2 _ .$. (227)
+By induction on (213), (225), (216), (226), (227), and (220) there exist s$ and v$
+such that
+s1 , VE+[x [ v$1], R$|&e$2  v$, s$ (228)
+C(R$, +, v, s$, v$) w.r.t. .$. (229)
+Here (229) is one of the desired results. Moreover, by Rule 13 on (221) and (228)
+we get the desired s, VE, R$|&let x=e$1 in e$2 end  v, s$.
+[letrec, Rule 7]. In this case (115) takes the form
+TE |&letrec f(x)= e1 in e2 end O
+letrec f[\1 , ..., \k](x) at p=e$1 in e$2 end : +, . (230)
+and is inferred by application of Rule 26 to the premises
+TE+[f [ (\\1 }}} \k = .{ , p)] |&*x.e1 O *x.e$1 at p :( {, p), .1 (231)
+fv(: , \ , = ) & fv(TE, .1)=< (232)
+TE+[f [ (_$, p)] |&e2 O e$2 : +, .2 (233)
+.=.1 _ .2 , (234)
+where \ =\1 }}} \k and _$=\: \ = .{. Moreover, (117) was inferred by Rule 7 on the
+premise
+E+[f [ (x, e1 , E, f)] |&e2  v. (235)
+Since (231) must have been inferred by Rules 23 and 28, we have .1=[put( p)].B y
+(118) and (119) we have R$( p)= R( p) # Dom(s). Let r1=R( p). Let o1 be an offset
+with o1  Dom(s(r1)). Let v1=(r1 , o1). Let VE$= VE+[f [ v1] and let s+=
+s+[v1 [ (\ 1 , ..., \k , x, e$1 , VE$, R$)] . By Lemma 5.4 on (231) we have that
+TE+[f [ (_$, p)] |&*x.e1 O *x.e$1 at p :( {, p), .1 . (236)
+160 TOFTE AND TALPIN
+=== page 53 ===
+File: 643J 261353 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3207 Signs: 1935 . Length: 52 pic 10 pts, 222 mm
+Let TE+=TE+[f [ (_$, p)] and let E+=E+[f [ (x, e1 , E, f)] . By (120) we
+have
+frv(e$1)Dom R$ _ [\ 1 , ..., \k] 7 frv(e$2)Dom R$. (237)
+By Lemma 8.6 on (116), (232), (236), (119), and (237) we have
+C(R, TE+, E+, s+, VE$) w.r.t. . _ .$. Then by Lemma 8.1 we get
+C(R, TE+, E+, s+, VE$) w.r.t. .2 _ .$. (238)
+Also, by (118) and (119), we get
+R connects .2 _ .$t o s+ (239)
+R$ and R agree on .2 _ .$. (240)
+By induction on (233), (238), (235), (239), (240), and (237) there exist s$ and v$
+such that
+s+, VE$, R$|&e$2  v$, s$ (241)
+C(R$, +, v, s$, v$) w.r.t. .$. (242)
+From (241) and Rule 14 we get
+s, VE, R$|&letrec f[\1 , ..., \k](x) at p=e$1 in e$2 end  v$, s$. (243)
+Now (242) and (243) are the desired results.
+This concludes the proof of Theorem 6.1.
+10. ALGORITHMS
+The algorithms used for implementing the region inference rules in the ML Kit
+will not be described here. We shall give a brief overview, however. First, ordinary
+ML type inference is performed using Milner's algorithm W, extended to all of Core
+ML. The output of this phase is an explicitly typed lambda term, e0 , say. Then
+region inference is done in two phases. First e0 is decorated with fresh region and
+effect variables everywhere a region and effect variable will be required in an
+explicitly typed version the fully region annotated target expression. This phase is
+called spreading. During spreading, every recursive function f of type scheme _ML,
+say, is given the most general type scheme _0 which has _ML as its projection (in
+the sense of Section 5.3). For example, a letrec-bound int  int function will
+be given type scheme \\1 \2 =.( int, \1) w=.< (int, \2). The spreading phase per-
+forms the unifications suggested by the inference rules. For example, the two
+occurrences of +$ in Rule 24 suggest a unification of the types and places of operator
+and operand. Spreading employs rules 27 and 28 as aggressively as possible (i.e.,
+after every application of rules 22, 24, 25, and 26). The resulting program, call it
+161REGION-BASED MEMORY MANAGEMENT
+=== page 54 ===
+File: 643J 261354 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3734 Signs: 2828 . Length: 52 pic 10 pts, 222 mm
+e1 , is well annotated with regions, except for the fact that the type schemes assumed
+for recursive functions may be too general, compared to the type schemes that were
+inferred for the lambda expressions which define the functions.
+The second phase is called fixed-point resolution and takes e1 as input. For each
+recursive function in e1 , the region inference steps (unification, introduction of
+letregions, etc.) are iterated, using less and less general type schemes for the recur-
+sive functions, till a fixed point is reached. This is similar in spirit to Mycroft's algo-
+rithms for full polymorphic recursion [20].
+It is possible to extend the notion of principal unifiers for types to a notion of
+principal unifier for region-annotated types, even though region-annotated types
+contain effects. This relies on invariants about arrow effects that were outlined in
+Section 5.1. One can prove that every two types {1 and {2 that have the same under-
+lying ML type have a most general unifier, provided all the arrow effects in {1 and
+{2 satisfy the invariants.
+The reason for the separation of spreading and fixed-point resolution is that,
+unless one takes care, the iteration used to handle the polymorphic region recursion
+does not terminate. In particular, there is a danger of arrow effects that grow ever
+larger, as more fresh region and effect variables are generated. The division into
+spreading and fixed-point resolution solves this problem by only generating fresh
+variables during the spreading phase. It can then be shown that the second phase
+always terminates. This approach does not always give principal types, for there are
+cases where that function in the fixed-point resolution which is responsible for
+forming type schemes is refused the opportunity to quantify region and effect
+variables even though it is permitted by the inference rules. When this happens, the
+implementation simply prints a warning about the possible loss of principal types
+and continues with a less-than-principal type scheme. Fortunately, this happens
+rather infrequently in practice, and since the soundness result of the present paper
+shows the correctness for all derivations TE |&e O e$: +, ., safety is not violated.
+11. LANGUAGE EXTENSIONS
+In this section we outline some of the extensions that have been made to the
+region inference rules in order to handle references, exceptions, and recursive
+datatypes in the ML Kit.
+11.1. References
+Assume primitives ref, !, and := for creating a reference, de-referencing, and
+assignment, respectively. For the purpose of region inference, these can be treated
+as variables with the following type schemes:
+ref : \:\1 \2 =.( :, \1) wwww 
+=.[put(\2)]
+((:, \1) ref, \2)
+!: \:\1 \2 =.(( :, \1) ref, \2) wwww 
+=. [get(\2)]
+(:, \1)
+:= :\:\1 \2 \3 \4 =.((( :, \1) ref, \2) V (:, \1), \3) wwwwww 
+=.[put(\2), put(\4)]
+(unit, \4).
+162 TOFTE AND TALPIN
+=== page 55 ===
+File: 643J 261355 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 3440 Signs: 2772 . Length: 52 pic 10 pts, 222 mm
+The most interesting of these is assignment. The new contents of the reference is
+represented by a pointer (or by a word, if the value is in unboxed representation).
+The assignment updates the reference with this pointer (or word). Thus there is a
+put effect on the region where the reference resides. The assignment does not make
+a copy the stored value. Thus assignment is a constant time operation, but the
+downside is that the old and the new contents must be in the same regions (see the
+two occurrences of \1 in the type for :=). Thus, for values with boxed representa-
+tion, all the different contents of the reference will be kept alive for as long as the
+reference is live. In ``mostly functional'' programs this does not seem to be a serious
+problem and even if there are many side-effects, one can still expect reasonable
+memory usage as long as the references are relatively short-lived. Long-lived
+references that contain boxed values and are assigned freshly created contents often
+are hostile to region inference.
+11.2. Exceptions
+Our approach here is simple-minded: exception values are put into global
+regions. Every evaluation of an exception declaration gives rise to an allocation in
+some global region. Application of a unary exception constructor to an argument
+forces the argument to be in global regions as well. Thus if one constructs many
+exception values using unary exception constructors, one gets a space leak (indeed,
+the space leaking region \122 in Fig. 5 contains constructed exception values). If one
+uses nullary constructors only, there is only going to be one allocation for each
+evaluation of each exception declaration.
+11.3. Recursive Datatypes
+So far, every type constructor has been paired with one region variable. For
+values of recursive datatypes, additional region variables, the so-called auxiliary
+region variables, are associated with type constructors. For example, consider the
+declaration of the list datatype:
+datatype 'a list=nil |: : of 'a V 'a list
+The region-annotated version of the type : list takes the form
+(:, \1)(list[\2] , \3), where \1 stands for a region which contains the list elements,
+\3 contains the spine of the list (i.e., the constructors nil and ::), and \2 is an
+auxiliary region which contains the pairs, to which :: is applied. Thus lists are kept
+``very boxed'': in region \3 every cons cell takes up two words, the first a tag (saying
+``I am cons'') and the second a pointer to the pair to which :: is applied. The region
+\2 is called auxiliary because it holds values which are internal to the datatype dec-
+laration; there will be one auxiliary region for each type constructor or product
+type formation in each constructor in the datatype. However, all occurrences of
+163REGION-BASED MEMORY MANAGEMENT
+=== page 56 ===
+File: 643J 261356 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2910 Signs: 1816 . Length: 52 pic 10 pts, 222 mm
+the type constructor being declared are put in the same region. Hence :: receives
+type
+\\1 \2 \3 :.(( :, \1) V ((:, \1)list[\2] , \3), \2) wwww 
+=.[put(\3)]
+((:, \1) list[\2] , \3).
+Sequential datatype declarations pose an interesting design problem:
+datatype t1=C of int
+datatype t2=C of t1 V t1
+datatype t3=C of t2 V t2
+}}}
+datatype ti=Co f ti&1 V ti&1
+}}}
+In the declaration of ti , should one give the two occurrences of ti&1 on the right-
+hand side the same or different regions? If one gives them the same regions, one
+introduces unnecessary sharing; if one gives them different regions, the number of
+auxiliary region variables grows exponentially in i, potentially leading to slow
+region inference. A third possibility is to put a limit on the number of auxiliary
+region variables one will allow. We have chosen the third solution, but a systematic
+empirical study of different solutions has not been conducted.
+12. STRENGTHS AND WEAKNESSES
+The region inference rules were first implemented in a prototype system [26] and
+then in the ML Kit [5]. Neither of these systems uses garbage collection. This
+section records some of the experience gained from these systems, with special
+emphasis on how details of the region inference rules influence memory manage-
+ment. We first illustrate consequences of the region inference rules by a series of
+small, but complete, examples. Then we report a few results from larger bench-
+marks run on the ML Kit. Throughout, we use Standard ML syntax [19]; roughly,
+fun is translated into letrec and val into let.
+12.1. Small Examples
+The examples are grouped according to the general point they are intended to
+make.
+12.1.1. Polymorphic Recursion
+Generally speaking, polymorphic region recursion favours recursive functions
+that have a balanced call tree (as opposed to an iterative computation, where the
+164 TOFTE AND TALPIN
+=== page 57 ===
+File: 643J 261357 . By:XX . Date:20:02:97 . Time:10:30 LOP8M. V8.0. Page 01:01
+Codes: 2376 Signs: 1439 . Length: 52 pic 10 pts, 222 mm
+call tree is a list). We illustrate this with two examples. The first is the exponential
+version of the Fibonacci function:
+fun fib n=if n <= 1 then 1 else fib(n&2)+fib(n&1)
+val fib15=fib 15;
+Due to region polymorphism, the two recursive calls of fib use different regions,
+local to the body (see Fig. 2). The memory usage appears in Fig. 4.
+The next example, called reynolds2 [5], is a depth-first search in a tree, using
+a predicate to record the path from the root to the present node:
+datatype 'a tree=
+Lf
+|B ro f' a V 'a tree V 'a tree
+fun mk& tree 0=Lf
+|m k& tree n=let val t=mk& tree(n&1)
+in Br(n, t, t)
+end
+fun search p Lf=false
+| search p (Br(x, t1, t2))=
+if p (x) then true
+else search (fn y O y=x orelse p (y)) t1
+orelse
+search (fn y O y=x orelse p y) t2
+val reynolds2=search (fn & O false) (mk & tree 20)
+Due to the polymorphic recursion, the recursive call of search does not put the
+closures for (fn y O y=x orelse p (y)) in the same region as p, so the space
+usage will be proportional to the depth of the tree. This leads to good memory
+utilisation (Fig. 4).
+FIG. 4. Memory used in running sample programs on the ML Kit with Regions, Version 29a3:
+(i) maximal space (in bytes) used for variable size regions (one region page is 800 bytes); (ii) maximal
+space (in bytes) used for fixed size regions; (iii) maximal stack size during execution (in bytes); (iv) num-
+ber of bytes holding values at the end of the computation (regions on stack+data in variable sized
+regions).
+165REGION-BASED MEMORY MANAGEMENT
+=== page 58 ===
+File: 643J 261358 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2801 Signs: 1913 . Length: 52 pic 10 pts, 222 mm
+By contrast, consider the first-order variant, called reynolds3, which uses a list
+to represent the path. It is obtained by replacing the search function of
+reynolds2 by
+fun member(x, [])=false
+| member(x, x' :: rest)=
+x=x' orelse member(x, rest)
+fun search p Lf=false
+| search p (Br(x, t1, t2))=
+if member(x, p) then true
+else search (x :: p) t1 orelse
+search (x :: p) t2
+val reynolds3=search [] (mk & tree 20)
+As we saw in Section 11, region inference does not distinguish between a list and
+its tail, so all cons cells (one for each node in the tree) are put in the same region.
+This gives poor memory utilisation, the difference from reynolds2 being
+exponential in the depth of the tree (Fig. 4). More generally, in connection with a
+recursive datatype, one should not count on polymorphic recursion to separate the
+life-times of a value v of that type and other values of the same type contained
+in v.
+12.1.2. Tail Recursion
+Another common pattern of computation is iteration. This is best implemented
+using a recursive function whose type scheme takes the form \: \ = .( + w=.. +) (note
+that the argument and result types are the same, even after region annotation).
+Such a function is called a region endomorphism. Here is how to write a simple loop
+to sum the numbers 1 to 100:
+fun sum(p as (acc, 0))=p
+| sum(acc, n)=sum(n+acc, n&1)
+val sumit=*1(sum(0, 100));
+In ML, all functions in principle take one argument, in this case a tuple, and
+that is how it is implemented in the ML Kit. One might think that 100 pairs
+would pile up in one region; however, an analysis called the storage mode analysis
+[5] discovers that the region can be reset just before each pair is written, so
+that in fact the region will only ever contain one pair. Memory usage is independent
+of the number of iterations, in this example. By contrast, the non-tail-recursive
+version
+fun sum' 0=0
+| sum' n=n+sum'(n&1)
+val sum'it=sum' 100
+uses stack space proportional to the number of iterations.
+166 TOFTE AND TALPIN
+=== page 59 ===
+File: 643J 261359 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2127 Signs: 1458 . Length: 52 pic 10 pts, 222 mm
+The next program, appel1, is a variant of a program in [2]:
+fun s(0)=nil
+| s(i)=0 :: s(i&1)
+fun length []=0
+| length(x :: xs)=1+length xs
+val N=100
+fun f(n, x)=
+let val z=length x
+in if n=0 then 0 else f(n&1, s N)
+end
+val appel1=f(N, nil)
+Here f(n, nil) uses space 3(N 2), although 3(N) should be enough. The problem
+is that at each iteration a list of length N is created, put in a fresh region, and then
+passed to the recursive call, which only uses the list to compute z. The list,
+however, stays live till the end of the recursive call: Rule 23 and 27 tell us that the
+*-bound x will be allocated throughout the evaluation of the body of f. The cure
+in this case is not to use the polymorphic recursion:
+fun f(p as (n, x))=
+let val z=length x
+in if n=0 then 0 else f(if true then (n&1, s N) else p)
+end
+val appel2 =f(N, nil)
+Now the storage mode analysis will discover that the region containing the entire
+list can be reset at each iteration; this is tail call optimisation for recursive
+datatypes! The above transformation is a rather indirect way of instructing the
+region inference algorithm that one does not want polymorphic recursion and if the
+optimiser eliminated the conditional, it would not even have the desired effect. It
+would probably be better to allow programmers to state their intentions directly.
+Memory consumption is in Fig. 7.
+12.1.3. Higher-Order Functions
+If a function f is lambda-bound, it is not region-polymorphic (Rule 23). For
+example, consider
+167REGION-BASED MEMORY MANAGEMENT
+=== page 60 ===
+File: 643J 261360 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2966 Signs: 1959 . Length: 52 pic 10 pts, 222 mm
+fun foldl f acc []=acc
+| foldl f acc (x :: xs)=foldl f (f(acc, x)) xs
+fun concat list =foldl (op ^) "" list
+fun blanks 0=[]
+| blanks n= "" : : blanks(n&1)
+val N=100
+val string1 =concat(blanks N)
+Despite the fact that foldl is region-polymorphic, the lambda-bound f is not, so
+all applications of the concatenation operator ^ in concat will put their results in
+the same region, leading to 3(N2) space usage. To obtain 3(N) space usage, one
+specializes foldl to ^ , uncurries the resulting function, and turns it into a region
+endomorphism:
+fun concat' (p as (acc, [])) =p
+|concat'(acc, (x :: xs)) =concat'(acc ^ x, xs)
+fun concat(list) =*1(concat'("" , list))
+fun blanks 0=[]
+| blanks n= "" : : blanks(n&1)
+val string2 =concat(blanks 100)
+12.2. Larger Benchmarks
+A number of benchmarks from the New Jersey Standard ML benchmark suite
+have been ported to the Kit and compared (space and time usage) against execu-
+tion as stand-alone programs under Standard ML of New Jersey, version 93. The
+largest benchmark is Simple (1148 lines), a program which originally used arrays
+of floating point numbers extensively. To make it run on the Kit (which does not
+support arrays) arrays were translated into lists of references, so the ported
+program is probably not indicative of how one would write the program without
+arrays to start with. Life (252 lines) uses lists very extensively; Mandelbrot (170
+lines) uses floating points extensively; Knuth-Bendix (752 lines) does extensive
+dynamic allocation of data structures that represent terms.
+Initially, programs often use more space when running on the Kit; for example,
+Fig. 5 shows a region profile for the original version of the KnuthBendix bench-
+mark, produced using Hallenberg's region profiler [10a]. The region profiler can
+also pinpoint the program points which are responsible for space leaks. The source
+program is then changed, to make it more region friendly. Interestingly, transfor-
+mations that are good for region inference often are good for SML NJ too (see
+168 TOFTE AND TALPIN
+=== page 61 ===
+File: 643J 261361 . By:XX . Date:20:02:97 . Time:10:31 LOP8M. V8.0. Page 01:01
+Codes: 971 Signs: 437 . Length: 52 pic 10 pts, 222 mm
+FIG. 5. Region profile for KnuthBendix before optimisations. One region ( \122) of unbounded size,
+indicated as r122inf in the picture, is responsible for most of the space leak. Additional profiling
+reveals that a single program point (the application of an exception constructor to a constant string) is
+responsible for all values in that region.
+FIG. 6. Region profile for KnuthBendix after optimizations.
+169REGION-BASED MEMORY MANAGEMENT
+=== page 62 ===
+File: 643J 261362 . By:XX . Date:20:02:97 . Time:10:31 LOP8M. V8.0. Page 01:01
+Codes: 2766 Signs: 2126 . Length: 52 pic 10 pts, 222 mm
+FIG. 7. Comparison between stand-alone programs created with the ML Kit (using the HP PA-
+RISC code generator) and SML of New Jersey, respectively. Here ``orig'' means original program, while
+``impr'' means improved for region inference. All times are user time in seconds on an HP 9000 s700,
+measured using the unix time command. Space is maximal resident memory in kilobytes, measured
+with top, and includes code and runtime system. All values are average over three runs.
+KnuthBendix in Fig. 7 for an example). This is not very surprising: when the static
+analysis is able to infer shorter lifetimes, it may well be because the values actually
+need to be live for a shorter time, and this is good for garbage collection too. The
+region profile of the improved KnuthBendix completion is shown in Fig. 6; see
+Fig. 7 for a comparison with SML of New Jersey, version 93.
+12.3. Automatic Program Transformation
+Apart from functions that are deliberately written as region endomorphisms, the
+general rule is that the more regions are separated, the better (since it makes more
+aggressive recycling of memory possible). The Kit performs optimisations which
+separate regions. These include replacing let x=e1 in e2 end by e2[e1 x]i n
+cases where e1 is a syntactic value and either x occurs at most once in e2 or the
+value denoted by e1 is not larger than some given constant. Another optimisation,
+which is implemented, is specialisation of curried functions, as in the string2
+example above; however, the Kit does not attempt to turn functions into region
+endomorphisms (which was the last thing we did in string2). As a matter
+of principle, the Kit avoids optimisations which can lead to increased memory
+usage.
+Also useful is the ability of the region inference to suggest where space leaks may
+be expected. If a function has compound type scheme
+\\ : = .+1 w
+=..
++2
+and . contains an atomic effect of the form put(\), where \ is not amongst the
+bound region variables \ , then one quite possibly has a space leak: every call of the
+function might put a value into some region which is external to the function. If in
+170 TOFTE AND TALPIN
+=== page 63 ===
+File: 643J 261363 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2876 Signs: 2273 . Length: 52 pic 10 pts, 222 mm
+addition \ does not occur free in +2 , that is all the more reason for concern, for the
+value will not even be part of the result of the function. In other words, the function
+has a side-effect at the implementation level. This can easily happen even when
+there are no side-effects in the source program.
+In such cases, the implementation simply issues a short warning. This turns out
+to be very useful in practice.
+Another usage of the inferred information is the ability to detect dead code.
+Consider the rule for letregion (Rule 27). If put(\)# . and get(\)  . then what-
+ever value that was put into \ was never used. For example, this can detect that
+the functions f and g below are never used:
+let
+fun f(x) =x+1
+fun g(x) =f(f(x))
+in
+(fn x O 3)(fn( )O g5 )
+end
+12.4. Conclusion
+As has been shown with the previous examples, it is not the case that every
+ML program automatically runs well on a stack of regions. Often, one has to
+program in a region-friendly style, aided by profiling tools to find space leaks.
+Thus, programming with regions is different from usual ML programming, where
+one relies on a garbage collector for memory management. On the other hand,
+the region discipline offers what we feel is an attractive combination of the
+convenience of an expressive programming language and the ability to reason
+about the time and space performance of programs. The relationship between
+the abstract model of the regions presented in this paper and the concrete
+implementation is close enough that one can use the abstract modelcombined
+with the profiling tools mentioned earlierto tune programs, often resulting in very
+space efficient programs that are executed as written, with no added costs of
+unbounded size.
+APPENDIX A: EXAMPLE THREEADDRESS CODE
+The three-address code which the ML Kit produces on the way to HP PA-RISC
+code for the example given in Section 1 is shown below. Temporary variables start
+with V. Fixed registers are used for the stack pointer ( SP) and for function call and
+return ( stdArg, stdClos, stdRes ). In this example, the compiler discovers
+that all regions can be represented on the stack; in other cases, letregion and
+end translate into calls of runtime system procedures that resemble lightweight
+malloc and free operations.
+171REGION-BASED MEMORY MANAGEMENT
+=== page 64 ===
+File: 643J 261364 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2884 Signs: 1521 . Length: 53 pic 11 pts, 227 mm
+LABEL 1: ( V main V)
+}}}
+AllocRegion(V43); (Vallocate global region rho1 V)
+}}}
+(V begin LETREGION [rho4, rho5] V)
+Move(SP, V46); (V V46 :=SP, i.e. rho4 V)
+Offset(SP, 12, SP);
+Move(SP, V47); (V rho5 V)
+Offset(SP, 12, SP);
+(V begin APP --- non tail call V)
+(V begin operator V)
+(V begin LETREGION (rho6 eliminated) V)
+(V begin LET V)
+(V begin RECORD V)
+Move(V47, V54); (V allocate storage for record V)
+Move(5, V55); (V 5 represents 2 V)
+StoreIndexL(V55, V54, 1); (V store component of record V)
+Move(7, V55); (V 7 represents 3 V)
+StoreIndexL(V55, V54, 2); (V store component of record V)
+StoreIndexL(20, V54, 0); (V tag V)
+Move(V54, V51); (V save address of record as result V)
+(V end of RECORD V)
+(* LET scope: V)
+Move(V46, V52); (V allocate storage for closure for FN y O }}}V)
+StoreIndexL(Lab5, V52, 0); (V store code pointer in closure V)
+Move(V51, V53);
+StoreIndexL(V53, V52, 2); (V save free variable x in closure V)
+FetchVars(V43);
+Move(V43, V53);
+StoreIndexL(V53, V52, 2); (V save free variable rho1 in closure V)
+Move(V52, V48); (V save address of closure as result V)
+(V end LET V)
+(V end LETREGION (rho6 eliminated) V)
+(V end operator, begin operand V)
+Move(11, V49); (V 11 represents 5 V)
+(V end operand V)
+Push(Lab4); (V push return address V)
+Move(V48, stdClos);
+Move(V49, stdArg);
+FetchIndexL(stdClos, 0, V50); ( V fetch code address from closure V)
+Jmp(V50)
+LABEL 4: (V return address V)
+Move(stdRes, V45);
+(V end APP V);
+Offset(SP, t12, SP); (V end LETREGION rho5 V)
+Offset(SP, t12, SP); (V end LETREGION rho4 V)
+HALT
+LABEL 5: (V code for function FN y O }}}V)
+(V begin RECORD V)
+FetchVars(V43)
+Move(V43, V57);
+AllocMeml(V57, 3, V57); ( V allocate storage for record at rho1 V)
+FetchIndexL(stdClos, 1, V59); ( V access variable: x V)
+172 TOFTE AND TALPIN
+. .
+=== page 65 ===
+File: 643J 261365 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2837 Signs: 1972 . Length: 52 pic 10 pts, 222 mm
+FetchIndexL(V59, 1, V58); ( V extract component 0 from record. V)
+StoreIndexL(V58, V57, 1); ( V store component of record V)
+Move(stdArg, V58); ( V access variable: y V)
+StoreIndexL(V58, V57, 2); ( V store component of record V)
+StoreIndexL(20, V57, 0); ( V tag V)
+More(V57, stdRes); ( V save address of record as result V)
+(V end of RECORD V)
+(V return: V)
+Pop(V56);
+Jmp(V56)
+APPENDIX B: NOMENCLATURE
+The index refers to sections where
+the concepts are introduced. For
+example, the entry ``region name ( r #
+RegName) 2, Fig. 1, 4.1'' means that
+the notion of region name is intro-
+duced in Sections 2 and 4.1, appears in
+Fig. 1 and that meta-variable r ranges
+over region names throughout the
+paper.
+[ ] (region arguments) 2, 4
+\ (in type schemes) 3.2, 5.1
++ (modification of finite maps) 3.1,
+4.1
+a (restriction of finite map) 3.1
+"" (restriction of store) 4.1
+A w
+fin
+B (finite maps) 3.1
+_ML{ML (see instance)
+* (function abstraction) 3
+: (see type variable)
+: (sequence of type variables) 5.1
+# (see claim of consistency)
+1 (set of claims) 7
+1* (maximal fixed point of F)7
+= (see effect variable)
+= (sequence of effect variables) 5.1
+=.. (see arrow effect)
+\ (see region variable)
+\ (sequence of region variables) 5.1
+{ (type) 5.1
+_ (type scheme) 5.1
+{ML (ML type) 3.2
+_ML (ML type scheme) 3.2
+(x, e, E) , (x, e, E, f) , (x, e$, VE, R)
+or (\ 1 }}} \k , x, e, VE, R) (see
+closure)
+TEML |&e : {ML (type rules for source)
+3.2
+E |&e  v (evaluation of source expres-
+sions) 3.3
+s, VE, R |&e  v, s$ (evaluation of
+target expression) 4.1
+TE |&e O e$: +, . (region inference
+rules) 5.2
+Addr (see address)
+address (a or (r, o) # Addr=RegName_
+OffSet) 4.1
+agreement between region environ-
+ments 6
+arrow effect ( =..) 5.1
+at (allocation directive) 1, 4
+bv (bound variables of type scheme)
+5.1
+c (see integer constant)
+C (domain for consistency) 7
+C 6, 7
+co-induction 7
+claim of consistency( #)7
+closure (in dynamic semantics)
+source language ( (x, e, E) or
+(x, e, E, f) ) 3.3
+target language ( (x, e$, VE, R) or
+(\ 1 }}} \k , x, e, VE, R) ) 4.1
+connecting an effect to a store 6
+173REGION-BASED MEMORY MANAGEMENT
+=== page 66 ===
+File: 643J 261366 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 2819 Signs: 2207 . Length: 52 pic 10 pts, 222 mm
+consistency 6
+Dom (domain of finite map) 3.1
+E (see environment)
+Effect Figure 3
+EffectVar (see effect variable)
+effect ( .) 5.1
+variable ( =) 5.1
+atomic ( ') 5.1
+effect substitution ( Se) 5.1
+Env (see environment)
+environment (see also type environ-
+ment and region environment)
+in dynamic semantics for source
+(E # Env=Var w
+fin
+Val) 3.3
+in dynamic semantics of target (VE #
+TargetEnv=Var w
+fin
+Addr) 4.1
+equivalence of type schemes 5.1
+f (see program variable)
+F (monotonic operator on sets of
+claims) 7
+fev (free effect variables) 5.1
+fpv (free program variables) 4.6
+frv (free region variables) 4.6, 5.1
+ftv (free type variables) 5.1
+fv (free type, region and effect
+variables) 5.1
+get (get effect) 5.1
+instance
+in source language ( _ML{) 3.2
+in target language ( _{) 5.1
+integer constant ( c)3
+letregion 1, 4
+o (see offset)
+of (projection) 3.1
+offset ( o) 4.1
+p (see region variable)
+P (powerset constructor) 7
+planar domain of a store (Pdom) 4.1
+polymorphism
+in types 3.2, 5.1
+in regions 2, 4.3, 5.1, 5.2, 10
+in effects 5.1, 5.2, 10
+value restriction 2, 3.2, 5.2
+program variable ( x or f )3
+put (put effect) 5.1
+r (see region name)
+R (see region environment)
+RegEnv (see region environment)
+RegName (see region name)
+Region=OffSet w
+fin
+StoreVal (see also
+region) 4.1
+region (see also Region) 1, 4.1
+region allocation 8.4
+region environment ( R # RegEnv=
+RegVar w
+fin
+RegName) 4.1
+region function closure ( (\ 1 }}} \k , x,
+e, VE, R) ) (see closure)
+region name ( r # RegName) 2, Fig. 1,
+4.1
+region renaming 8.3
+region substitution ( Sr) 5.1
+region variable ( \ or p)1 ,4
+Rng (range of finite map) 3.1
+SExp (source language) 3
+TE (type environment) 5.1
+TEML (ML type environment) 3.2
+TExp (target language) 4
+s (see store)
+s(a) 4.1
+S (see substitution)
+Se (see effect substitution)
+Sr (see region substitution)
+St (see type substitution)
+Store (see store)
+store (s # Store=RegName w
+fin
+Region)
+4.1
+StoreVal (see value, storable)
+substitution ( S) 5.1
+support (Supp) 5.1
+sv (see value, storable)
+TargetEnv (see environment)
+TargetVal (see value)
+TyVar (see type variable)
+type ( {) 5.1
+type with place ( + # TypeWithPlace =
+Type_RegVar) 5.1, Fig. 3
+TypeWithPlace (see type with place)
+type environment ( TE # Var w
+fin
+Type
+Scheme_RegVar) 5.1
+TypeScheme Fig. 3
+type scheme ( _) 5.1
+type substitution ( St) 5.1
+174 TOFTE AND TALPIN
+=== page 67 ===
+File: 643J 261367 . By:CV . Date:20:03:97 . Time:13:02 LOP8M. V8.0. Page 01:01
+Codes: 6098 Signs: 3417 . Length: 52 pic 10 pts, 222 mm
+type variable ( :) 3.2, 5.1
+type with place ( +) 5.1
+Val (see value)
+value
+source language ( v # Val) 3.3
+storable ( sv # StoreVal) 4.1
+target language (v or a # TargetVal=
+Addr) 4.1
+VE (see environment)
+target language ( v$)
+x (see program variable)
+yield (Yield) 8.3
+ACKNOWLEDGMENTS
+It would have been impossible to assess the practical use of the region inference rules without the
+software developed by the ML Kit with the Regions development team. Lars Birkedal wrote the com-
+piler from region-annotated lambda-terms to C, together with a runtime system in C. Martin Elsman
+and Niels Hallenberg extended this work to HP PA-RISC code generation, including register allocation
+and instruction scheduling. Magnus Vejlstrup developed the multiplicity inference for inferring region
+sizes. Niels Hallenberg implemented the region profiler. Peter Sestoft and Peter Bertelsen conducted
+thorough tests of the system and improved the storage mode analysis. The first author thanks Mikkel
+Thorup and Bob Paige for generously providing algorithmic expertise, specifically on graph algorithms;
+their input was very important for the detailed design and implementation of the region inference algo-
+rithms in the Kit. The depth-first search algorithms in Section12.1 were suggested by John Reynolds.
+Finally, we thank the referees for many constructive suggestions and comments.
+Received May 17, 1995; final manuscript received September 4, 1996
+REFERENCES
+1. Aiken, A., Fa  hndrich, M., and Levein, R., Better static memory management: Improving region-
+based analysis of higher-order languages, in ``Proceedings of the ACM SIGPLAN '95 Conference on
+Programming Languages and Implementation (PLDI), La Jolla, CA, June 1995,'' pp. 1741850,
+ACM Press.
+2. Appel, A. W. (1992), ``Compiling with Continuations,'' Cambridge Univ. Press, Cambridge, UK.
+3. Baker, H. (1978), List processing in real time on a serial computer, Comm. ACM 21, 280294.
+4. Baker, H. G., Unify and conquer (garbage collection, updating, aliasing, ...) in functional languages,
+in ``Proceedings of the 1990 ACM Conference on Lisp and Functional Programming, June 1990,''
+pp. 218226.
+5. Birkedal, L., Tofte, M., and Vejlstrup, M. (1996), From region inference to von Neumann machines
+via region representation inference, in ``Proceedings of the 23rd ACM SIGPLANSIGACT Sym-
+posium on Principles of Programming Languages,'' pp. 171183, ACM Press.
+6. Gifford, J. M. L. D. K., Jouvelot, P., and Sheldon, M. (1987), ``Fx-87 Reference Manual,'' Technical
+Report MITLCSTR-407, MIT Laboratory for Computer Science.
+7. Damas, L., and Milner, R. (1982), Principal type schemes for functional programs, in ``Proceedings,
+9th Annual ACM Symposium on Principles of Programming Languages,'' pp. 207212.
+8. Dijkstra, E. W. (1960), Recursive programming, Numer. Math 2, 312318; also in Rosen, ``Program-
+ming Systems and Languages,'' McGrawHill, 1967.
+9. Elsman, M., and Hallenberg, N. (1995), ``An Optimizing Backend for the ML Kit Using a Stack of
+Regions,'' Student Project 95-7-8, Department of Computer Science, University of Copenhagen
+(DIKU).
+10. Georgeff, M. (1984), Transformations and reduction strategies for typed lambda expressions, ACM
+Trans. Programming Languages Systems 6, 603631.
+10a. Hallenberg, N., A region profiler for a standard ML compiler based on region inference, student
+project 96-5-7, Department of Computer Science, University of Copenhagen (DIKU), June 14, 1996.
+175REGION-BASED MEMORY MANAGEMENT
+=== page 68 ===
+File: 643J 261368 . By:CV . Date:20:03:97 . Time:13:04 LOP8M. V8.0. Page 01:01
+Codes: 6916 Signs: 3068 . Length: 52 pic 10 pts, 222 mm
+11. Hudak, P., A semantic model of reference counting and its abstraction, in ``ACM Symposium on List
+and Functional Programming, 1986,'' pp. 351363.
+12. Jouvelot, P., and Gifford, D., Algebraic reconstruction of types and effects, in ``Proceedings of the
+18th ACM Symposium on Principles of Programming Languages (POPL), 1991.''
+13. Katsuro Inoue, H. S., and Yagi, H. (1988), Analysis of functional programs to detect run-time
+garbage cells, ACM Trans. Programming Languages Systems 10, 555578.
+14. Knuth, D. E. (1972), ``Fundamental Algorithms,'' The art of Computer Programming, Vol. 1,
+AddisonWesley, Reading, MA.
+15. Lieberman, H., and Hewitt, C. (1983), A real-time garbage collector based on the lifetimes of objects,
+Comm. ACM 26, 419429.
+16. Lucassen, J., and Gifford, D., Polymorphic effect systems, in ``Proceedings of the 1988 ACM Con-
+ference on Principle of Programming Languages, 1988.''
+17. Lucassen, J. M. (1987), ``Types and Effects, towards the Integration of Functional and Imperative
+Programming,'' Ph.D. thesis, MIT Laboratory for Computer Science; MIT LCSTR-408.
+18. Milner, R. (1978), A theory of type polymorphism in programming, J. Comput. System Sci . 17,
+348375.
+19. Milner, R., Tofte, M., and Harper, R. (1990), ``The Definition of Standard ML,'' MIT Press,
+Cambridge, MA.
+20. Mycroft, A. (1984), Polymorphic type schemes and recursive definitions, in ``Proceedings, 6th Inter-
+national Conference on Programming,'' Lecture Notes in Computer Science, Vol. 167, Springer-
+Verlag, Berlin New York.
+21. Naur, Peter (Ed.) (1963), Revised report on the algorithmic language Algol 60, Comm. ACM 1,
+117.
+21a. Nielson, H. R., and Nielson, F., Higher-order concurrent programs with finite communication
+topology, in ``Conference Record of POPL'94: 21st ACM SIGPLANSIGACT Symposium on
+Principles of Programming Languages,'' pp. 8497, Assoc. Comput. Mach. Press, Jan. 1994.
+22. Ruggieri, C., and Murtagh, T. P. (1988), Lifetime analysis of dynamically allocated objects, in
+``Proceedings of the 15th Annual ACM Symposium on Principles of Programming Languages,''
+pp. 285293.
+23. Talpin, J.-P. (1993), ``Theoretical and Practical Aspects of Type and Effect Inference,'' Doctoral Dis-
+sertation; also available as Research Report EMP CRIA-236, Ecole des Mines de Paris.
+24. Talpin, J.-P., and Jouvelot, P. (1992), Polymorphic type, region and effect inference, J. Funct.
+Programming 2.
+25. Tofte, M., and Talpin, J.-P. (1993), ``A Theory of Stack Allocation in Polymorphically Typed
+Languages,'' Technical Report DIKU-report 93 15, Department of Computer Science, University of
+Copenhagen.
+26. Tofte, M., and Talpin, J.-P. (1994), Implementing the call-by-value lambda-calculus using a stack of
+regions, in ``Proceedings of the 21st ACM SIGPLANSIGACT Symposium on Principles of
+Programming Languages,'' pp. 188201, ACM Press.
+27. Turner, D. N., Wadler, P., and Mossin, C., Once upon a type, in ``Conference Record of FPCA'95,
+SIGPLANSIGARCHWG2.8 Conference on Functional Programming Languages and Computer
+Architecture,'' pp. 111, Assoc. Comput. Mach. Press, June 1995.
+176 TOFTE AND TALPIN

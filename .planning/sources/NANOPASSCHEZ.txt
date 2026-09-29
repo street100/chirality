@@ -1,0 +1,740 @@
+=== page 1 ===
+A Nanopass Framework for
+Commercial Compiler Development
+Andrew W. Keep
+University of Utah
+akeep@cs.utah.edu
+R. Kent Dybvig
+Cisco Systems Inc.
+dyb@cisco.com
+Abstract
+Contemporary compilers must typically handle sophisticat ed high-
+level source languages, generate efﬁcient code for multipl e hard-
+ware architectures and operating systems, and support sour ce-level
+debugging, proﬁling, and other program development tools. As a
+result, compilers tend to be among the most complex of softwa re
+systems. Nanopass frameworks are designed to help manage th is
+complexity. A nanopass compiler is comprised of many single -
+task passes with formally deﬁned intermediate languages. T he per-
+ceived downside of a nanopass compiler is that the extra pass es
+will lead to substantially longer compilation times. To det ermine
+whether this is the case, we have created a plug replacement f or the
+commercial Chez Scheme compiler, implemented using an updated
+nanopass framework, and we have compared the speed of the new
+compiler and the code it generates against the original comp iler for
+a large set of benchmark programs. This paper describes the u p-
+dated nanopass framework, the new compiler, and the results of
+our experiments. The compiler produces faster code than the origi-
+nal, averaging 15–27% depending on architecture and optimi zation
+level, due to a more sophisticated but slower register alloc ator and
+improvements to several optimizations. Compilation times average
+well within a factor of two of the original compiler, despite the
+slower register allocator and the replacement of ﬁve passes of the
+original 10 with over 50 nanopasses.
+Categories and Subject Descriptors D.3.4 [ Programming Lan-
+guages]: Processors—Translator writing systems and compiler
+generators
+General Terms Languages
+Keywords Compiler, Nanopass, Scheme
+1. Introduction
+A compiler is typically structured as a series of passes, eac h ana-
+lyzing source or intermediate code for an input program and p ossi-
+bly producing new intermediate code, with the ﬁnal pass prod ucing
+[Copyright notice will appear here once ’preprint’ option i s removed.]
+assembly or machine code for a target architecture. Histori cally,
+compilers employed no more than a few passes, because each pa ss
+involved reading source or intermediate code from cards, ta pe, or
+disk.
+Contemporary compilers, on the other hand, take advantage of large
+physical memories and virtual address spaces to keep interm ediate
+representations in memory. At the same time, contemporary c om-
+pilers are substantially more complex, having been called u pon to
+handle larger, higher-level source languages, to generate efﬁcient
+code for multiple hardware architectures and operating sys tems, to
+support automatic storage management, threading, and othe r run-
+time activities, and to support debugging, proﬁling, and ot her de-
+velopment tools. While it might be possible to support the ad di-
+tional complexity with the same small number of passes, it is no
+longer important or desirable to do so.
+An attractive alternative is to separate a compiler into man y, per-
+haps dozens, of single-task passes. This improves modulari ty, po-
+tentially making the compiler easier to maintain and extend . Con-
+structing a compiler with many single-task passes, however , can
+require excessive boilerplate code to recur through unchan ging
+forms, increasing compiler size and thus failing to decreas e main-
+tenance and extension overhead. If intermediate languages are not
+well speciﬁed, having many passes also increases the risk of errors
+due to inconsistencies among passes.
+A nanopass framework is designed to address these challenges with
+a domain-speciﬁc language (DSL) that supports formally deﬁ ned
+intermediate languages, a convenient pattern matching syn tax im-
+plemented via inexpensive record dispatch, and automatic g enera-
+tion of boilerplate code. When a paper on the ﬁrst nanopass fr ame-
+work was accepted for ICFP 2004 [20], however, the program com-
+mittee required the authors to refocus the paper on educatio n be-
+cause they did not believe the nanopass methodology was suit able
+for commercial compilers. They were principally concerned with
+the compile-time overhead of repeated traversals. This concern was
+impossible to refute at the time because the prototype infrastructure
+and implementation were not mature enough to put to the test.
+This paper describes a nanopass infrastructure that is suitable for
+developing commercial compilers. To establish the infrast ructure’s
+suitability for commercial compiler development, we set ou t to de-
+velop a compiler that is 100% compatible with the existing co m-
+mercial Chez Scheme [5] compiler, produces code that is at le ast
+on par with the original compiler, and does so with compile ti mes
+that are within a factor of two of the original compiler, desp ite our
+separate ambition to incorporate a new, slower register all ocator.
+An extensive test suite, used to test the original compiler, is used
+to demonstrate the new compiler is compatible with the origi nal,
+while a large set of benchmarks is used to establish its performance.
+On the benchmarks, the new compiler produces code that is 15–
+1 2013/9/20
+=== page 2 ===
+(define-language Lsrc
+(terminals
+(uvar (x))
+(primitive (pr))
+(datum (d)))
+(Expr (e body)
+x
+(quote d)
+(if e0 e1 e2)
+(begin e* . . . e)
+(lambda (x* . . .) body)
+(let ([x* e*] . . .) body)
+(letrec ([x* e*] . . .) body)
+(set! x e)
+(pr e* . . .)
+(call e e* . . .) => (e e* . . .)))
+Figure 1. The Lsrc language
+27% faster than the original compiler, depending on archite cture
+and optimization level, with compile times that are well wit hin the
+factor of two budget.
+This paper is organized as follows. Section 2 describes the n ew
+nanopass framework and compares it with the original framew ork.
+Section 3 describes the differences between the new and orig i-
+nal Chez Scheme compiler. Section 4 evaluates the run-time a nd
+compile-time performance of the new compiler against the or iginal
+compiler. Section 5 presents related work, and Section 6 concludes.
+2. The nanopass framework
+A nanopass framework is a domain-speciﬁc language (DSL)
+for writing compilers. It provides two main syntactic forms :
+define-language for formally deﬁning the intermediate-language
+grammars and define-pass for specifying passes that operate
+over these intermediate languages. Formally deﬁning the in terme-
+diate languages allows the framework to ﬁll in boilerplate c ode in
+passes, permits passes to check that output-language terms are well
+formed, and allows the framework to represent language term s
+as records internally while maintaining an S-expression pa ttern-
+matching and template-construction syntax.
+The new nanopass framework builds on the prototype describe d by
+Sarkar et al. [20]. This section brieﬂy describes the new fra mework
+and differences between this framework and the prototype. M ore
+information can be found in the ﬁrst author’s dissertation [ 14].
+Examples are extracted from a student compiler used in a cour se
+on compiler implementation, since the Chez Scheme compiler is
+not open-source.
+2.1 Deﬁning languages
+Languages deﬁnitions are similar to context-free grammars , in that
+they are composed of a set of terminals, a set of nonterminal
+symbols, a set of productions for each nonterminal, and a sta rt
+symbol. An intermediate language deﬁnition for a simple var iant of
+the Scheme programming language, post macro expansion, mig ht
+look like Lsrc in Figure 1.
+The Lsrc language consists of three terminals (listed in the
+terminals form) and a single nonterminal.
+For each terminal, the compiler writer must supply a corresp ond-
+ing predicate. The framework adds a ? to the terminal name to de-
+termine the predicate name. In this case, the nanopass frame work
+expects uvar?, primitive?, and datum? to be lexically visible
+(define-language L1
+(extends Lsrc)
+(terminals
+(- (datum (d)))
+(+ (constant (c))))
+(Expr (e body)
+(- (quote d))
+(+ (quote c))))
+Figure 2. The L1 language
+where Lsrc is deﬁned. Each terminal clause lists one or more meta-
+variables, used to refer to the terminal in nonterminal prod uctions.
+For instance, x refers to a uvar.
+The Lsrc language declares the nonterminal Expr. Nonterminals
+specify a name, a set of meta-variables, and a set of grammar
+productions. The Expr nonterminal has two meta-variables, e and
+body. These meta-variables, like the terminal meta-variables, are
+used to represent the nonterminal in a production.
+Productions follow one of three forms: a single meta-variable, an S-
+expression that starts with a keyword, or an S-expression th at does
+not start with a keyword (referred to as an implicit production).
+Productions cannot include keywords past the initial keywo rd.
+The x production is the only single-meta-variable production an d
+indicates that a uvar is an Expr. The only implicit S-expression
+production is (pr e* . . .), which speciﬁes a primitive call with
+zero or more arguments. (The . . . following e* indicates that
+e* contains a list of Expr, the * sufﬁx is used by convention to
+indicate plurality.) The (call e e* . . .) production indicates
+a procedure call, and the call keyword differentiates it from a
+primitive call production. The => (e e* . . .) syntax indicates
+a pretty form for the production. The define-language form
+deﬁnes an unparser, and the unparser uses the pretty form whe n
+unparsing this production. The remaining productions corr espond
+to the Scheme syntax that they represent.
+2.2 Extending languages
+The ﬁrst pass of our student compiler is a simple expander tha t
+produces Lsrc language forms from S-expressions. The next pass
+expands complex quoted datum constants into code to constru ct
+these constants at load time.
+The compiler writer could fully specify the output language , as we
+did with Lsrc. Fully specifying each language, however, results in
+verbose source code, particularly in a compiler with many in ter-
+mediate languages. To avoid this, the framework supports a l an-
+guage extension form that succinctly describes only change s from
+one language to another. Figure 2 shows the output language.
+The L1 language removes the datum terminal and replaces it with
+the constant terminal. It also replaces the (quote d) production
+with a (quote c) production to indicate that only constants are
+allowed in the quote form.1 The extends clause indicates a lan-
+guage extension form. Terminals are removed using the - clause
+and added using the + clause. Productions in a nonterminal are also
+removed using the - clause and added using the + clause.
+2.3 Deﬁning passes
+The pass in Figure 3 converts an input program from the Lsrc
+intermediate language to the L1 intermediate language. This pass
+1 If we failed to replace the (quote d) form, it would result in an error,
+since the d meta-variable is not bound in the new language.
+2 2013/9/20
+=== page 3 ===
+(define-pass convert-complex-datum : Lsrc (x) -> L1 ()
+(definitions
+(define const-x* ’())
+(define const-e* ’())
+(define datum->expr
+(with-output-language (L1 Expr)
+(lambda (d)
+(cond
+[(pair? d) ‘(cons ,(datum->expr (car d))
+,(datum->expr (cdr d)))]
+[(vector? d)
+(let ([n (vector-length d)])
+(if (fxzero? n)
+‘(make-vector (quote 0))
+(let ([t (unique-name ’t)])
+‘(let ([,t (make-vector
+(quote ,n))])
+(begin
+,(map (lambda (i v)
+‘(vector-set! ,t
+(quote ,i)
+,(datum->expr v)))
+(iota n)
+(vector->list d)) . . .
+,t)))))]
+[else ‘(quote ,d)])))))
+(Expr : Expr (ir) -> Expr ()
+[(quote ,d) (guard (not (constant? d)))
+(let ([t (unique-name ’t)])
+(set! const-x* (cons t const-x*))
+(set! const-e* (cons (datum->expr d) const-e*))
+t)])
+(let ([x (Expr x)])
+(if (null? const-x*)
+x
+‘(let ([,const-x* ,const-e*] . . .) ,x))))
+Figure 3. The convert-complex-datum pass
+removes the structured quoted datum by making the construction of
+the data explicit. To avoid constructing these constants mo re than
+once at run time, the pass also lifts datum creation to the sta rt of the
+program.
+A pass deﬁnition starts with a name and a signature. The signa ture
+speciﬁes the input language (in this case, Lsrc) and list of formals
+(x) followed by the output language ( L1) and a list of extra return
+expressions (()).
+Following the name and signature, this pass speciﬁes deﬁnit ions
+for const-x*, const-e*, and datum->expr in the definitions
+clause. These deﬁnitions are scoped at the same level as the t rans-
+formers in the pass. The const-x* and const-e* variables are
+initialized to null. The const-x* is extended with a new uvar and
+const-e* is extended with a new Expr each time a structured
+quoted datum is encountered. The datum->expr procedure recur-
+sively processes a structured quoted datum and produces the L1
+Expr needed to construct it. Recursion terminates when a quoted
+constant is found.
+Next, a transformer from the input nonterminal Expr to the output
+nonterminal Expr is deﬁned. The transformer is named Expr and
+has a signature similar to that of the pass, with an input-lan guage
+nonterminal and list of formals followed by the output-lang uage
+nonterminal and list of extra-return-value expressions.
+The transformer has a single clause that matches a quoted dat um
+and uses a guard to ensure it is a pair or a vector. The define-pass
+macro autogenerates clauses matching the other input-lang uage
+forms and producing equivalent output-language forms.
+Each user-supplied clause consists of an input pattern, an o ptional
+guard clause, and one or more expressions that specify zero or
+more return values. The input pattern is derived from the pro -
+ductions speciﬁed in the input language. Pattern variables are un-
+quoted, i.e., preceded by ,. For instance, the clause for the quote
+production matches the pattern (quote ,d) and binds d to the
+datum speciﬁed by the quote form.
+The output-language expression is constructed using a quas iquoted
+template. In the example, the quoted output-language expre ssion
+is in the datum->expr procedure. Here, quasiquote, ( ‘), is re-
+bound to a form that constructs language forms based on the te m-
+plate, and unquote ( ,), is used to escape back into Scheme. The
+,(datum->expr (car d)) thus puts the result of the recursive
+call to datum->expr into the output-language (cons ,e0, e1)
+form.
+Following the Expr transformer is the body of the pass, which calls
+Expr to transform the Lsrc Expr term into an L1 Expr term and
+wraps the result in a let expression if any structured quoted datums
+are found in the program that is being compiled.
+2.4 Comparison with the prototype nanopass framework
+The prototype nanopass framework demonstrated that a nanop ass
+framework is a viable approach to writing compilers, but onl y the
+ﬁrst half of the student compiler was ever implemented using the
+framework. As such, the prototype framework has some rough
+edges that needed to be smoothed out in order to implement a
+replacement for the Chez Scheme compiler. The new nanopass
+framework focused on improvements in two areas, usability a nd
+performance.
+On the usability side, the new nanopass framework introduce s
+new features and improves error reporting. In the new framew ork,
+language deﬁnitions are no longer restricted to the top-lev el and
+can appear anywhere a Scheme deﬁnition can appear. Passes ca n
+be deﬁned without an input language or output language, allo w-
+ing a pass to take a non-language term as input or generate a
+non-language term as output. This allows passes to create ge n-
+eral parsers, predicates, and code generators. Passes can a lso take
+additional arguments and return additional values, allowi ng infor-
+mation to ﬂow through a pass without being encoded in the lan-
+guage term. Language terms can be constructed outside of a pa ss
+using the with-output-language form, as shown in Figure 3 and
+matched outside a pass using the nanopass-case form. The cata-
+morphisms [17] syntax, used to recur on a sub-form of a langua ge
+term in a pattern, supports passing extra arguments to trans formers
+expecting more than one argument.
+Error reporting has been improved, both to make messages eas -
+ier to understand and to include source information for wher e
+the error occurred. Language deﬁnitions perform better che cking,
+e.g., ensuring meta-variables are not repeated, removed pr oduc-
+tions existed in the base language, and the ﬁelds of a product ion
+are uniquely named.
+On the performance side, the new nanopass framework uses an
+integer tag to perform pattern matching, which is slightly f aster
+than the record dispatch previously used. In transformers, the order
+of clauses is respected, so that programmers can place claus es that
+are more likely to match ﬁrst. The new framework also generat es
+less code, so compiling a compiler generated with the nanopa ss
+framework is faster.
+3 2013/9/20
+=== page 4 ===
+3. The new Chez Scheme compiler
+Chez Scheme is a commercial Scheme compiler for R6RS Scheme
+with extensions, ﬁrst released in 1985 [5] and under continu ous
+development and improvement since. The compiler is written in
+Scheme and is comprised of 10 large, multipurpose passes. Th e
+compiler is almost absurdly fast, able to compile its own sou rce
+code in roughly three seconds on contemporary hardware. The
+compiler is also designed to generate efﬁcient code.
+3.1 Workings of the existing Chez Scheme compiler
+The compiler begins with a syntax-case expander, extended with
+a module system and R6RS libraries [6, 8, 12, 23]. The expande r
+produces a simpliﬁed core language with letrec, letrec*, and
+case-lambda as binding forms, quoted constants, primitive refer-
+ences, procedure calls, variable references, and a handful of other
+forms. The ﬁrst pass records source information used for deb ug-
+ging and proﬁling. The next pass places validity checks for v ari-
+able references bound by letrec and letrec* [13, 24]. The next
+pass is the source optimizer [22] and can be run one or more tim es
+or not at all, depending on the options set in the compiler. A p ass
+for handling letrec and letrec* [13, 24] is run at least once
+and is run after each run of the source optimizer. After this, either
+the interpreter is invoked to interpret the program or the ba ck-end
+compiler is invoked to ﬁnish compilation and either execute the re-
+sulting code or write the machine code to the ﬁle system.
+When the back-end compiler is invoked, the code is still in ro ughly
+the same form as the input language, although letrec* has been
+eliminated and letrec bindings bind only unassigned variables
+to case-lambda expressions. The compiler performs assignment
+conversion, closure conversion, various optimizations, a nd further
+code simpliﬁcations and replaces primitives in the source l anguage
+with an internal set of simpler, although still higher level than as-
+sembly language, primitives. It also performs register allocation us-
+ing a linear-scan style register allocator with a lazy register save and
+restore strategy [3], and generates code using destination -driven
+code generation [7].
+The back end consists of ﬁve passes. The ﬁrst pass, cp1, begins the
+process of closure conversion, recognizes loops, recogniz es direct
+application of λ-expressions, begins handling multiple return value
+calls, sets up the foreign and foreign callable expressions , and con-
+verts primitive calls into a set of slightly lower-level inl ine calls.
+The next pass, cpr0, begins the register allocation process, deter-
+mines the actual free variables of closures after performin g closure
+optimization, performs assignment conversion, makes expl icit all
+arguments to inlined primitives, and ﬂags tail calls and loo ps. The
+register allocator reserves the architectural stack regis ter, a Scheme
+frame pointer register, a thread context register pointer, and at least
+two temporary registers, depending on the target machine ar chitec-
+ture, for use by the assembler. After this, the pass cpr1 assigns
+variables to their initial register homes. The cpr2 pass ﬁnishes reg-
+ister allocation, generating register saves and restores a cross non-
+tail calls and removing redundant register bindings. Finally, the cp2
+pass ﬁnishes compilation, converting the higher-level inlined prim-
+itives into a set of high-level instruction inlines that the assembler
+can convert into machine instructions for the target platfo rm. Each
+of these back-end passes performs several optimizations in addition
+to those mentioned above, and some optimizations span multi ple
+passes.
+3.2 Workings of the new compiler
+The new compiler starts with the same set of front-end passes ,
+updated to use the nanopass framework.
+The back end of the new compiler diverges signiﬁcantly from t hat
+of the original compiler. Where the original compiler is str uctured
+as a set of multipurpose passes that each performs several ta sks,
+the new compiler is organized as approximately 50 passes, wi th
+each pass completing primarily one task, using approximate ly 35
+nanopass languages.
+These passes implement most of the optimizations from the or ig-
+inal compiler and improve on some, including support for im-
+plicit cross-library optimization, improvements to closu re opti-
+mization [15], and improved handling of procedures that ret urn
+multiple values.
+The other big difference between the original compiler and t he
+new compiler is the use of a graph-coloring register allocat or.
+This change necessitated several other changes in the compi ler,
+including the expansion of code into a near-assembly langua ge
+form much earlier in the compiler, so that all of the temporar ies
+that might be needed for the ﬁnal code to conform to the operan d
+requirements of the machine can be met. It also means that a fu ll
+live analysis must be performed to compute the conﬂict graph
+needed by the register allocator. In the original compiler, the cost
+of the live analysis is largely avoided by tracking the liven ess
+of registers, rather than the liveness of variables. Additi onally, in
+the original compiler, primitive expansion is delayed unti l code
+generation at the cost of reserving two or more registers, de pending
+on the target architecture.
+The beneﬁt of using a graph-coloring register allocator is t hat it
+packs spilled variables tighter on the frame, makes better u se of
+registers, and generally produces more compact code. The ne w
+register allocator also uses move biasing to avoid frame-to -frame
+moves. This contributes to the generated code’s faster run t ime,
+at the cost of substantially more compile-time overhead. Bo th the
+original and new compilers try to make good use of variable sa ves
+and restores around non-tail calls, allowing call-live var iables to be
+accessed from a register, rather than from the frame. The ori ginal
+compiler follows a lazy-save strategy [3], while the new com piler
+attempts to get similar results by using a heuristic that est imates the
+cost of saving and restoring versus the cost of spilling to a f rame
+location permanently. This is one place where the new compil er
+sometimes underperforms the original compiler.
+Not all of the optimizations provided by the original compil er
+are provided by the new compiler. The most signiﬁcant missin g
+optimization is block allocation of closures. When several closures
+are created at the same time, a single allocation is performe d to
+allocate the space for the entire group of closures. A more ge neral
+block allocation optimization is planned for the new compil er but
+has not yet been implemented.
+3.3 Ensuring compatibility
+Over the course of Chez Scheme’s development, an extensive s uite
+of unit, functional, and regression tests has been develope d to
+ensure that the compiler conforms to the relevant Scheme standards
+and documentation for Chez Scheme extensions. Chez Scheme i s
+also bootstrapped, and the ﬁrst test of the compiler is to com pile
+itself and verify that code generated for the compiler is con sistent
+with each run of the compiler. The new compiler passes all of t hese
+tests.
+4. Evaluation of the new Chez Scheme compiler
+4.1 Comparing the speed of generated code
+We compare the performance of the original and new compilers
+on a set of benchmarks that includes the R6RS benchmarks [4]; a
+4 2013/9/20
+=== page 5 ===
+set of benchmarks, including some larger benchmarks, used t o test
+the source optimizer; and a set of additional benchmarks use d for
+performance regression testing.
+The benchmark data was generated on an Intel Core i7-3960X wi th
+two CPUs, six cores per CPU, and 64 GB of RAM. The tests
+were conducted at both optimize level 2 (run-time type-chec king
+enabled) and optimize level 3 (run-time type-checking disa bled),
+using both the 32-bit and 64-bit instruction sets. Table 1 sh ows the
+average improvement in run time for benchmarks compiled wit h
+the new compiler over the original compiler. In the worst cas e,
+optimize level 3 with the 64-bit instruction set, the benchm arks still
+run 15.0% faster on average.
+x86 machine x86 64 machine
+Optimize Level 2 26.6% 22.0%
+Optimize Level 3 22.3% 15.0%
+Table 1. Average improvement in benchmark run times
+Two of the benchmarks, similix, a self-applicable partial eval-
+uator, and softscheme, a benchmark that performs soft typing,
+make use of the compiler during the run of the benchmark. This
+negatively affects the run time of these benchmarks and the o verall
+average. Table 2 shows the normalized run time of these bench -
+marks on both the 32-bit and 64-bit versions of the compiler a nd at
+both optimization levels.
+Opt. level Machine type Similix Soft Scheme
+2 x86 1.54 1.27
+2 x86 64 1.41 1.32
+3 x86 1.29 1.22
+3 x86 64 1.39 1.24
+Table 2. Normalized run times of similix and softscheme
+Outside of these two outliers, the performance ranges on the 32-bit
+version between 0.417 and 1.05 at optimize level 2 and betwee n
+0.457 and 1.05 at optimize level 3. It ranges on the 64-bit ver sion
+between 0.519 and 1.03 at optimize level 2 and between 0.489 a nd
+1.14 at optimize level 3.
+As discussed in Section 3.2, the new compiler contains sever al
+improvements over the original compiler, and each of these c on-
+tributes to the better performance of the benchmarks. The bi ggest
+contributing factor, and the one that is consistent in all of the bench-
+marks, is the graph-coloring register allocator. The graph -coloring
+register allocator makes more efﬁcient use of available reg isters,
+which is particularly helpful on the 32-bit Intel target, wh ere only
+eight registers are available.
+4.2 Comparing compilation speed
+We set out with the goal of implementing a new compiler that
+ran within a factor of two of the original compiler. The extra
+compile-time budget was intended to allow the more expensiv e
+graph-coloring register allocator to be incorporated into the new
+compiler. Ideally, we would have created a nanopass compile r as
+near in function to old compiler as possible for apples-to-a pples
+compile-time comparisons, but we did not have the resources to
+create two new compilers.
+The two compilers were tested by compiling each benchmark ﬁv e
+times and averaging compile times. The compile times are nor mal-
+ized, using the original compiler as a base. Table 3 presents the
+normalized numbers by machine type and optimization level. In
+the worst case (the 64-bit version at optimize level 2) the av erage
+compile time is a factor of 1.75 longer on the new compiler tha n
+on the original compiler. This time is well within our factor of two
+goal. Nevertheless, further tuning is still possible and wi ll make
+the compile times for the new compiler even closer to those of the
+original compiler.
+x86 machine x86 64 machine
+Optimize Level 2 1.71 1.75
+Optimize Level 3 1.64 1.71
+Table 3. Normalized compile times of benchmarks
+The compile time varies from one benchmark to another. On the
+32-bit version, the normalized time ranges from a factor of 1 .00 to
+4.44 at optimize level 2 and 0.968 to 3.13 at optimize level 3. On
+the 64-bit version, normalized time ranges from a factor of 1 .00 to
+4.73 at optimize level 2 and 1.00 to 3.80 at optimize level 3.
+It is natural to assume that the variance in compile times is r elated
+to the increased computational complexity of the graph-col oring
+register allocator; however, this does not seem to be the cas e.
+Figure 4 shows the normalized times versus the lines of expan ded
+source code. The number of lines of expanded source code is
+determined by pretty printing the results of the expander ru n on
+each benchmark and then counting the number of line breaks.
+Overall, there does not seem to be a direct relationship betw een
+the number of lines of expanded code and the normalized compi le
+time. An understanding of why this occurs might lead to overa ll
+improvements in compile time.
+ 0.5
+ 1
+ 1.5
+ 2
+ 2.5
+ 3
+ 3.5
+ 4
+ 4.5
+ 5
+ 1  10  100  1000  10000  100000
+a6le - o2
+a6le - o3
+i3le - o2
+i3le - o3
+Figure 4. Normalized compile time vs. expanded source code size
+5. Related work
+Stratego/XT [2] is a DSL for writing source-to-source trans forma-
+tions. It provides a set of combinators for matching and rebu ilding
+abstract syntax tree (AST) forms as well as strategies for pe rform-
+ing different traversals of the AST. Pattern matching and AS T con-
+struction in Stratego is different from that in the nanopass frame-
+work, because if construction of an AST fails, the next patte rn
+will be tried, whereas the nanopass framework makes a commit ted
+(deterministic) choice with explicit guards for extra-gra mmatical
+checks, which simpliﬁes debugging and improves compiler sp eed.
+The JastAdd [9] system allows for the construction of modula r and
+extensible compilers using Java’s object-oriented class h ierarchy,
+along with an external DSL to specify the AST and analysis and
+transformations on the AST. Each type of node in the AST has an
+5 2013/9/20
+=== page 6 ===
+associated class that encapsulates the transformations on the node
+type. Method dispatch and aspects are used with the visitor p attern
+to implement passes instead of pattern matching.
+SableCC [11] is a system for building compilers and interpre ters
+in Java. It provides a set of tools for writing the lexer and pa rser
+for the language and a method for deﬁning multiple passes. Si milar
+to JastAdd, it works on an AST represented by Java classes. Al so
+similar to JastAdd, it uses the visitor pattern to implement the
+language transformations.
+POET combines a transformation language and an empirical testing
+system to allow transformation to be tuned [26]. Although PO ET
+allows for some generic manipulation of an AST, it is largely
+focused on targeting speciﬁc regions of source code to be tun ed.
+It can parse fragments of source code and operate on the AST
+fragment, preserving unparsed code across the transformat ion.
+The ROSE [18] compiler infrastructure provides a C++ librar y for
+source-to-source transformation, along with front-ends a nd back-
+ends for both C/C++ and Fortran. Internally, ROSE represent s
+source code using the ROSE Object-Oriented IR, with transfo rma-
+tions written in C++. Although there is nothing speciﬁc that ties the
+ROSE transformation framework to C/C++ or Fortran, there ar e no
+tools to easily add new front-ends and back-ends, limiting t he use-
+fulness of ROSE for other languages.
+The Rhodium framework takes a different approach from the ot her
+tools described here. Instead of using term rewriting, Rhod ium
+bases transformations on data-ﬂow equations and provides a frame-
+work for proving the soundness of transformations [16, 21]. The
+framework has also been extended to support inferring optim iza-
+tions from the data-ﬂow semantics deﬁned by the compiler wri ter.
+The data-ﬂow facts are deﬁned over a C-like intermediate represen-
+tation. This might be a good complement to the nanopass frame -
+work.
+CodeBoost [1] is a more targeted tool. Although it was origin ally
+developed to support the Sophus numerical library, CodeBoo st
+provides a simple way to write compiler transformations wit hin
+C++ code. It is implemented using Stratego but provides an ar ray
+of tools to make writing C++ code transformations easier.
+The template-based metacompiler (Tm) [19] provides a macro lan-
+guage, similar to M4, for generating data structures and transforma-
+tions that can be expanded in a language agnostic way. Tm provides
+tree-walker and analyzer templates and an existing C back-e nd for
+easier use.
+Pavilion [25] is a DSL for writing analysis and optimization passes
+to improve the efﬁciency of generic programming in C++. The
+declarative language extends regular expressions with int ersection
+and complement operators, variable quantiﬁcation, path qu antiﬁca-
+tion, function deﬁnition, and native language access to Sch eme to
+provide powerful matching during analysis and transformat ion.
+Y oko [10] is a Haskell module for writing functions that tran sform
+an input type to a similar output type that requires only the i nter-
+esting cases be speciﬁed, similar to how the nanopass framew ork
+operates over languages. The module builds on generic progr am-
+ming techniques to provide the hcompos function. The hcompos
+function takes the user-speciﬁed cases and autogenerates t he nec-
+essary clauses to handle constructors from the input type no t spec-
+iﬁed by the programmer, matching them with constructors of t he
+output type with the same name.
+6. Conclusion
+The new Chez Scheme compiler demonstrates that a nanopass com-
+piler can perform on par with a more traditionally structure d com-
+piler. Despite a more expensive register allocator and the r eplace-
+ment of the ﬁve back-end passes of the original 10 passes in th e
+compiler with around 50 nanopasses, the new compiler still a v-
+erages compile times that are within a factor of two of the ori gi-
+nal compiler. The new compiler also generates more efﬁcient code,
+showing between a 15% and 26.6% improvement on a set of bench-
+marks, depending on the optimize level and the target archit ecture.
+The new nanopass framework made it easier to implement the ne w
+compiler and will make it easier to maintain and extend in the fu-
+ture.
+Acknowledgments
+Different parts of Keep’s effort on this work were partially sup-
+ported by the DARPA programs APAC and CRASH. Comments
+from Dan Friedman, Ryan Newton, and the anonymous reviewers
+led to several improvements in this papers presentation.
+References
+[1] O. S. Bagge, K. T. Kalleberg, M. Haveraaen, and E. Visser.
+Design of the CodeBoost transformation system for domain-
+speciﬁc optimisation of C++ programs. In D. Binkley and
+P . Tonella, editors, Proc. 3rd International W orkshop on Source
+Code Analysis and Manipulation , SCAM ’03, pages 65–75,
+Amsterdam, Sept. 2003. IEEE Computer Society Press. URL
+http://www.codeboost.org/papers/codeboost-scam03.pdf.
+[2] M. Bravenboer, K. T. Kalleberg, R. V ermaas, and E. Visser . Strat-
+ego/XT 0.17. A language and toolset for program transformat ion. Sci-
+ence of Computer Programming , 72(1–2):52–70, June 2008. URL
+http://dx.doi.org/10.1016/j.scico.2007.11.003.
+[3] R. G. Burger, O. Waddell, and R. K. Dybvig. Register alloc ation
+using lazy saves, eager restores, and greedy shufﬂing. In Proc. ACM
+SIGPLAN 1995 Conference on Programming Language Design and
+Implementation, PLDI ’95, pages 130–138, New Y ork, 1995. ACM.
+URL http://doi.acm.org/10.1145/207110.207125.
+[4] W. D. Clinger. Description of benchmarks, 2008. URL
+http://www.larcenists.org/benchmarksAboutR6.html.
+[5] R. K. Dybvig. Chez Scheme V ersion 8 User’s Guide . Cadence
+Research Systems, 2009.
+[6] R. K. Dybvig. The Scheme Programming Language. MIT Press, fourth
+edition, 2009.
+[7] R. K. Dybvig, R. Hieb, and T. Butler. Destination-driven code gener-
+ation. Technical Report TR302, Indiana University, Februa ry 1990.
+[8] R. K. Dybvig, R. Hieb, and C. Bruggeman. Syntactic abstra ction in
+Scheme. LISP and Symbolic Computation , 5(4):295–326, Dec. 1992.
+URL http://dx.doi.org/10.1007/BF01806308.
+[9] T. Ekman and G. Hedin. The JastAdd system – modular extens ible
+compiler construction. Science of Computer Programming , 69(1-3):
+14–26, Dec. 2007. .
+[10] N. Frisby, A. Gill, and P . Alexander. A pattern for almos t homomor-
+phic functions. In ACM SIGPLAN W orkshop on Generic Program-
+ming, 09/2012 2012.
+[11] E. Gagnon and L. Hendren. SableCC, an object-oriented c ompiler
+framework. In Proc. 26th Conference on Technology of Object-
+Oriented Languages, TOOLS ’98, pages 140–154, 1998. .
+[12] A. Ghuloum and R. K. Dybvig. Implicit phasing for R6RS li braries.
+In Proc. 12th ACM SIGPLAN International Conference on Functional
+Programming, pages 303–314, New Y ork, 2007. ACM.
+[13] A. Ghuloum and R. K. Dybvig. Fixing letrec (reloaded). I n Proc.
+2009 W orkshop on Scheme and Functional Programming , Scheme
+’09, pages 57–65, 2009.
+[14] A. W. Keep. A Nanopass Framework for Commercial Compiler
+Development. PhD thesis, Indiana University, Feb. 2013.
+6 2013/9/20
+=== page 7 ===
+[15] A. W. Keep, A. Hearn, and R. K. Dybvig. Optimizing closur es
+in O(0) time. In Proc. 2012 W orkshop on Scheme and Functional
+Programming, Scheme ’12, 2012.
+[16] S. Lerner, T. Millstein, E. Rice, and C. Chambers. Au-
+tomated soundness proofs for dataﬂow analyses and transfor -
+mations via local rules. In Proc. 32nd ACM SIGACT-
+SIGPLAN Symposium on Principles of Programming Languages ,
+POPL ’05, pages 364–377, New Y ork, 2005. ACM. URL
+http://doi.acm.org/10.1145/1040305.1040335.
+[17] E. Meijer, M. M. Fokkinga, and R. Paterson. Functional p ro-
+gramming with bananas, lenses, envelopes and barbed wire. I n
+Proc. 5th ACM Conference on Functional Programming Lan-
+guages and Computer Architecture , pages 124–144, London,
+UK, 1991. Springer-V erlag. ISBN 3-540-54396-1. URL
+http://dl.acm.org/citation.cfm?id=645420.652535.
+[18] D. Quinlan, M. Schordan, Q. Yi, and B. R. de Supinski. Sem antic-
+driven parallelization of loops operating on user-deﬁned c ontainers.
+In Lecture Notes in Computer Science , volume 2958/2004 of Lecture
+Notes in Computer Science , pages 524–538. Springer Berlin / Heidel-
+berg, 2004.
+[19] C. V . Reeuwijk. Tm: A code generator for recursive data s tructures.
+Software: Practice and Experience, 22(10):899–908, Oct. 1992. URL
+http://dx.doi.org/10.1002/spe.4380221008.
+[20] D. Sarkar, O. Waddell, and R. K. Dybvig. A nanopass in-
+frastructure for compiler education. In Proc. 9th ACM SIG-
+PLAN International Conference on Functional Programming ,
+ICFP ’04, pages 201–212, New Y ork, 2004. ACM. URL
+http://doi.acm.org/10.1145/1016850.1016878.
+[21] E. R. Scherpelz, S. Lerner, and C. Chambers. Automatic i nference
+of optimizer ﬂow functions from semantic meanings. In Proc. 2007
+ACM SIGPLAN Conference on Programming Language Design and
+Implementation, PLDI ’07, pages 135–145, New Y ork, 2007. ACM.
+URL http://doi.acm.org/10.1145/1250734.1250750.
+[22] O. Waddell and R. K. Dybig. Fast and effective procedure inlining. In
+Proc. 4th International Symposium on Static Analysis, SAS ’97, pages
+35–52, London, 1997. Springer-V erlag.
+[23] O. Waddell and R. K. Dybvig. Extending the scope of syn-
+tactic abstraction. In Proc. 26th ACM SIGPLAN-SIGACT
+Symposium on Principles of Programming Languages ,
+POPL ’99, pages 203–215, New Y ork, 1999. ACM. URL
+http://doi.acm.org/10.1145/292540.292559.
+[24] O. Waddell, D. Sarkar, and R. K. Dybvig. Fixing letrec: A faithful
+yet efﬁcient implementation of Scheme’s recursive binding construct.
+Higher-order and Symbolic Computation , 18(3/4):299–326, Decem-
+ber 2005.
+[25] J. J. Willcock. A Language for Specifying Compiler Optimizations for
+Generic Software. Doctoral dissertation, Indiana University, Bloom-
+ington, Indiana, USA, Dec. 2008.
+[26] Q. Yi, K. Seymour, H. Y ou, R. Vuduc, and D. Quinlan. POET:
+Parameterized optimizations for empirical tuning. Techni cal Report
+CS-TR-2006-006, University of Texas - San Antonio, 2006. UR L
+http://www.cs.utsa.edu/{~}qingyi/papers/poet-lang.pdf.
+7 2013/9/20

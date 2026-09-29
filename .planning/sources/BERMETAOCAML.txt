@@ -1,0 +1,1688 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+            "http://www.w3.org/TR/html4/strict.dtd">
+<head>
+<title>MetaOCaml</title>
+<meta name="description" content="Introduction to BER MetaOCaml: how to use, how to install, the current status and the future development">
+<meta name="Author" content="oleg-at-okmij.org">
+<meta name="Date-Revision-yyyymmdd" content="20260101">
+<meta name="Date-Creation-yyyymmdd" content="20130201">
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="start" href="index.html">
+<link rel="prev" href="index.html">
+<link rel="next" href="../meta-programming/HPC.html">
+<link rel="contents" href="https://okmij.org/ftp/">
+<style type="text/css">BODY {max-width: 78ch; margin: auto; padding: 1em;} #navbar, h1 { text-align: center; } .small  { font-size: x-small;} h2 {margin-left: -3%;} h3, h4 {margin:0.7em 0 0 -2%;} LI.separator { list-style-type: none;} LI.header    { list-style-type: none; padding: 1em 0px 2px; margin-left: -1em;}</style></head>
+<body>
+<div id="navbar"><a href="index.html">previous</a>&nbsp;&nbsp;&nbsp;<a href="../meta-programming/HPC.html">next</a>&nbsp;&nbsp;&nbsp;<a href="index.html">start</a>&nbsp;&nbsp;&nbsp;<a href="https://okmij.org/ftp/">top</a>
+<hr></div>
+<h1>MetaOCaml -- an OCaml dialect for multi-stage programming</h1>
+
+<p>&nbsp;</p>
+<div><em>(BER) MetaOCaml</em> is a conservative extension of OCaml for ``writing
+programs that generate programs''.  MetaOCaml adds to OCaml the
+type of <em>code values</em> (denoting ``program code'', or future-stage
+computations), and two basic constructs to build them:
+quoting and splicing. The generated code can be printed, stored in a
+file&nbsp;-- or compiled and linked-back to the running program, thus
+implementing run-time code optimization. An imperative subset of the
+generated code can also be converted to C, via offshoring.
+A well-typed MetaOCaml
+program generates only well-scoped and well-typed programs: 
+The generated code shall compile without type errors. 
+The present MetaOCaml is the complete
+re-implementation of the original MetaOCaml by Walid Taha,
+Cristiano Calcagno and collaborators.
+<blockquote>
+<div>One may conclude by reiterating the point of staging, of which MetaOCaml is
+a representative.  Compiler optimizations as well as partial
+evaluation are opaque, appearing to the programmer as black
+magic. Proper incantations may conjure up impressive results, only to
+vanish upon a slight change in the program or in the next version of
+the compiler.  Staging, on the other hand, is very, painfully
+explicit.  <em>Staging is white art.</em> It is still an art, and
+requires mastering. But if something goes wrong, it is only you to
+blame.  Or, put positively, if something does not go as expected,
+<em>you</em> can fix it.
+</div></blockquote>(From the conclusions of <a href="#design-10">MetaOCaml: Ten Years Later</a>)
+</div>
+<ul>
+<li><a href="#overview">Summary</a>
+</li>
+<li><a href="#install">Installation and availability</a>
+</li>
+<li><a href="#using">Introduction to staging and MetaOCaml</a>
+</li>
+<li><a href="#ctors">Data constructor restriction</a>
+</li>
+<li><a href="#got-away">Moving free variables around but not letting them escape</a>
+</li>
+<li class="separator">&nbsp;</li>
+<li><a href="#run">Many ways to run the code</a>
+</li>
+<li><a href="#native">Native (natively-compiled) MetaOCaml</a>
+</li>
+<li><a href="#more-brackets">More brackets</a>
+</li>
+<li><a href="#make-match">First-class pattern-matching</a>
+</li>
+<li class="separator">&nbsp;</li>
+<li><a href="#genlet">Let-insertion as a primitive</a>
+</li>
+<li><a href="#letrec">Generating mutually recursive definitions</a>
+</li>
+<li><a href="../meta-programming/tutorial/genc.html">Offshoring</a>
+</li>
+<li><a href="#CSP">Cross-stage persistence</a>
+</li>
+<li><a href="#plans">Further plans</a>
+</li>
+<li class="separator">&nbsp;</li>
+<li class="header">Papers
+</li>
+<li><a href="#ber-design">The Design and Implementation of (BER) MetaOCaml</a>
+</li>
+<li><a href="#design-10">MetaOCaml: Ten Years Later</a>
+</li>
+<li class="separator">&nbsp;</li>
+<li><a href="#implementing-staging">Implementing staging</a>
+</li>
+<li><a href="#history">A brief history of (BER) MetaOCaml</a>
+</li>
+<li><a href="#credits">Credits</a>
+</li>
+<li class="separator">&nbsp;</li>
+<li><a href="../meta-programming/"><strong>Staging, 
+Program Generation, and Meta-Programming</strong></a>
+</li>
+<li><a href="../meta-programming/tutorial/">Reconciling Abstraction
+with High Performance: A MetaOCaml approach</a>
+</li>
+<li><a href="../meta-programming/implementations.html#meta-scheme">MetaScheme, 
+or untyped MetaOCaml</a>
+</li></ul>
+<hr>
+
+<p>&nbsp;</p>
+<h2 id="overview">Summary</h2>
+<div>MetaOCaml is a conservative extension of OCaml with staging
+annotations to construct typed code values. See below for a
+brief introduction to these features. The generated code can be
+printed, stored in a file -- or compiled and linked-back to the
+running program, thus implementing run-time code
+optimization. MetaOCaml code without staging annotations, or with the
+annotations erased, is regular OCaml.
+<P>MetaOCaml has been successfully used for the most optimal stream
+fusion, generating fast parsers and regular-expression matchers,
+specializing numeric and dynamic programming algorithms,
+building FFT kernels, compilers for an image processing and database
+query DSLs, OCaml server pages, generating families of specialized
+basic linear algebra and Gaussian Elimination routines, and
+high-performance stencil computations.
+<P>MetaOCaml is distinguished from Camlp4 and other such macro-processors by:
+hygiene (maintaining lexical scope); generating assuredly well-typed
+code; and the integration with higher-order functions, modules and
+other abstraction facilities of ML, hence promoting modularity and
+reuse of code generators. A well-typed MetaOCaml program
+generates only well-typed programs: The generated code shall compile
+without type errors. There are no longer problems of puzzling out a
+compilation error in the generated code (which is typically large,
+obfuscated and with unhelpful variable names). The errors are reported in 
+terms of the generator rather than the generated code.
+<P>MetaOCaml is <em>purely generative</em>: the generated code is treated as a
+black box and cannot be examined. One can put code together but cannot
+take it apart. Pure generativity significantly simplifies the type
+system and strengthens the static assurances. It may seem that pure
+generativity precludes code optimizations. Fortunately, that is not
+the case. The literature has many examples of generating optimal code
+with MetaOCaml.
+<P>The current (BER) MetaOCaml is in the spirit of the original MetaOCaml by Taha,
+Calcagno and contributors but has been completely re-written using
+different algorithms and techniques. The old MetaOCaml code still runs
+with little or no changes. Overall, MetaOCaml aims at the most
+harmonious way of integrating staging with OCaml, minimizing the
+differences. It becomes easier to keep MetaOCaml up-to-date and ensure
+its long-term viability.
+<P>BER MetaOCaml has been re-structured to minimize the amount of changes
+to the OCaml type-checker and to separate the `kernel' from the
+`user-level'. The kernel is a set of patches and additions to OCaml,
+responsible for producing and type-checking code values. The
+processing of built code values -- so-called `running' -- is
+user-level. Currently the user-level <code>metalib</code> supports printing,
+type-checking, byte- and native- compiling and linking of code
+values. In addition, the generated code can be `offshored' -- converted to
+the intermediate, imperative language which may then be transcribed to
+C, OpenCL, LLVM, etc.
+<P>BER MetaOCaml is almost entirely backwards compatible with the
+original MetaOCaml.  To the user, the major differences of BER
+MetaOCaml are as follows (see below on this page for the detailed
+explanation):
+<ul>
+<li>scope extrusion check: attempting to build code values with
+unbound or mistakenly bound variables (which can happen when
+the generator is effectful) is caught early, raising an exception
+with good diagnostics;
+</li>
+<li>absence of environment classifiers: The scope extrusion check has made it
+possible to retire environment classifiers while still preserving the
+static guarantee: if the generator finishes successfully, the
+generated code is well-typed and well-scoped.
+The operation to run code is no longer a special form: it is
+an ordinary function with the ordinary type.
+</li>
+<li>let-insertion and let rec insertion primitives:
+The former is a facility for code movement; the latter lets us
+generate mutually recursive definitions with statically unknown number
+of clauses;
+</li>
+<li>first-class patterns: generating pattern-match expressions with
+statically unknown clauses;
+</li>
+<li>explicit lifting, of values from the present stage to the code.
+Lifting of lists, option values and, in particular, arrays
+is also supported.
+</li>
+<li>constructor restriction: all data constructors and record labels 
+used within brackets must come from the types that are declared in 
+separately compiled modules;
+</li>
+<li>Finally, as a non-distinction: BER MetaOCaml, as MetaOCaml did long time
+ago, supports both byte-code and native compilation.
+</li>
+<li>As yet another non-distinction, BER MetaOCaml now supports
+offshoring, the old MetaOCaml feature, but in a different, quite
+more general and user-extensible way.
+</li></ul>
+<P>Smaller visible differences are special `subtypes' for the code that
+represents a function literal or a value; more helpful error messages;
+better printing of cross-stage persistent values and the full support
+for labeled arguments. A long-standing problem with records with
+polymorphic fields has fixed itself. 
+The BER MetaOCaml code is now extensively commented, and has a
+regression test suite. MetaOCaml has never supported generating code
+with local or first-class modules and objects. However one may use
+modules and objects in the code generator. 
+<P>By relying on attributes, the feature of OCaml 4.02, BER N102 has
+become much closer integrated with OCaml (and BER N153 is more
+still). It is instructive to compare the amount of changes BER
+MetaOCaml makes to the OCaml distribution. An earlier version (BER
+N101) modified 32 OCaml files. BER N153 modifies only 5 (that
+number could be further reduced to one; the only file with
+nontrivial modifications is <code>typing/typecore.ml</code>). It is now a
+distinct possibility that -- with small hooks that may be provided in
+the future OCaml versions -- MetaOCaml becomes just a regular library
+or a plug-in, rather being a fork.
+<P>The file NOTES.txt in the MetaOCaml distribution describes the
+features of MetaOCaml in more detail and outlines directions for
+further development. The R&amp;D program is
+extensive, ranging from the staging theory to the developing of
+translators of the generated code to LLVM, Wasm and other targets. There
+is fun and tasks for everyone.  Hopefully the release of MetaOCaml
+would incite using and researching typed meta-programming.
+<h4>Version</h4>The current version is N153, May, 2025
+<h4>References</h4>
+<P><a href="ber-metaocaml-ChangeLog">ber-metaocaml-ChangeLog</a>&nbsp;[11K]<BR>
+
+
+<P><a href="#design-10">MetaOCaml: Ten Years Later</a>
+
+<P><a href="../Streams.html#strymonas">Stream Fusion, to Completeness</a><BR>
+
+The latest, most notable application
+
+<P><a href="../meta-programming/tutorial/">Reconciling Abstraction
+with High Performance: A MetaOCaml approach</a><BR>
+
+The MetaOCaml book
+
+<P><a href="ml2013-talk.pdf">ml2013-talk.pdf</a>&nbsp;[200K]<BR>
+MetaOCaml lives on:
+Lessons from implementing a staged dialect of a functional language<BR>
+
+The annotated slides of the talk at the ACM SIGPLAN Workshop on ML
+September 22, 2013. Boston, MA, USA
+</div>
+
+<p>&nbsp;</p>
+<h2 id="install">Installation and availability</h2>
+<div>(BER) MetaOCaml N153 corresponds to OCaml 5.3.0.
+To install MetaOCaml through OPAM, please do
+
+<pre>    $ opam update
+    $ opam switch create 5.3.0+BER
+    $ eval `opam config env`
+</pre>If you use Tuareg, the following options are reported to be useful:
+
+<pre>    Tuareg group
+    (setq tuareg-support-metaocaml t)
+ 
+    Tuareg Faces group
+    Tuareg Font Lock Multistage Face
+</pre>
+<P>One may also install MetaOCaml manually.  Befitting the separation
+between the kernel and the user-level, MetaOCaml is distributed as
+a set of patches to OCaml plus a separate library <code>metalib</code>. The
+installation involves patching the OCaml distribution, building the
+OCaml system system as usual, and compiling <code>metalib</code> and the
+MetaOCaml toplevel. The patched OCaml compiler is fully source- and
+binary-compatible with OCaml and can process OCaml code, with staging
+constructs or without. MetaOCaml can also use OCaml-compiled modules
+and libraries as they are.  MetaOCaml is available as:
+<ul>
+<li><a href="ber-metaocaml.tar.gz">ber-metaocaml.tar.gz</a>&nbsp;[157K]<BR>
+
+A set of patches to the OCaml 5.3.0 distribution<BR>
+
+Please see the INSTALL document in that archive. You will need the source
+distribution of OCaml 5.3.0.
+</li></ul></div>
+
+<p>&nbsp;</p>
+<h2 id="using">Introduction to staging and MetaOCaml</h2>
+<div>The standard example of meta-programming -- the running example of
+A.P.Ershov's 1977 paper that begat partial evaluation -- is the power
+function, computing <code>x^n</code>. (See also 
+<a href="../meta-programming/tutorial/mult.ml">mult.ml</a>
+for a more realistic and illustrative example.)
+In OCaml:
+
+<pre>    let square x = x * x
+    let rec power n x =
+      if n = 0 then 1
+      else if n mod 2 = 0 then square (power (n/2) x)
+      else x * (power (n-1) x)
+    (* val power : int -&gt; int -&gt; int = &lt;fun&gt; *)
+</pre>(The comment underneath the code shows the reply of the MetaOCaml toplevel.)
+<P>Suppose our program has to compute <code>x^7</code> many times. We may define
+
+<pre>    let power7 x = power 7 x
+    (* val power7 : int -&gt; int = &lt;fun&gt; *)
+</pre>to name and share the partial application.
+<P>In MetaOCaml, we may also <em>specialize</em> the power function to a
+particular value <code>n</code>, obtaining the code which will later receive <code>x</code>
+and compute <code>x^n</code>. We re-write <code>power n x</code> annotating expressions as
+computed `now' (when <code>n</code> is known) or `later' (when <code>x</code> is given).
+
+<pre>    let rec spower n x =
+      if n = 0 then .&lt;1&gt;.
+      else if n mod 2 = 0 then .&lt;square .~(spower (n/2) x)&gt;.
+      else .&lt;.~x * .~(spower (n-1) x)&gt;.
+    (* val spower : int -&gt; int code -&gt; int code = &lt;fun&gt; *)
+</pre>The two annotations, or staging constructs, are brackets <code>.&lt; e &gt;.</code> and
+escape <code>.~e</code> . Brackets <code>.&lt; e &gt;.</code> `quasi-quote' the expression <code>e</code>,
+annotating it as computed later. Escape <code>.~e</code>, which must be used within
+brackets, tells that <code>e</code> is computed now but produces the result for
+later. That result, the code, is spliced-in into the containing bracket. 
+The inferred type of <code>spower</code> is different. The result is no longer an
+<code>int</code>, but <code>int code</code> -- the code of expressions that compute an <code>int</code>.
+The type of <code>spower</code> spells out which argument is received now, and which
+later: the future-stage argument has the code type. There is an
+alternative syntax for brackets and escapes, as extension nodes. For
+example, <code>spower</code> above can also be written as
+
+<pre>    let rec spower n x =
+      if n = 0 then [%metaocaml.bracket 1]
+      else if n mod 2 = 0 then [%metaocaml.bracket square [%metaocaml.escape spower (n/2) x]]
+      else [%metaocaml.bracket [%metaocaml.escape x] * [%metaocaml.escape spower (n-1) x]]
+    (* val spower : int -&gt; int code -&gt; int code = &lt;fun&gt; *)
+</pre>Depending on the editor and its set-up, this form may actually be
+easier to enter and display.
+<P>To specialize <code>spower</code> to 7, we define
+
+<pre>    let spower7_code = .&lt;fun x -&gt; .~(spower 7 .&lt;x&gt;.)&gt;.;;
+    (*
+    val spower7_code : (int -&gt; int) code = .&lt;
+       fun x_1 -&gt; x_1 * (csp_square_3 (x_1 * (csp_square_2 (x_1 * 1))))&gt;. 
+     *)
+</pre>and obtain the code of a function that will receive <code>x</code> and return
+<code>x^7</code>. Code, even of functions, can be printed, which is what MetaOCaml
+toplevel just did. The print-out contains so-called cross-stage persistent
+values, or CSP, which `quote' present-stage values such as <code>square</code> to
+be used later. One may think of CSP as references to `external
+libraries' -- only in our case the program acts as a library for the
+code it generates. If <code>square</code> were defined in a separate file, say,
+<code>sq.ml</code>, then its occurrence in <code>spower7_code</code> would have been printed
+simply as <code>Sq.square</code>.
+<P>To use thus specialized <code>x^7</code> now, in our code, we should `run'
+<code>spower7_code</code>, applying the function <code>Runcode.run : 'a code -&gt; 'a</code>.
+The function compiles the code and links it back to our program.
+
+<pre>    open Runcode;;
+    let spower7 = run spower7_code
+    (* val spower7 : int -&gt; int = &lt;fun&gt; *)
+</pre>
+<P>The specialized <code>spower7</code> has the same type as the partially applied
+<code>power7</code> above. They behave identically. However, <code>power7 x</code> will do
+the recursion on <code>n</code>, checking <code>n</code>'s parity, etc. In contrast, the specialized
+<code>spower7</code> has no recursion (as can be seen from <code>spower7_code</code>). All
+operations on <code>n</code> have been done when the <code>spower7_code</code> was generated;
+the result is <code>spower7</code> that straight-line multiplies <code>x</code>.
+<P>The generated <code>spower7_code</code> is rather simple (as generated code tends
+to be), and hence can be easily converted to C, via
+<em>offshoring</em>, described in detail elsewhere. We need to tell
+however about the <code>square</code> function we defined. Let us
+assume there exists a C function <code>sqr</code>, for example, defined as
+<code>static int sqr(int const x) { return x * x; }</code>, and we want to map
+our <code>square</code> to it.
+<pre>    let _ = 
+      let module M = struct         (* Tell offshoring library to map *)
+        open Offshoring             (* our Sq.square to C's sqr       *)
+        include DefaultConv
+        let id_conv path name = match (path,name) with
+        | (&quot;Sq&quot;,&quot;square&quot;) -&gt; &quot;sqr&quot;
+        | _ -&gt; id_conv path name
+      end
+      in
+      Offshoring.offshore_to_c ~cnv:(module M) ~name:&quot;power7&quot; spower7_code
+</pre>The result (which could have been saved into a file) is:
+
+<pre>    int power7(int const x_1){
+      return (x_1 * sqr(x_1 * sqr(x_1 * 1)));
+    }
+</pre>
+<P>MetaOCaml supports an arbitrary number of later stages, letting us write
+not only code generators but also generators of code generators, etc.
+<h4>References</h4>
+<P><a href="../meta-programming/tutorial/">Reconciling Abstraction
+with High Performance: A MetaOCaml approach</a>
+
+<P>Walid Taha: A Gentle Introduction to Multi-stage Programming
+
+<P>A.P. Ershov: On the partial computation principle<BR>
+
+Information Processing Letters, 1977, v6, N2, pp. 38-41.<BR>
+
+This is the English version of the paper that started partial
+evaluation as a research area. The power example, in Fig. 1 of the paper,
+can be seen on the following manuscript scan<BR>
+
+&lt;<a href="http://ershov.iis.nsk.su/files/archive/fold0241/241_75.gif">http://ershov.iis.nsk.su/files/archive/fold0241/241_75.gif</a>&gt;
+<P>The Information Processing Letters paper is the English version of
+A. P. Ershov: A Theoretical Principle of System Programming<BR>
+
+Doklady AN SSSR (Soviet Mathematics Doklady), 1977, v18,N2,
+pp.312--315.
+<BR>
+
+For space reasons, the power example was omitted from the
+Doklady AN SSSR paper, but it can be seen in the notes to
+the November 1976 draft<BR>
+
+&lt;<a href="http://ershov.iis.nsk.su/files/archive/fold0241/241_17.gif">http://ershov.iis.nsk.su/files/archive/fold0241/241_17.gif</a>&gt;<BR>
+
+This is perhaps the first occurrence of the power function specialization.
+<P>For other drafts of this paper, see
+``The Ershov Archive for the history of computing''<BR>
+
+&lt;<a href="http://ershov.iis.nsk.su/archive/eaindex.asp?gid=1480">http://ershov.iis.nsk.su/archive/eaindex.asp?gid=1480</a>&gt;
+
+<P>MetaOCaml comes with the test suite, directory
+<code>metalib/test/</code> in the MetaOCaml distribution,
+which contains many small and a few large examples.
+<P><a href="../meta-programming/tutorial/mult.ml">mult.ml</a>&nbsp;[11K]<BR>
+
+The multiplication-by-constant example:
+a more realistic version of the power,
+illustrating code templates (brackets/escapes), let-insertion,
+offshoring, real-time specialization with the flavor of JIT,
+and even multiple-stages.
+</div>
+
+<p>&nbsp;</p>
+<h2 id="ber-design">The Design and Implementation of (BER) MetaOCaml</h2>
+<div>MetaOCaml is a superset of OCaml extending it with the data type
+for program code and operations for constructing and
+executing such typed code values. It has been used for compiling
+domain-specific languages and automating tedious and error-prone
+specializations of high-performance computational kernels. By
+statically ensuring that the generated code compiles and
+letting us quickly run it, MetaOCaml makes writing generators less
+daunting and more productive.
+<P>The current BER MetaOCaml is a complete re-implementation of the
+original MetaOCaml by Taha, Calcagno and collaborators. Besides the
+new organization, new algorithms, new code, BER
+MetaOCaml adds a scope extrusion check superseding environment
+classifiers.  Attempting to build code values with unbound or
+mistakenly bound variables (liable to occur due to mutation or other
+effects) is now caught early, raising an exception with good
+diagnostics.  The guarantee that the generated code always compiles
+becomes unconditional, no matter what effects were used in generating
+the code.
+<P>We describe BER MetaOCaml stressing the design decisions that made the
+new code modular and maintainable. We explain the implementation of
+the scope extrusion check.
+<h4>References</h4>
+<P><a href="../meta-programming/ber-design.pdf">ber-design.pdf</a>&nbsp;[297K]<BR>
+
+The full version of the paper presented at FLOPS 2014.
+A shorter version is published in the FLOPS Proceedings,
+Springer's LNCS 8475, pp. 86-102<BR>
+
+<a href="http://doi.org/10.1007/978-3-319-07151-0_6">doi:10.1007/978-3-319-07151-0_6</a>
+
+<P><a href="../meta-programming/talk-FLOPS.pdf">talk-FLOPS.pdf</a>&nbsp;[196K]<BR>
+
+The annotated slides of the talk presented at FLOPS 2014 in
+Kanazawa, Japan on June 4, 2014.
+
+<P><a href="../meta-programming/index.html#let-insert">Let-insertion 
+without pain or fear or guilt</a>
+
+<P><a href="../meta-programming/shift/loop_motion_gen.ml">loop_motion_gen.ml</a>&nbsp;[7K]<BR>
+
+Loop-invariant code motion with the convenient let-insertion
+(the main example in the FLOPS 2014 talk)
+</div>
+
+<p>&nbsp;</p>
+<h2 id="design-10">MetaOCaml: Ten Years Later</h2>
+<div>MetaOCaml is a superset of OCaml for convenient code generation with
+static guarantees: the generated code is well-formed, well-typed and
+well-scoped, by construction. Not only the produced code
+always compiles; code fragments with a variable escaping its scope are
+detected already during code generation.  MetaOCaml has been employed
+for compiling domain-specific languages, generic programming,
+automating tedious specializations in high-performance computing,
+generating efficient computational kernels and embedded
+programming. It is used in education, and served as inspiration for
+several other metaprogramming systems.
+<P>Most well-known in MetaOCaml are the types for values representing
+generated code and the template-based mechanism to produce such
+values, a.k.a., brackets and escapes. MetaOCaml also features
+cross-stage persistence, generating ordinary and mutually-recursive
+definitions, first-class pattern-matching and heterogeneous
+metaprogramming.
+<P>The extant implementation of MetaOCaml, first presented at FLOPS 2014,
+has been continuously evolving. We describe the current design and
+implementation, stressing particularly notable additions. 
+Among them is a new and efficient translation from typed code templates to code
+combinators. Scope extrusion detection unexpectedly brought
+let-insertion, and a conclusive solution to the 20-year--old vexing
+problem of cross-stage persistence.
+<h4>References</h4>
+<P><a href="../meta-programming/design-10.pdf">design-10.pdf</a>&nbsp;[2527K]<BR>
+
+The paper published in
+Science of Computer Programming, Volume 250, 2026, pp. 103397
+(Available online 15 November 2025)
+<a href="http://doi.org/10.1016/j.scico.2025.103397">doi:10.1016/j.scico.2025.103397</a><BR>
+
+(A greatly extended version of the FLOPS 2024 paper.)
+
+<P><a href="../meta-programming/tutorial/mult.ml">mult.ml</a>&nbsp;[11K]<BR>
+
+The running example of the paper, designed to show off various MetaOCaml
+facilities, not just brackets and escapes.
+</div>
+
+<p>&nbsp;</p>
+<h2 id="implementing-staging">Implementing staging</h2>
+<div>An attractive approach to implementing a staged language is to add
+staging to an existing language, to take advantage of existing code
+generators, parsers, libraries and users. This section describes three
+ways of adding staging to a typed functional language, the last of
+which is actually implemented in MetaOCaml.
+<P>The most straightforward way to extend a functional
+language with staging is to add staging forms to the abstract syntax tree (AST)
+and adjust the parser; add staging forms to the typed AST modifying
+the type checker accordingly; add staging forms to the intermediate
+language and account for them in the code generator. We have to modify
+everything -- we might as well re-implement the language from scratch.
+But there is a far simpler way.
+<P>The simplest approach is to pre-process away the brackets into
+expressions built with code combinators. For example, the MetaOCaml
+expression
+
+<pre>    fun x -&gt; .&lt;fun y -&gt; .~x * y + 1&gt;.
+</pre>is to be translated into the following plain OCaml code
+
+<pre>    fun x -&gt; lam &quot;y&quot; (fun y -&gt; (add (mul x y) (int 1)))
+</pre>which, when evaluated, will generate the code.
+<P>The <em>code combinators,</em> or primitive code generators,
+are typed and have the following signature:
+
+<pre>    type 'a cod
+    val int: int -&gt; int cod
+    val add: int cod -&gt; int cod -&gt; int cod
+    val mul: int cod -&gt; int cod -&gt; int cod
+    val lam: string -&gt; ('a cod -&gt; 'b cod) -&gt; ('a-&gt;'b) cod
+    val app: ('a-&gt;'b) cod -&gt; ('a cod -&gt; 'b cod)
+</pre>
+<P>This translation can be done by camlp4 or a <em>stand-alone</em>
+pre-processor.  The base system (OCaml) can be used as it is without
+any modifications.  Best of all, the translation approach is
+consistent with typing: if the result of pre-processing, which is plain OCaml,
+type-checks according to the ordinary OCaml rules, the source
+MetaOCaml code is well-typed according to the MetaOCaml rules. This simple
+approach works surprisingly well: Scala's Lightweight Modular Staging
+(LMS) is based on similar ideas. Scheme's implementation of
+quasi-quote is also quite similar; only it does <em>not</em> process lambda-
+or let-forms in any special way.
+<P>There are complications, for example, dealing with special forms such
+as conditionals and loops. We have to introduce thunks.
+Pattern-matching forms and type annotations pose a nasty problem,
+which can be hacked away, e.g., by translating to deconstructors and
+special type annotation functions (like Haskell's <code>asTypeOf</code>). The paper
+Scala-Virtualized talks about such translations in detail. Alas, the
+polymorphic <code>let</code> like <code>.&lt;let f = fun x -&gt; x in ...&gt;.</code> is 
+(was!) a show-stopper.
+The let-binding within brackets becomes after translation
+the lambda-binding, which cannot be polymorphic. 
+Although OCaml supports first-class polymorphism, it requires type
+annotations -- which means the translation cannot be a macro
+expansion/preprocessing done before the type-checking.
+Polymorphism in
+general is problematic in this simple approach: since a code value
+is translated to
+an expression, a polymorphic code value (e.g., <code>let f = .&lt;fun x -&gt; x&gt;.</code>) will be translated into the monomorphic expression, due to
+the value restriction.
+<P>The remaining approach is to translate the staging away after
+type-checking. For example, <code>fun x -&gt; .&lt;fun y -&gt; .~x * y + 1&gt;.</code> is first
+type-checked, according to the modified OCaml rules to account for
+brackets and escapes. It is then translated to
+
+<pre>    fun x -&gt; build_fun_simple &quot;y&quot; (fun y -&gt;
+               mkApp (mkIdent &quot;+&quot;)
+                  [mkApp (mkIdent &quot;*&quot;) [x; y];
+                   mkConst 1])
+</pre>The future-stage code is type-checked properly, including polymorphic
+constructs. The brackets and escapes do get translated away, but
+during the type checking.
+A future-stage bound variable of type <code>t</code> becomes the present-stage
+bound variable <code>y</code>, but at the type <code>t code</code>. 
+<P>This is the approach taken in MetaOCaml. With staging annotations eliminated
+after the type checking, the OCaml back-end, the
+optimizer and the code generator, are used as they are. We must however
+modify the OCaml type checker to keep track of the stage (bracketing)
+level and to type check within brackets. For the former, we make a global
+reference cell for the current level,  `incremented' and `decremented'
+when encountering a bracket or an escape. Type-checking the future-stage
+code is almost the same as the present-stage code with one exception. 
+Identifiers bound by future-stage binding forms should be annotated
+with their stage. BER N102 does this annotation by attaching an attribute to
+the <code>value_description</code>, to tell the staging level of the value.
+<P>The result of a code-generating expression is a value of 
+the type <code>'a cod</code>. A code value could represent
+bits of low-level code; however, they
+are very difficult to compose. For example, depending on the context
+<code>.&lt;1&gt;.</code> may end up being a part of a machine instruction or a part of
+the data segment, with different representations. Since the
+generated code is assuredly well-typed, it does not have to be
+type-checked. Code combinators could therefore produce bits of the
+post-typechecking intermediate language. This
+language (type-annotated AST -- in OCaml, <code>Typedtree</code>) is
+also difficult to compose: maintaining the type annotations and their
+type environment is a chore. MetaOCaml code can generate
+arbitrarily many <code>let</code>-expressions. If code combinators
+produce the type-annotated AST, they have to extend the type
+environment with freshly bound identifiers and their types. If
+the generated <code>let</code> expressions are polymorphic, code generators
+should be refreshing the type variables.
+Realizing code values as an untyped AST is the simplest. AST 
+can be pretty-printed to the surface syntax and then compiled as 
+any other source code.
+<h4>References</h4>
+<P><a href="../tagless-final/cookbook.html#simple-staging">A surprisingly simple implementation of staging</a><BR>
+
+The outlined simple approach does actually work, and could be
+used to implement a practical two-stage language. Even the problem
+of generating polymorphic let-bindings is solved -- but only very
+recently.
+
+<P><a href="../meta-programming/calculi.html#metaocaml-transl">New translation from nested quasiquotes to
+code-generation combinators: efficient, typed, easier to retrofit</a><BR>
+
+It is implemented since BER N114.
+</div>
+
+<p>&nbsp;</p>
+<h2 id="ctors">Data constructor restriction</h2>
+<div>Algebraic data types are one of the salient features of OCaml, which,
+alas, have not been considered in staged calculi. The theory therefore
+gives no guidance on staging the code that contains constructors of
+algebraic, user defined data types, such as the following:
+
+<pre>    type foo = Foo | Bar of int
+    .&lt;let x = Foo in match x with Bar z -&gt; z&gt;.
+</pre>The generated code, which can be stored in a file, is <code>let x = Foo in match x with Bar z -&gt; z</code>. Compiling this file will fail
+since <code>Foo</code> and <code>Bar</code> are not declared. The problem is how to put a
+data type declaration into the generated code, which is
+syntactically an <em>expression</em> and hence cannot contain
+declarations.
+<P>The old MetaOCaml dealt with the problem by modifying the AST representing
+the generated code and adding the field for declarations (actually, the entire
+type environment). Such a change
+sent ripples of modifications throughout the type checker, and was one
+of the main reasons for the divergence of MetaOCaml from OCaml, which
+contributed to MetaOCaml's demise.
+<P>BER MetaOCaml since N100 eschews such AST modification, imposing a
+constructor restriction instead: <em>all data constructors and record
+labels used within brackets must come from the types that are declared
+in separately compiled modules.</em> The restriction follows from the
+observation that OCaml has no problem
+compiling code such as <code>Some 1</code> with constructors of the (standard) data
+types. The following expressions all satisfy the restriction:
+
+<pre>    .&lt;true&gt;.
+    .&lt;raise Not_found&gt;.
+    .&lt;Some [1]&gt;.
+    .&lt;{Complex.re = 1.0; im = 2.0}&gt;.
+    let open Complex in .&lt;{re = 1.0; im = 2.0}&gt;.
+    .&lt;let open Complex in {re = 1.0; im = 2.0}&gt;.
+</pre>because the data types <code>bool</code>, <code>option</code>, <code>list</code>, <code>Complex.t</code> are
+either in <code>Stdlib</code> or defined in the (separately compiled) standard
+library. External type declarations like those of <code>Complex.t</code> are
+found in <code>complex.cmi</code>, which can be looked up when the generated code
+is compiled.  On the other hand, the following fail the restriction and are
+rejected by BER MetaOCaml:
+
+<pre>    type foo = Bar
+    .&lt;Bar&gt;.
+
+    module Foo = struct exception E end
+    .&lt;raise Foo.E&gt;.
+</pre>The type declaration <code>foo</code> or the module declaration <code>Foo</code> must be moved
+into an interface file and compiled separately. The compiled interface
+must also be available at run-time: either placed into the same directory as the
+executable, or somewhere within the OCaml library search path -- as if
+it were the standard library type.
+<P>However there is a way to include type declarations within the
+<code>Parsetree.expression</code> tree. For example,
+
+<pre>    type foo = Foo | Bar of int
+    .&lt;let x = Foo in match x with Bar z -&gt; z&gt;.
+</pre>could produce the following generated code
+
+<pre>    let module M = 
+      struct
+        type foo = Foo | Bar of int
+      end
+    in let open M in
+    let x = Foo in match x with Bar z -&gt; z
+</pre>which compiles without problems. Local modules in OCaml do effectively
+let declarations appear in expressions. The generated code becomes the
+closure over the data type environment. Therefore, the constructor
+restriction will be lifted in some future release. On the other hand,
+from the early experience the restriction does not seem to be very
+limiting, or hard to satisfy.</div>
+
+<p>&nbsp;</p>
+<h2 id="got-away">Moving free variables around but not letting them escape</h2>
+<div>MetaOCaml lets us manipulate open code. This section describes the
+complexities and trade-offs in making sure all free variables in such
+code will eventually be bound, by their intended binders. BER
+MetaOCaml, since N101, reverses the choice of its predecessors and trades a
+type-level check for a stronger and more informative dynamic
+scope-extrusion check.
+<P>In MetaOCaml, program code is first-class: it can be passed as
+arguments to functions, returned as their result, stored in mutable
+cells, thrown in exceptions, etc. That code may contain free
+variables, which must however occur in the typing environment in order
+for the MetaOCaml program to type check. One may think that free
+variables will, therefore, eventually be bound and the generated code
+will be closed. Running it should never fail because of an unbound
+variable.  Alas, a well-typed BER MetaOCaml program may still
+<em>attempt</em>, when executed, to run an open code or construct ill-scoped
+code -- the code with a free variable that `escaped' its binder and
+hence will remain unbound or, worse, bound accidentally. In BER
+MetaOCaml, these attempts are detected early, aborting the
+execution of the generator with an informative error message.
+Previous versions of MetaOCaml used type system, so-called environment
+classifiers, to prevent some, rarely occurring, attempts to run open
+code.  Alas, the other attempts went undetected and ill-scoped code
+was generated. Not any more.
+<P>Manipulating open code is overshadowed by two dangers.  First, the
+mere presence of the run operation in the language brings the risk
+of applying it to the code that we have not yet finished
+constructing. Here is the characteristic example:
+
+<pre>    .&lt;fun x y -&gt; .~(let z = run .&lt;x+1&gt;. in .&lt;z&gt;.)&gt;.
+</pre>Prior to BER N101, MetaOCaml rejected such code at <em>type checking time</em>,
+with the help of so-called environment classifiers
+(Taha and Nielsen, POPL 2003). Back then, the type of an
+int code value was <code>('c,int) code</code>, where <code>'c</code> is the classifier.
+If the code value is closed, the classifier is generalizable. The running
+example was rejected with the type error:
+
+<pre>    .&lt;fun x y -&gt; .~(let z = .! .&lt;x+1&gt;. in .&lt;z&gt;.)&gt;.;;
+                               ^^^^^^^
+    .! error: 'a not generalizable in ('a, int) code
+</pre>(prior to BER N101, the operation to run code was spelled <code>.!</code>).
+<P>BER type checks the running example. Executing the resulting generator
+however aborts with the run-time exception:
+
+<pre>    .&lt;fun x y -&gt; .~(let z = run .&lt;x+1&gt;. in .&lt;z&gt;.)&gt;.;;
+    Exception:
+    Failure
+     &quot;The code built at Characters 29-32:
+      .&lt;fun x y -&gt; .~(let z = run .&lt;x+1&gt;. in .&lt;z&gt;.)&gt;.;;
+                                   ^^^
+     is not closed: identifier x_1 bound at Characters 6-7:
+      .&lt;fun x y -&gt; .~(let z = run .&lt;x+1&gt;. in .&lt;z&gt;.)&gt;.;;
+            ^
+    is free&quot;.
+</pre>The error message is informative, telling now the name of the free variable
+and pointing out, in the generator source code, the binder
+that should have bound the variable.
+<P>Moving open code around may result in ill-scoped code in another way,
+when the open code is stored in mutable cells, thrown in exceptions or
+captured in delimited continuations. Alas, environment classifiers
+cannot not detect such errors and bad things did happen.
+Here is an example using <em>old</em> MetaOCaml from 2006 (version 3.09.1 alpha
+030).  (The problem can be illustrated simpler, but the following
+example is more realistic and devious.)
+
+<pre>    let c =
+     let r = ref .&lt;fun z-&gt;z&gt;. in 
+     let f = .&lt;fun x -&gt; .~(r := .&lt;fun y -&gt; x&gt;.; .&lt;0&gt;.)&gt;. in 
+     .&lt;fun x -&gt; .~f (.~(!r) 1)&gt;. ;;
+    (*
+    val c : ('a, '_b -&gt; int) code =
+      .&lt;fun x_4 -&gt; ((fun x_2 -&gt; 0) ((fun y_3 -&gt; x_2) 1))&gt;.
+    *)
+</pre>
+<P>One must look hard to see that <code>x_2</code> is actually unbound in the resulting
+code (shown in comments, as the output from the interpreter). So-called
+scope extrusion happened. Only when we attempt to run that code
+we see that something went wrong somewhere.
+
+<pre>    .! c;;
+    (*
+    Characters 77-78:
+      Unbound value x_2
+
+    Exception: Trx.TypeCheckingError.
+    *)
+</pre>
+<P>Since we get an error anyway (without much diagnostics though), one
+may discount the severity of the problem. Alas, sometimes scope
+extrusion results in no error -- just in wrong results. A simple
+variation plasters over the problem:
+
+<pre>    let c1 =
+     let r = ref .&lt;fun z-&gt;z&gt;. in 
+     let _ = .&lt;fun x -&gt; .~(r := .&lt;fun y -&gt; x&gt;.; .&lt;0&gt;.)&gt;. in 
+     !r;;
+    (*
+    val c1 : ('a, '_b -&gt; '_b) code = .&lt;fun y_3 -&gt; x_2&gt;.
+    *)
+</pre>We then use <code>c1</code> to construct the code <code>c2</code>:
+
+<pre>    let c2 = .&lt;fun y -&gt; fun x -&gt; .~c1&gt;.;;
+    (*
+    val c2 : ('a, 'b -&gt; 'c -&gt; '_d -&gt; '_d) code =
+      .&lt;fun y_1 -&gt; fun x_2 -&gt; fun y_3 -&gt; x_2&gt;.
+    *)
+</pre>which contains no unbound variables and can be run without problems.
+
+<pre>    (.! c2) 1 2 3;;
+    (* - : int = 2 *)
+</pre>
+<P>It is most likely that the user did not intend for <code>fun x -&gt;</code> in <code>c2</code> to
+bind <code>x</code> of <code>c1</code>. This is the blatant violation of lexical scope. And yet we
+get no error or other overt indication that something went wrong.
+<P>BER MetaOCaml has none of this. Although the type system still
+permits code values with escaped variables, attempting to use such
+code in any way -- splice, print or run -- immediately raises an
+exception. For example, entering the expression <code>c</code> above in the top-level BER
+MetaOCaml gives:
+
+<pre>    Exception:
+    Failure
+     &quot;Scope extrusion detected at Characters 127-137:
+           .&lt;fun x -&gt; .~f (.~(!r) 1)&gt;. ;;
+                          ^^^^^^^^^^
+     for code built at Characters 80-90:
+           let f = .&lt;fun x -&gt; .~(r := .&lt;fun y -&gt; x&gt;.; .&lt;0&gt;.)&gt;. in
+                                        ^^^^^^^^^^
+     for the identifier x_2 bound at Characters 65-66:
+           let f = .&lt;fun x -&gt; .~(r := .&lt;fun y -&gt; x&gt;.; .&lt;0&gt;.)&gt;. in
+                         ^&quot;.
+</pre>Although the expression <code>c</code> type checked, its evaluation was aborted with an
+exception and so no code was constructed. Prior to BER N100, <code>c</code> successfully
+evaluated to the code with an unbound variable. Not only the scope extrusion
+is detected now; it is reported with an informative message,
+telling which variable got away, which part of the generator was supposed to
+bind it, and where it eloped. In the second example, although <code>c1</code> evaluates
+successfully (although printing the result reports scope extrusion),
+splicing <code>c1</code> immediately aborts any further code generation. The exception
+again tells the name of the escaped variable, <code>x</code>, and the place in the source
+code of the generator where that variable was supposed to be bound. No
+ill-scoped code is generated as the result.
+<P>Let us review the trade-offs. Prior to N101, MetaOCaml relied on
+environment classifiers to prevent, at type-checking time, only one class
+of errors: attempts to run not yet constructed code.  Environment
+classifiers do not stop scope extrusion and the generation of
+ill-scoped code. From experience, the error the classifiers do
+prevent is rare (partly because the complex typing of <code>run</code>
+made it difficult to use except at the top level, at which point the
+code is always fully constructed). The extra type parameter of the
+<code>code</code> type proved to be a nuisance: every data structure that
+may contain code has to have a type with the environment classifier.
+Generator abstractions were cumbersome to define and use. Environment
+classifiers often gave false positives, because the value restriction
+prevented the generalization of the classifier.
+<P>The scope-extrusion check, since BER N101, is dynamic -- it acts when
+the generator is run rather than when it is compiled. Replacing
+a type error with a dynamic error is regrettable.
+On the up side, the generator stops before producing bad code,
+throwing an exception with a fairly detailed and helpful error message,
+pointing out the variable that got away. Since the error is an
+exception, we can obtain the exception stack backtrace and figure out
+exactly which part of the generator let that variable leak. Before BER
+N100, we discover the scope-extrusion problem, in the best case,
+only when compiling the generated code and being
+taken aback by a compilation error.
+It could be quite a challenge in figuring out which part of the
+generator was to blame. The scope-extrusion check requires
+no extension to the type system and so is easier to implement and maintain.
+<P>Thus BER MetaOCaml N101 removed environment classifiers since they give
+good protection (a type error) against only rare errors,
+while being cumbersome always. The scope extrusion check, albeit
+dynamic, is comprehensive and informative, ensuring well-formedness
+even in the presence of effects.  To repeat, since N100, BER MetaOCaml
+unconditionally guarantees that if code is successfully generated and
+can be shown or saved to the file, etc -- the code is well-typed and
+well-scoped. It shall compile without type errors.</div>
+
+<p>&nbsp;</p>
+<h2 id="run">Many ways to run the code</h2>
+<div>BER MetaOCaml is structured as the `kernel' and the `user-level'. The
+former type-checks and compiles staging annotations. Handling the
+generated code is up to user-level libraries. For example, <code>metalib</code>
+in the BER MetaOCaml distribution prints, byte- and natively-compiles code
+values. User-level MetaOCaml code can be changed and extended without
+recompiling MetaOCaml. Furthermore, changes in OCaml will have less
+effect on the user-level code.
+<P>BER MetaOCaml comes with the `kernel' interface.
+
+<pre>    type 'a code                            (* abstract: possibly open code *)
+    type 'a closed_code = private Parsetree.expression
+   
+    val close_code : 'a code -&gt; 'a closed_code
+    val open_code  : 'a closed_code -&gt; 'a code
+</pre>
+<P>The latter is total, the former does a scope extrusion check.
+Since closed code is essentially OCaml AST, after closing the generated code,
+the user may examine and `run' it in many ways.
+One way of running the code is printing it. The user-level <code>Codelib</code>
+library comes with the following interface:
+
+<pre>    val print_code         : Format.formatter -&gt; 'a code -&gt; unit
+    val print_closed_code  : Format.formatter -&gt; 'a closed_code -&gt; unit
+   
+    val format_code : Format.formatter -&gt; 'a closed_code -&gt; unit
+   
+    val print_code_as_ast : 'a closed_code -&gt; unit
+</pre>
+<P>The former two functions pretty-print the code; <code>print_code</code>
+is the composition of <code>close_code</code> and <code>print_closed_code</code>. These two
+functions are installed as printers of code values by the MetaOCaml
+toplevel. The function
+<code>format_code</code> is like <code>print_closed_code</code>, but omits the outer brackets.
+It comes handy when saving the generated code into a file,
+to compile later. The last function prints the closed code value
+as a parse tree, for debugging.
+<P>To execute the code, the user-level MetaOCaml currently provides 
+<code>val run_bytecode : 'a closed_code -&gt; 'a</code> or
+<code>val run_native : 'a closed_code -&gt; 'a</code>
+to run closed code by bytecode compiling (viz. natively compiling)
+it and then executing.
+The function <code>Runcode.run  : 'a code -&gt; 'a</code>
+is  the composition of
+<code>close_code</code> and <code>run_bytecode</code> or <code>run_native</code>.
+<P>More run-like functions are easy to add: they are regular functions to
+be linked with or
+loaded at the toplevel as any other library functions. 
+There is no need to recompile MetaOCaml
+any more. The old MetaOCaml had so-called `off-shoring' to translate the
+generated code to C and Fortran. For example, it was used to
+generate FFT kernels. The generated C code was good enough to plug as
+it was into the FFTW benchmarking and testing framework. During the
+overhaul the offshoring has been left for clean-up and
+re-writing. It is now being developed as a separate library.
+Since offshoring and many such transformations are type-directed,
+for their benefit MetaOCaml provides
+<code>typecheck_code : 'a closed_code -&gt; Typedtree.expression</code>
+to type check the generated code.
+Since version N107, offshoring back, in a more general way, as the translation
+from a subset of the (generated) OCaml code to a simple imperative
+intermediate language, which may then be transcribed to C, OpenCL,
+LLVM, etc.</div>
+
+<p>&nbsp;</p>
+<h2 id="native">Native (natively-compiled) MetaOCaml</h2>
+<div>Since version N104, BER MetaOCaml provides native compilation of the
+generated code, if the generator itself is natively compiled (with
+metaocamlopt).  Natively-compiled generated code is then linked back
+into the running program -- hence supporting run-time code
+specialization.
+<P>It should be stressed that run-time code specialization is only one
+way of using MetaOCaml. The other is actually more prominent, being used
+in three largish projects: stream library with the performance of the
+hand-written code; generating the optimal code for
+FFT kernels and for Gaussian Elimination. Gaussian Elimination is a
+large family of the algorithms, parameterized by the domain (<code>int</code>,
+<code>float</code>, polynomial), by the choice of pivoting, by the need to compute
+the determinant, rank, the permutation matrix, by the layout of matrices and
+by a half a dozen more aspects. Because Gaussian Elimination is often
+used in inner loops, the performance matters a great deal. Therefore,
+all this parameterization has to be done statically. With Jacques
+Carette we generated many GE procedures for particular parameter
+choices.  The generated code was stored in files, to be compiled in a
+library, by <code>ocamlopt</code>. Although the code generator was
+byte-code OCaml, the generated code could be stored and compiled by
+the optimizing, native OCaml. We used the byte-code run, but only for
+testing. The FFT project was similar: the generator was byte-code, the
+byte-code run was used for testing, the generated code was C and
+compiled with the Intel C compiler.
+<P>To stress, the byte-code generator produces the code to be 
+compiled by any suitable compiler. The mode (byte-code or native)
+of the generator and of the generated code are not related.
+<h4>References</h4>
+<P><a href="../Streams.html#strymonas">Stream Fusion, to Completeness</a>
+
+<P><a href="../NumMath.html#FFT-generation">Generating optimal FFT code and relating FFTW and Split-Radix</a>
+
+<P><a href="../meta-programming/HPC.html#GE-generation">Multi-stage programming with functors and monads: eliminating
+abstraction overhead from generic code</a>
+</div>
+
+<p>&nbsp;</p>
+<h2 id="more-brackets">More brackets</h2>
+<div>MetaOCaml brackets <code>.&lt;e&gt;.</code> as well as escapes <code>.~e</code>
+are internally represented as extension nodes <code>metaocaml.bracket</code> 
+and <code>metaocaml.escape</code>, resp. That is,
+<code>.&lt;e&gt;.</code> is just the syntactic sugar for <code>[%metaocaml.bracket e]</code>.
+<P>There are also two bracket-related
+attributes. They are meant to be attached to a bracket expression.
+The attributes, together with the
+bracket expression they are attached to, may be regarded as a special
+sort of bracket. Currently we provide no sugar for these
+`special' brackets (to be less disruptive of the baseline OCaml
+syntax). Only one of the following bracket-modifying attributes may be
+attached to a bracket.
+<P>The first bracket-modifying attribute is <code>metaocaml.functionliteral</code>.
+It is an assertion that the bracketed expression is actually a literal
+function, such as <code>.&lt;function p1 -&gt; e1  ... pn -&gt; en&gt;.</code> or <code>.&lt;fun p -&gt; e&gt;.</code>
+Such function literals act as first-class patterns.  The type-checker
+checks that the bracketed expression is really the function literal,
+and if so, gives it a more refined type: <code>pat_code</code>. For example:
+
+<pre>    let t1 = .&lt;fun x -&gt; x&gt;. [@metaocaml.functionliteral]
+     (* val t1 : ('a -&gt; 'a) Trx.pat_code = &lt;abstr&gt; *)
+   
+    let t2 = .&lt;function [] -&gt; true | (_::_) -&gt; false&gt;. [@metaocaml.functionliteral]
+    (* val t : ('a list -&gt; bool) Trx.pat_code = &lt;abstr&gt; *)
+   
+    let t3 = .&lt;let x = function () -&gt; () in x&gt;. [@metaocaml.functionliteral]
+   
+      let t3 = .&lt;let x = function () -&gt; () in x&gt;. [@metaocaml.functionliteral];;
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   Error: The expression does not appear to be a functional literal as requested
+</pre>The comments show the inferred type. Attaching the attribute to a code
+expression that does not look as a function literal raises the type error,
+shown in the last example, for <code>t3</code>. For more detail, see the section on
+first-class pattern-matching.
+<P>The other bracket-modifying attribute is <code>metaocaml.value</code>.
+It is also an assertion, that a bracketed expression actually
+represents a value: a constant, variable reference, constant tuple, etc.
+If this is indeed the case, the typechecker gives the bracketed 
+expression a more refined type: <code>val_code</code>. Otherwise, an error is reported.
+For more detail and example, see the section on let-insertion below.</div>
+
+<p>&nbsp;</p>
+<h2 id="make-match">First-class pattern-matching</h2>
+<div>MetaOCaml N104 and later versions can generate <code>match ... with ...</code>
+expressions with the statically unknown number of clauses. This is the
+first step towards building arbitrary patterns at run-time.  This
+first-class pattern-matching has not been seen before, in any of the
+earlier versions of MetaOCaml or MetaML. Although the <em>low-level</em>
+Template Haskell (outside the convenient quasi-quotations) and Scheme
+also let us build pattern-matching expressions dynamically, they offer
+no guarantees whatsoever that the result makes any sense. MetaOCaml
+does. The <code>match</code> statement built by <code>make_match</code> below is assured to
+be well-formed and type-correct. Rhiger's pattern-combinators give
+type-safety as well. However, their types are extremely complicated. A
+mistake in using the combinator gives nearly incomprehensible error
+messages. In contrast, first-class pattern-matching of MetaOCaml is
+staggeringly simple.
+<P>First-class pattern-matching in MetaOCaml is utmost simple because OCaml
+already has the convenient syntax for pattern-matching clauses. Indeed,
+the familiar function literal such as <code>.&lt;function [1] -&gt; 0&gt;.</code> is
+a pattern-match clause. We only need to ensure that a code value
+of a function type is indeed a literal (which is assured by the
+<code>metaocaml.functionliteral</code> annotation), and collect such literals to make
+a <code>match</code> statement. Here is an example:
+
+<pre>    (* defined in codelib.mli *)
+   val make_match : 'a code -&gt; ('a -&gt; 'w) pat_code list -&gt; 'w code
+   
+   let p =
+     [.&lt;function [1] -&gt; 0&gt;.   [@metaocaml.functionliteral];
+      .&lt;fun [x]      -&gt; x+1&gt;. [@metaocaml.functionliteral]
+     ]
+   
+   let c = make_match .&lt;[2]&gt;.  @@
+     [.&lt;fun []       -&gt; 0&gt;.   [@metaocaml.functionliteral] ] @
+     p @
+     [.&lt;fun (x::y)   -&gt; x+1&gt;. [@metaocaml.functionliteral] ]
+</pre>which generates the following <code>match</code> expression:
+
+<pre>    val c : int code = .&lt;
+      match [2] with
+      | [] -&gt; 0
+      | 1::[] -&gt; 0
+      | x_14::[] -&gt; x_14 + 1
+      | x_12::y_13 -&gt; x_12 + 1&gt;. 
+</pre>
+<P>For more examples, see the <code>pattern.ml</code> file in the <code>test</code> directory of
+the <code>metalib</code> library. What is left is the generation of statically unknown
+patterns, like matching on a statically unknown constants. Actually,
+this is already possible, in a way, through <code>when</code> guards (see the
+sample code mentioned earlier).
+<h4>References</h4>
+<P>Morten Rhiger: Type-Safe Pattern Combinators<BR>
+
+J. Functional Programming, v19, March 2009, pp. 145-156
+</div>
+
+<p>&nbsp;</p>
+<h2 id="genlet">Let-insertion as a primitive</h2>
+<div>The importance of let-insertion is hard to overstate. It was to
+implement let-insertion that the delimited control library delimcc was
+originally developed. Let-insertion has been the main
+motivation for combining staging with effects, such as delimited
+control. We refer to those papers for more discussion.
+<P>Given the importance and prevalence of let-insertion, it seemed fitting
+to offer it natively, as a MetaOCaml primitive. We no longer
+need external dependencies such as delimited control or effect libraries.
+MetaOCaml already tracks free variables of an expression, for the sake
+of scope-extrusion detection. Let-insertion is not that complicated to
+add (although not as simple either, due to nesting).
+<P>Since version N104, BER MetaOCaml supports let-insertion natively,
+without any external libraries (and without delimited control).
+First, it introduces the type <code>'a val_code</code>, a subtype
+of <code>'a code</code>, which represents program fragments that are syntactically values
+(such as an identifier reference, a constant, a lambda-expression).
+Such fragments can be freely spliced as many times as
+needed without worrying about duplicating effects or evaluation order.
+Code-generator--functions that take arguments of <code>'a val_code</code>
+type behave as call-by-value functions when the staging annotations are
+erased. One can always convert, or coerce, <code>val_code</code> to <code>code</code>.
+<P>One way of producing <code>'a val_code</code> values is using brackets with
+the <code>metaocaml.value</code> attribute, as in
+
+<pre>    fun x -&gt; .&lt;(1,function y -&gt; y + .~x)&gt;. [@metaocaml.value]
+   (* inferred type: int code -&gt; (int * (int -&gt; int)) val_code *)
+</pre>If the annotated bracketed expression is not actually a value, syntactically,
+a type error is raised. 
+<P>Another way of producing <code>'a val_code</code> is by
+
+<pre>    genletv : 'a code -&gt; 'a val_code
+</pre>This function first checks that its argument is already a value, whose
+construction requires no significant allocations (i.e., cheap to
+duplicate). If so, it is returned as it is, but of the <code>'a val_code</code>
+type.  Otherwise, <code>genlet</code>
+generates a let-statement, binding the argument to a fresh
+future-stage variable and returning the code that refers to that
+variable.  Variable references are clearly values.  That is, <code>genlet exp</code> inserts <code>let freshname = exp in ...</code> somewhere in the generated
+code and returns <code>.&lt;freshname&gt;.</code>.  The <code>let</code> is inserted right under
+the binder for the `latest' free variable contained in <code>exp</code>. For
+example,
+
+<pre>    .&lt;fun x y -&gt; x + y + .~(genlet .&lt;x+1&gt;.)&gt;.
+</pre>generates
+
+<pre>    - : (int -&gt; int -&gt; int) code = .&lt;
+     fun x_1  -&gt; let t_3 = x_1 + 1  in fun y_2  -&gt; (x_1 + y_2) + t_3&gt;.
+</pre>(Here, <code>genlet</code> is the composition of <code>genletv</code> with the coercion from
+the <code>'a val_code</code> result of the latter to <code>'a code</code>, so that it can be
+spliced in.)
+<P>The names of let-bound-variables are at the discretion of <code>genlet</code>; one
+could still give a hint, through the optional <code>~name</code> argument:
+
+<pre>    .&lt;fun x y -&gt; x + y + .~(genlet ~name:&quot;v&quot; .&lt;x+1&gt;.)&gt;.
+</pre>which generates
+<code>fun x_1 -&gt; let v_3 = x_1 + 1 in fun y_2 -&gt; (x_1 + y_2) + v_3&gt;.</code>
+<P>Version N111 lets the user control where the <code>let</code>-statement is to
+be inserted, which is often necessary when the expression to let-bind and
+move is effectful. For example, consider
+
+<pre>    let sum_up = 
+      let body arr =
+        let arr = genlet arr in
+        let sum = genlet ~name:&quot;sum&quot; .&lt;ref 0&gt;. in
+        .&lt;for i=0 to Array.length .~arr - 1 do
+           .~sum := ! .~sum + (.~arr).(i)
+          done;
+        ! .~sum&gt;.
+      in .&lt;fun x -&gt; .~(body .&lt;Array.map succ x&gt;.)&gt;.
+</pre>which results in 
+
+<pre>    val sum_up : (int array -&gt; int) code = .&lt;
+      let sum_6 = Stdlib.ref 0 in
+      fun x_4 -&gt;
+        let t_5 = Stdlib.Array.map Stdlib.succ x_4 in
+        for i_7 = 0 to (Stdlib.Array.length t_5) - 1 do
+          sum_6 := ! sum_6 + Stdlib.Array.get t_5 i_7
+        done;
+        ! sum_6&gt;.
+</pre>where the accumulator <code>sum_6</code> is bound outside the function. Hence it
+accumulates across all invocations of <code>sum_up</code>, which is probably not
+what the programmer intended. The simple modification:
+
+<pre>    let sum_up = 
+      let body arr =
+        with_locus @@ fun locus -&gt;
+        let arr = genlet arr in
+        let sum = genlet ~name:&quot;sum&quot; ~locus .&lt;ref 0&gt;. in
+        .&lt;for i=0 to Array.length .~arr - 1 do
+           .~sum := ! .~sum + (.~arr).(i)
+          done;
+        ! .~sum&gt;.
+      in .&lt;fun x -&gt; .~(body .&lt;Array.map succ x&gt;.)&gt;.
+</pre>keeps the accumulator within the function:
+
+<pre>    val sum_up : (int array -&gt; int) code = .&lt;
+      fun x_8 -&gt;
+        let t_10 = Stdlib.Array.map Stdlib.succ x_8 in
+        let sum_11 = Stdlib.ref 0 in
+        for i_12 = 0 to (Stdlib.Array.length t_10) - 1 do
+          sum_11 := ! sum_11 + Stdlib.Array.get t_10 i_12
+        done;
+        ! sum_11&gt;.
+</pre>The form <code>with_locus</code> specifies the upper bound for the scope of 
+<code>genlet ~locus</code> bindings; the bindings may be inserted sooner to
+avoid scope extrusion.
+<P>Finally, BER N111 offers the facility for the `immediate'
+let-insertion:
+
+<pre>    let t = letl ~name:&quot;v&quot; .&lt;1+2&gt;. (fun v -&gt; .&lt;4 + .~v&gt;.)
+</pre>which generates <code>.&lt;let v_3 = 1 + 2 in 4 + v_3&gt;.</code>.  It is essentially
+<code>genlet</code> that immediately follows <code>with_locus</code>. As with the ordinary
+<code>genlet</code>, if the expression to bind is simple (is a value whose
+construction does not involve big memory allocations), no <code>let</code> is
+generated.
+<P>For more examples, see <code>genlet.ml</code> in the <code>test</code> directory of
+the <code>metalib</code> library. The file <code>fib.ml</code> gives a larger example,
+of memoization and let-insertion.
+<h4>References</h4>
+<P><a href="../meta-programming/calculi.html#circle-shift">Shifting
+the Stage: Staging with Delimited Control</a>
+</div>
+
+<p>&nbsp;</p>
+<h2 id="letrec">Generating mutually recursive definitions</h2>
+<div>BER N111 brings <em>let rec</em> insertion: the facility
+to generate groups of mutually recursive bindings of statically
+unknown size. Such groups cannot be generated using brackets and
+escapes: only expressions can be bracketed and spliced, but an
+individual binding <code>var = exp</code> is not an expression. Therefore, BER
+N111 introduces two primitives
+
+<pre>    type locus_rec
+    
+    val with_locus_rec : (locus_rec -&gt; 'w code) -&gt; 'w code
+    
+    val mkgenlet : ?name:string -&gt;          (* hint of names to bind *)
+      locus_rec -&gt;                          (* locus created by with_locus_rec *)
+      ('key-&gt;'key-&gt;bool) -&gt;                 (* memo key comparison *)
+      (* The result: genletrec, which takes a key and 
+           a function to produce the expression to let-bind
+      *)
+      (('key -&gt; ('a-&gt;'b) code) -&gt; 'key -&gt; ('a-&gt;'b) code)
+</pre>Here, <code>with_locus_rec</code>, similarly to <code>with_locus</code> described
+earlier, marks the scope of the <code>let rec</code> that will
+eventually be generated. The function <code>mkgenlet</code> produces the
+`memoizing genletrec'; what it does is better explained on an
+example. 
+<P>The example is Neil Jones' benchmark for partial evaluators:
+specializing the Ackermann function.
+
+<pre>    let rec ack m n =
+      if m = 0 then n+1 else
+      if n = 0 then ack (m-1) 1 else 
+      ack (m-1) (ack m (n-1))
+</pre>The challenge is to produce the code specialized to a particular
+value of <code>m</code>. Looking at the earlier <code>power</code> example and adding
+staging annotations produces something like the following:
+
+<pre>    let sack m =
+      let rec loop m =
+        if m = 0 then .&lt;fun n -&gt; n + 1&gt;. else
+        .&lt;fun n -&gt; if n = 0 then .~(loop (m-1)) 1
+        else .~(loop (m-1)) (.~(loop m) (n-1))&gt;.
+      in loop m
+</pre>Alas, applying this generator to any positive <code>m</code> results in an
+infinite loop. One clearly sees that for non-zero <code>m</code>, the result of
+<code>loop m</code> depends on <code>loop m</code>. We need to build a recursive definition;
+in fact, several definitions, for all <code>m</code> from 0 to the user-given value.
+That is actually quite easy: use <code>mkgenlet</code> to obtain the `binding
+producer' <code>g</code> and blindly insert it before every <code>loop</code> invocation:
+
+<pre>    let sack m =
+      with_locus_rec @@ fun l -&gt;
+      let g = mkgenlet l (=) in
+      let rec loop m =
+        if m = 0 then .&lt;fun n -&gt; n + 1&gt;. else
+        .&lt;fun n -&gt; if n = 0 then .~(g loop (m-1)) 1
+        else .~(g loop (m-1)) (.~(g loop m) (n-1))&gt;.
+      in g loop m
+</pre>Then <code>sack 2</code> produces the desired
+
+<pre>    val sac2 : (int -&gt; int) code = .&lt;
+      let rec h_6 n_7 = n_7 + 1
+      and h_4 n_5 = if n_5 = 0 then h_6 1 else h_6 (h_4 (n_5 - 1))
+      and h_2 n_3 = if n_3 = 0 then h_4 1 else h_4 (h_2 (n_3 - 1)) in h_2&gt;. 
+</pre>
+<h4>References</h4>
+<P><a href="../meta-programming/genletrec/index.html">PEPM 2019 and 2022
+papers</a> with the detailed discussion, eventually arriving at the
+interface implemented in MetaOCaml
+<P><code>test/genletrec.ml</code> in the BER MetaOCaml distribution shows many
+more examples, including the generation of finite automata from their
+schematic descriptions
+</div>
+
+<p>&nbsp;</p>
+<h2 id="CSP">Cross-stage persistence</h2>
+<div>Bracketed expressions (i.e., templates of the code to generate) may be
+open: contain free variables, which are called Cross-Stage Persistent
+(CSP) variables. Borrowing and modifying the example from Tim Sheard's 
+``Accomplishments and Research Challenges in Meta-programming'' (SAIG 2001)
+
+<pre>    let f x = x + 1
+    let z = .&lt;f 4 + 5&gt;.
+    let f x = not x in Runcode.run z
+</pre>The code value bound to <code>z</code> contains the free variable <code>f</code>. It refers
+to the <code>int-&gt;int</code> function that was in
+scope when <code>z</code> was defined, rather than to <code>f:bool-&gt;bool</code> which
+is in scope when <code>z</code> is run. That is, CSP variables, as other
+variables, are lexically scoped. CSP are pervasive: for example, the
+code value <code>z</code> above contains yet another free variable (CSP): it is
+<code>+</code>, which is bound in Stdlib. All standard library operations are
+hence CSPs.
+<P>Cross-stage persistence may be looked at differently: as an
+ability to use the same expression, 
+value or identifier at several stages: now and later. For example,
+<code>Stdlib.succ</code> increments integers now: <code>succ 1</code>.  The future-stage
+expression <code>.&lt;succ 1&gt;.</code> -- which will increment 1 later, when this code is
+compiled and run -- refers to the same <code>succ</code>. Such a reference is
+CSP. In this section we describe CSP in the original
+and BER MetaOCaml, their problems, and their current implementation. 
+Cross-stage
+persistent expressions, present in some calculi can
+always be emulated in terms of CSP identifiers such as <code>x</code> in
+<code>.&lt;.~(let x = e in .&lt;x&gt;.)&gt;.</code>. Therefore, in the following we will be
+talking only about cross-stage persistent identifiers.
+<P>Staged calculi such as lambda^a (Taha and Nielsen, 2003) and lambda_i
+(Calcagno, Moggi and Taha, 2004) impose no restrictions on
+CSP. Neither does MetaOCaml, letting us write
+
+<pre>    let polylift x = .&lt;x&gt;.;;
+      val polylift : 'a -&gt; 'a code = &lt;fun&gt;
+</pre>Such polymorphic CSPs are well-defined in staged calculi that
+formalize a small and pure subset of real-world staged
+languages. Outside that subset, problems emerge. For example, what is
+the meaning, if any, for CSP of mutable cells or input channels:
+
+<pre>    let r = ref 0 in
+    let x = run .&lt;let () = r := 1 in !r&gt;. in
+    (x, !r)
+   
+    let c = open_in &quot;/etc/motd&quot; in .&lt;c&gt;.
+      in_channel code = .&lt;(* cross-stage persistent value (id: c) *)&gt;.
+</pre>Is <code>r</code> above shared or copied between the stages? What can a
+presently-opened file possibly refer to when the the code <code>.&lt;c&gt;.</code> is
+run later? After all, the generated code may be saved
+into a file and compiled into a library, to be linked into programs
+that may run on a different, from the generator, computer.  Generating
+libraries of specialized computational kernels is an important
+application of MetaOCaml. On the other hand, cross-stage persistence
+of mutable cells and even of open channels makes sense in the case
+of run-time code specialization.
+<P>It seems important to separate CSP of global
+identifiers from CSP of local ones. Incidentally, Template
+Haskell has such a distinction. 
+The expression <code>.&lt;succ&gt;.</code> referring to the global identifier
+<code>succ</code> seems no different from <code>.&lt;1&gt;.</code> After all, <code>1</code> and <code>succ</code> are both
+<em>constants</em>, of different types. The definition of a calculus or a logic
+typically begins with the phrase: assume a set Sigma of 
+constants (such as numerals,
+<code>succ</code> etc.) of appropriate types and arities. In the code
+
+<pre>    let x = 1 in
+    let y = .&lt;1&gt;. in ...
+</pre><code>1</code> on the first line refers to the constant of Sigma (``the standard
+library constant'', so to speak) from the present-stage calculus and
+<code>1</code> on the second line is the element of Sigma
+at the next stage. The code
+
+<pre>    let x = succ in
+    let y = .&lt;succ&gt;. in ...
+</pre>should be interpreted the same way. It is crucial that Sigma
+at both stages be the same. In other words, the computer that runs the
+generator and the computer that runs the generated code must have
+the same standard library, which is broadly understood to include
+user libraries and <code>.cmi</code> and <code>.cmo</code> files. Thus CSP of global identifiers 
+should be understood as references to the standard library. In other
+words, such CSPs are <em>common knowledge</em>, present at all stages.
+<P>CSP of a local identifier should be interpreted as a lift
+(serialization), valid only at specific types. Hence,
+<code>let x = 1 in .&lt;x+2&gt;.</code> should be interpreted as
+<code>let x = 1 in .&lt;.~(lift_int x) +2&gt;.</code>. Here <code>lift_int</code> is an internal
+function that serializes an integer value. Serialization always
+copies the value. What if the value is non-serializable or hardly
+serializable? And how to add lift-like functions, say, for
+user-defined data types? These are very difficult questions, which are
+finally answered.
+<P>First of all, `global' variables (bound outside the current
+compilation unit) in code values are interpreted as <em>references</em> to
+those `library' identifiers. There are no restrictions on their types.
+The following concerns `local' CSPs: identifiers in code values bound
+in the current computation unit:
+
+<ul>
+<li>If a local identifier has a known, easily serializable type,
+MetaOCaml compiles-in the call to the corresponding lifting
+function. That is, if <code>x</code> in <code>.&lt; ... x ... &gt;.</code> has the particular
+type <code>t</code> (integer, float, string, boolean, character and a few
+others), the CSP occurrence is interpreted as if it were
+<code>.&lt; ... .~(lift_t x) ... &gt;.</code>. 
+</li>
+<li>For all other types (including polymorphic types), 
+MetaOCaml interprets the CSP occurrence as if it were
+<code>.&lt; ... .~(dyn_quote x) ... &gt;.</code>, where <code>dyn_quote</code> is an internal
+MetaOCaml function that tries to convert a value to the code of that
+value. The function examines the <em>run-time</em> value, without
+knowing its type.
+
+<ul>
+<li>If the value is easily serializable (that is, looks like an
+integer, a floating-point number or a string), it is converted to
+the corresponding literal. For example, the value that looks like
+integer 0 is converted to the code value <code>.&lt;Obj.magic 0&gt;.</code>. One
+should keep in mind that <code>0</code>, <code>None</code>, <code>[]</code>, <code>false</code>, etc. are all
+represented as integer 0 at run-time: hence the need for magic.
+</li>
+<li>If the value does not look like easily serializable, <code>dyn_quote</code>
+generates what is essentially a `closure': a pair of the value and
+the code <code>.&lt;csp_x&gt;.</code> where <code>csp_x</code> is a fresh identifier assumed to be
+bound to the value when the code is run.
+The bytecode <code>run</code> does effect such binding. Therefore, it supports
+CSPs at all types. The native-code <code>run</code> does not currently support
+such `code closures' (but may in the future, if there is a demand for
+it). When a code value is printed, the values to which <code>csp_x</code>
+identifiers are supposed to be bound are <em>not</em> shown (because
+they are not serializable and, hence, non-printable).
+</li></ul></li></ul>In other words, easily serializable are interpreted by value (copied);
+all others, by reference.
+<P>Since N107 MetaOCaml also provides a set of lifting
+modules of the signature
+
+<pre>    module type lift = sig
+      type t
+      val lift: t -&gt; t code
+    end
+</pre>to help lift values of option, lift, array types. Users are encouraged
+to use such lifters in their code if they need to serialize particular
+CSPs.
+
+<h4>References</h4>
+<P><a href="../meta-programming/tutorial/">Reconciling Abstraction
+with High Performance: A MetaOCaml approach</a><BR>
+
+Section 3.2.1 `A Digression on CSP' of the book describes explicit
+lifting, which is implemented in N107 and after (including lifting of
+lists, option values and, in particular, arrays)
+</div>
+
+<p>&nbsp;</p>
+<h2 id="plans">Further plans</h2>
+<div>MetaOCaml has an extensive research and development program.  On the
+research front is developing a staged calculus that accounts for
+objects, modules, and GADTs. Since modules and objects are binding
+forms, their staging is complex. We must perform appropriate renaming
+and check that the generated identifiers are not left unbound in
+the resulting code.  Also interesting is the integration of staging and
+modules (which have recently became first-class). Since both staging
+and modules are abstractions over code, can staging even be 
+used as a module system? Another item is to prove that the restriction 
+on CSP avoids the unsoundness problems with generalizations.
+<P>User-land development is most extensive: we need more ways to `run'
+code values, by translating them to C, Fortran, LLVM, Verilog.
+MetaOCaml can then be used for generating libraries of specialized C,
+etc. code. User-land MetaOCaml development has the least cost of entry
+(no need to know OCaml internals) and is wide open for developers. Everyone
+can contribute, everyone is welcome.</div>
+
+<p>&nbsp;</p>
+<h2 id="history">A brief history of (BER) MetaOCaml</h2>
+<div>BER MetaOCaml sprang out the original MetaOCaml and owes a great deal
+to the lessons of its implementation. BER MetaOCaml builds on what has
+been proven to work. The motivation for it becomes clear from
+MetaOCaml's history.
+<P>A curious file in the original MetaOCaml CVS repository lists several
+short notes from the meeting in Paris on September 29, 2000 between
+Xavier Leroy and Walid Taha. One note stands out: ``we (Xavier!) were
+able to compile and run &quot;run bracket 1&quot;!!'' One may take this moment
+as the birth of MetaOCaml.
+<P>MetaOCaml started as a fork of OCaml along the lines of MetaML.
+Designed and architectured by Walid Taha and developed by Cristiano
+Calcagno, MetaOCaml had reached its current form by 2003. The
+environment classifiers appeared at the end of that year. Native code
+compilation and offshoring (translating the generated code into C and
+Fortran) were added in 2004.
+<P>As MetaOCaml was being developed, new versions of the mainline OCaml
+were released with sometimes many fixes and improvements. The
+MetaOCaml team tracked new OCaml releases and merged the changes into
+MetaOCaml. (The MetaOCaml version number has as its base OCaml's
+release version.)  The merge was not painless. For example, any new
+function in the OCaml compiler that dealt with <code>Parsetree</code> (AST) or
+<code>Typedtree</code> has to be modified to handle MetaOCaml extensions to these
+data structures. The merge process became more and more painful as the
+two languages diverged. For instance, native code compilation that
+first appeared in MetaOCaml 3.07 relied on SCaml, a large set of
+patches to OCaml by malc at pulsesoft.com to support dynamic linking.
+OCaml 3.08 brought many changes that were incompatible with
+SCaml. Therefore, in MetaOCaml 3.08 the native compilation mode was
+broken. The mode was brought back in the Summer 2005, by
+re-engineering the SCaml patch and implementing the needed parts of
+dynamic linking without any modification to the OCaml code. The
+revived native compilation has survived through the end.
+<P>In 2006, MetaOCaml became the basis for Concoqtion.  The increasing
+divergence between OCaml and MetaOCaml made it harder and harder to
+merge the changes.  With the funds for the project dried up and the
+daunting prospect of merging many changes that appeared in OCaml 3.10
+and 3.11, the development of MetaOCaml has ceased. Its last released
+version was 3.09.1 alpha 030.
+<P>Although the original development team could no longer support
+MetaOCaml, the users of the language, Jacques Carette in particular,
+could not bear it fall by the wayside. At the Jacques Carette's
+urging, the merge of OCaml 3.11 changes was undertaken in February
+2010. The lack of funding and limited resources made it imperative to keep
+close to the mainline OCaml and avoid the divergence at all
+cost. Everything not directly related to staging was removed,
+including tag elimination and Concoqtion. 23 fewer files in the OCaml
+distribution were affected by MetaOCaml. Walid Taha suggested to name
+the new, bare-minimum line of MetaOCaml as BER MetaOCaml. Its first
+version N002 was released on March 1, 2010.
+<P>BER MetaOCaml established the separation of the kernel from the
+user-level. Like with an OS kernel, changes to the MetaOCaml kernel
+require `rebooting' (recompiling the MetaOCaml) and may render the
+system unusable. User-level changes affect only particular programs
+and are easier to develop. The MetaOCaml kernel is responsible for
+producing and type-checking code values. User-level deals with
+processing, or `running' code values: pretty-printing, executing,
+compiling to byte-code, to native code, to C, etc. Programmers may
+write new ways of processing code values -- for example, to compile
+them to LLVM or JavaScript -- without modifying OCaml or BER
+MetaOCaml. In the BER N002 distribution, the kernel included the 59KB
+patch to OCaml distribution and the 54KB-long <code>typing/trx.ml</code>;
+user-level consisted of a pretty-printer (59KB source code) and the
+support for byte-code execution of the generated code and the custom
+top level (3KB, all in all). There was also 20KB of test code.
+<P>The 59KB patch to OCaml seems large. Part of it is necessary.  Since
+BER MetaOCaml extends the AST data type, <code>Parsetree</code>, with variants
+<code>Pexp_bracket</code>, <code>Pexp_escape</code>, <code>Pexp_run</code>, <code>Pexp_cspval</code> for the
+staging constructs, any part of OCaml that processes the AST has to be
+modified. Quite many parts of a compiler
+deal with AST. In a multi-stage language, each expression is associated 
+with a stage level, present-stage or one of the progressively future stages.
+The original MetaOCaml stored the level in an extra field 
+<code>val_level</code> of the <code>value_description</code> record that maintained type and
+other information for each identifier. Since the map from identifiers to
+<code>value_description</code> is the typing environment, it is used all throughout the
+type checker. Therefore, the addition of a new field required great 
+many changes. A new OCaml version modifies the type checker
+quite heavily. Integrating all these modifications into MetaOCaml, 
+accounting for the new field <code>val_level</code>, is a hard job. It is avoidable
+however: we may associate identifiers with levels differently,
+by adding a new map to the environment that
+tells the level of each <em>future-stage</em> identifier. 
+Any identifier not in the domain of that map is assumed present-stage. 
+The <code>value_description</code> record then 
+remains intact. BER MetaOCaml N100 (see below) takes this route. 
+The original MetaOCaml modified the AST further, to store the
+information about data constructors used in the generated code
+(actually, the AST that corresponded to the generated code contained
+the entire present-stage environment of the type-checker.) Great many patches
+to OCaml came that way. BER N100 imposed the constructor restriction 
+as described
+elsewhere on this page, eliminating the extra AST modifications and the need
+to patch OCaml further. 
+Thus, if one takes as the goal bringing MetaOCaml closer to OCaml,
+the amount of modifications to OCaml can indeed be minimized -- as BER N100
+has shown.
+<P>OCaml release 3.12 brought unexpectedly many new features to the language,
+for example, first-class modules. OCaml 4.0 added GADTs and dynamic linking.
+Integrating that many changes into BER MetaOCaml N002 was too depressing to
+contemplate. BER MetaOCaml N100, developed in January 2013 and released on
+January 31, is a clean-state re-implementation of MetaOCaml. Rather than
+merging OCaml 4.0 into the MetaOCaml branch, BER N100 started anew.
+It took the OCaml distribution, extended its AST with the staging 
+constructs, and kept adding code until the constructs were fully handled --
+until there were no inexhaustive pattern-matching throughout the OCaml code. 
+The exhaustiveness check was very helpful. Great care was taken
+to modify as fewer OCaml data structures as possible. Here is the break-out
+of the BER N100 distribution: the kernel consists of 
+the 49KB patch to OCaml files (modifying 28 OCaml files, 
+6 of which trivially) and the 77KB-long completely
+re-written <code>typing/trx.ml</code> with very many comments.
+User-level includes the 58KB pretty-printer (heavily modified by 
+Jacques Carette), and a number of small files to support top-level and <code>run</code>,
+3KB all in all. There are 54KB of tests, including, for the first time,
+a regression test suite. BER N100 is much less invasive into OCaml: 
+compare the size of
+the patch to the main OCaml type-checker <code>typing/typecore.ml</code>, which
+contains the bulk of the changes for type checking the staging
+constructs. In the previous version BER N004, the patch had 564 lines
+of additions, deletions and context; now, only 328 lines.
+<P>BER MetaOCaml N101, released in November 2013, cleaned-up
+MetaOCaml further. The positive experience with the scope extrusion check
+has made it possible to remove environment classifiers, and hence notably
+simplify the type checking of staging constructs. The operation
+to run the code no longer required dedicated type checking rules. In
+BER N101, it became an ordinary function, moved out of the MetaOCaml
+kernel. Internally, BER N101 improved the scope extrusion check and
+optimized the translation of staging constructs, especially binding
+forms. Pretty-printing of the code has become part of OCaml and hence
+no longer has to be maintained separately.
+<P>The version N102 released on January 1, 2015 was
+another significant re-write, although with hardly any user-visible
+changes. The BER N102 code makes the extensive use of attributes, the
+new feature of OCaml 4.02. Staging annotations -- brackets, escapes
+and CSP -- are now really annotations: attributes on the Parsetree and
+Typedtree. A specifically Typedtree attribute marks non-expansive
+nodes (the non-expansiveness check is performed before the
+bracket-translation but is used only after). An attribute on
+<code>value_description</code> tells the staging level of the value.  There is no
+longer a separate Typedtree traversal pass, after the type checking,
+to translate brackets and escapes. That means that for
+staging-annotation-free code, MetaOCaml has no substantial overhead.
+BER N102 has started on revamping cross-stage-persistence; quite a few
+CSP have become printable and, mainly, serializable. Non-serializable
+CSP were the only impediment to native MetaOCaml. The number of files
+in the OCaml distribution that are patched by MetaOCaml fell down from
+32 to mere 7. The patch size is reduced to 34KB. It is now a distinct
+possibility that MetaOCaml becomes just a regular library or a
+plug-in, rather being a fork.
+<P>Version N104 (January 1, 2017) brings back
+native MetaOCaml and implements two novel features, not
+seen in MetaOCaml or MetaML before: first-class pattern-matching and
+let-insertion as a primitive.
+<P>Version N107 (October 5, 2018) brings back
+offshoring, in a different way, and adds explicit lifting. The code
+type is no longer special and pre-defined (which means only 4 OCaml
+files are modified by MetaOCaml: lexer, parser, pretty-printer, and
+<code>typecore.ml</code>).
+<P>Version N111 (October 5, 2020) adds let rec insertion: the facility
+to generate mutually recursive definitions whose size is not
+statically known. It is now possible to control the scope of
+let-insertion, which is often necessary when the let-bound expression is
+effectful. The well-scopedness guarantee is still
+maintained. Offshoring got more polish.
+<P>Version N114 (May 11, 2023) re-implements offshoring, adding, among
+other things, normalization (removing <code>@@</code> and <code>|&gt;</code>, 
+straightening nested
+let-bindings, lifting let-bindings were possible and easy). Mutable
+variables and pointer types are supported with no restrictions.
+Offshoring is now supported completely, up to printing of C99 C
+code. The offshoringIR intermediate language is usable outside
+MetaOCaml (for generating C or WASM, etc.)
+CSP are re-implemented: non-serializable CSPs are converted to
+top-level let-bindings.
+We now use Parsetree extension nodes metaocaml.bracket and
+metaocaml.escape. The lexer is adaptable now: it lexes <code>.&gt;</code>
+exactly as OCaml, until it sees the first <code>.&lt;</code> (opening bracket).
+<P>Version N153 (May 6, 2025) brings MetaOCaml inline with OCaml 5.3.0.
+OCaml 5.x has changed AST (Parsetree) and Typedtree in significant
+ways, especially concerning functions. Adjusting MetaOCaml to those
+changes took some work.  I'm very thankful to the OCaml team for
+merging the patch to the OCaml grammar concerning staging
+annotations. It has made maintaining MetaOCaml quite easier.
+<P>Developing and especially maintaining a new language is
+gigantic work. Engineering a new language as a dialect of a 
+well-maintained one is hard but 
+pays in many ways.
+<h4>References</h4>
+<P><a href="metaocaml-files.pdf">The MetaOCaml files:
+Status report and research proposal</a><BR>
+
+The extended abstract published in the informal proceedings of
+the 2010 ACM SIGPLAN Workshop on ML
+
+<P><a href="ml2013-talk.pdf">ml2013-talk.pdf</a>&nbsp;[200K]<BR>
+MetaOCaml lives on:
+Lessons from implementing a staged dialect of a functional language<BR>
+
+The annotated slides of the talk at the ACM SIGPLAN Workshop on ML,
+September 22, 2013. Boston, MA, USA
+
+<P><a href="#ber-design">The Design and Implementation of (BER) MetaOCaml</a>
+</div>
+
+<p>&nbsp;</p>
+<h2 id="credits">Credits</h2>
+<div>BER MetaOCaml is the complete re-implementation of the original
+MetaOCaml.
+<P>The original MetaOCaml was funded primarily by the NSF project
+``ITR/SY(CISE): Putting Multi-Stage Annotations to Work'' led by Walid
+Taha. Most of the original development and implementation of staging
+was done by Cristiano Calcagno.  Edward Pizzi has implemented the
+pretty-printing of code, later modified Jacques Carette.  Xavier
+Leroy, INRIA, helped with the compiler specifics.
+<P>I am very grateful to Jacques Carette, Walid Taha, Jeremy Yallop,
+Yukiyoshi Kameyama and the members of his lab at the University of
+Tsukuba, Chung-chieh Shan, Cedric Cellier and Jun Inoue for many
+helpful discussions and encouragement.  Reports and testing by Tran
+Minh Quang, Mustafa Elsheik, and Nicolas Ojeda Bar are appreciated.</div>
+<div id="footer">&nbsp;<BR>
+
+<hr>
+<h3>Last updated January 1, 2026</h3>This site's top page is <a href="http://okmij.org/ftp/"><strong>http://okmij.org/ftp/</strong></a><BR>
+
+<div><cite>oleg-at-okmij.org</cite><BR>
+Your comments, problem reports, questions are very welcome!</div>
+<div class="small">Generated by MarXere</div></div></body>

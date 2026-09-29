@@ -1,0 +1,1349 @@
+=== page 1 ===
+110
+Staged Compilation with Two-Level Type Theory∗
+ANDRÁS KOVÁCS,Eötvös Loránd University, Hungary
+The aim of staged compilation is to enable metaprogramming in a way such that we have guarantees about the
+well-formedness of code output, and we can also mix together object-level and meta-level code in a concise and
+convenient manner. In this work, we observe that two-level type theory (2LTT), a system originally devised
+for the purpose of developing synthetic homotopy theory, also serves as a system for staged compilation
+with dependent types. 2LTT has numerous good properties for this use case: it has a concise specification,
+well-behaved model theory, and it supports a wide range of language features both at the object and the meta
+level. First, we give an overview of 2LTT’s features and applications in staging. Then, we present a staging
+algorithm and prove its correctness. Our algorithm is “staging-by-evaluation”, analogously to the technique of
+normalization-by-evaluation, in that staging is given by the evaluation of 2LTT syntax in a semantic domain.
+The staging algorithm together with its correctness constitutes a proof of strong conservativity of 2LLT over
+the object theory. To our knowledge, this is the first description of staged compilation which supports full
+dependent types and unrestricted staging for types.
+CCS Concepts: • Theory of computation → Type theory; • Software and its engineering → Source
+code generation.
+Additional Key Words and Phrases: type theory, two-level type theory, staged compilation
+ACM Reference Format:
+András Kovács. 2022. Staged Compilation with Two-Level Type Theory.Proc. ACM Program. Lang. 6, ICFP,
+Article 110 (August 2022), 30 pages. https://doi.org/10.1145/3547641
+1 INTRODUCTION
+The purpose of staged compilation is to write code-generating programs in a safe, ergonomic and
+expressive way. It is always possible to do ad-hoc code generation, by simply manipulating strings
+or syntax trees in a sufficiently expressive programming language. However, these approaches
+tend to suffer from verbosity, non-reusability and lack of safety. In staged compilation, there are
+certain restrictions on which metaprograms are expressible. Usually, staged systems enforce typing
+discipline, prohibit arbitrary manipulation of object-level scopes, and often they also prohibit
+accessing the internal structure of object expressions. On the other hand, we get guarantees about
+the well-scoping or well-typing of the code output, and we are also able to use concise syntax for
+embedding object-level code.
+Two-level type theory, or 2LTT in short, was described in [Annenkov et al . 2019], building on
+ideas from [Voevodsky 2013]. The motivation was to allow convenient metatheoretical reasoning
+about a certain mathematical language (homotopy type theory), and to enable concise and modular
+ways to extend the language with axioms.
+∗The author was supported by the “Application Domain Specific Highly Reliable IT Solutions” project which has been
+implemented with support from the National Research, Development and Innovation Fund of Hungary, financed under the
+Thematic Excellence Programme TKP2020-NKA-06 (National Challenges Subprogramme) funding scheme.
+Author’s address: András Kovács, kovacsandras@inf.elte.hu, Eötvös Loránd University, Hungary, Budapest.
+Permission to make digital or hard copies of part or all of this work for personal or classroom use is granted without fee
+provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and
+the full citation on the first page. Copyrights for third-party components of this work must be honored. For all other uses,
+contact the owner/author(s).
+© 2022 Copyright held by the owner/author(s).
+2475-1421/2022/8-ART110
+https://doi.org/10.1145/3547641
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+arXiv:2209.09729v1  [cs.PL]  20 Sep 2022
+=== page 2 ===
+110:2 András Kovács
+It turns out that metamathematical convenience closely corresponds to metaprogramming
+convenience: 2LTT can be directly and effectively employed in staged compilation. Moreover,
+semantic ideas underlying 2LTT are also directly applicable to the theory of staging.
+1.1 Overview & Contributions
+• In Section 2 we present an informal syntax of two-level type theory, a dependent type theory
+with support for two-stage compilation. We look at basic use cases involving inlining control,
+partial evaluation and fusion optimizations. We also describe feature variations, enabling
+applications in monomorphization and memory layout control.
+• In Section 3, we specify the formal notion of models and syntax for the variant of 2LTT used
+in this paper. We mostly work with a high-level algebraic presentation, where the syntax is
+quotiented by conversion. However, we also explain how to extract functions operating on
+non-quotiented syntax, by interpreting type-theoretic constructions in a setoid model.
+• In Section 4, we review the standard presheaf model of 2LTT [Annenkov et al . 2019, Sec-
+tion 2.5.3], which lies over the syntactic category of the object theory. We show that evaluation
+in this model yields a staging algorithm for closed types and terms. We then extend staging
+to open types and terms which may depend on object-level variables. We show stability of
+staging, which means that staging is surjective up to conversion, and we also show that stag-
+ing strictly preserves all type and term formers. Finally, we discuss efficiency and potential
+practical implementations of staging.
+• In Section 5 we show soundness of staging, which roughly means that the output of staging
+is convertible to its input. Staging together with its stability and soundness can be viewed as
+a strong conservativity theorem of 2LTT over the object theory. This means that the same
+constructions can be expressed in the object theory and the object-level fragment of 2LTT, up
+to conversion, and staging witnesses that meta-level constructions can be always computed
+away. This strengthens the weak notion of conservativity shown in [Capriotti 2017] and
+[Annenkov et al. 2019].
+• In Section 6, we discuss possible semantic interpretations of intensional code analysis, i.e.
+the ability to look into the structure of object-level code.
+• We provide a small standalone implementation of elaboration and staging for a two-level
+type theory [Kovács 2022].
+• To our knowledge, this work is the first formalization and implementation of staged compila-
+tion in the presence of full dependent types, with universes and large elimination. In particular,
+we allow unrestricted staging for types, so that types can be computed by metaprograms at
+compile time.
+2 A TOUR OF TWO-LEVEL TYPE THEORY
+In this section, we provide a short overview of 2LTT and its potential applications in staging.
+We work in the informal syntax of a dependently typed language which resembles Agda [Agda
+developers 2022]. We focus on examples and informal explanation here; the formal details will be
+presented in Section 3.
+Notation 1. We use the following notations throughout the paper.(𝑥 :𝐴)→ 𝐵 denotes a dependent
+function type, where𝑥 may occur in𝐵. We use𝜆𝑥.𝑡 for abstraction. AΣ-type is written as(𝑥 :𝐴)×𝐵,
+with pairing as(𝑡,𝑢), projections as fst and snd, and we may use pattern matching notation on
+pairs, e.g. as in𝜆(𝑥,𝑦).𝑡 . The unit type is⊤ with element tt. We will also use Agda-style notation
+for implicit arguments, where𝑡 :{𝑥 :𝐴}→ 𝐵 implies that the first argument to𝑡 is inferred by
+default, and we can override this by writing a𝑡{𝑢} application. We may also implicitly quantify
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 3 ===
+Staged Compilation with Two-Level Type Theory 110:3
+over arguments (in the style of Idris and Haskell), for example when declaring id :𝐴→𝐴 with the
+assumption that𝐴 is universally quantified.
+2.1 Rules of 2LTT
+2.1.1 Universes. We have universes U𝑖,𝑗 , where𝑖∈{ 0, 1}, and 𝑗∈ N. The𝑖 index denotes stages,
+where 0 is the runtime (object-level) stage, and 1 is the compile time (meta-level) stage. The𝑗 index
+denotes universe sizes in the usual sense of type theory. We assume Russell-style universes, with
+U𝑖,𝑗 : U𝑖,𝑗+1. However, for the sake of brevity we will usually omit the𝑗 indices in this section, as
+sizing is orthogonal to our use-cases and examples.
+• U0 can be viewed as the universe of object-level or runtime types . Each closed type𝐴 : U0 can
+be staged to an actual type in the object language (the language of the staging output).
+• U1 can be viewed as the universe of meta-level or static types . If we have𝐴 : U1, then𝐴 is
+guaranteed to be only present at compile time, and will be staged away. Elements of𝐴 are
+likewise computed away.
+2.1.2 Type Formers. U0 and U1 may be closed under arbitrary type formers, such as functions,
+Σ-types, identity types or inductive types in general. However, all constructors and eliminators in
+type formers must stay at the same stage. For example:
+• Function domain and codomain types must be at the same stage.
+• If we have Nat0 : U0 for the runtime type of natural numbers, we can only map from it to a
+type in U0 by recursion or induction.
+It is not required that we have the same type formers at both stages. We will discuss variations of
+the object-level languages in Section 2.4.
+2.1.3 Moving Between Stages. At this point, our system is rather limited, since there is no interaction
+between the stages. We enable such interaction through the following operations. Note that none of
+these operations can be expressed as functions, since function types cannot cross between stages.
+• Lifting: for𝐴 : U0, we have⇑𝐴 : U1. From the staging point of view, ⇑𝐴 is the type of
+metaprograms which compute runtime expressions of type𝐴.
+• Quoting: for𝐴 : U0 and𝑡 :𝐴, we have⟨𝑡⟩ :⇑𝐴. A quoted term⟨𝑡⟩ represents the metaprogram
+which immediately yields𝑡.
+• Splicing: for𝐴 : U0 and𝑡 :⇑𝐴, we have∼𝑡 :𝐴. During staging, the metaprogram in the splice
+is executed, and the resulting expression is inserted into the output.
+Notation 2. Splicing binds stronger than any operation, including function application. For
+instance,∼𝑓 𝑥is parsed as(∼𝑓)𝑥. We borrow this notation from MetaML [Taha and Sheard
+2000].
+• Quoting and splicing are definitional inverses, i.e. we have∼⟨𝑡⟩ =𝑡 and⟨∼𝑡⟩ =𝑡 as definitional
+equalities.
+Informally, if we have a closed program 𝑡 : 𝐴 with 𝐴 : U0, staging means computing all
+metaprograms and recursively replacing all splices in𝑡 and𝐴 with the resulting runtime expressions.
+The rules of 2LTT ensure that this is possible, and we always get a splice-free object program after
+staging.
+Remark. Why do we use the index 0 for the runtime stage? The reason is that it is not difficult
+to generalize 2LTT to multi-level type theory, by allowing to lift types from U𝑖 to U𝑖+1. In the
+semantics, this can be modeled by having a 2LTT whose object theory is once again a 2LTT, and
+doing this in an iterated fashion. But there must be necessarily a bottom-most object theory; hence
+our stage indexing scheme. For now though, we leave the multi-level generalization to future work.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 4 ===
+110:4 András Kovács
+Notation 3. We may disambiguate type formers at different stages by using 0 or 1 subscripts. For
+example, Nat1 : U1 is distinguished from Nat0 : U0, and likewise we may write zero0 : Nat0 and so
+on. For function and Σ types, the stage is usually easy to infer, so we do not annotate them. For
+example, the type Nat0→ Nat0 must be at the runtime stage, since the domain and codomain
+types are at that stage, and we know that the function type former stays within a single stage. We
+may also omit stage annotations from𝜆 and pairing.
+2.2 Staged Programming in 2LTT
+In 2LTT, we may have several different polymorphic identity functions. First, consider the usual
+identity function at each stage:
+id0 :(𝐴 : U0)→ 𝐴→𝐴 id1 :(𝐴 : U1)→ 𝐴→𝐴
+id0 :=𝜆𝐴𝑥.𝑥 id1 :=𝜆𝐴𝑥.𝑥
+An id0 application will simply appear in staging output as it is. In contrast, id1 can be used as
+a compile-time evaluated function, because the staging operations allow us to freely apply id1
+to runtime arguments. For example, id1(⇑ Bool0)⟨ true0⟩ has type⇑Bool0, which implies that
+∼(id1(⇑ Bool0)⟨ true0⟩) has type Bool0. We can stage this expression as follows:
+∼(id1(⇑ Bool0)⟨ true0⟩) =∼⟨true0⟩ = true0
+There is another identity function, which computes at compile time, but which can be only used on
+runtime arguments:
+id⇑ :(𝐴 :⇑U0)→⇑∼ 𝐴→⇑∼ 𝐴
+id⇑ :=𝜆𝐴𝑥.𝑥
+Note that since𝐴 :⇑U0, we have∼𝐴 : U0, hence⇑∼𝐴 : U1. Also,⇑U0 : U1, so all function domain and
+codomain types in the type of id⇑ are at the same stage. Now, we may write∼(id⇑⟨Bool0⟩⟨ true0⟩)
+for a term which is staged to true0. In this specific case id⇑ has no practical advantage over id1, but
+in some cases we really have to quantify over⇑U0. This brings us to the next example.
+Assume List0 : U0→ U0 with nil0 :(𝐴 : U0)→ List0𝐴, cons0 :(𝐴 : U0)→ 𝐴→ List0𝐴 and
+foldr0 :(𝐴𝐵 : U0)→( 𝐴→𝐵→𝐵)→ 𝐵→ List0𝐴→𝐵. We define a mapping function which
+inlines its function argument:
+map :(𝐴𝐵 :⇑U0)→(⇑∼ 𝐴→⇑∼ 𝐵)→⇑( List0∼𝐴)→⇑( List0∼𝐵)
+map :=𝜆𝐴𝐵𝑓 as.⟨foldr0∼𝐴(List0∼𝐵)(𝜆𝑎 bs. cons0∼𝐵∼(𝑓⟨𝑎⟩) bs)( nil0∼𝐵)∼𝑎𝑠⟩
+This map function can be defined with quantification over ⇑U0 but not over U1, because List0
+expects type parameters inU0, and there is no generic way to convert fromU1 to U0. Now, assuming
+–+0 – : Nat0→ Nat0→ Nat0 and ns : List0 Nat0, we have the following staging behavior:
+∼(map⟨Nat0⟩⟨ Nat0⟩(𝜆𝑛.⟨∼𝑛+0 10⟩)⟨ ns⟩)
+=∼⟨foldr0∼⟨Nat0⟩( List0∼⟨Nat0⟩)
+(𝜆𝑎 bs. cons0∼⟨Nat0⟩∼⟨∼⟨𝑎⟩+ 0 10⟩ bs)( nil0∼⟨Nat0⟩)∼⟨ ns⟩⟩
+= foldr0 Nat0(List0 Nat0)( 𝜆𝑎𝑏𝑠. cons0 Nat0(𝑎+0 10)𝑏𝑠)( nil0 Nat0) ns
+By using meta-level functions and lifted types, we already have control over inlining. However,
+if we want to do more complicated meta-level computation, it is convenient to use recursion or
+induction on meta-level type formers. A classic example in staged compilation is the power function
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 5 ===
+Staged Compilation with Two-Level Type Theory 110:5
+for natural numbers, which evaluates the exponent at compile time. We assume the iterator function
+iter1 :{𝐴 : U1}→ Nat1→( 𝐴→𝐴)→ 𝐴→𝐴, and runtime multiplication as –∗0 –.
+exp : Nat1→⇑ Nat0→⇑ Nat0
+exp :=𝜆𝑥𝑦. iter1𝑥(𝜆𝑛.⟨∼𝑦∗0∼𝑛⟩)⟨ 1⟩
+Now,∼(exp 3⟨𝑛⟩) stages to 𝑛∗0𝑛∗0𝑛∗0 1 by the computation rules of iter1 and the staging
+operations.
+We can also stagetypes. Below, we use iteration to compute the type of vectors with static length,
+as a nested pair type.
+Vec : Nat1→⇑ U0→⇑ U0
+Vec :=𝜆𝑛𝐴. iter1𝑛(𝜆𝐵.⟨∼𝐴×∼𝐵⟩)⟨⊤ 0⟩
+With this definition,∼(Vec 3⟨Nat0⟩) stages to Nat0×( Nat0×( Nat0×⊤ 0)). Now, we can use
+induction on Nat1 to implement a map function. For readability, we use an Agda-style pattern
+matching definition below (instead of the elimination principle).
+map :(𝑛 : Nat1)→(⇑∼ 𝐴→⇑∼ 𝐵)→⇑( Vec𝑛𝐴)→⇑( Vec𝑛𝐵)
+map zero1 𝑓 as :=⟨tt0⟩
+map(suc1𝑛)𝑓 as :=⟨(∼(𝑓⟨fst0∼as⟩),∼(map𝑛𝑓 ⟨snd0∼as⟩))⟩
+This definition inlines the mapping function for each projected element of the vector. For instance,
+staging∼(map 2(𝜆𝑛.⟨∼𝑛+0 10⟩)⟨ ns⟩) yields(fst0 ns+0 10,(fst0(snd0 ns)+ 0 10, tt0)). Sometimes,
+we do not want to duplicate the code of the mapping function. In such cases, we can uselet-insertion,
+a common technique in staged compilation. If we bind a runtime expression to a runtime variable,
+and only use that variable in subsequent staging, only the variable itself can be duplicated. One
+solution is to do an ad-hoc let-insertion:
+let0𝑓 :=𝜆𝑛.𝑛 +0 10 in∼(map 2(𝜆𝑛.⟨𝑓∼𝑛⟩)⟨ ns⟩)
+= let0𝑓 :=𝜆𝑛.𝑛 +0 10 in(𝑓(fst0 ns),(𝑓(fst0(snd0 ns)), tt0))
+We include examples of more sophisticated let-insertion in the supplementary code [Kovács 2022].
+More generally, we are free to use dependent types at the meta-level, so we can reproduce more
+complicated staging examples. Any well-typed interpreter can be rephrased as a partial evaluator,
+as long as we have sufficient type formers. For instance, we may write a partial evaluator for a
+simply typed lambda calculus. We sketch the implementation in the following; the full version can
+be found in the supplementary code. First, we inductively define types, contexts and terms:
+Ty : U1 Con : U1 Tm : Con→ Ty→ U1
+Then we define the interpretation functions:
+EvalTy : Ty→⇑ U0
+EvalCon : Con→ U1
+EvalTm : Tm Γ𝐴→ EvalCon Γ→⇑∼( EvalTy𝐴)
+Types are necessarily computed to runtime types, e.g. an embedded representation of the natural
+number type is evaluated to⟨Nat0⟩. Contexts are computed as follows:
+EvalCon empty :=⊤1
+EvalCon(extend Γ𝐴) := EvalCon Γ×(⇑∼( EvalTy𝐴))
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 6 ===
+110:6 András Kovács
+This is an example for the usage of partially static data [Jones et al. 1993]: semantic contexts are
+static lists storing runtime expressions. This allows us to completely eliminate environment lookups
+in the staging output: an embedded lambda expression is staged to the corresponding lambda
+expression in the object language. This is similar to the partial evaluator presented in Idris 1 [Brady
+and Hammond 2010]. However, in contrast to 2LTT, Idris 1 does not provide a formal guarantee
+that partial evaluation does not get stuck.
+2.3 Properties of Lifting, Binding Time Improvements
+We describe more generally the action of lifting on type formers. While lifting does not have defini-
+tional computation rules, it does preserve negative type formers up to definitional isomorphism
+[Annenkov et al. 2019, Section 2.3]:
+⇑((𝑥 :𝐴)→ 𝐵𝑥)≃(( 𝑥 :⇑𝐴)→⇑( 𝐵∼𝑥))
+⇑((𝑥 :𝐴)× 𝐵𝑥)≃(( 𝑥 :⇑𝐴)×⇑( 𝐵∼𝑥))
+⇑⊤0≃⊤ 1
+For function types, the preservation maps are the following:
+pres→ :⇑((𝑥 :𝐴)→ 𝐵𝑥)→(( 𝑥 :⇑𝐴)→⇑( 𝐵∼𝑥))
+pres→𝑓 :=𝜆𝑥. ⟨∼𝑓∼𝑥⟩
+pres−1
+→ 𝑓 :=⟨𝜆𝑥. ∼(𝑓⟨𝑥⟩)⟩
+With this, we have that pres→(pres−1
+→ 𝑓) is definitionally equal to𝑓 , and also the other way around.
+Preservation maps for Σ and⊤ work analogously.
+By rewriting a 2LTT program left-to-right along preservation maps, we perform what is termed
+binding time improvement in the partial evaluation literature [Jones et al. 1993, Chapter 12]. Note
+that the output of pres→ uses a meta-level𝜆, while going the other way introduces a runtime binder.
+Meta-level function types and Σ-types support more computation during staging, so in many cases
+it is beneficial to use the improved forms. In some cases though we may want to use unimproved
+forms, to limit the size of generated code. This is similar to what we have seen with let-insertion.
+For a minimal example, consider the following unimproved version of id⇑:
+id⇑ :(𝐴 :⇑U0)→⇑(∼ 𝐴→∼𝐴)
+id⇑ :=𝜆𝐴. ⟨𝜆𝑥.𝑥 ⟩
+This can be used at the runtime stage as∼(id⇑⟨Bool0⟩) true0, which is staged to(𝜆𝑥.𝑥 ) true0. This
+introduces a useless𝛽-redex, so in this case the improved version is clearly preferable.
+For inductive types in general we do not get full preservation, only maps in one direction. For
+example, we have Bool1→⇑ Bool0, defined as 𝜆𝑏. if𝑏 then⟨true0⟩ then⟨false0⟩. In the staging
+literature, this is called “serialization” or “lifting” [Sheard and Jones 2002; Taha and Sheard 2000].
+In the other direction, we can only define constant functions from⇑Bool0 to Bool1.
+The lack of elimination principles for⇑𝐴 means that we cannot inspect the internal structure of
+expressions. We will briefly discuss ways to lift this restriction in Section 6.
+In particular, we have no serialization map from Nat1→ Nat1 to⇑(Nat0→ Nat0). However,
+when𝐴 : U1 is finite, and𝐵 : U1 can be serialized, then 𝐴→ 𝐵 can be serialized, because it is
+equivalent to a finite product. For instance, Bool1→ Nat1≃ Nat1× Nat1. In 2LTT, 𝐴 is called
+cofibrant [Annenkov et al. 2019, Section 3.4]: this means that for each𝐵,𝐴→⇑ 𝐵 is equivalent to
+⇑𝐶 for some𝐶. This is the 2LTT formalization of the so-called “trick” in partial evaluation, which
+improves binding times by𝜂-expanding functions out of finite sums [Danvy et al. 1996].
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 7 ===
+Staged Compilation with Two-Level Type Theory 110:7
+2.3.1 Fusion. Fusion optimizations can be viewed as binding time improvement techniques for
+general inductive types. The basic idea is that by lambda-encoding an inductive type, it is brought to
+a form which can be binding-time improved. For instance, consider foldr-build fusion for lists [Gill
+et al. 1993], which is employed in GHC Haskell. Starting from⇑(List0𝐴), we use Böhm-Berarducci
+encoding [Böhm and Berarducci 1985] under the lifting to get
+⇑((𝐿 : U0)→( 𝐴→𝐿→𝐿)→ 𝐿→𝐿)
+≃(( 𝐿 :⇑𝑈0)→(⇑ 𝐴→⇑∼ 𝐿→⇑∼ 𝐿)→⇑∼ 𝐿→⇑∼ 𝐿).
+Alternatively, for stream fusion [Coutts et al. 2007], we embed List𝐴 into the coinductive colists (i.e.
+the possibly infinite lists), and use a terminal lambda-encoding. The embedding into the “larger”
+structure enables some staged optimizations which are otherwise not possible, such as fusion for
+the zip function. However, the price we pay is that converting back to lists from colists is not
+necessarily total.
+We do not detail the implementation of fusion in 2LTT here; a small example can be found in the
+supplementary code. In short, 2LTT is a natural setting for a wide range of fusion setups. A major
+advantage of fusion in 2LTT is the formal guarantee of staging, in contrast to implementations where
+compile-time computation relies on ad-hoc user annotations and general-purpose optimization
+passes. For instance, fusion in GHC relies on rewrite rules and inlining annotations which have to
+be carefully tuned and ordered, and it is possible to get pessimized code via failed fusion.
+2.3.2 Inferring Staging Operations. We can extract a coercive subtyping system from the staging op-
+erations, which can be used for inference, and in particular for automatically transporting definitions
+along preservation isomorphisms. One choice is to have𝐴≤⇑𝐴,⇑𝐴≤𝐴, a contravariant-covariant
+rule for functions and a covariant rule for Σ. During bidirectional elaboration, when we need to
+compare an inferred and an expected type, we can insert coercions. We implemented this feature
+in our prototype. It additionally supports Agda-style implicit arguments and pattern unification, so
+it can elaborate the following definition:
+map :{𝐴𝐵 :⇑U0}→(⇑ 𝐴→⇑𝐵)→⇑( List0𝐴)→⇑( List0𝐵)
+map :=𝜆𝑓 as. foldr0(𝜆𝑎 bs. cons0(𝑓 𝑎) bs) nil0𝑎𝑠
+We may go a bit further, and also add the coercive subtyping ruleU0≤ U1, witnessed by⇑. Then,
+the type of map can be written as{𝐴𝐵 :⇑U0}→( 𝐴→𝐵)→ List0𝐴→ List0𝐵. However, here
+the elaborator has to make a choice, whether to elaborate to improved or unimproved types. In this
+case, the fully unimproved type would be
+{𝐴𝐵 :⇑U0}→⇑((∼ 𝐴→∼𝐵)→ List0∼𝐴→ List0∼𝐵).
+It seems that improved types are a sensible default, and we can insert explicit lifting when we want
+to opt for unimproved types. This is also available in our prototype.
+2.4 Variations of Object-Level Languages
+In the following, we consider variations on object-level languages, with a focus on applications
+in downstream compilation after staging. Adding restrictions or more distinctions to the object
+language can make it easier to optimize and compile.
+2.4.1 Monomorphization. In this case, the object language is simply typed, so every type is known
+statically. This makes it easy to assign different memory layouts to different types and generate
+code accordingly for each type. Moving to 2LTT, we still want to abstract over runtime types at
+compile time, so we use the following setup.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 8 ===
+110:8 András Kovács
+• We have a jugdment, written as𝐴 type0, for well-formed runtime types. Runtime types may
+be closed under simple type formers.
+• We have a type Ty0 : U1 in lieu of the previous⇑U0.
+• For each𝐴 type0, we have⇑𝐴 : Ty0.
+• We have quoting and splicing for types and terms. For types, we send𝐴 type0 to⟨𝐴⟩ : Ty0.
+For terms, we send𝑡 :𝐴 to⟨𝑡⟩ :⇑𝐴.
+Despite the restriction to simple types at runtime, we can still write arbitrary higher-rank polymor-
+phic functions in 2LTT, such as a function with type((𝐴 : Ty0)→⇑∼ 𝐴→⇑∼𝐴)→⇑ Bool0. This
+function can be only applied to statically known arguments, so the polymorphism can be staged
+away. The main restriction that programmers have to keep in mind is that polymorphic functions
+cannot be stored inside runtime data types.
+2.4.2 Memory Representation Polymorphism. This refines monomorphization, so that types are
+not directly identified with memory representations, but instead representations are internalized in
+2LTT as a meta-level type, and runtime types are indexed over representations.
+• We have Rep : U1 as the type of memory representations. We have considerable freedom in
+the specification of Rep. A simple setup may distinguish references from unboxed products,
+i.e. we have Ref : Rep and Prod : Rep→ Rep→ Rep, and additionally we may assume any
+desired primitive machine representation as a value of Rep.
+• We have Russell-style U0,𝑗 : Rep→ U0,𝑗+1𝑟, where𝑟 is some chosen runtime representation
+for types; usually we would mark types are erased. We leave the meta-levelU1,𝑗 hierarchy
+unchanged.
+• We may introduce unboxed Σ-types and primitive machine types in the runtime language.
+For𝑟 : Rep,𝑟′ : Rep,𝐴 : U0𝑟 and𝐵 :𝐴→ U0𝑟′, we may have(𝑥 :𝐴)× 𝐵𝑥 : U0(Prod r r′).
+Thus, we have type dependency, but we do not have dependency in memory representations.
+Since Rep is meta-level, there is no way to abstract over it at runtime, and during staging all Rep
+indices are computed to concrete canonical representations. This is a way to reconcile dependent
+types with some amount of control over memory layouts. The unboxed flavor of Σ ends up with a
+statically known flat memory representation, computed from the representations of the fields.
+3 FORMAL SETUP
+In this section we describe our approach to formalizing staging and also theextraction of algorithms
+from the formalization. There is a tension here:
+• On one hand, we would like to do formal work at a higher level of abstraction, in order to
+avoid a deluge of technical details (for which dependent type theories are infamous).
+• On the other hand, at some point we need to talk about lower-level operational aspects and
+extracted algorithms.
+In the following, we describe our approach to interfacing between the different levels of abstraction.
+3.1 The Algebraic Setting
+When defining staging and proving its soundness and stability, we work internally in a constructive
+type theory, using types and terms that are quotiented by conversion. In this setting, every con-
+struction respects syntactic conversion, which is very convenient technically. Here, we use standard
+definitions and techniques from the categorical and algebraic metatheory of type theories, and
+reuse prior results which rely on the same style of formalization. Concretely, we usecategories with
+families [Castellan et al. 2019] which is a commonly used specification of an explicit substitution
+calculus of types and terms.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 9 ===
+Staged Compilation with Two-Level Type Theory 110:9
+In the rest of the paper we will mostly work in this setting, and we will explicitly note when we
+switch to a different metatheory. We summarize the features of this metatheory in the following.
+Metatheory. The metatheory is an intensional type theory with a cumulative universe hierarchy
+Set𝑖, where𝑖 is ordinal number such that𝑖≤𝜔+ 1. The transfinite𝑖 levels are a convenience feature
+for modeling typing contexts, where sometimes we will need universes large enough to fit types at
+arbitrary finite levels. We also assume uniqueness of identity proofs and function extensionality.
+We will omit transports along identity proofs in the paper, for the sake of readability. The missing
+transports can be in principle recovered due to Hofmann’s conservativity result [Hofmann 1995];
+see also [Winterhalter et al . 2019]. We assume Π, Σ,⊤ and N types in all universes, and reuse
+Notation 3. We also assume certain quotient inductive-inductive types, to represent the syntax of
+2LTT and the object theory. We will detail these shortly in Sections 3.3 and 3.4.
+3.2 Algorithm Extraction
+In the algebraic setting we can only talk about properties which respect syntactic conversion.
+However, the main motivation of staged compilation is to improve performance and code abstraction,
+but these notions do not respect conversion. For instance, rewriting programs along𝛽-conversion
+can improve performance. Hence, at some point we may want to “escape” from quotients.
+Fortunately, our specified meta type theory can be interpreted in setoids, as most recently
+explained in [Pujet and Tabareau 2022]. A setoid is a set together with an equivalence relation on
+it. We interpret closed types as setoids, and dependent types as setoid fibrations. For inductive
+base types such Bool or Nat, the equivalence relation is interpreted as identity. Functions are
+interpreted as equivalence-preserving functions, and two functions are equivalent if they are
+pointwise equivalent. A quotient type 𝐴/𝑅 is interpreted by extending the semantic notion of
+equivalence for𝐴 with the given𝑅 relation. We will sketch the interpretation of the 2LTT syntax
+(given as a quotient inductive-inductive type) in Section 3.3.3.
+In particular, from𝑓 :𝐴/𝑅→𝐴/𝑅 we can extract a function which acts on the underlying set of
+𝐴’s interpretation. Note that an extracted function can be only viewed as an algorithm if the setoid
+interpretation is itself defined in a constructive theory, but that is the case in the cited work [Pujet
+and Tabareau 2022].
+Definition 3.1. Assume a closed function𝑓 :𝐴→𝐵 defined in the mentioned type theory. The
+extraction of𝑓 is the underlying function of𝑓 ’s interpretation in the setoid model.
+In other words, we can view quotients as a convenient shorthand for working with explicit
+equivalence relations. We can work with quotients when we want to enforce preservation of
+equivalence relations, but at any point we have the option to switch to an external view and look
+at underlying sets and functions.
+3.3 Models and Syntax of 2LTT
+We specify the notion of model for 2LTT in this section. The syntax of 2LTT will be defined as the
+initial model, as a quotient inductive-inductive type, following [Altenkirch and Kaposi 2016]. This
+yields an explicit substitution calculus, quotiented by definitional equality. A major advantage of
+this representation is that it only includes well-typed syntax, so we never have to talk about “raw”
+types and terms.
+We provide an appendix to this paper, where we present a listing of all rules and equations
+of 2LTT in two styles: first, in a more traditional style with derivation rules, and also in a very
+compact manner using a second-order algebraic signature.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 10 ===
+110:10 András Kovács
+First, we define the structural scaffolding of 2LTT without type formers, mostly following
+[Annenkov et al. 2019]. The specification is agnostic about the sizes of sets involved, i.e. we can
+model underlying sorts using any metatheoretic Set𝑗.
+Definition 3.2. A model of basic 2LTT consists of the following.
+• A category C with a terminal object. We denote the set of objects asConC : Set and use capital
+Greek letters starting from Γ to refer to objects. The set of morphisms is SubC : ConC→
+ConC→ Set, and we use𝜎,𝛿 and so on to refer to morphisms. The terminal object is written
+as• with unique morphism𝜖 : SubC Γ•. We omit the C subscript if it is clear from context.
+In the initial model, an element of Con is a typing context, an element of Sub is a parallel sub-
+stitution,• is the empty typing context and𝜖 is the empty list viewed as a parallel substitution.
+The identity substitution id : Sub Γ Γ maps each variable to itself, and𝜎◦𝛿 can be computed
+by substituting each term in𝜎 (which is a list of terms) with𝛿.
+• For each𝑖∈{ 0, 1} and 𝑗∈ N, we have Ty𝑖,𝑗 : Con→ Set and Tm𝑖,𝑗 :(Γ : Con)→ Ty𝑖,𝑗 Γ→
+Set, as sets of types and terms. Both types and terms can be substituted:
+–[ –] : Ty𝑖,𝑗 Δ→ Sub Γ Δ→ Ty𝑖,𝑗 Γ
+–[ –] : Tm𝑖,𝑗 Δ𝐴→( 𝜎 : Sub Γ Δ)→ Tm𝑖,𝑗 Γ(𝐴[𝜎])
+Additionally, we have𝐴[id] =𝐴 and𝐴[𝜎◦𝛿] =𝐴[𝜎][𝛿], and we have the same equations
+for term substitution as well.
+We also have a comprehension structure : for each Γ : Con and𝐴 : Ty𝑖,𝑗 Γ, we have the
+extended context Γ ⊲𝐴 : Con such that there is a natural isomorphism Sub Γ(Δ ⊲𝐴) ≃
+(𝜎 : Sub Γ Δ)× Tm𝑖,𝑗 Γ(𝐴[𝜎]). We will sometimes use – ⊲0 – and – ⊲1 – to disambiguate
+object-level and meta-level context extensions.
+• For each 𝑗 we have a lifting structure, consisting of a natural transformation⇑ : Ty0,𝑗 Γ→
+Ty1,𝑗 Γ, and an invertible natural transformation⟨–⟩ : Tm0,𝑗 Γ𝐴→ Tm1,𝑗 Γ(⇑𝐴), with inverse
+∼–.
+The following notions are derivable:
+• By moving left-to-right along Sub Γ(Δ ⊲𝐴)≃( 𝜎 : Sub Γ Δ)× Tm𝑖,𝑗 Γ(𝐴[𝜎]), and starting
+from the identity morphism id : Sub(Γ ⊲𝐴)( Γ ⊲𝐴), we recover the weakening substitution
+p : Sub(Γ ⊲𝐴) Γ and the zero variable q : Tm𝑖,𝑗(Γ ⊲𝐴)(𝐴[p]).
+• By weakening q, we recover a notion of variables as De Bruijn indices. In general, the𝑛-th
+De Bruijn index is defined as q[p𝑛], where p𝑛 denotes𝑛-fold composition of𝑝.
+• By moving right-to-left along Sub Γ(Δ ⊲𝐴)≃( 𝜎 : Sub Γ Δ)× Tm𝑖,𝑗 Γ(𝐴[𝜎]), we recover the
+operation which extends a morphism with a term. In the initial model, this extends a parallel
+substitution with an extra term, thus justifying the view of substitutions as lists of terms. We
+denote the extension operation as(𝜎, 𝑡) for𝜎 : Sub Γ Δ and𝑡 : Tm𝑖,𝑗 Γ(𝐴[𝜎]).
+Notation 4. De Bruijn indices are rather hard to read, so we will sometimes use nameful notation
+for binders and substitutions. For example, we may write Γ ⊲(𝑥 :𝐴) ⊲(𝑦 :𝐵) for a context, and
+subsequently write𝐵[𝑥↦→ 𝑡] for substituting the 𝑥 variable for some term 𝑡 : Tm𝑖,𝑗 Γ𝐴. Using
+nameless notation, we would instead have𝐵 : Ty𝑖,𝑗(Γ ⊲𝐴) and𝐵[id, 𝑡] : Ty𝑖,𝑗 Γ; here we recover
+single substitution by extending the identity substitution id : Sub Γ Γ with𝑡.
+We may also leave weakening implicit: if a type or term is in a context Γ, we may use it in an
+extended context Γ ⊲𝐴 without marking the weakening substitution.
+Definition 3.3. A model of 2LTT is a model of basic 2LTT which supports certain type formers.
+For the sake of brevity, we specify here only a small collection of type formers. However, we will
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 11 ===
+Staged Compilation with Two-Level Type Theory 110:11
+argue later that our results extend to more general notions of inductive types. We specify type
+formers in the following. We omit substitution rules for type and term formers; all of these can be
+specified in an evident structural way, e.g. as in(⇑𝐴)[𝜎] =⇑(𝐴[𝜎]).
+• Universes. For each𝑖 and 𝑗, we have a Coquand-style universe [Coquand 2019] in Ty𝑖,𝑗 . This
+consists of U𝑖,𝑗 : Ty𝑖,𝑗+1 Γ, together with El : Tm𝑖,𝑗+1 Γ U𝑖,𝑗→ Ty𝑖,𝑗 Γ and Code, where Code
+and El are inverses.
+• Σ-types. We have Σ(𝑥 :𝐴)𝐵 : Ty𝑖,𝑗 Γ for𝐴 : Ty𝑖,𝑗 Γ and𝐵 : Ty𝑖,𝑗(Γ ⊲(𝑥 :𝐴)), together with a
+natural isomorphism consisting of pairing and projections:
+Tm𝑖,𝑗 Γ(Σ(𝑥 :𝐴)𝐵)≃( 𝑡 : Tm𝑖,𝑗 Γ𝐴)× Tm𝑖,𝑗 Γ(𝐵[𝑥↦→𝑡])
+We write(𝑡,𝑢) for pairing and fst and snd for projections.
+• Function types. We have Π(𝑥 :𝐴)𝐵 : Ty𝑖,𝑗 Γ for𝐴 : Ty𝑖,𝑗 Γ and𝐵 : Ty𝑖,𝑗(Γ ⊲(𝑥 :𝐴)), together
+with abstraction and application
+lam : Tm𝑖,𝑗(Γ ⊲(𝑥 :𝐴))𝐵→ Tm𝑖,𝑗 Γ(Π(𝑥 :𝐴)𝐵)
+app : Tm𝑖,𝑗 Γ(Π(𝑥 :𝐴)𝐵)→ Tm𝑖,𝑗(Γ ⊲(𝑥 :𝐴))𝐵
+such that lam and app are inverses. Since we have explicit substitutions, this specification of
+app is equivalent to the “traditional” one:
+app′ :(𝑡 : Tm𝑖,𝑗 Γ(Π(𝑥 :𝐴)𝐵))→( 𝑢 : Tm𝑖,𝑗 Γ𝐴)→ Tm𝑖,𝑗 Γ(𝐵[𝑥↦→𝑢]).
+The traditional version is definable as (app𝑡)[ id,𝑢]. We use the app-lam isomorphism
+because it is formally more convenient.
+• Natural numbers. We haveNat𝑖,𝑗 : Ty𝑖,𝑗 Γ, zero𝑖,𝑗 : Tm𝑖,𝑗 Γ Nat𝑖,𝑗 , and suc𝑖,𝑗 : Tm𝑖,𝑗 Γ Nat𝑖,𝑗→
+Tm𝑖,𝑗 Γ Nat𝑖,𝑗 . The eliminator is the following.
+NatElim : (𝑃 : Ty𝑖,𝑘(Γ ⊲(𝑛 : Nat𝑖,𝑗)))
+(𝑧 : Tm𝑖,𝑘 Γ(𝑃[𝑛↦→ zero𝑖,𝑗]))
+(𝑠 : Tm𝑖,𝑘(Γ ⊲(𝑛 : Nat𝑖,𝑗) ⊲(pn :𝑃[𝑛↦→𝑛]))( 𝑃[𝑛↦→ suc𝑖,𝑗 𝑛]))
+(𝑡 : Tm𝑖,𝑗 Γ Nat𝑖,𝑗)
+→ Tm𝑖,𝑘 Γ(𝑃[𝑛↦→𝑡]))
+We also have the𝛽-rules:
+NatElim𝑃𝑧𝑠 zero𝑖,𝑗 =𝑧
+NatElim𝑃𝑧𝑠 (suc𝑖,𝑗 𝑡) =𝑠[𝑛↦→𝑡, pn↦→ NatElim𝑃𝑧𝑠𝑡 ]
+Note that we can eliminate from a level𝑗 to any level𝑘.
+Definition 3.4. The syntax of 2LTT is the initial model of 2LTT, defined as a quotient inductive-
+inductive type [Kaposi et al . 2019b]. The signature for this type includes four sorts ( Con, Sub,
+Ty, Tm), constructors for contexts, explicit substitutions and type/term formers, and equality
+constructors for all specified equations. The syntax comes with an induction principle, from which
+we can also derive the recursion principle as a non-dependent special case, witnessing the initiality
+of the syntax.
+3.3.1 Comparison to Annekov et al. Comparing our models to the primary reference on 2LTT
+[Annenkov et al. 2019], the main difference is the handling of “sizing” levels. In ibid. there is a
+cumulative lifting from Ty𝑖,𝑗 to Ty𝑖,𝑗+1, which we do not assume. Instead, we allow elimination from
+Nat𝑖,𝑗 into any𝑘 level. This means that we can manually define lifting maps from Nat𝑖,𝑗 to Nat𝑖,𝑗+1
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 12 ===
+110:12 András Kovács
+by elimination. This is more similar to e.g. Agda, where we do not have cumulativity, but we can
+define explicit lifting from Nat𝑗 : Set𝑗 to Nat𝑘 : Set𝑘.
+In ibid., “two-level type theory” specifically refers to the setup where the object level is a homotopy
+type theory and the meta level is an extensional type theory. In contrast, we allow a wider range
+of setups under the 2LTT umbrella. Ibid. also considers a range of additional strengthenings and
+extensions of 2LTT [Annenkov et al . 2019, Section 2.4], most of which are useful in synthetic
+homotopy theory. We do not assume any of these and stick to the most basic formulation of 2LTT.
+3.3.2 Elaborating Informal Syntax. The justification for the usage of the informal syntax in Section
+2 is elaboration. Elaboration translates surface notation to the formal syntax (often termed “core
+syntax” in the implementation of dependently typed programming languages). Elaboration is partial:
+it may throw error on invalid input. Elaboration also requires decidability of conversion for the
+formal syntax, since type checking requires comparing types for conversion, which in turn requires
+comparing terms. We do not detail elaboration in this paper, we only make some observations.
+• Decidability of conversion can be shown through normalization. Since 2LTT is a minor
+variation on ordinary MLTT, we expect that existing proofs for MLTT can be adapted
+without issue [Abel et al. 2018; Coquand 2019].
+• We need to elaborate the surface-level Russell-style universe notation to Coquand-style
+universes with explicit El and Code annotations. It is likely that this can be achieved with
+the use of bidirectional elaboration [Dunfield and Krishnaswami 2021], using two directions
+(checking and inference) both for types and terms, and insertingEl and Code when switching
+between types and terms.
+• The formal complexity of elaboration varies wildly, depending on how explicit the surface
+syntax is. For example, Agda-style implicit arguments require metavariables and unification,
+which dramatically increases the difficulty of formalization.
+3.3.3 The Setoid Interpretation of the Syntax. We need to show that the 2LTT syntax, as a particular
+inductive type, can be modeled in setoids. Unfortunately, there is no prior work which presents the
+setoid interpretation of quotient types in the generality of quotient induction-induction. We sketch
+it for our specific use case, but we argue that the interpretation is fairly mechanical and could be
+adapted to any quotient inductive-inductive type. We focus on contexts and types here.
+We mutually inductively define Con : Set, Con∼ : Con→ Con→ Prop, Ty𝑖,𝑗 : Con→ Set and
+Ty∼ : Ty𝑖,𝑗 Γ→ Ty𝑖,𝑗 Δ→ Con∼ Γ Δ→ Prop, where Con∼ and Ty∼ are proof-irrelevant relations.
+Note that Ty∼ is heterogeneous, since we can relate types in different (but provably convertible)
+contexts.
+We specify• and – ⊲ – in Con. To Con∼ we add that• and – ⊲ – are congruences, and also that
+Con∼ is reflexive, symmetric and transitive.
+We add all type formation rules to Ty𝑖,𝑗 , and add all quotient equations to Ty∼ as homo-
+geneously indexed rules. For example, the substitution rule for Nat0 is specified as Nat0[] :
+Ty∼(Nat0[𝜎]) Nat0 refl∼, where 𝜎 : Sub Γ Δ and refl∼ : Con∼ Γ Γ. We also add all congruences
+and reflexivity, symmetry and transitivity to Ty∼.
+We add a coercion rule to types, as coerce : Con∼ Γ Δ→ Ty𝑖,𝑗 Γ→ Ty𝑖,𝑗 Δ. This is probably
+familiar from the traditional specifications of type theories that use conversion relations. However,
+we additionally need a coherence rule which witnesses Ty∼𝐴(coerce𝑝𝐴)𝑝 for each𝐴 : Ty𝑖,𝑗 Γ and
+𝑝 : Con∼ Γ Δ. In short, coherence says that coercion preserves conversion.
+The concise description of this setup is that(Con, Con∼) is a setoid, and(Ty𝑖,𝑗, Ty∼) is a setoid
+fibration over(Con, Con∼), for each𝑖 and 𝑗. This notion of setoid fibration is equivalent to the
+ordinary notion of fibration, when setoids are viewed as categories with proof-irrelevant invertible
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 13 ===
+Staged Compilation with Two-Level Type Theory 110:13
+morphisms. This is appropriate, since types in general are interpreted as setoid fibrations in the
+setoid model of a type theory.
+This scheme generalizes to substitutions and terms in a mechanical way.Sub is indexed over two
+contexts, so it is interpreted as a fibration over the setoid product of Con and Con. Tm is indexed
+over(Γ : Con)× Ty𝑖,𝑗 Γ, so it is interpreted as a fibration over a setoid Σ-type. In every conversion
+relation we take the congruence closure of the specified quotient equations. Finally, we can use the
+induction principle for the thus specified sets and relations to interpret the internal elimination
+principle for the 2LTT syntax.
+3.4 Models and Syntax of the Object Theory
+We also need to specify the object theory, which serves as the output language of staging. In
+general, the object theory corresponding to a particular flavor of 2LTT is simply the type theory
+that supports only the object-level Ty0,𝑗 hierarchy with its type formers.
+Definition 3.5. A model of the object theory is a category-with-families, with types and terms
+indexed over 𝑗∈ N, supporting Coquand-style universes U𝑗, type formers Π, Σ and Nat𝑗, with
+elimination from Nat𝑗 to any level𝑘.
+Definition 3.6. Like before, the syntax of the object theory is the initial model, given as a
+quotient inductive-inductive type, and it can be also interpreted in setoids.
+Notation 5. From now on, by default we use Con, Sub, Ty and Tm to refer to sets in the syntax
+of 2LTT. We use O to refer to the object syntax, and ConO, SubO, TyO and TmO to refer to its
+underlying sets.
+Definition 3.7. We recursively define the embedding of object syntax into 2LTT syntax, which
+preserves all structure strictly and consists of the following functions:
+⌜ –⌝ : ConO→ Con ⌜ –⌝ : SubO Γ Δ→ Sub⌜Γ⌝⌜ Δ⌝
+⌜ –⌝ : TyO𝑗 Γ→ Ty0,𝑗⌜Γ⌝ ⌜ –⌝ : TmO𝑗 Γ𝐴→ Tm0,𝑗⌜Γ⌝⌜𝐴⌝
+4 THE STAGING ALGORITHM
+In this section we specify what we mean by a staging algorithm, then proceed to define one.
+Definition 4.1. A staging algorithm consists of two functions:
+Stage : Ty0,𝑗⌜Γ⌝→ TyO𝑗 Γ Stage : Tm0,𝑗⌜Γ⌝𝐴→ TmO𝑗 Γ(Stage𝐴)
+Note that we can stage open types and terms as long as their contexts are purely object-level. By
+closed staging we mean staging only for closed types and terms.
+Definition 4.2. The following properties are of interest when considering a staging algorithm:
+(1) Soundness:⌜Stage𝐴⌝ =𝐴 and⌜Stage𝑡⌝ =𝑡.
+(2) Stability: Stage⌜𝐴⌝ =𝐴 and Stage⌜𝑡⌝ =𝑡.
+(3) Strictness: the function extracted from Stage preserves all type and term formers strictly (not
+just up to conversion).
+Soundness and stability together state that embedding is a bijection on types and terms (up to
+conversion). This is a statement of conservativity of 2LTT over the object theory. In [Annenkov
+et al. 2019] a significantly weaker conservativity theorem is shown, which only expresses that
+there exists a function from Tm0,𝑗⌜Γ⌝⌜𝐴⌝ to TmO𝑗 Γ𝐴.
+Strictness tells us that staging does not perform any computation in the object theory; e.g. it
+does not perform𝛽-reduction. This is practically quite important; for instance, full normalization of
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 14 ===
+110:14 András Kovács
+2LTT is a sound and stable staging algorithm, but it is not strict, and it is practically not useful,
+since it does not provide any control over inlining and𝛽-reduction in code generation.
+Note that staging necessarily preserves type and term formers up to conversion, since it is defined
+on quotiented types and terms. More generally, staging respects conversion because every function
+must respect conversion in the meta type theory.
+4.1 The Presheaf Model
+We review the presheaf model described in [Annenkov et al. 2019, Section 2.5.3]. This will directly
+yield a closed staging algorithm, by recursive evaluation of 2LTT types and terms in the model.
+We give a higher-level overview first. Presheaves can be viewed as a generalization of sets,
+as “variable sets” which may vary over a base category. A set-based model of 2LTT yields a
+standard interpreter, where every syntactic object is mapped to the obvious semantic counterpart.
+The presheaf model over the category of contexts and substitutions in O generalizes this to an
+interpreter where semantic values may depend on object-theoretic contexts. This allows us to
+handle object-theoretic types and terms during interpretation, since these necessarily depend on
+their contexts.
+In the presheaf model, every semantic construction must bestable under object-level substitution,
+or using alternative terminology, must be natural with respect to substitution. Semantic values
+can be viewed as runtime objects during interpretation, and naturality means that object-theoretic
+substitutions can be applied to such runtime objects, acting on embedded object-theoretic types
+and terms. Stability underlies the core trade-off in staging:
+• On one hand, every syntactic rule and construction in 2LTT must be stable, which restricts
+the range of metaprograms that can be written in 2LTT. For example, we cannot make
+decisions based on sizes of the object-theoretic scopes, since these sizes may be changed by
+substitution.
+• On the other hand, if only stable constructions are possible, we never have to prove stability,
+or even explicitly mention object-theoretic contexts, substitutions and variables. The tedious
+details of deep embeddings can be replaced with a handful of staging operations and typing
+rules.
+In principle, the base category in a 2LTT can be any category with finite products; it is not required
+that it is a category of contexts and substitutions. If the base category has more structure, we get
+more interesting object theories, but at the same time stability becomes more onerous, because we
+must be stable under more morphisms. If the base category is simpler, with fewer morphisms, then
+the requirement of stability is less restrictive. In Section 6, we will look at a concrete example for
+this.
+We proceed to summarize the key components of the model in a bit more detail. We denote the
+components of the model by putting hats on 2LTT components, e.g. as in dCon.
+Notation 6. In this section, we switch to naming elements of ConO as𝑎,𝑏 and𝑐, and elements of
+SubO as𝑓 ,𝑔, andℎ, to avoid name clashing with contexts and substitutions in the presheaf model.
+4.1.1 The Syntactic Category and the Meta-Level Fragment.
+Definition 4.3. dCon : Set𝝎+1 is defined as the set of presheaves over O. Γ : dCon has an action
+on objects|Γ| : ConO→ Set𝜔 and an action on morphisms –[ –] :|Γ|𝑏→ SubO𝑎𝑏→| Γ|𝑎, such
+that𝛾[id] =𝛾 and𝛾[𝑓◦𝑔] =𝛾[𝑓][𝑔].
+Notation 7. Above, we reused the substitution notation –[ –] for the action on morphisms. Also,
+we use lowercase𝛾 and𝛿 to denote elements of|Γ|𝑎 and|Δ|𝑎 respectively.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 15 ===
+Staged Compilation with Two-Level Type Theory 110:15
+Definition 4.4. dSub 𝚪 𝚫 : Set𝝎 is the set of natural transformations from Γ to Δ.𝜎 : dSub Γ Δ has
+action|𝜎| :{𝑎 : ConO}→| Γ|𝑎→| Δ|𝑎 such that|𝜎|(𝛾[𝑓]) =(|𝜎|𝛾)[𝑓].
+Definition 4.5. cTy1,𝒋 𝚪 : Set𝝎 is the set of displayed presheaves over Γ; see e.g. [Huber 2016,
+Chapter 1.2]. This is equivalent to the set of presheaves over the category of elements of Γ, but it is
+usually more convenient in calculations. An𝐴 : bTy Γ has an action on objects|𝐴| :{𝑎 : ConO}→
+|Γ|𝑎→ Set𝑗 and an action on morphisms –[ –] :|𝐴|𝛾→( 𝑓 : SubO𝑎𝑏)→| 𝐴|(𝛾[𝑓]), such that
+𝛼[id] =𝛼 and𝛼[𝑓◦𝑔] =𝛼[𝑓][𝑔].
+Notation 8. We write𝛼 and𝛽 respectively for elements of|𝐴|𝛾 and|𝐵|𝛾.
+Definition 4.6. dTm1,𝒋 𝚪 𝑨 : Set𝝎 is the set of sections of the displayed presheaf𝐴. This can be
+viewed as a dependently typed analogue of a natural transformation. A 𝑡 : cTm1,𝑗 Γ𝐴 has action
+|𝑡| :{𝑎}→( 𝛾 :|Γ|𝑎)→| 𝐴|𝛾 such that|𝑡|(𝛾[𝑓]) =(|𝑡|𝛾)[𝑓].
+We also look at he empty context and context extension with meta-level types, as these will
+appear in subsequent definitions.
+Definition 4.7. b• : dCon is defined as the presheaf which is constantly⊤, i.e.|b•| _ =⊤.
+Definition 4.8. For𝐴 : bTy1,𝑗 Γ, we define 𝚪 b⊲ 𝑨 pointwise by|Γ b⊲𝐴|𝑎 :=(𝛾 :|Γ|𝑎)×| 𝐴|𝛾 and
+(𝛾, 𝛼)[𝑓] :=(𝛾[𝑓], 𝛼[𝑓]).
+Using the above definitions, we can model the syntactic category of 2LTT, and also the meta-level
+family structure and all meta-level type formers. For expositions in previous literature, see [Huber
+2016, Chapter 1.2] and [Hofmann 1997, Section 4.1].
+4.1.2 The Object-Level Fragment. We move on to modeling the object-level syntactic fragment
+of 2LTT. We make some preliminary definitions. First, note that types in the object theory yield
+a presheaf, and terms yield a displayed presheaf over them; this immediately follows from the
+specification of a family structure in a cwf. Hence, we do a bit of a name overloading, and have
+TyO𝑗 : dCon and TmO𝑗 : bTy TyO𝑗.
+Definition 4.9. cTy0,𝒋 𝚪 : Set𝝎 is defined as dSub Γ TyO𝑗, and dTm0,𝒋 𝚪 𝑨 : Set𝝎 is defined as
+cTm Γ(TmO𝑗[𝐴]).
+For illustration, if𝐴 : bTy0,𝑗 Γ, then𝐴 : dSub Γ TyO𝑗, so|𝐴| :{𝑎 : ConO}→| Γ|𝑎→ TyO𝑗𝑎. In other
+words, the action of𝐴 on objects maps a semantic context to a syntactic object-level type. Likewise,
+for𝑡 : cTm0,𝑗 Γ𝐴, we have|𝑡| :(𝛾 :|Γ|𝑎)→ TmO𝑗𝑎(|𝐴|𝛾), so we get a syntactic object-level term
+as output.
+Definition 4.10. For𝐴 : Ty0,𝑗 Γ, we define 𝚪 b⊲ 𝑨 as|Γ b⊲𝐴|𝑎 :=(𝛾 :|Γ|𝑎)× TmO𝑗𝑎(|𝐴|𝛾) and
+(𝛾, 𝑡)[𝑓] :=(𝛾[𝑓], 𝑡[𝑓]). Thus, extending a semantic context with an object-level type appends an
+object-level term.
+Using the above definitions and following [Annenkov et al. 2019], we can model all type formers
+in bTy0,𝑗 . Intuitively, this is because bTy0,𝑗 and cTm0,𝑗 return types and terms, so we can reuse the type
+and term formers in the object theory.
+4.1.3 Lifting.
+Definition 4.11. b⇑𝑨 : cTy1,𝒋 𝚪 is defined as TmO𝑗[𝐴]. With this, we get that cTm0,𝑗 Γ𝐴 is equal to
+cTm1,𝑗 Γ(b⇑𝐴). Hence, we can define both quoting and splicing as identity functions in the model.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 16 ===
+110:16 András Kovács
+4.2 Closed Staging
+Definition 4.12. The evaluation morphism, denoted E is a morphism of 2LTT models, between
+the syntax of 2LTT and ˆO. It is defined by recursion on the syntax (that is, appealing to the initiality
+of the syntax), and it strictly preserves all structure.
+Definition 4.13. Closed staging is defined as follows.
+Stage : Ty0,𝑗•→ TyO𝑗• Stage : Tm0,𝑗•𝐴→ TmO𝑗•(Stage𝐴)
+Stage𝐴 :=|E𝐴|{•} tt Stage 𝑡 :=|E𝑡|{•} tt
+Note that b• is defined as the terminal presheaf, which is constantly⊤. Also,|E𝐴|{•} :|E•|•→
+TyO𝑗•, therefore|E𝐴|{•} :⊤→ TyO𝑗• and|E𝑡|{•} :⊤→ TmO𝑗•(| E𝐴| tt).
+What about general (open) staging though? Given𝐴 : Ty0,𝑗⌜Γ⌝, we get|E𝐴|{ Γ} :|⌜Γ⌝| Γ→
+TyO𝑗. We need an element of|⌜Γ⌝| Γ, in order to obtain object-level type. Such “generic” semantic
+environments should be possible to construct, because elements of|⌜Γ⌝| Γ are essentially lists of
+object-level terms in Γ, by Definitions 4.8 and 4.7, so|⌜Γ⌝| Γ should be isomorphic to SubO Γ Γ. It
+turns out that this falls out from the stability proof of E.
+4.3 Open Staging, Stability and Strictness
+We define a family of functions – 𝑃 by induction on object syntax, such that the interpretation of a
+context yields a generic semantic environment. The induction motives are as follows.
+(Γ : ConO)𝑃 :|E⌜Γ⌝| Γ (𝜎 : SubO Γ Δ)𝑃 : Δ𝑃[𝜎] =|E⌜𝜎⌝| Γ𝑃
+(𝐴 : TyO𝑗 Γ)𝑃 :𝐴 =|E⌜𝐴⌝| Γ𝑃 (𝑡 : TmO𝑗 Γ𝐴)𝑃 :𝑡 =|E⌜𝑡⌝| Γ𝑃
+We look at the interpretation of contexts.
+• For•𝑃, we need an element of|E⌜•⌝|•, hence an element of⊤, so we define•𝑃 as tt.
+• For(Γ ⊲𝐴)𝑃, we need an element of
+(𝛾 :|E⌜Γ⌝|( Γ ⊲𝐴))× TmO𝑗(Γ ⊲𝐴)(| E⌜𝐴⌝|𝛾).
+We have Γ𝑃 :|E⌜Γ⌝| Γ, which we can weaken as Γ𝑃[p] :|E⌜Γ⌝|( Γ ⊲𝐴), so we set the first
+projection of the result as Γ𝑃[p]. For the second projection, the goal type can be simplified
+as follows:
+TmO𝑗(Γ ⊲𝐴)(| E⌜𝐴⌝|( Γ𝑃[p]))
+= TmO𝑗(Γ ⊲𝐴)((| E⌜𝐴⌝| Γ𝑃)[ p]) by naturality of E⌜𝐴⌝
+= TmO𝑗(Γ ⊲𝐴)(𝐴[p]) by𝐴𝑃
+We have the zero de Bruijn variable q : TmO𝑗(Γ ⊲𝐴)(𝐴[p]). Hence, we define(Γ ⊲𝐴)𝑃 as
+(Γ𝑃[p], q).
+Thus, a generic semantic context Γ𝑃 :|E⌜Γ⌝| Γ is just a list of variables, corresponding to the
+identity substitution id : SubO Γ Γ which maps each variable to itself.
+The rest of the– 𝑃 interpretation is straightforward and we omit it here. In particular, preservation
+of definitional equalities is automatic, since types, terms and substitutions are all interpreted as
+proof-irrelevant equations.
+Definition 4.14. We define open staging as follows.
+Stage : Ty0,𝑗⌜Γ⌝→ TyO𝑗 Γ Stage : Tm0,𝑗⌜Γ⌝𝐴→ TmO𝑗 Γ(Stage𝐴)
+Stage𝐴 :=|E𝐴| Γ𝑃 Stage𝑡 :=|E𝑡| Γ𝑃
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 17 ===
+Staged Compilation with Two-Level Type Theory 110:17
+Theorem 4.15. Open staging is stable.
+Proof. For𝐴 : TyO𝑗, Stage⌜𝐴⌝ is by definition|E⌜𝐴⌝| Γ𝑃, hence by𝐴𝑃 it is equal to𝐴. Likewise,
+Stage⌜𝑡⌝ is equal to𝑡 by𝑡 𝑃. □
+Theorem 4.16. Open staging is strict.
+Proof. This is evident from the definition of the presheaf model, where the action of each type
+and term former in bTy0,𝑗 and cTm0,𝑗 Γ𝐴 is defined using the corresponding type or term former in
+the object syntax. □
+4.4 Implementation and Efficiency
+We discuss now the operational behavior of the extracted staging algorithm and look at potential
+adjustments and optimizations that make it more efficient or more convenient to implement. Recall
+the types of the component functions in E:
+| –|◦ E : Ty1𝑗 Γ→{ Δ : ConO}→| E Γ| Δ→ Set𝑗
+| –|◦ E : Ty0𝑗 Γ→{ Δ : ConO}→| E Γ| Δ→ TyO𝑗 Δ
+| –|◦ E : Tm1𝑗 Γ𝐴→{ Δ : ConO}→( 𝛾 :|E Γ| Δ)→| E𝐴|𝛾
+| –|◦ E : Tm0𝑗 Γ𝐴→{ Δ : ConO}→( 𝛾 :|E Γ| Δ)→ TmO 𝑗 Δ(| E𝐴|𝛾)
+We interpret syntactic types or terms in a semantic environment𝛾 :|E Γ| Δ. These environments
+are lists containing a mix of object-level terms and semantic values. The semantic values are
+represented using metatheoretic inductive types and function types.
+•| Nat1| _ is simply the set of natural numbers N.
+•| Σ1𝐴𝐵|𝛾 is simply a set of pairs of values.
+• A non-dependent function type𝐴 c→𝐵 is defined as the presheaf exponential. The computa-
+tional part of|𝐴 c→𝐵|{ Δ}𝛾 is given by a function with type
+(Θ : ConO)→( 𝜎 : SubO Θ Δ)→| 𝐴|(𝛾[𝜎])→| 𝐵|(𝛾[𝜎])
+This may be also familiar as the semantic implication from the Kripke semantics of intuition-
+istic logics. Whenever we evaluate a function application, we supply an extra id : SubO Δ Δ.
+This may incur cost via the𝛾[id] restrictions in a naive implementation, but this is easy to
+optimize, by introducing a formal representation ofid, such that𝛾[id] immediately computes
+to𝛾. The case of dependent functions is analogous operationally.
+In summary, in the meta-level fragment of 2LTT, E yields a reasonably efficient computation of
+closed values, which reuses functions from the ambient metatheory. Alternatively, instead of using
+ambient functions, we could use our own implementation of function closures during staging.
+In contrast, we have a bit of an efficiency problem in the handling of object-level binders: when-
+ever we go under such binder we have to weaken the current semantic environment. Concretely,
+when moving from Δ to Δ ⊲𝐴, we have to shift𝛾 :|E Γ| Δ to𝛾[p] :|E Γ|( Δ ⊲𝐴). This cannot be
+avoided by an easy optimization trick. For object-level entries in the environment, this is cheap,
+because we just add an extra explicit weakening, but for semantic values weakening may need to
+perform deep traversals.
+The same efficiency issue arises in formal presheaf-based normalization-by-evaluation, such as
+in [Altenkirch and Kaposi 2017] and [Coquand 2019]. However, in practical implementations this
+issue can be fully solved by using De Bruijn levels in the semantic domain, thus arranging that
+weakening has no operational cost on semantic values; see [Coquand 1996], [Abel et al. 2011] and
+[Abel and Coquand 2007] for implementations in this style. We can use the same solution in staging.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 18 ===
+110:18 András Kovács
+It is a somewhat unfortunate mismatch that indices are far more convenient in formalization, but
+levels are more efficient in practice.
+In our prototype implementation, we use the above optimization with De Bruijn levels, and
+we drop explicit substitutions from the 2LTT core syntax. In the object-level syntax, we use De
+Bruijn levels for variables and closures in binders. This lets us completely skip the weakening of
+environments, which is slightly more efficient than the more faithfully extracted algorithm.
+Additionally, we use an untyped tagged representation of semantic values, since in Haskell (the
+implementation language) we do not have strong enough types to represent typed semantic values.
+For example, there are distinct data constructors storing semantic function values, natural number
+literals and quoted expressions.
+Caching. In a production-strength implementation we would need some caching mechanism, to
+avoid excessive duplication of code. For example, if we use the staged map function multiple times
+with the same type and function arguments, we do not want to generate separate code for each
+usage. De-duplicating object-level code with function types is usually safe, since function bodies
+become closed top-level code after closure conversion. We leave this to future work.
+5 SOUNDNESS OF STAGING
+In this section we prove soundness of staging. We build a proof-relevant logical relation between
+the evaluation morphism E and a restriction morphism, which restricts 2LTT syntax to object-level
+contexts. The relational interpretations of Ty0,𝑗 and Tm0,𝑗 will yield the soundness property.
+5.1 Working in ˆO
+We have seen that 2LTT can be modeled in the presheaf topos ˆO. Additionally, ˆO supports all type
+formers of extensional type theory and certain other structures which are stable under object-level
+substitution. As all constructions in this section must be stable, it makes sense to work internally
+to ˆO. This style has been previously used in normalization proofs [Coquand 2019] and also in the
+metatheory of cubical type theories [Cavallo et al. 2020; Licata et al. 2018; Orton and Pitts 2016].
+When we work internally in a model of a type theory, we do not explicitly refer to contexts,
+types, and substitutions. For example, when working in Agda, we do not refer to Agda’s typing
+contexts. Instead, we only work with terms, and use functions and universes to abstract over types
+and semantic contexts. Hence, we have to convert along certain isomorphisms when we switch
+between the internal and external views. In the following, we summarize features in ˆO and also the
+internal-external conversions.
+We write cSet𝑗 for ordinal-indexed Russell-style universes. Formally, we have Coquand-style
+universes, but for the sake of brevity we omit El and Code from internal syntax. Universes are
+cumulative, and closed under Π, Σ, extensional identity – = – and inductive types. We use the
+same conventions as in Notation 1.
+The basic scheme for internalization is as follows:
+Γ : dCon is internalized as Γ : cSet𝜔
+𝜎 : dSub Γ Δ is internalized as 𝜎 : Γ→ Δ
+𝐴 : bTy1,𝑗 Γ is internalized as 𝐴 : Γ→ cSet𝑗
+𝑡 : cTm1,𝑗 Γ𝐴 is internalized as 𝑡 :(𝛾 : Γ)→ 𝐴𝛾
+5.1.1 Object-Theoretic Syntax. The syntax of the object theory is clearly fully stable under object-
+theoretic substitution, so we can internalize all of its type and term formers. We internalize
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 19 ===
+Staged Compilation with Two-Level Type Theory 110:19
+object-level types and terms as TyO𝑗 : cSet0 and TmO𝑗 : TyO𝑗→ cSet0. TyO𝑗 is closed under type
+formers. For instance, we have
+Nat𝑗 : TyO𝑗 zero𝑗 : TmO𝑗 Nat𝑗 suc𝑗 : TmO𝑗 Nat𝑗→ TmO𝑗 Nat𝑗
+together with NatElim, and likewise we have all other type formers.
+5.1.2 Internal E. We also use an internal view of E which maps 2LTT syntax to internal values; i.e.
+we compose E with internalization. Below, note that the input to E is external, so we mark E as
+being parameterized by external input.
+E(Γ : Con) : cSet𝜔
+E(𝜎 : Sub Γ Δ) : E Γ→ E Δ
+E(𝐴 : Ty1,𝑗 Γ) : E Γ→ cSet𝑗
+E(𝑡 : Tm1,𝑗 Γ) :(𝛾 : E Γ)→ E𝐴𝛾
+E(𝐴 : Ty0,𝑗 Γ) : E Γ→ TyO𝑗
+E(𝑡 : Tm0,𝑗 Γ𝐴) :(𝛾 : E Γ)→ TmO𝑗(E𝐴𝛾)
+5.1.3 Object-Level Fragment of 2LTT. The purely object-level syntactic fragment of 2LTT can
+be internalized as follows. We define externally the presheaf of object-level types as|Ty0,𝑗| Γ :=
+Ty0,𝑗⌜Γ⌝, and the displayed presheaf of object-level terms overTy0,𝑗 as|Tm0,𝑗|{ Γ}𝐴 := Tm0,𝑗⌜Γ⌝𝐴.
+Hence, internally we haveTy0,𝑗 : cSet0 and Tm0,𝑗 : Ty0,𝑗→ cSet0. Ty0,𝑗 is closed under all type formers,
+analogously as we have seen for TyO𝑗.
+5.1.4 Embedding. Now, the embedding operation⌜ –⌝ can be also internalized on types and terms,
+as⌜ –⌝ : TyO𝑗→ Ty0,𝑗 , and⌜ –⌝ : TmO 𝑗𝐴→ Tm0,𝑗⌜𝐴⌝. Embedding strictly preserves all structure.
+5.2 The Restriction Morphism
+We define a family of functions R from the 2LTT syntax to objects in ˆO. We will relate this to the
+evaluation morphism E in the relational interpretation. In short, R restricts 2LTT syntax so that it
+can only depend on object-level contexts, which are given as⌜Γ⌝.
+Definition 5.1. We specify the types of the restriction operations internally, and the| –| com-
+ponents of the operations externally. The naturality of| –| is straightforward in each case.
+R(Γ : Con) : cSet0 R(𝜎 : Sub Γ Δ) : R Γ→ R Δ
+|R Γ| Δ := Sub⌜Δ⌝ Γ |R𝜎|𝛾 :=𝜎◦𝛾
+R(𝐴 : Ty1,𝑗 Γ) : R𝛾→ cSet0 R(𝑡 : Tm1,𝑗 Γ𝐴) :(𝛾 : R Γ)→ R𝐴𝛾
+|R𝐴|{ Δ}𝛾 := Tm1,𝑗⌜Δ⌝(𝐴[𝛾]) | R𝑡|𝛾 :=𝑡[𝛾]
+R(𝐴 : Ty0,𝑗 Γ) : R Γ→ Ty0,𝑗 R(𝑡 : Tm0,𝑗 Γ𝐴) :(𝛾 : R Γ)→ Tm0,𝑗(R𝐴𝛾)
+|R𝐴|𝛾 :=𝐴[𝛾] | R𝑡|𝛾 :=𝑡[𝛾]
+5.2.1 Preservation Properties of R. First, we note that R strictly preserves id, –◦ – and type/term
+substitution, and it preserves• and – ⊲1 – up to isomorphism. We have the following isomorphisms
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 20 ===
+110:20 András Kovács
+internally to ˆO:
+R• : R•≃⊤
+R⊲1 : R(Γ ⊲1𝐴)≃(( 𝛾 : R Γ)× R𝐴𝛾)
+Notation 9. When we have an isomorphism𝑓 :𝐴≃𝐵, we may write𝑓 for the function in𝐴→𝐵,
+and𝑓−1 :𝐵→𝐴 for its inverse.
+Notation 10. We can use a pattern matching notation on isomorphisms. For example, if𝑓 :𝐴≃𝐵,
+then we may write(𝜆(𝑓 𝑎).𝑡) :𝐵→𝐶, and likewise(𝜆(𝑓−1𝑏).𝑡) :𝐴→𝐶, where the function
+bodies can refer to the bound𝑎 :𝐴 and𝑏 :𝐵 variables.
+The preservation properties R• and R⊲1 mean that R is a pseudomorphism in the sense of [Kaposi
+et al. 2019a], between the syntactic cwf given by(Ty1,𝑗, Tm1,𝑗) and the corresponding cwf structure
+in ˆO. In ibid. there is an analysis of such cwf morphisms, from which we obtain the following
+additional preservation properties:
+• Meta-level Σ-types are preserved up to isomorphism, so we have
+RΣ : R(Σ𝐴𝐵)𝛾≃(( 𝛼 : R𝐴)× R𝐵(R−1
+⊲1(𝛾, 𝛼))).
+The semantic values of R(Σ𝐴𝐵)𝛾 are 2LTT terms with type(Σ𝐴𝐵)[𝛾], restricted to object-
+level contexts. We can still perform pairing and projection with such restricted terms; hence
+the preservation property.
+• Meta-level Π-types and universes are preserved in a lax way. For Π, we have
+Rapp : R(Π𝐴𝐵)𝛾→( 𝛼 : R𝐴𝛾)→ R𝐵(R−1
+⊲1(𝛾, 𝛼))
+such that Rapp(R𝑡𝛾)𝛼 = R(app𝑡)( R−1
+⊲1(𝛾, 𝛼)). In this case, we can apply a restricted term
+with a Π-type to a restricted term, but we cannot do lambda-abstraction, because that would
+require extending the context with a meta-level binder. For U1,𝑗 , we have
+REl : R U1,𝑗𝛾→ cSet𝑗
+such that REl(R𝑡𝛾) = R(El𝑡)𝛾. Here, we only have lax preservation simply because cSet𝑗
+is much larger than the the set of syntactic 2LTT types, so not every semantic cSet𝑗 has a
+syntactic representation.
+• Meta-level positive (inductive) types are preserved in an oplax way. In the case of natural
+numbers, we have
+RN : N→ R Nat1,𝑗𝛾.
+This is a “serialization” map: from a metatheoretic natural number we compute a numeral as a
+closed 2LTT term. This works analogously for other inductive types, including parameterized
+ones. For an example, from a semantic list of restricted terms we would get a syntactic term
+with list type, containing the same restricted terms.
+5.2.2 Action on Lifting. We have an isomorphism R(⇑𝐴)𝛾 ≃ Tm0,𝑗(R𝐴𝛾). This is given by
+quoting and splicing: we convert between restricted meta-level terms with type⇑𝐴 and restricted
+object-level terms with type𝐴. Hence, we write components of this isomorphism as∼– and⟨–⟩,
+as internal analogues of the external operations. With this, we also have R⟨𝑡⟩𝛾 =⟨R𝑡𝛾⟩ and
+R∼𝑡𝛾 =∼(R𝑡𝛾).
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 21 ===
+Staged Compilation with Two-Level Type Theory 110:21
+5.2.3 Action on – ⊲0 –. We have preservation up to isomorphism:
+R⊲0 : R(Γ ⊲0𝐴)≃(( 𝛾 : R Γ)× Tm0,𝑗(R𝐴𝛾))
+This is because substitutions targeting Γ ⊲0𝐴 are the same as pairs of substitutions and terms, by
+the specification of – ⊲0 –.
+5.2.4 Action on Object-Level Types and Terms. R preserves all structure in the object-level fragment
+of 2LTT. This follows from the R specification: an external type𝐴 : Ty0,𝑗 Γ is directly internalized
+as an element of Ty0,𝑗 , and the same happens for𝑡 : Tm0,𝑗 Γ𝐴.
+5.3 The Logical Relation
+Internally to ˆO, we define by induction on the syntax of 2LTT a proof-relevant logical relation
+interpretation, written as –≈. The induction motives are specified as follows.
+(Γ : Con)≈ : E Γ→ R Γ→ cSet𝜔
+(𝜎 : Sub Γ Δ)≈ : Γ≈𝛾𝛾′→ Δ≈(E𝜎𝛾)( R𝜎𝛾′)
+(𝐴 : Ty1,𝑗 Γ)≈ : Γ≈𝛾𝛾′→ E𝐴𝛾→ R𝐴𝛾′→ cSet𝑗
+(𝑡 : Tm1,𝑗 Γ𝐴)≈ :(𝛾≈ : Γ≈𝛾𝛾′)→ 𝐴≈𝛾≈(E𝑡𝛾)( R𝑡𝛾′)
+(𝐴 : Ty0,𝑗 Γ)≈ : Γ≈𝛾𝛾′→⌜E𝐴𝛾⌝ = R𝐴𝛾′
+(𝑡 : Tm0,𝑗 Γ𝐴)≈ : Γ≈𝛾𝛾′→⌜E𝑡𝛾⌝ = R𝑡𝛾′
+For Con, Sub and meta-level types and terms, this is a fairly standard logical relation interpretation:
+contexts are mapped to relations, types to dependent relations, and substitutions and terms respect
+relations. We will only have modest complications in meta-level type formers because we will
+sometimes need to use the lax/oplax preservations properties of R. For object-level types and terms,
+we get soundness statements: evaluation via E followed by embedding back to 2LTT is the same as
+restriction to object-level contexts. We describe the –≈ interpretation in the following.
+5.3.1 Syntactic Category and Terminal Object. Here, we simply haveid≈𝛾≈ :=𝛾≈ and(𝜎◦𝛿)≈𝛾≈ :=
+𝜎≈(𝛿≈𝛾≈). The terminal object is interpreted as•≈𝛾𝛾′ :=⊤.
+5.3.2 Meta-Level Family Structure. We interpret context extension and type/term substitution as
+follows. Note the usage of the pattern matching notation on the R−1
+⊲1 isomorphism.
+(Γ ⊲1𝐴)≈(𝛾, 𝛼)( R−1
+⊲1(𝛾′, 𝛼′)) :=(𝛾≈ : Γ≈𝛾𝛾′)× 𝐴≈𝛾≈𝛼𝛼′
+(𝐴[𝜎])≈𝛾≈𝛼𝛼′ :=𝐴≈(𝜎≈𝛾≈)𝛼𝛼′
+(𝑡[𝜎])≈𝛾≈ :=𝑡≈(𝜎≈𝛾≈)
+It is enough to specify the–≈ action on extended substitutions(𝜎, 𝑡) : Sub Γ(Δ⊲𝐴), p : Sub(Γ⊲𝐴) Γ,
+p : Sub(Γ ⊲𝐴) Γ and q : Tm1,𝑗(Γ ⊲𝐴)(𝐴[p]). The category-with-families equations hold evidently.
+(𝜎, 𝑡)≈𝛾≈ :=(𝜎≈𝛾≈, 𝑡≈𝛾≈) p≈(𝛾≈, 𝑡≈) :=𝛾≈ q≈(𝛾≈, 𝑡≈) :=𝑡≈
+5.3.3 Meta-Level Natural Numbers. First, we have to define a relation:
+(Nat1,𝑗)≈ : Γ≈𝛾𝛾′→ N→ R Nat1,𝑗𝛾′→ cSet𝑗
+(Nat1,𝑗)≈𝛾≈𝑛𝑛′ :=(RN𝑛 =𝑛′)
+Note that evaluation sends Nat1,𝑗 to the semantic type of natural numbers, i.e. E Nat1,𝑗 = N. We
+refer to the serialization map RN : N→ R Nat1,𝑗𝛾′ above. In short,(Nat1,𝑗)≈ expresses canonicity:
+𝑛′ is canonical precisely if it is of the form RN𝑛 for some𝑛.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 22 ===
+110:22 András Kovács
+For zero≈ and suc≈, we need to show that serialization preserveszero and suc respectively, which
+is evident.
+Let us look at elimination. We need to define the following:
+(NatElim𝑃𝑧𝑠𝑛 )≈𝛾≈ :𝑃≈(𝛾≈, 𝑛≈𝛾≈)( E(NatElim𝑃𝑧𝑠𝑛 )𝛾)( R(NatElim𝑃𝑧𝑠𝑛 )𝛾′)
+Unfolding E, we can further compute this to the following:
+(NatElim𝑃𝑧𝑠𝑛 )≈𝛾≈ :
+𝑃≈(𝛾≈, 𝑛≈𝛾≈)( NatElim(𝜆𝑛. E𝑃(𝛾, 𝑛))( E𝑧𝛾)(𝜆𝑛 pn. E𝑠((𝛾, 𝑛), pn))( E𝑛𝛾))
+(R(NatElim𝑃𝑧𝑠𝑛 )𝛾′)
+In short, we need to show that NatElim preserves relations. Here we switch to the external view
+temporarily. By Definition 5.1, we know that
+|R(NatElim𝑃𝑧𝑠𝑛 )|𝛾′ =(NatElim𝑃𝑧𝑠𝑛 ))[𝛾′].
+At the same time, we have 𝑛≈𝛾≈ : RN(E𝑛𝛾) = R𝑛𝛾′, hence we know externally that|E𝑛|𝛾 =
+𝑛[𝛾′]. In other words, 𝑛[𝛾′] is canonical and is obtained as the serialization of E𝑛𝛾 . Therefore,
+(NatElim𝑃𝑧𝑠𝑛 )[𝛾′] is definitionally equal to|E𝑛|𝛾-many applications of𝑠 to𝑧, and we can use
+|E𝑛|𝛾-many applications of𝑠≈ to𝑧≈ to witness the goal type. The 𝛽-rules for NatElim are also
+respected by this definition.
+5.3.4 Meta-Level Σ-Types. We define relatedness pointwise. Pairing and projection are interpreted
+as meta-level pairing and projection.
+(Σ𝐴𝐵)≈𝛾≈ :((𝛼 : E𝐴𝛾)× E𝐵(𝛾, 𝛼))→ R(Σ𝐴𝐵)𝛾′→ cSet𝑗
+(Σ𝐴𝐵)≈𝛾≈(𝛼, 𝛽)( R−1
+Σ(𝛼′, 𝛽′)) :=(𝛼≈ :𝐴≈𝛾≈𝛼𝛼′)× 𝐵≈(𝛾≈, 𝛼≈)𝛽𝛽′
+5.3.5 Meta-Level Π-Types. We again use a pointwise definition. Note that we need to use Rapp to
+apply𝑡′ : R(Π𝐴𝐵)𝛾′ to𝛼′.
+(Π𝐴𝐵)≈𝛾≈ :((𝛼 : E𝐴𝛾)→ E𝐵(𝛾, 𝛼))→ R(Π𝐴𝐵)𝛾′→ cSet𝑗
+(Π𝐴𝐵)≈𝛾≈𝑡𝑡′ :=(𝛼 : E𝐴𝛾)(𝛼′ : R𝐴𝛾′)(𝛼≈ :𝐴≈𝛾≈𝛼𝛼′)→ 𝐵≈(𝛾≈, 𝛼≈)(𝑡𝛼)( Rapp𝑡′𝛼′)
+For abstraction and application, we use a curry-uncurry definition:
+(lam𝑡)≈𝛾≈ :=𝜆𝛼𝛼 ′𝛼≈.𝑡≈(𝛾≈, 𝛼≈)
+(app𝑡)≈(𝛾≈, 𝛼≈) :=𝑡≈𝛾≈𝛼𝛼′𝛼≈
+5.3.6 Meta-Level Universes. We interpret U1,𝑗 as a semantic relation space:
+(U1,𝑗)≈𝛾≈ : cSet𝑗→ R U1,𝑗𝛾′→ cSet𝑗+1
+(U1,𝑗)≈𝛾≈𝑡𝑡′ :=𝑡→ REl𝑡′→ cSet𝑗
+Note that we have
+(El𝑡)≈ :(𝛾≈ : Γ≈𝛾𝛾′)→ E𝑡𝛾 → R(El𝑡)𝛾′→ cSet𝑗
+(Code𝑡)≈ :(𝛾≈ : Γ≈𝛾𝛾′)→ E𝑡𝛾 → R(El𝑡)𝛾′→ cSet𝑗.
+The types coincide because of the equation R(El𝑡)𝛾′ = REl(R𝑡𝛾′). Therefore we can interpret El
+and Code as identity maps, as(El𝑡)≈ :=𝑡≈ and(Code𝑡)≈ :=𝑡≈.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 23 ===
+Staged Compilation with Two-Level Type Theory 110:23
+5.3.7 Object-Level Family Structure. We interpret extended contexts as follows.
+(Γ ⊲0𝐴)≈(𝛾, 𝛼)( R−1
+⊲0(𝛾′, 𝛼′)) :=(𝛾≈ : Γ≈𝛾𝛾′)×( ⌜𝛼⌝ =𝛼′)
+Note that𝛼 : TmO𝑗(E𝐴𝛾), so⌜𝛼⌝ : Tm0,𝑗⌜E𝐴𝛾⌝, but since 𝐴≈𝛾≈ :⌜E𝐴𝛾⌝ = R𝐴𝛾′, we also
+have⌜𝛼⌝ : Tm0,𝑗(R𝐴𝛾′). Thus, the equation⌜𝛼⌝ =𝛼′ is well-typed. For type substitution, we
+need
+(𝐴[𝜎])≈𝛾≈ :⌜E(𝐴[𝜎])𝛾⌝ = R(𝐴[𝜎])𝛾′.
+The goal type computes to⌜E𝐴(E𝜎𝛾)⌝ = R𝐴(R𝜎𝛾′). This is obtained directly from𝐴≈(𝜎≈𝛾≈).
+Similarly,
+(𝑡[𝜎])≈𝛾≈ :=𝑡≈(𝜎≈𝛾≈) p≈(𝛾≈, 𝛼≈) :=𝛾≈
+(𝜎, 𝑡)≈𝛾≈ :=(𝜎≈𝛾≈, 𝑡≈𝛾≈) q≈(𝛾≈, 𝛼≈) :=𝛼≈
+5.3.8 Lifting Structure.
+(⇑𝐴)≈ : Γ≈𝛾𝛾′→ TmO𝑗(E𝐴𝛾)→ R(⇑𝐴)𝛾′→ cSet𝑗
+(⇑𝐴)≈𝛾≈𝑡𝑡′ :=(⌜𝑡⌝ =∼𝑡′)
+This is well-typed by𝐴≈𝛾≈ :⌜E𝐴𝛾⌝ = R𝐴𝛾′, which implies that⌜𝑡⌝ : TmO𝑗(R𝐴𝛾′). For⟨𝑡⟩, we
+need
+⟨𝑡⟩≈𝛾≈ :⌜E⟨𝑡⟩𝛾⌝ =∼(R⟨𝑡⟩𝛾′).
+The goal type can be further computed to⌜E𝑡𝛾⌝ = R𝑡𝛾′, which we prove by𝑡≈𝛾≈. For splicing,
+we need
+(∼𝑡)≈𝛾≈ :⌜E∼𝑡𝛾⌝ = R∼𝑡𝛾′
+where the goal type computes to⌜𝐹𝑡𝛾 ⌝ =∼(R𝑡𝛾′), but this again follows directly from𝑡≈𝛾≈.
+5.3.9 Object-Level Type Formers. Lastly, object-level type formers are straightforward. For types,
+we need⌜E𝐴𝛾⌝ = R𝐴𝛾′, and likewise for terms. Note that E and⌜ –⌝ preserve all structure, and
+R preserves all structure on object-level types and terms. Hence, each object-level𝐴 and𝑡 case in
+–≈ trivially follows from induction hypotheses.
+This concludes the definition of the –≈ interpretation.
+5.4 Soundness
+Definition 5.2. First, we introduce shorthands for external operations that can be obtained from
+–≈.
+For Γ : Con we get |Γ≈| :{Δ : ConO}→| E Γ| Δ→ Sub⌜Δ⌝ Γ→ Set𝑗
+For 𝐴 : Ty0,𝑗 Γ we get |𝐴≈| :|Γ≈|𝛾𝛾′→⌜E𝐴𝛾⌝ =𝐴[𝛾′]
+For 𝑡 : Tm0,𝑗 Γ𝐴 we get |𝑡≈| :|Γ≈|𝛾𝛾′→⌜E𝑡𝛾⌝ =𝑡[𝛾′]
+Since –≈ was defined in ˆO, we also know that the above are all stable under object-theoretic
+substitution.
+Theorem 5.3 (Soundness for generic contexts). For each Γ : ConO, we have Γ𝑃≈ :|Γ≈| Γ𝑃 id.
+Proof. We define – 𝑃≈ by induction on object-theoretic contexts.•𝑃≈ :⊤ is defined trivially
+as tt. For(Γ ⊲𝐴)𝑃≈, we need(𝛾≈ :|Γ|≈(Γ𝑃[p]) p)×( ⌜q⌝ = q). We get Γ𝑃≈ :|Γ≈| Γ𝑃 id. Because
+of the naturality of|Γ≈|, this can be weakened to Γ𝑃≈[p] :|Γ≈|( Γ𝑃[p]) p. Also,⌜q⌝ = q holds
+immediately. □
+Theorem 5.4 (Soundness of staging). The open staging algorithm from Definition 4.14 is sound.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 24 ===
+110:24 András Kovács
+Proof.
+• For𝐴 : Ty0,𝑗⌜Γ⌝, we have that ⌜Stage𝐴⌝ =⌜|E𝐴| Γ𝑃⌝ by the definition of Stage, and
+moreover we have|𝐴≈| Γ𝑃≈ :⌜|E𝐴| Γ𝑃⌝ =𝐴[id], hence⌜Stage𝐴⌝ =𝐴.
+• For 𝑡 : Tm0,𝑗⌜Γ⌝𝐴, using |𝑡≈| Γ𝑃≈ : ⌜|E𝑡| Γ𝑃⌝ = 𝑡[id], we likewise have ⌜Stage𝑡⌝ =
+⌜|E𝑡| Γ𝑃⌝ =𝑡[id] =𝑡.
+□
+Corollary 5.5 (Conservativity of 2LTT). From the soundness and stability of staging, we get
+that⌜ –⌝ is bijective on types and terms, hence TyO𝑗 Γ≃ Ty0,𝑗⌜Γ⌝ and TmO𝑗 Γ𝐴≃ Tm0,𝑗⌜Γ⌝⌜𝐴⌝.
+Alternative presentations. The above conservativity proof could be rephrased as an instance of
+more modern techniques which let us implicitly handle stability under 2LTT substitutions as well,
+not just O substitutions. This amounts to working in a modal internal language, where modalities
+control the interaction of the different base categories.
+• Using synthetic Tait computability [Sterling 2021], we work in the internal language of the
+glued category Id ˆO↓ R.
+• Using relative induction [Bocquet et al. 2021], we work in the modal type theory obtained
+from the dependent right adjoint functor R∗ : 2LTT→ ˆO, where 2LTT denotes presheaves
+over the syntactic category of 2LTT.
+We do not use either of these in this paper, for the following reasons. First, the author of the paper
+is not sufficiently familiar with the above techniques. Second, the task at hand is not too technically
+difficult, so using advanced techniques is not essential. Contrast e.g. normalization for cubical type
+theories, which is not feasible to handle without the more synthetic presentations [Sterling and
+Angiuli 2021].
+6 INTENSIONAL ANALYSIS
+We briefly discuss intensional analysis in this section. This means analyzing the internal structure
+of object-level terms, i.e. values of⇑𝐴. Disallowing intensional analysis is a major simplification,
+which is sometimes enforced in implementations, for example in MetaML [Taha and Sheard 2000].
+If we have sufficiently expressive inductive types in the meta-level language, it is possible to
+simply use inductive deeply embedded syntaxes, which can be analyzed; our example in Section
+2.2 for embedding a simply typed lambda calculus is like this. However, native metaprogramming
+features could be more concise and convenient than deep embeddings, similarly to how staged
+programming is more convenient than code generation with deeply embedded syntaxes.
+In the following, we look at the semantics of intensional analysis in the standard presheaf models.
+We only discuss basic semantics here, and leave practical considerations to future work.
+Definition 6.1. The Yoneda embedding is a functor from O to ˆO, sending Γ : ConO to yΓ : dCon,
+such that|yΓ| Δ = SubO Δ Γ. We say that Γ : dCon is representable if it is isomorphic to a Yoneda-
+embedded context.
+Lemma 6.2 (Yoneda lemma). We have dSub(yΓ) Δ≃| Δ| Γ [Mac Lane 1998, Section III.2]. Also, we
+have cTm1,𝑗(yΓ)𝐴≃| 𝐴| id, where id : SubO Γ Γ.
+The Yoneda lemma restricts possible dependencies on representable contexts. For example,
+consider the staging behavior of 𝑡 : Tm1(• ⊲(𝑥 : Bool0)) Bool1. Staging 𝑡 yields essentially a
+natural transformation dSub(E(• ⊲ Bool0)) B, where B is the metatheoretic type with two elements,
+considered as a constant presheaf. Now, ifE(• ⊲ Bool0) is representable, then dSub(E(• ⊲Bool0)) B≃
+B, so𝑡 can be staged in at most two different ways.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 25 ===
+Staged Compilation with Two-Level Type Theory 110:25
+Which contexts are representable? In the specific 2LTT in this paper,⌜Γ⌝ is always representable
+in the presheaf model.|E⌜Γ⌝| Δ contains lists of object-theoretic terms, hence E⌜Γ⌝≃ yΓ. This
+implies that intensional analysis is not compatible with the standard presheaf model, for our 2LTT.
+Consider a very basic feature of intensional analysis, decidability of definitional equality for
+object-level Boolean expressions.
+decEq :(𝑥𝑦 :⇑ Bool0)→( 𝑥 =1𝑦)+ 1(𝑥 ≠1𝑦)
+The Yoneda lemma says that decEq cannot actually decide definitional equality. We expect that
+decEq lets us define non-constant maps from⇑ Bool0 to Bool1, but the Yoneda lemma implies that
+we only have two terms with distinct semantics in Tm1(• ⊲0 Bool0) Bool1.
+A more direct way to show infeasibility of decEq in ˆO is to note that definitional inequality for
+object-level terms is not stable under substitution, since inequal variables can be mapped to equal
+terms.
+Stability under weakening only. We can move to different 2LTT setups, where stability under
+substitution is not required. We may have weakenings only as morphisms in O. A weakening from
+Γ to Δ describes how Γ can be obtained by inserting zero or more entries to Δ. A wide range of
+intensional analysis features are stable under weakenings. For example, decEq now holds in ˆO
+whenever object-theoretic definitional equality is in fact decidable. We also dodge the Yoneda
+lemma, since E⌜Γ⌝ is not necessarily representable anymore:|E⌜Γ⌝| Δ is still a set of lists of terms,
+but weakenings from Δ to Γ are not lists of terms.
+As a trade-off, if there is no notion of substitution in the specification of the object theory, it is
+not possible to specify dependent or polymorphic types there. We need a substitution operation to
+describe dependent elimination or polymorphic instantiation.
+However, stability under weakening is still sufficient for many practical use cases, for example
+the monomorphization setup in Section 2.4.1. Here, we only have weakening as definitional equality
+in the object theory, and we do not have𝛽𝜂-rules.
+Closed modalities. Another option is to add a closed or crisp modality for modeling closed object-
+level terms [Licata et al. 2018]. Since closed terms are not affected by substitution, we are able to
+analyze them, and we can also recover open terms by explicitly abstracting over contexts [Hofmann
+1999; Hu et al. 2022]. Function pointers in the style of the C programming language could be also an
+interesting use case, since these must become closed after staging (as they cannot capture closure
+environments).
+7 RELATED WORK
+The work Annekov et al. on two-level type theory [Annenkov et al. 2019], building on [Capriotti
+2017] and [Voevodsky 2013], is the foremost inspiration in the current work. Interestingly, the
+above works do mention metaprogramming as a source of intuition for 2LTT, but they only briefly
+touch on this aspect, and in [Annenkov et al . 2019] the main focus is on extensions of basic
+2LTT which do not have staging semantics anymore. Ibid. conjectures the strong conservativity of
+2LTT in Proposition 2.18, and suggests categorical gluing as proof strategy. In this work, we do
+essentially that: our presheaf model and the logical relation model could be merged into a single
+instance of gluing along the R morphism; this merges staging and its soundness proof. We split
+this construction to two parts in order to get a self-contained presentation of the staging algorithm.
+[Hofmann 1999] models higher-order abstract syntax of simply typed object languages in
+presheaves over various syntactic categories. The main difference between HOAS and 2LTT is
+that the former represents object-level binders using meta-level functions while the latter has a
+primitive notion of object-level binding.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 26 ===
+110:26 András Kovács
+The multi-stage calculus in [Kawata and Igarashi 2019] supports staging operations and type
+dependencies. However, there are major differences to the current work. First, ibid. does not have
+large elimination, hence it does not support computing types by staging. Second, it does not
+support staged compilation in the sense of Definition 4.1; there is no judgment which ensures that
+staging operations can be eliminated and a purely “object-level” program can be extracted from
+a multi-stage program. Rather, the system supports runtime code generation. There are several
+modal multi-stage systems which support runtime code generation but not staged compilation,
+such as those based on S4 modalities (e.g. [Davies and Pfenning 2001]) or contextual modalities
+([Jang et al. 2022]).
+Idris 1 supports compile-time partial evaluation, through static annotations on function argu-
+ments [Brady and Hammond 2010]. This can be used for dependently typed code generation, but
+Idris 1 does not guarantee that partial evaluation adequately progresses. For example, we can pass
+a neutral value as static argument in Idris 1, while in 2LTT static function arguments are always
+canonical during staging.
+Our notation for quoting and splicing is borrowed from MetaML [Taha and Sheard 2000]. In the
+following, we compare 2LTT to MetaML, MetaOCaml [Kiselyov 2014] and typed Template Haskell
+[Xie et al. 2022].
+2LTT explicitly tracks stages of types, in contrast to the mentioned systems. There, we have type
+lifting (usually called Code), quoting and splicing, but lifting does not change the universe of types.
+We can write a function with type Bool→ Code Bool, and the two Bool occurrences refer to the
+exact same type.
+This causes some operational confusion down the line, and additional disambiguation is needed
+for stages of binders. For example, in typed Template Haskell, top-level binders behave as runtime
+binders when used under a quote, but behave as static binders otherwise. Given a top-level definition
+𝑏 = True, if we write a top-level definition expr =[||𝑏||] , then𝑏 is a variable in the staging output,
+but if we write expr = if𝑏 then[|| True||] else[|| False||] , then𝑏 is considered to be a static value.
+In contrast, 2LTT does not distinguish top-level and local binders, and in fact it has no syntactic or
+scope-based restrictions; everything is enforced by typing.
+2LTT supports staging for types and dependent types, while to our knowledge no previous
+system for staged compilation does the same. It appears to the author that the main missing
+component in previous systems is dependent types at the meta level , rather than staging operations;
+staging operations in 2LTT and MetaOCaml are already quite similar. For example, any interesting
+operation on the static-length vectors in Section 2.2 requires meta-level dependent types, even if
+the object language is simply typed.
+In MetaOCaml, there is a run function for evaluating closed object-level terms, however, this can
+fail during staging since closedness is not statically ensured. In our setting, this could be reproduced
+in a safe way using a closed modality; this is part of future work.
+Additionally, 2LTT only supports two stages, while the other noted systems allow countable
+stages. It remains future work to develop NLTT (N-level type theory), but this extension does
+appear to be straightforward. In the specification of NLTT, we would simply need to move from
+𝑖∈{ 0, 1} to𝑖∈ N, although in the semantics there could be more subtleties.
+Many existing staged systems also support side effects at compile time, while our version of 2LTT
+does not. Here, general considerations about the mixing of dependent types and effects should
+apply; see e.g. [Pédrot and Tabareau 2020]. However, it should be possible to use standard effect
+systems such as monads at the meta level.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 27 ===
+Staged Compilation with Two-Level Type Theory 110:27
+8 CONCLUSIONS AND FUTURE WORK
+We developed the foundational metatheory of 2LTT as a system of two-stage compilation. We view
+the current results as more like a starting point to more thorough investigation into applications
+and extensions; in this paper we only sketched these.
+We emphasize that variants of 2LTT can serve as languages where staging features can be
+practically implemented, and also as metatheories, not only for the formalization for staging
+techniques, but also more generally for reasoning about constructions in object languages. This
+purpose is prominent in the original 2LTT use case in synthetic homotopy theory. The meta-level
+language in a 2LTT can be expressive enough to express general mathematics, and the meta-level
+propositional equality – =1 – can be used to prove 𝛽𝜂-equality of object-level types and terms.
+For example, we could use object theories asshallowly embedded target languages of optimization
+techniques and program translations. In particular, we may choose a low-level object theory without
+higher-order functions, and formalize closure conversion as an interpretation of an embedded
+meta-level syntax into the object theory.
+There is much future work in adapting existing staging techniques to 2LTT (which, as we
+mentioned, can double as formalization of said techniques), or adding staging where it has not
+been available previously.
+• Let-insertion techniques. These allow more precise control over positions of insertion, or
+smarter selection of such positions. In 2LTT, meta-level continuation monads could be
+employed to adapt some of the features in [Kameyama et al. 2011]. The automatic let-floating
+feature of MetaOCaml [Kiselyov and Yallop 2022] requires strengthening of terms, which
+is not stable under substitution, but it is stable under weakening, so perhaps it could be
+implemented as an “intensional analysis” feature.
+• Generic programming with dependent types . There is substantial literature in this area (e.g.
+[Chapman et al . 2010; Dagand 2017; Diehl 2017; Löh and Magalhães 2011]), but only in
+non-staged settings. 2LTT should immediately yield staging for these techniques, assuming
+that the meta level has sufficient type formers (e.g. induction-recursion). We could also try to
+adapt previous work on generic treatment of partially static data types [Yallop et al. 2018];
+fully internalizing this in 2LTT would also require dependent types.
+There are also ways that 2LTT itself could be enhanced.
+• More stages, stage polymorphism . Currently, there is substantial code duplication if the object-
+level and meta-level languages are similar. Stage polymorphism could help reduce this. A
+simple setup could include three stages, the runtime one, the static one, and another one
+which supports polymorphism over the first two stages.
+• Modalities. We mentioned the closed modality in Section 6. More generally, manymultimodal
+[Gratzer et al. 2020] type theories could plausibly support staging. 2LTT itself can be viewed
+as a very simple multimodal theory with⇑ as the only modality, which is also degenerate
+(because it entails no structural restriction on contexts). We could support multiple object
+theories, with modalities for lifting them to the meta level or for representing translations be-
+tween them. We could also have modalities for switching between stability under substitution
+and stability under weakening.
+• Intensional analysis. We only touched on the most basic semantics of intensional analysis
+in Section 6. It remains a substantial challenge to work out the practicalities. For good
+ergonomics, we would need something like a “pattern matching” operation on object-level
+terms, or some induction principle which is more flexible than the plain assumption of
+decidable object-level equality.
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 28 ===
+110:28 András Kovács
+9 DATA AVAILABILITY STATEMENT
+A standalone prototype implementation is available as [Kovács 2022]. It implements elaboration
+and staging for a 2LTT. It includes a tutorial and code examples that expand on the contents of
+Section 2.
+REFERENCES
+Andreas Abel and Thierry Coquand. 2007. Untyped Algorithmic Equality for Martin-Löf’s Logical Framework with Surjective
+Pairs. Fundam. Informaticae 77, 4 (2007), 345–395. http://content.iospress.com/articles/fundamenta-informaticae/fi77-4-
+05
+Andreas Abel, Thierry Coquand, and Miguel Pagano. 2011. A Modular Type-checking algorithm for Type Theory with
+Singleton Types and Proof Irrelevance. Log. Methods Comput. Sci. 7, 2 (2011). https://doi.org/10.2168/LMCS-7(2:4)2011
+Andreas Abel, Joakim Öhman, and Andrea Vezzosi. 2018. Decidability of conversion for type theory in type theory. Proc.
+ACM Program. Lang. 2, POPL (2018), 23:1–23:29. https://doi.org/10.1145/3158111
+Agda developers. 2022. Agda documentation. https://agda.readthedocs.io/en/v2.6.2.1/
+Thorsten Altenkirch and Ambrus Kaposi. 2016. Type theory in type theory using quotient inductive types. InProceedings of the
+43rd Annual ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages, POPL 2016, St. Petersburg, FL, USA,
+January 20 - 22, 2016 , Rastislav Bodik and Rupak Majumdar (Eds.). ACM, 18–29. https://doi.org/10.1145/2837614.2837638
+Thorsten Altenkirch and Ambrus Kaposi. 2017. Normalisation by Evaluation for Type Theory, in Type Theory. Logical
+Methods in Computer Science Volume 13, Issue 4 (Oct. 2017). https://doi.org/10.23638/LMCS-13(4:1)2017
+Danil Annenkov, Paolo Capriotti, Nicolai Kraus, and Christian Sattler. 2019. Two-Level Type Theory and Applications.
+ArXiv e-prints (may 2019). http://arxiv.org/abs/1705.03307
+Rafaël Bocquet, Ambrus Kaposi, and Christian Sattler. 2021. Relative induction principles for type theories. arXiv preprint
+arXiv:2102.11649 (2021).
+Corrado Böhm and Alessandro Berarducci. 1985. Automatic Synthesis of Typed Lambda-Programs on Term Algebras. Theor.
+Comput. Sci. 39 (1985), 135–154. https://doi.org/10.1016/0304-3975(85)90135-5
+Edwin C. Brady and Kevin Hammond. 2010. Scrapping your inefficient engine: using partial evaluation to improve
+domain-specific language implementation. In Proceeding of the 15th ACM SIGPLAN international conference on Functional
+programming, ICFP 2010, Baltimore, Maryland, USA, September 27-29, 2010 , Paul Hudak and Stephanie Weirich (Eds.).
+ACM, 297–308. https://doi.org/10.1145/1863543.1863587
+Paolo Capriotti. 2017. Models of type theory with strict equality. arXiv preprint arXiv:1702.04912 (2017).
+Simon Castellan, Pierre Clairambault, and Peter Dybjer. 2019. Categories with Families: Unityped, Simply Typed, and
+Dependently Typed. CoRR abs/1904.00827 (2019). arXiv:1904.00827 http://arxiv.org/abs/1904.00827
+Evan Cavallo, Anders Mörtberg, and Andrew W. Swan. 2020. Unifying Cubical Models of Univalent Type Theory. In
+28th EACSL Annual Conference on Computer Science Logic, CSL 2020, January 13-16, 2020, Barcelona, Spain (LIPIcs,
+Vol. 152), Maribel Fernández and Anca Muscholl (Eds.). Schloss Dagstuhl - Leibniz-Zentrum für Informatik, 14:1–14:17.
+https://doi.org/10.4230/LIPIcs.CSL.2020.14
+James Chapman, Pierre-Évariste Dagand, Conor McBride, and Peter Morris. 2010. The gentle art of levitation. ACM Sigplan
+Notices 45, 9 (2010), 3–14.
+Thierry Coquand. 1996. An Algorithm for Type-Checking Dependent Types. Sci. Comput. Program. 26, 1-3 (1996), 167–177.
+https://doi.org/10.1016/0167-6423(95)00021-6
+Thierry Coquand. 2019. Canonicity and normalization for dependent type theory. Theor. Comput. Sci. 777 (2019), 184–191.
+https://doi.org/10.1016/j.tcs.2019.01.015
+Duncan Coutts, Roman Leshchinskiy, and Don Stewart. 2007. Stream fusion: from lists to streams to nothing at all. In
+Proceedings of the 12th ACM SIGPLAN International Conference on Functional Programming, ICFP 2007, Freiburg, Germany,
+October 1-3, 2007, Ralf Hinze and Norman Ramsey (Eds.). ACM, 315–326. https://doi.org/10.1145/1291151.1291199
+Pierre-Évariste Dagand. 2017. The essence of ornaments. J. Funct. Program. 27 (2017), e9. https://doi.org/10.1017/
+S0956796816000356
+Olivier Danvy, Karoline Malmkjær, and Jens Palsberg. 1996. Eta-Expansion Does The Trick. ACM Trans. Program. Lang.
+Syst. 18, 6 (1996), 730–751. https://doi.org/10.1145/236114.236119
+Rowan Davies and Frank Pfenning. 2001. A modal analysis of staged computation. J. ACM 48, 3 (2001), 555–604. https:
+//doi.org/10.1145/382780.382785
+Larry Diehl. 2017. Fully Generic Programming over Closed Universes of Inductive-Recursive Types. Ph. D. Dissertation. Portland
+State University.
+Jana Dunfield and Neel Krishnaswami. 2021. Bidirectional Typing. ACM Comput. Surv. 54, 5 (2021), 98:1–98:38. https:
+//doi.org/10.1145/3450952
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 29 ===
+Staged Compilation with Two-Level Type Theory 110:29
+Andrew John Gill, John Launchbury, and Simon L. Peyton Jones. 1993. A Short Cut to Deforestation. In Proceedings of the
+conference on Functional programming languages and computer architecture, FPCA 1993, Copenhagen, Denmark, June 9-11,
+1993, John Williams (Ed.). ACM, 223–232. https://doi.org/10.1145/165180.165214
+Daniel Gratzer, G. A. Kavvos, Andreas Nuyts, and Lars Birkedal. 2020. Multimodal Dependent Type Theory. InLICS ’20: 35th
+Annual ACM/IEEE Symposium on Logic in Computer Science, Saarbrücken, Germany, July 8-11, 2020 , Holger Hermanns,
+Lijun Zhang, Naoki Kobayashi, and Dale Miller (Eds.). ACM, 492–506. https://doi.org/10.1145/3373718.3394736
+Martin Hofmann. 1995. Extensional concepts in intensional type theory . University of Edinburgh, Department of Computer
+Science.
+Martin Hofmann. 1997. Syntax and Semantics of Dependent Types. In Semantics and Logics of Computation . Cambridge
+University Press, 79–130.
+Martin Hofmann. 1999. Semantical Analysis of Higher-Order Abstract Syntax. In 14th Annual IEEE Symposium on Logic in
+Computer Science, Trento, Italy, July 2-5, 1999 . IEEE Computer Society, 204–213. https://doi.org/10.1109/LICS.1999.782616
+Jason Z. S. Hu, Brigitte Pientka, and Ulrich Schöpp. 2022. A Category Theoretic View of Contextual Types: from Simple
+Types to Dependent Types. CoRR abs/2206.02831 (2022). https://doi.org/10.48550/arXiv.2206.02831 arXiv:2206.02831
+Simon Huber. 2016. Cubical Interpretations of Type Theory . Ph. D. Dissertation. University of Gothenburg.
+Junyoung Jang, Samuel Gélineau, Stefan Monnier, and Brigitte Pientka. 2022. Mœbius: metaprogramming using contextual
+types: the stage where system f can pattern match on itself. Proc. ACM Program. Lang. 6, POPL (2022), 1–27. https:
+//doi.org/10.1145/3498700
+Neil D. Jones, Carsten K. Gomard, and Peter Sestoft. 1993. Partial evaluation and automatic program generation . Prentice
+Hall.
+Yukiyoshi Kameyama, Oleg Kiselyov, and Chung-chieh Shan. 2011. Shifting the stage - Staging with delimited control. J.
+Funct. Program. 21, 6 (2011), 617–662. https://doi.org/10.1017/S0956796811000256
+Ambrus Kaposi, Simon Huber, and Christian Sattler. 2019a. Gluing for Type Theory. In4th International Conference on Formal
+Structures for Computation and Deduction, FSCD 2019, June 24-30, 2019, Dortmund, Germany (LIPIcs, Vol. 131) , Herman
+Geuvers (Ed.). Schloss Dagstuhl - Leibniz-Zentrum für Informatik, 25:1–25:19. https://doi.org/10.4230/LIPIcs.FSCD.2019.25
+Ambrus Kaposi, András Kovács, and Thorsten Altenkirch. 2019b. Constructing quotient inductive-inductive types. Proc.
+ACM Program. Lang. 3, POPL (2019), 2:1–2:24. https://doi.org/10.1145/3290315
+Akira Kawata and Atsushi Igarashi. 2019. A Dependently Typed Multi-stage Calculus. In Programming Languages and
+Systems - 17th Asian Symposium, APLAS 2019, Nusa Dua, Bali, Indonesia, December 1-4, 2019, Proceedings (Lecture Notes in
+Computer Science, Vol. 11893), Anthony Widjaja Lin (Ed.). Springer, 53–72. https://doi.org/10.1007/978-3-030-34175-6_4
+Oleg Kiselyov. 2014. The Design and Implementation of BER MetaOCaml - System Description. In Functional and Logic
+Programming - 12th International Symposium, FLOPS 2014, Kanazawa, Japan, June 4-6, 2014. Proceedings (Lecture Notes in
+Computer Science, Vol. 8475), Michael Codish and Eijiro Sumii (Eds.). Springer, 86–102. https://doi.org/10.1007/978-3-319-
+07151-0_6
+Oleg Kiselyov and Jeremy Yallop. 2022. let (rec) insertion without Effects, Lights or Magic. CoRR abs/2201.00495 (2022).
+arXiv:2201.00495 https://arxiv.org/abs/2201.00495
+András Kovács. 2022. Demo implementation for the paper "Staged Compilation With Two-Level Type Theory". https:
+//doi.org/10.5281/zenodo.6757373
+Daniel R. Licata, Ian Orton, Andrew M. Pitts, and Bas Spitters. 2018. Internal Universes in Models of Homotopy Type
+Theory. In 3rd International Conference on Formal Structures for Computation and Deduction, FSCD 2018, July 9-12, 2018,
+Oxford, UK (LIPIcs, Vol. 108) , Hélène Kirchner (Ed.). Schloss Dagstuhl - Leibniz-Zentrum für Informatik, 22:1–22:17.
+https://doi.org/10.4230/LIPIcs.FSCD.2018.22
+Andres Löh and José Pedro Magalhães. 2011. Generic programming with indexed functors. In Proceedings of the seventh
+ACM SIGPLAN workshop on Generic programming, WGP@ICFP 2011, Tokyo, Japan, September 19-21, 2011 , Jaakko Järvi
+and Shin-Cheng Mu (Eds.). ACM, 1–12. https://doi.org/10.1145/2036918.2036920
+Saunders Mac Lane. 1998. Categories for the Working Mathematician (2nd ed.). Springer. http://www.amazon.com/exec/
+obidos/redirect?tag=citeulike07-20&path=ASIN/0387984038
+Ian Orton and Andrew M. Pitts. 2016. Axioms for Modelling Cubical Type Theory in a Topos. In 25th EACSL Annual
+Conference on Computer Science Logic (CSL 2016) (Leibniz International Proceedings in Informatics (LIPIcs), Vol. 62) ,
+Jean-Marc Talbot and Laurent Regnier (Eds.). Schloss Dagstuhl–Leibniz-Zentrum fuer Informatik, Dagstuhl, Germany,
+24:1–24:19. https://doi.org/10.4230/LIPIcs.CSL.2016.24
+Pierre-Marie Pédrot and Nicolas Tabareau. 2020. The fire triangle: how to mix substitution, dependent elimination, and
+effects. Proc. ACM Program. Lang. 4, POPL (2020), 58:1–58:28. https://doi.org/10.1145/3371126
+Loïc Pujet and Nicolas Tabareau. 2022. Observational equality: now for good. Proc. ACM Program. Lang. 6, POPL (2022),
+1–27. https://doi.org/10.1145/3498693
+Tim Sheard and Simon L. Peyton Jones. 2002. Template meta-programming for Haskell. ACM SIGPLAN Notices 37, 12 (2002),
+60–75. https://doi.org/10.1145/636517.636528
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
+=== page 30 ===
+110:30 András Kovács
+Jonathan Sterling. 2021. First Steps in Synthetic Tait Computability. Ph. D. Dissertation. Carnegie Mellon University Pittsburgh,
+PA.
+Jonathan Sterling and Carlo Angiuli. 2021. Normalization for Cubical Type Theory. In 36th Annual ACM/IEEE Symposium
+on Logic in Computer Science, LICS 2021, Rome, Italy, June 29 - July 2, 2021 . IEEE, 1–15. https://doi.org/10.1109/LICS52264.
+2021.9470719
+Walid Taha and Tim Sheard. 2000. MetaML and multi-stage programming with explicit annotations. Theor. Comput. Sci. 248,
+1-2 (2000), 211–242. https://doi.org/10.1016/S0304-3975(00)00053-0
+Vladimir Voevodsky. 2013. A simple type system with two identity types. (2013). Unpublished note.
+Théo Winterhalter, Matthieu Sozeau, and Nicolas Tabareau. 2019. Eliminating reflection from type theory. In Proceedings of
+the 8th ACM SIGPLAN International Conference on Certified Programs and Proofs, CPP 2019, Cascais, Portugal, January
+14-15, 2019, Assia Mahboubi and Magnus O. Myreen (Eds.). ACM, 91–103. https://doi.org/10.1145/3293880.3294095
+Ningning Xie, Matthew Pickering, Andres Löh, Nicolas Wu, Jeremy Yallop, and Meng Wang. 2022. Staging with class: a
+specification for typed Template Haskell. Proc. ACM Program. Lang. 6, POPL (2022), 1–30. https://doi.org/10.1145/3498723
+Jeremy Yallop, Tamara von Glehn, and Ohad Kammar. 2018. Partially-static data as free extension of algebras. Proc. ACM
+Program. Lang. 2, ICFP (2018), 100:1–100:30. https://doi.org/10.1145/3236795
+Proc. ACM Program. Lang., Vol. 6, No. ICFP, Article 110. Publication date: August 2022.
