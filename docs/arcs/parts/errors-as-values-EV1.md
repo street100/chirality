@@ -5,8 +5,8 @@ title: one result type declared once, polymorphic in the payload **and** the err
 kind: primitive
 origin: bind
 req: 1, 2
-status: draft
-updated: 2026-09-23
+status: audited
+updated: 2026-09-29
 ---
 
 # errors-as-values/EV1: one result type declared once, polymorphic in the payload **and** the error, generalising the three in-tree carriers that are polymorphic in the payload alone (`PR`, `MfR`, `NewPufR`)
@@ -35,8 +35,8 @@ updated: 2026-09-23
 
 Measured 2026-09-23 over `lib/` and `prog/` by a paren-balanced scan that strips
 comments and string literals before counting, and by four probes run against
-`bin/chirality-bin`. The scan reads 511 `data` declarations across every
-`.chiral`, `.prog` and `.port` file under those two roots.
+`bin/chirality-bin`. The scan read 511 `data` declarations; `SC-data-decl`,
+2026-09-29, reads 516 over the 312 tracked files of `E201`'s census.
 
 **Bank:** [[banks/effect-and-alarm]]. Its §4 refraction answers the misfire
 *"chirality needs `Result`/`Either` for error handling"* at
@@ -93,10 +93,26 @@ sampled matches are all genuine, including the cross-carrier
 `lib/typing/kernel.chiral:1099` `((u-err m) (tc-err m))` and
 `lib/lowering/tal/erase.chiral:247` `((xd-err r) (xc-err r))`.
 
-**No committed script implements any of these predicates.** Requirement 1 calls
-its census *"re-runnable over `lib/` and `prog/`"* and requirement 5 sets a
-threshold off the 30 figure, and both numbers today exist only in prose. This is
-`EV12`'s material and it is stated here because §3 sizes the gap against it.
+**The wide predicate is now a committed instrument.** `EV12` minted as `E201`
+and landed at `4e9649f`: `prog/shape-census.prog`, the register
+`docs/definitions/shape-census.md`, and the gate `tools/test/shape-census.sh`,
+which still waits to be registered as a suite phase. Its arm-name rule is this section's wide row.
+Its readings on 2026-09-29, over 312 tracked files, reproduce every wide figure
+above:
+
+| reading | n | inside closure | this design's figure |
+|---|---|---|---|
+| `SC-result-sum-2arm` | 79 | 34 | 79 |
+| `SC-err-arm-bare-str` | 33 | 19 | 33 |
+| `SC-err-arm-str-plus` | 16 | 3 | 16, so 49 `Str` error slots, 22 inside and 27 outside |
+| `SC-err-arm-declared` | 15 | 10 | not measured |
+| `SC-rebuild-unchanged` | 231, of which 142 `same` and 89 `cross` | 174 | 231 / 142 / 89, and the six files above at the same counts |
+
+The arc still carries the hand counts 76 / 47 / 30 / 202, and requirement 5
+still says the check reads 30 today. Under the committed predicate it reads 33.
+No conclusion of this design moves: the numbers it rests on were the wide row
+and the wide row is what the instrument implements. Whether the wide rule is the
+one the author meant is open under `records/author-calls.md:52`.
 
 ### 2b. The compiler closure holds 61 modules and `prelude/maybe` is one
 
@@ -128,21 +144,27 @@ Two probes, run this session against `bin/chirality-bin`:
 - **Probe C.** The same file with only the **second** type's constructor
   applied. Exits 0. The collision is invisible until the shadowed owner is used.
 
-The census finds this live and latent at scale: **22 data type names are
-declared more than once** and **29 constructor names are declared by more than
-one data type**. `r-ok` and `r-err` are among them, owned by `RR` at
+The census finds this live and latent at scale: **22 data type names were
+declared more than once** on 2026-09-23 and **24** on 2026-09-29, read off
+`SC-data-decl`'s instance lines, the two new ones being `Acc` and `Hit` in
+`prog/shape-census.prog`. The scan found **29 constructor names declared by
+more than one data type**. `E201` counts no such row: `SC-ctor-head-sites`
+reads 1,251 against `SC-ctor-head`'s 1,214 distinct, 2026-09-29, so 37 arms
+carry a head another arm already carries. `r-ok` and `r-err` are among them, owned by `RR` at
 `lib/surface/sexp.chiral:19-21` and by `RunR` at
 `lib/lowering/tal/eval.chiral:30`. `res-ok`/`res-err` are owned by `ResR` at
 `lib/module/resolve.chiral:134-136`. `PR`, `p-ok` and `p-err` are declared three
 times, at `lib/protocol/apc.chiral:19`, `lib/protocol/json.chiral:106` and
 `lib/surface/surface.chiral:23`. None of these collides today, because no root
-blobs two owners: `surface/sexp` appears in 10 of the 13 `prog/*.prog` roots and
+blobs two owners: `surface/sexp` appears in 11 of the 14 `prog/*.prog` roots on
+2026-09-29 (10 of 13 before `prog/shape-census.prog` landed) and
 `lowering/tal/eval` in none of them. **`Result` is free as a type name**, with
 five textual occurrences under `lib/` and `prog/` and all five inside comments.
 
 This is `E154`'s defect class inside the constructor namespace.
-`docs/elements/ledger.md:151` records `E154` as `design` and unbuilt, and names
-the three hand-renames the flat label space has already forced.
+`docs/elements/ledger.md:151` records `E154` as `design` and unbuilt. It names
+three hand-renames and carries its own correction of 2026-09-24: thirteen
+instances over sixteen files.
 `docs/examples/E181-pretty-term-doc.md:236` makes a tree-wide census of every
 name an element introduces a gate step, which is the precedent this row inherits.
 
@@ -162,6 +184,16 @@ application residual, closed by `E100` and `E147` on 2026-08-16 and hardened by
 recorded here: `docs/arcs/custody-executes-arc.md:76` carries the same figure for
 an unrelated minimal probe, so it measures the floor of a program with one port
 import.
+
+**Re-run 2026-09-29 by the DESIGN audit, from the scratchpad and not left in the
+tree.** The §5 declaration verbatim, `(res-val (v A)) (res-why (e E))`, two
+unrelated error sums (`MyErr` of three arms, `IoErr` of two) used in one program,
+each cased exhaustively with no `_` arm, and the same higher-order `r-then`
+chained at both. `chirality run` exits 0 with all four checks holding. Two
+variants, both through `chirality check`: an `IoErr`-typed `Result` given
+`me-big` fails with `load: me-big checked against a different data type`, and
+the error slot fixed at `Str` fails with `load: me-empty checked against a
+non-data type`.
 
 ### 2e. `Maybe` is used everywhere
 
@@ -189,13 +221,15 @@ Subtracting §2 leaves four things, and the first is the row.
    failure surfaces at the shadowed owner's first use. A type meant to be
    imported by many boundaries converts every latent duplicate it collides with
    into a live refusal.
-4. **The baseline the requirements are checked against is prose.** §2a gets
+4. **The baseline the requirements are checked against was prose.** §2a gets
    three different answers from three predicates and reproduces none of the
-   arc's. Requirement 1's fall-from-202 and requirement 5's threshold-of-30 are
-   both unfalsifiable until a script exists.
+   arc's. `E201` has since committed the wide one, so requirement 1's
+   baseline reads 231 as `SC-rebuild-unchanged` and requirement 5's reads 33
+   as `SC-err-arm-bare-str`, both 2026-09-29. The arc's own figures still
+   await restatement against them.
 
 Items 2 and 3 are the design content. Item 1 is mechanical once they are
-settled, and item 4 belongs to `EV12`.
+settled, and item 4 belonged to `EV12`, which is `E201`.
 
 **Verdict:** a real delta. Small in lines and load-bearing in placement.
 
@@ -313,13 +347,13 @@ the comparator-passing idiom is the answer to the same question one level down.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
-| 1 | Where the type lives, and what its constructors are called | RESOLVED | A new `lib/prelude/result.chiral`, constructors `res-val` and `res-why`. Forced by the closure measurement in §2b and the namespace measurement in §2c. The mint re-runs the name census |
+| 1 | Where the type lives, and what its constructors are called | RESOLVED | A new `lib/prelude/result.chiral`, constructors `res-val` and `res-why`. Forced by [[arcs/errors-as-values-arc]] requirement 4, which orders proof outside the closure before entry, read against the closure measurement in §2b, and by the namespace measurement in §2c. The mint re-runs the name census |
 | 2 | Whether the error slot carries a constraint or is free | DEFERRED to `errors-as-values/EV11` | Free here. `EV11` is the row the arc schedules last because `PR`'s 38 arms are what force the answer. **What this row must leave open**: no field on either arm beyond the two parameters, no companion type in the declaration, and no renderer named in the module. Any of the three would have to be unwound across every adopter |
 | 3 | What happens to `PR`, `MfR` and `NewPufR` | DEFERRED for two, residue for the third | `MfR` is `errors-as-values/EV10`, `PR` is `errors-as-values/EV11`. Both are left alone by this row. **`NewPufR` at `prog/scriba/puffer.chiral:41` is covered by no roster row on this arc**, and the deferral rule forbids inventing one here. It is named as owed, for the arc amendment the queue already schedules |
 | 4 | Whether `Maybe` is `(Result A Unit)`, and whether that is wanted | RESOLVED | Structurally yes, and the answer is no. Three reasons, each measured. `Maybe` has 576 type occurrences and 2,500 constructor applications across 130 files (§2e), so the rewrite is tree-wide and buys nothing. `none` carries no field and `(res-why unit)` carries a cell. **The third reason is the arc's own requirement 2**: a carrier whose error slot holds no classification is the `Str` defect with the string removed, and `docs/banks/effect-and-alarm.md:354-362` says the same thing one layer up when it calls `Result` a shadow of the row mechanism. `Maybe` means absence and `Result` means a refusal that carries its reason. `maybe-then` stays where it is |
 | 5 | What the gate is | RESOLVED | §6 carries it. A runtime sample at two distinct `E` instantiations in one program, a refusal fixture, a name census, and named mutants |
 
-**No NEEDS-AUTHOR.** The band is already settled: `records/author-calls.md`
+**No NEEDS-AUTHOR.** The band is already settled: `records/author-calls.md:69`
 carries the 2026-09-06 ruling *"let overlap exist"*, under which an arc with no
 reserved block mints the next number free tree-wide. The standing `unreviewed`
 row on whether condition 1 reaches the whole tree
@@ -332,19 +366,21 @@ reach this one: the type is declared once whichever way that call goes.
   shows the home is the decision. The combinators are `EV2` and stay separate
   because `EV2`'s own obligation is the linear-binder question, which a `data`
   form does not raise.
-- **Band:** `UNASSIGNED`. [[arcs/errors-as-values-arc]] reserves no block and
+- **Band:** `UNASSIGNED`. [[arcs/errors-as-values-arc]] reserves no block.
   `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195`
-  and nothing else. The mint takes the next number free tree-wide.
+  at `:31`, `E196-E239` at `:64`, `E240-E259` at `:72` and `E260-E263` at `:82`,
+  none of them this arc's, and holds bands advisory at `:38`. The mint takes the
+  next number free tree-wide.
 - **Catalog row**, in the live five-column form at `docs/elements/catalog.md:93`:
 
   ```
-  | E<NN> | **`Result`: one carrier polymorphic in the payload and in the error** | Not built. New module `lib/prelude/result.chiral`, importing `prelude/prelude` alone and outside `prog/compiler.prog`'s 61-module closure until a boundary imports it. `(data Result ((A (type 0)) (E (type 0))) (res-val (v A)) (res-why (e E)))`. Generalises the three payload-polymorphic, error-monomorphic carriers the tree already ships: `PR` `lib/surface/surface.chiral:23`, `MfR` `lib/surface/parse.chiral:750` over the 18-arm `MfErr` at `:730`, `NewPufR` `prog/scriba/puffer.chiral:41`. Two type parameters have four precedents, `Pair`, `Map`, `MinR`, `Step`. Feasibility re-verified 2026-09-23 by probe: the declaration plus a higher-order `r-then` type-checks, compiles and runs, exit 0. The constructor spelling is forced by a namespace measurement, `r-ok`/`r-err` being owned by `RR` `lib/surface/sexp.chiral:19` and `RunR` `lib/lowering/tal/eval.chiral:30`, and `res-ok`/`res-err` by `ResR` `lib/module/resolve.chiral:134` | `OURS`; `FD-48` surveys seven published mechanisms (`IMPL`) | SH |
+  | E<NN> | **`Result`: one carrier polymorphic in the payload and in the error** | Not built. New module `lib/prelude/result.chiral`, importing `prelude/prelude` alone and outside `prog/compiler.prog`'s 61-module closure until a boundary imports it. `(data Result ((A (type 0)) (E (type 0))) (res-val (v A)) (res-why (e E)))`. Generalises the three payload-polymorphic, error-monomorphic carriers the tree already ships: `PR` `lib/surface/surface.chiral:23`, `MfR` `lib/surface/parse.chiral:750` over the 18-arm `MfErr` at `:730`, `NewPufR` `prog/scriba/puffer.chiral:41`. Two type parameters have four precedents, `Pair`, `Map`, `MinR`, `Step`. Feasibility re-verified 2026-09-23 by probe, and again 2026-09-29 at two distinct error instantiations in one program: the declaration plus a higher-order `r-then` type-checks, compiles and runs, exit 0. The constructor spelling is forced by a namespace measurement, `r-ok`/`r-err` being owned by `RR` `lib/surface/sexp.chiral:19` and `RunR` `lib/lowering/tal/eval.chiral:30`, and `res-ok`/`res-err` by `ResR` `lib/module/resolve.chiral:134` | `OURS`; `FD-48` surveys seven published mechanisms (`IMPL`) | SH |
   ```
 
 - **Ledger row**, in the live five-column form at `docs/elements/ledger.md:80`:
 
   ```
-  | E<NN> | result | design | **`Result`: one carrier polymorphic in the payload and in the error.** The carrier half of [[arcs/errors-as-values-arc]] requirements 1 and 2, covering `errors-as-values/EV1`. A new `lib/prelude/result.chiral` so the type sits outside the compiler's import closure until an adoption row pulls it in, which requirement 4 requires and which neither `prelude/prelude` nor `prelude/maybe` can offer, both being inside it. The error slot stays a free type parameter and `errors-as-values/EV11` settles whether it needs a witness. Constructors `res-val`/`res-why`, zero prior declarations tree-wide at the 2026-09-23 census | →`EV2`, →`EV10`, →`EV11`, ←E100, ←E147, ←E185-E188 | SH |
+  | E<NN> | result | design | **`Result`: one carrier polymorphic in the payload and in the error.** The carrier half of [[arcs/errors-as-values-arc]] requirements 1 and 2, covering `errors-as-values/EV1`. A new `lib/prelude/result.chiral` so the type sits outside the compiler's import closure until an adoption row pulls it in, which requirement 4 requires and which neither `prelude/prelude` nor `prelude/maybe` can offer, both being inside it. The error slot stays a free type parameter and `errors-as-values/EV11` settles whether it needs a witness. Constructors `res-val`/`res-why` and type name `Result`, absent from `SC-ctor-head` and `SC-data-name`, 2026-09-29 | →`EV2`, →`EV10`, →`EV11`, ←E100, ←E147, ←E185-E188 | SH |
   ```
 
 - **Size:** one new file, 12 to 18 lines, plus one sample under
@@ -363,7 +399,12 @@ reach this one: the type is declared once whichever way that call goes.
      fails here and passes a single-instantiation test.
   2. **A refusal fixture.** A program that puts an error of one sum into a
      `Result` declared at the other must fail `chirality check`, with the
-     expected refusal text recorded. This is what distinguishes Shape E from the
+     expected refusal text recorded. Measured 2026-09-29 by probe:
+     `load: <ctor> checked against a different data type`, the
+     `jg-ctor-other-data` judgment at `lib/typing/diag.chiral:458`. That is the
+     same judgment §2c's Probe B raises for a constructor collision, so the pin
+     names the offending constructor as well as the text, and the fixture's two
+     error sums share no constructor name. This is what distinguishes Shape E from the
      structural-row designs `FD-48` priced: `OCAMLPOLYV:336` says OCaml's
      polymorphic variants drop exactly this check, and the route this tree took
      is a shared carrier with a specific declared `E`.
@@ -371,9 +412,12 @@ reach this one: the type is declared once whichever way that call goes.
      shape: `res-val`, `res-why` and `Result` have zero other declarations under
      `lib/`, `prog/` and `tools/`. §2c is why this is a gate rather than a
      courtesy.
-  4. **Mutants, each reverted.** An `r-err` arm that drops the payload; a
-     declaration with the error slot fixed at `Str`, which must fail the refusal
-     fixture and is the requirement-2 trap in executable form; and the second
+  4. **Mutants, each reverted.** A `res-why` arm that drops the payload; a
+     declaration with the error slot fixed at `Str`, which is the requirement-2
+     trap in executable form. Measured 2026-09-29: under it the refusal fixture
+     still fails `chirality check`, with `checked against a non-data type` in
+     place of the pinned text, so part 2 catches it through the text pin alone
+     and an exit-code-only fixture would pass it; and the second
      instantiation deleted from the sample, which must make part 1 vacuous and
      be caught by the assertion count.
 - **Related:** [[arcs/errors-as-values-arc]] · [[goals/readable-surface]] ·
@@ -383,6 +427,7 @@ reach this one: the type is declared once whichever way that call goes.
 **Residue carried out of this run, for the arc amendment.** `NewPufR`
 (`prog/scriba/puffer.chiral:41`) is one of the three carriers this row's title
 names and no roster row on the arc reaches it. The census predicates behind
-requirement 1's 202 and requirement 5's 30 exist only in prose and get three
-different answers (§2a); `EV12` is the row that would commit one. Neither is
-deferred to anything unminted.
+requirement 1's 202 and requirement 5's 30 got three different answers (§2a).
+`EV12` has since committed the wide one as `E201` (`4e9649f`), which reads 231
+and 33 on 2026-09-29, and the arc's figures are owed a restatement against it.
+Neither is deferred to anything unminted.

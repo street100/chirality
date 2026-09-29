@@ -144,7 +144,7 @@ to `unminted`: this arc holds no band.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `errors-as-values/EV1` | one result type declared once, polymorphic in the payload **and** the error, generalising the three in-tree carriers that are polymorphic in the payload alone (`PR`, `MfR`, `NewPufR`) | carrier | primitive | bind | 1, 2 | designed | `unminted` |
+| `errors-as-values/EV1` | one result type declared once, polymorphic in the payload **and** the error, generalising the three in-tree carriers that are polymorphic in the payload alone (`PR`, `MfR`, `NewPufR`) | carrier | primitive | bind | 1, 2 | minted | `E202` |
 | `errors-as-values/EV2` | `bind` and `map-err` as ordinary declared defs over `EV1`'s type. A plain `bind` is a call and never early-returns, so it cannot strand a linear binder; short-circuit sugar over `do` is **deferred and not rostered**, and §Resume state says why | carrier | primitive | new | 1 | open | `unminted` |
 | `errors-as-values/EV3` | the scope call: whether condition 1 reaches the whole tree or only the compiler's `Reason` arms. 29 of the 47 `Str`-carrying error arms are outside the compiler's closure entirely. Carried as a row in [[records/author-calls]], `unreviewed` | classification | decision | new | 3, 5 | open | `unminted` |
 | `errors-as-values/EV4` | the classification recipe and its completeness test: how a boundary's arm set is recovered from its own construction sites, and what makes the recovered set complete. Generalises `E157`'s `Reason` and `parse.chiral:730`'s `MfErr`, the two instances that already did it by hand | classification | law | new | 3 | open | `unminted` |
