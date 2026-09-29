@@ -27,6 +27,7 @@ row the same turn.
 
 | # | run | serves | writes |
 |---|---|---|---|
+| D1 | the documentation toolset reviewed for capability, correctness and ergonomics, report only, changes dispatched after the author reads it. Third live agent, by the author's one-off exception, 2026-09-29: *"i honestly wouldnt mind if you also dispatched a few documentation toolset improvements in another agent (must orient and research and report before we dispatch again for changes)"* | tooling | `.planning/DOC-TOOLSET-REVIEW-2026-09.md` |
 | O1 | optimization gaps in the test and compile process: the highest-value day-sized items, specified and missed. **Run alongside V1 by the author's one-off exception, 2026-09-29:** *"You can dispatch this one alongside current the usage is a bit better and i want to test how heavy 2 will be on my limits"*. The serial rule stands otherwise | speed | `.planning/OPTIMIZATION-GAPS-2026-09.md` |
 | V1 | the verification coverage map: what checks must cover during every compile, on the new compiler before promotion, on the tree every change, and across distinct judgment cores, with what runs today and what is owed. Calls 1, 2, 5 and 6 get ruled against it | self-verification | one draft note under `docs/` |
 
