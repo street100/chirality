@@ -99,12 +99,33 @@ A plain summary follows `.planning/DISPATCH-QUEUE.md` §How the author calls
 move: what the thing is, why it matters, the options in ordinary words, a
 recommendation, and the references after.
 
-**The recommendation is the complete answer the goal needs.** Where an option is
-an interim and another is the interim plus what finishes it, recommend the
-second, with the interim as its first step. An open precondition becomes queued
-work and never a reason to recommend less. The author ruled this on 2026-09-29,
-refusing a recommendation of the gate alone as *"an improper shortcut instead of
-the actual answer"*.
+## Proper or not at all
+
+The author ruled on 2026-09-29, after two recommendations that deferred the
+real work behind an interim: *"We do it properly or we dont do it. Or i guess
+theres the third option of doing it in ligitimately smaller pieces but that is
+distinctly different from improper split. if we shrink workload it can only be
+doing the proper less featurefull thing, and even then that is rare."*
+
+So an option, and every recommendation, is one of three shapes and nothing
+else.
+
+| shape | what it is | admitted |
+|---|---|---|
+| **proper** | the complete answer the goal and the principles require | yes. This is the default recommendation |
+| **not at all** | the thing stays undone, and the goal or roster says so plainly | yes, when the thing is out of scope. It is never a way to lower a requirement |
+| **proper and smaller** | a less featureful thing that is itself complete and correct: nothing in it stands in for something else, nothing in it has to be replaced later, and what it leaves out is stated | rarely, and the run says why the full scope cannot be taken now |
+
+**An improper split is refused at step 1, before any principle test.** It is any
+option that ships a stand-in for the proper thing and schedules the proper thing
+for later: a gate standing where a check was required, an interim that a later
+piece replaces, a narrower claim adopted because the full one is hard. Such an
+option never enters the candidate list. If the only way a run can reach a verdict
+is by recommending one, the verdict is `STANDS` with that said plainly.
+
+An open precondition of the proper answer is queued work. It is never a reason
+to recommend less, and a recommendation that defers the proper answer behind
+one is this rule failing.
 
 ## Reporting to the author
 
