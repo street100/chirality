@@ -29,8 +29,7 @@ The author gave a green light on 2026-09-29, *"dispatch next stages for all, gre
 
 | # | run | serves | writes |
 |---|---|---|---|
-| DT-04 | nine places where a failure reports as clean: unknown `--only` codes, check T reading a directory that does not exist, a crashed `lens.py` or git reading as clean, a crash exiting like a finding. DT-01 landed at `460ed88`. Then DT-03, DT-06 with DT-02, DT-05, DT-11, DT-09 with DT-08, DT-10 with DT-13, DT-12, one at a time, from `.planning/DOC-TOOLSET-REVIEW-2026-09.md`. DT-07 waits on the author | tooling | `tools/ledger-lint/ledger-lint.py` |
-| O1b | optimization gaps re-run, with a dated results log at the top of its artifact | speed | `.planning/OPTIMIZATION-GAPS-2026-09.md` |
+| next | DT-03, then DT-03, DT-06 with DT-02, DT-05, DT-11, DT-09 with DT-08, DT-10 with DT-13, DT-12, one at a time, from `.planning/DOC-TOOLSET-REVIEW-2026-09.md`. DT-07 waits on the author | tooling | `tools/ledger-lint/ledger-lint.py` |
 
 ## Earlier running rows
 
@@ -126,6 +125,8 @@ resume when `K4` is built.
 
 | # | run | landed |
 |---|---|---|
+| O1b | optimization gaps: 13 day-sized items, 11 never specified. `ledger-lint` F and AI memoized would take the lint from about 95 s to 10 s; Phase 7's subshell discards the resolver cache; items 2 to 6 take the suite from about 357 s to 265 s. The optimization items wait on the author's pick | `.planning/OPTIMIZATION-GAPS-2026-09.md` |
+| DT-04 | `ledger-lint` exit codes 4, 3, 1, 2, 0; a check that cannot run errors; T, P, U, AD, Z, AI, S and ten more read their real subject. 231 to 238, then 236 after two moved citations were repointed. ⚑ Two agents running at once hit the VM's open-file limit (Error 24); the DT-04 run cleared it with a VM-wide cache drop, and the optimization run tried the same and was denied | `16afd16` |
 | DT-01 | `pack.py` bundles are read-only, `--start` writes, one forward-only roster table, `--reopen` for REOPEN, unknown flags refused. Owed: `decision-design-before-mint.md:144-149` and `tools/README.md:16` describe the old default | `460ed88` |
 | V1 | the verification coverage map, `docs/definitions/verification-coverage.md`, draft: four layers, 39 checks, L1 runs 3 of 14 owed-or-run, L2 1 of 22, L3 2 of 10, L4 none of 16. Ten questions for the author and ten discoveries (U1-U10). Verified U1: `run-tests.sh` never exports `CC`, so phases 29 and 30 test `bin/chirality-bin` whatever candidate is chosen | `a9dfb01` |
 | E3f | `N13` designed, `status: blocked` on three calls: T1 reads the checked `Sig` through a bridge into `interp`'s own `Term`, adopts `E169` half (a), shares corpus and verdict with `N23`. Neither evaluator can run what it judges yet | `acc4455` |
