@@ -3,7 +3,7 @@ node: arc-emitted-speed
 layer: navigation
 related: [arcs/README, goals/emitted-speed, arcs/memory-discipline-arc, arcs/crypto-primitives-arc, benchmarks/crypto-kernel-allocation, benchmarks/OPT-CANDIDATES-2026-09, benchmarks/OPTIMIZATIONS-TODO, implementation/optimizer-inventory, banks/INDEX, banks/memory, banks/erasure, working-discipline, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-08
+updated: 2026-09-24
 ---
 
 # Arc: what the emitted code costs
@@ -32,6 +32,20 @@ costs), [[benchmarks/OPT-CANDIDATES-2026-09]] (`6188eaa`, 221 candidates, and
 condition when it opened, on a reading of `C33` that a measurement of the
 backend taken the same day voids. §"Why this roster is nine rows and not 221"
 carries the measurement and what it corrected.
+
+**Amended 2026-09-24 to roster the inlining pass.** This compiler inlines
+nothing, and the absence is measured from three directions.
+`docs/arcs/parts/crypto-primitives-K2.md:132-135` disassembles a five-step
+Keccak round and reads "`call 0x408726`, `call 0x408485`, `call 0x40835c`,
+`call 0x4080b2` and a tail `jmp 0x407f64`: the four calls and the tail jump are
+the five step mappings, standing in the machine code exactly as they stand in
+the source. **There is no inlining pass in the lowering.**"
+`records/findings.md` `FD-49` prices a step boundary that survives to runtime at
+**5.43x** against **1.14x** when `gcc -O3` inlines the same factoring, over nine
+builds of Keccak-f[1600] on one host. And `records/findings.md` `FD-51`,
+2026-09-24, surveys eight shipped inliners and reports what the decision is made
+of. **No roster row in this tree owned that work before today.** Rows `X10` to
+`X12` and requirement 7 carry it, at **12 rows and 7 requirements**.
 
 ## Why this arc exists
 
@@ -119,6 +133,10 @@ condition 6 opens on a second absence.
 | pass | `ck-fn` judging every TFn the shipping compiler emits, from outside the compiler closure | `lib/lowering/tal/check.chiral:290`, run by `prog/optimizer-census.prog` | built, run by hand |
 | pass | `specialize-singletons`, the one monomorphizer in the tree | `lib/lowering/upper/specialize-singleton.chiral:229` | IMPLEMENTED |
 | pass | `specialize-raw` and the `rmap-*` SSA renamer, the pregen primitive | `lib/lowering/upper/optimize.chiral` | written, reached by nothing |
+| pass | **no inlining pass anywhere in the lowering**, established by disassembly rather than by grep: a five-step Keccak round emits four `call`s and a tail `jmp`, one boundary per step, standing in the machine code as the steps stand in the source | `docs/arcs/parts/crypto-primitives-K2.md:132-135`, over `bin/chirality compile` and `objdump -D` | measured 2026-09-23 |
+| pass | `specialize` itself, partial evaluation over the typed tal IR, meaning-preserving, returning a plain `TFn`. Its module has been imported since 2026-09-05 and `opt-tfns` calls `(fold t)` alone, so the pass is reached by nothing | `lib/lowering/upper/optimize.chiral:264-265` against `lib/lowering/compile-back.chiral:247-250`, recorded at `docs/definitions/status-ledger.md:177` | built and unadopted |
+| pass | the nearest thing to an occurrence count, and it counts nothing: `uses-instr` accumulates a **list of live registers** and `droppable?` asks `(not (imem dst used))`, which is membership. `dead`'s liveness fixpoint therefore answers "used at all" and never "used once" | `lib/lowering/upper/optimize.chiral:144,155,167` | IMPLEMENTED, and it is a set rather than a count |
+| pass | the graded arithmetic an inline would have to preserve, already built and already run on every derivation: `uscale` maps `qmul q` across a usage vector, which is the `q · Γ` scaling the graded substitution lemma accounts a substituted binder's uses with (`records/findings.md` `FD-51` §4) | `lib/typing/qtt.chiral:65-69` | IMPLEMENTED |
 | grading | the `dead` exclusion: wired whole the compiler miscompiles itself at `293 passed, 98 failed`, `fold` alone grades `42 passed, 0 failed` and `dead` alone `33 passed, 9 failed`. The measurement was taken by editing the pipeline | the header comment above `opt-tfns`, `lib/lowering/compile-back.chiral` | recorded measurement |
 | grading | `tools/test/opt-census.sh` over `prog/optimizer-census.prog`: four rows and four mutants since `38ecdba`, pinning `defs=1518 skipped=10` and `tfns=1548 ok=1517 err=31`. Two rows and two mutants asserted a wiring that was cut the same day | `tools/test/opt-census.sh` | built, unregistered. It takes no phase number and is run by hand |
 | grading | three emit entry points, one reached | `lib/lowering/x64/emit.chiral:8,11,14` | `emit` live, `emit-truthful` and `emit-param` built with no caller |
@@ -142,13 +160,13 @@ Six groups, in dependency order.
 | `representation` | whether a single-constructor product is a cell, and where its fields live when it is not |
 | `boundary` | how such a product crosses a call, given one return slot |
 | `operations` | which of the machine's operations the language names, what shape a name takes when the machine's answer does not fit one slot, and what keeps the three in-tree sets agreeing |
-| `pass` | the transformation that removes the construction, and where it sits against the erasure seam |
+| `pass` | the transformation that removes the construction, the transformation that removes the call boundary, which written transformation is adopted at all, and where each sits against the erasure seam |
 | `grading` | one transformation measured alone against the self-hosting fixpoint |
 | `control` | a figure against something outside this tree, and the residual inside it |
 
 ### The edges that run against the order
 
-Four, and an ordering with no back-edges reads as a schedule.
+Six, and an ordering with no back-edges reads as a schedule.
 
 - **`grading` runs backward into `pass`.** `dead` is compiled into the shipping
   binary and left out of `opt-tfns` because wiring it whole makes the compiler
@@ -167,6 +185,25 @@ Four, and an ordering with no back-edges reads as a schedule.
   on. `X2` is the row that decides what a function may return. So `X7` cannot
   settle before `X2` has answered, and the two rows are settling one thing from
   opposite ends. That edge is why condition 6 sits in this arc.
+- **`pass` runs backward into `boundary`, and this is the edge the 2026-09-24
+  amendment adds.** `X2` widens the return so a four-field product can cross a
+  call without a cell. An inlined callee **returns nothing**, so the same
+  product needs no slot to travel in and the lanes stay in the caller's frame.
+  `tools/bench/crypto-kernel.sh`'s `sB` already measured that shape at 0 B over
+  8,000,000 quarter rounds, with `qround`'s body verbatim and the four lanes as
+  parameters. So `X11` reaches requirement 1's observable **without `X2`
+  answering**, and the two rows are alternative routes to one measurement rather
+  than stages of one build. Neither obsoletes the other: `X2` serves every
+  product that crosses a call the inliner declines, and `records/findings.md`
+  `FD-51` §3 is a survey of the mechanisms by which an inliner declines.
+- **`X12` runs backward into `X11`.** `FD-51` §2 finds that seven of eight
+  surveyed inliners fire unconditionally on a binding used once, and §4 finds
+  that a declared quantity **is** that count, stated rather than inferred. So a
+  ruling that the inliner reads `Qty` would replace the occurrence counter
+  `X11` builds, and a ruling that it does not leaves the counter standing. The
+  decision is downstream of the pass in dependency order and upstream of it in
+  cost, and §7 of `FD-51` says no published source describes an inliner that
+  reads a declared quantity, so nothing outside settles which way it goes.
 
 ### Why this roster is nine rows and not 221
 
@@ -263,6 +300,24 @@ from the dependency instead of rediscovering it.
    `C34` records that no document states what a shift by 64 or more means, so a
    refusal has nothing to cite until `docs/decisions/` names the instruction set
    the emitted code may assume.
+7. **A transformation this tree has already written, or one every surveyed
+   compiler ships, reaches the shipping path, and what it did to the emitted
+   code is read out of the emitted code.** Observed in two halves. First,
+   `opt-tfns` naming something besides `fold`, where
+   `lib/lowering/compile-back.chiral:247-250` reads `(cons (fold t) (opt-tfns r))`
+   today, carrying the per-pass grade requirement 2 demands. Second, the
+   five-step probe of `docs/arcs/parts/crypto-primitives-K2.md:119-135`
+   re-disassembled and emitting fewer `call`s than the source has step mappings,
+   against the four `call`s and one tail `jmp` measured there on 2026-09-23.
+   ⚑ **Whether the result is fast enough is unanswerable here, and this
+   requirement states no ratio.** Both thresholds a figure would be compared
+   against are open author calls, `unreviewed` in `records/author-calls.md`:
+   **The target ratio [[goals/emitted-speed]] condition 1 is held to**, and
+   **The budget [[goals/emitted-speed]] condition 4 holds a shipped native tool
+   to**. `records/findings.md` `FD-49`'s 5.43x and 1.14x are the nearest figures
+   the tree holds, and they are `gcc` over C source on another host, so they
+   price the absence and set no bar for this tree. A row under this
+   requirement produces a measurement and cannot say whether it passed.
 
 ## Roster
 
@@ -277,14 +332,32 @@ from the dependency instead of rediscovering it.
 | `emitted-speed/X7` | the widening multiply's shape, which is `C33`, `C17` and `C38` as one decision because they cannot be settled apart: the tree's high word is signed (`lib/lowering/x64/mach.chiral:321`) where the workload wants unsigned, and `C38`'s two-slot form is what `B15`'s single-slot return stands against. Unsigned alone, signed and unsigned as two constructors, and one operation defining two slots are the live shapes, and this row names the decision without taking it | operations | decision | new | 5, 6 | built | `E189` |
 | `emitted-speed/X8` | the rotate's name and its width: `C1` and `C2` name a left and a right rotate and the sum names neither, `C35` recognizes the idiom in the emitter and names no operation, and `rotl32` (`lib/crypto/chacha.chiral:24-25`) rotates at 32 bits inside a 64-bit lane, so what width a named rotate carries is open against `C32` and `B8` | operations | primitive | new | 6 | designed | `unminted` |
 | `emitted-speed/X9` | the three-set agreement gate: one check reading the `Op` sum, the extern block and `op-bytes` and failing when they disagree, and whether it reads source text the way `tools/ledger-lint` does or the compiler's own structures the way `prog/optimizer-census.prog` does, given that `tools/test/opt-census.sh` is built and unregistered because it takes no phase number | operations | tool | new | 5 | open | `unminted` |
+| `emitted-speed/X10` | adopting `specialize`: the pass is written, meaning-preserving and hands back a plain `TFn` (`lib/lowering/upper/optimize.chiral:264-265`), its module has been imported since 2026-09-05, and `opt-tfns` (`lib/lowering/compile-back.chiral:247-250`) calls `fold` alone, so this row is a call site and the static-argument facts that give it something to bind, and no new pass. ⚑ **Blocked twice.** On `X4`, because requirement 2 wants it graded alone without editing the pipeline; and on where a `(List (Pair I64 SVal))` comes from, since nothing in the tree computes an interprocedural constant fact, which [[benchmarks/OPT-CANDIDATES-2026-09]] carries as the first of condition 3's nine enablers. Adopting it removes no call: `records/findings.md` `FD-51` §6 finds that a specialiser leaves a smaller callee behind and that the two compilers running both passes aim it at the functions the inliner refuses | pass | law | connect | 2, 7 | open | `unminted` |
+| `emitted-speed/X11` | the called-once slice: a function whose call sites number exactly one, inlined there with no size budget consulted, which is the rule seven of the eight inliners `records/findings.md` `FD-51` §2 surveys fire unconditionally, rustc's MIR inliner being the one without it. It needs a count the tree does not compute: `uses-instr` accumulates a list of live registers and `droppable?` asks `(not (imem dst used))` (`lib/lowering/upper/optimize.chiral:144,167`), so `dead`'s fixpoint answers "used at all" and never "used once". Termination comes from `FD-51` §3's cheapest mechanism, an ancestor check on the inline stack; the budget bounds only the size of the result. ⚑ **Blocked on `X4` for requirement 2's grade, and on nothing in `representation` or `boundary`**: an inlined callee returns nothing, so the four lanes need no slot to travel in and `X2` need not have answered | pass | law | new | 1, 2, 7 | open | `unminted` |
+| `emitted-speed/X12` | whether the inliner reads `Qty`: the quantity a binder declares **is** the usage count `X11`'s rule recounts by hand, and `uscale` (`lib/typing/qtt.chiral:65-69`) is already the `q · Γ` scaling that makes replacing a binding by its right-hand side grade-preserving at every quantity, so the arithmetic is built and runs on every derivation. What breaks is the check rather than the arithmetic: a real inliner updates some use sites and leaves others, GHC's linear-types document heads that "Problem 3: inlining", and its published repair, a usage annotation on the `let` binder, is "only partially implemented" (`records/findings.md` `FD-51` §4). ⚑ **Blocked on `X11`**, since there is no inliner to hand a quantity to, and unprecedented: `FD-51` §7 reports no published source describing an inliner that reads a declared quantity, so the design owes a recorded refusal as readily as a shape | pass | decision | new | 7 | open | `unminted` |
 
 ### Coverage
 
-Every requirement is named by at least one row: 1 by `X1`, `X2` and `X3`; 2 by
-`X3` and `X4`; 3 by `X5`; 4 by `X6`; 5 by `X7` and `X9`; 6 by `X7` and `X8`.
-Every row names at least one requirement.
+Every requirement is named by at least one row: 1 by `X1`, `X2`, `X3` and
+`X11`; 2 by `X3`, `X4`, `X10` and `X11`; 3 by `X5`; 4 by `X6`; 5 by `X7` and
+`X9`; 6 by `X7` and `X8`; 7 by `X10`, `X11` and `X12`. Every row names at least
+one requirement.
 
-Every `origin` is `new`, and §3 defends each. `X1` and `X2`: the tree boxes
+**No row of `X1` to `X9` covered inlining or the adoption of `specialize`, and
+that was checked row by row before `X10` opened.** `X3` is the nearest and it is
+not this: it reads "which of scalar replacement, constructed-product-result and
+argument flattening this is", and all three are product-shaped transformations
+over a value's representation, none of which erases a call. This section's own
+defence of `X3` says so in the line that calls `specialize-raw` "the nearest
+built machinery" with "no call site" doing "a different thing", which names the
+adoption gap and schedules nobody to close it. `X4` is the switch a pass is
+graded through and is a `tool`. `X7`, `X8` and `X9` are the operation set. `X1`,
+`X2`, `X5` and `X6` are representation, return form, the outside control and the
+residual instrument. So the three rows added 2026-09-24 overlap none of the
+nine.
+
+Eleven of the twelve `origin` cells read `new` and one reads `connect`, and §3
+defends each. `X1` and `X2`: the tree boxes
 every fielded constructor and returns one slot, and no shard anywhere holds an
 unboxed product. `X3`: `fold` is the only transformation above the erasure seam
 and reads no type fact, and `specialize-raw`, the nearest built
@@ -299,7 +372,16 @@ unsigned, so binding what is there ships a different high word, and the shape
 that replaces it is unsettled between three candidates. `X8`: the sum names
 neither rotate, and the tree's one rotate is four operations at a width the sum
 does not carry. `X9`: the tree holds two checker idioms and no check over these
-three sets, and its nearest built checker is unregistered.
+three sets, and its nearest built checker is unregistered. `X10` is the one
+`connect`: `specialize` is built at `lib/lowering/upper/optimize.chiral:264-265`
+and `opt-tfns` is built at `lib/lowering/compile-back.chiral:247-250`, and joining
+them is the whole row, which is why it is the cheapest of the three and why it
+buys the least. `X11`: §3 records that the lowering holds no inlining pass,
+shown by disassembly at `docs/arcs/parts/crypto-primitives-K2.md:132-135`, and
+that the nearest occurrence machinery computes a liveness set rather than a
+count, so the rule fires on a fact nothing in the tree yet produces. `X12`: the
+`Qty` arithmetic is built and the pass that would consume it is not, so the row
+is `new` against a substrate that already holds half of it.
 
 **Requirement 6's second half is reached without a row of its own.** `X7` and
 `X8` take the bucket C rows that require a shape. Of the remainder, `C27` and
@@ -332,7 +414,8 @@ condition 5**, which asks it of every doc under `docs/benchmarks/`.
 ## Resume state
 
 Opened 2026-09-08 with 6 rows and 4 requirements. Amended the same day to take
-condition 6, at **9 rows and 6 requirements**.
+condition 6, at **9 rows and 6 requirements**. Amended 2026-09-24 to roster the
+inlining pass, at **12 rows and 7 requirements**.
 
 **State on 2026-09-09.** `X7` is **built** as `E189`: the widening multiply has
 two names, `mulhi` signed on `48 F7 E9` and `mulhu` unsigned on `48 F7 E1`, both
@@ -358,6 +441,30 @@ row and a `?` track that is an author call.
 
 `X1` through `X6` and `X9` stand open.
 
+**State on 2026-09-24.** Three rows opened, `X10` to `X12`, on evidence from
+three artifacts and no code change. The absence they answer is that this
+compiler erases no call, and `docs/arcs/parts/crypto-primitives-K2.md:132-135`
+established it by disassembling a five-step round and reading four `call`s and a
+tail `jmp` where the source has five steps. `records/findings.md` `FD-49` priced
+that absence in C at 5.43x with the boundary surviving against 1.14x with
+`gcc -O3` erasing it, over nine builds of Keccak-f[1600] on one host, and those
+are C figures on another host. `records/findings.md` `FD-51`, written the same
+day this amendment was, is the principal input: every surveyed inliner runs a
+size budget at the call site **and** a usage rule that bypasses the budget for a
+function with one call site, seven of the eight carrying that rule; the budget
+bounds nothing, and termination comes instead from an ancestor check on the
+inline stack, from GHC's structural refusal where the occurrence analyser picks
+a loop breaker per SCC and `idUnfolding` then returns `NoUnfolding` for it
+outranking every knob, or from GCC's 40% unit growth cap; and no published
+source describes an inliner that reads a declared quantity.
+
+⚑ **This arc can measure the change and cannot grade it.** Requirement 7 states
+why in full: both thresholds are `unreviewed` author calls, **The target ratio
+[[goals/emitted-speed]] condition 1 is held to** and **The budget
+[[goals/emitted-speed]] condition 4 holds a shipped native tool to**, and
+`FD-49`'s two ratios belong to `gcc` over C source. So `X10`, `X11` and `X12`
+each produce a number and none of them can say it passed.
+
 **Next, in order.** `X8`'s DESIGN audit, then its SPEC and build on the path
 `E189` proved. Then `X5`, because the back-edge says the outside-control figure
 has to exist before a pass lands or the two halves confound each other. Then
@@ -365,6 +472,16 @@ has to exist before a pass lands or the two halves confound each other. Then
 `X9` stands outside that chain and fails against the tree as it is, so it can
 run at any point. Every row runs `element-design` off
 `python3 tools/pack/pack.py emitted-speed/X<n>`.
+
+**The three new rows sequence by what each rests on, and they differ in cost by
+a lot.** `X10` first: the pass is written, meaning-preserving and called by
+nothing, so adopting it needs no new transformation, and what it needs instead
+is a source of static-argument bindings and `X4`'s switch. `X11` second: it is a
+new pass, and it is the one every surveyed compiler ships, so the shape is not
+this tree's to invent. `X12` last, because `FD-51` §7 says nothing published
+settles it and there is no inliner to hand a quantity to until `X11` exists.
+None of the three blocks on `X1`, `X2` or `X3`, and §4's fifth back-edge says
+why: an inlined callee returns nothing, so the product needs no wider return.
 
 **The pipeline's tooling was repaired on 2026-09-08 and 09, and `E189` is why.**
 `pack.py`'s post-mint half read the retired `docs/examples/` tier, so `--spec`,
@@ -409,9 +526,14 @@ session picking either up reads the code before it reads those two documents.
 
 ⚑ **Two thresholds are OWED and no row here may invent one.** Condition 1's
 target ratio and condition 4's budget, both stated as owed in
-[[goals/emitted-speed]]. `records/author-calls.md` holds no row for either, and
-this run was scoped to two files and could not open one, so **a row there is
-owed**. `crypto-primitives/K13` owes the same thing on the crypto side: the
+[[goals/emitted-speed]]. **Both now hold a row in `records/author-calls.md` and
+both read `unreviewed`**, cited by name because line numbers in that file shift
+on every insert: **The target ratio [[goals/emitted-speed]] condition 1 is held
+to**, opened 2026-09-08 by that goal, and **The budget [[goals/emitted-speed]]
+condition 4 holds a shipped native tool to**, opened the same day. The sentence
+this replaces said no row existed and that this arc's opening run could not open
+one; the rows were opened and neither has been ruled, so the thresholds are
+still owed and requirement 7 is written against their absence. `crypto-primitives/K13` owes the same thing on the crypto side: the
 target declaration and the cost model that gives `best` a meaning. The standing
 2026-09-01 ruling at `docs/benchmarks/README.md:29` is the reason there is
 nothing to inherit: it made the wall clock a recorded number that sets no bar.
