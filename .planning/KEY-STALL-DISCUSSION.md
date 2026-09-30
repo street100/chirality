@@ -36,6 +36,7 @@ per-instance map changes that, and the model below grew from the answer.
 | A10 | *"we also control the locks too btw. and how they work"* |
 | A11 | *"lets design each individual piece to its own file starting with lock, so we can do key, so we can do stall"* |
 | A12 | *"the idea is no sides have to actually send anything fundamentallly exploitable over wire ever"*. The wire carries only what symmetric keys established in person protect, so nothing sent can be harvested now and broken later |
+| A13 | The scope is the device, in process. The author: *"for eventual over the wire we will handle specific ephemeral routes in a greater network it assumes different pieces to provide over the wire because over the wire is a bit insecure inherently and you have to find another route. But we need to focus on secure as shit in process on device here"*. The wire, pairing between devices, and any KEM or PAKE belong to the route layer and are out of this model |
 
 ## Rejected, and why
 
