@@ -74,7 +74,15 @@ plus `sys-lib` (`lib/lowering/tal/sys-linkage.chiral:98-99`,
 (`lib/lowering/compile-emit.chiral:295-296`), which checks every `ti-sys` against
 the `sys-row` manifest (`lib/lowering/tal/target-linux.manifest:20`), keyed by
 the function's own name (`lib/lowering/tal/sys-check.chiral:31-45`). It walks one
-function at a time and follows no `ti-call`.
+function at a time and follows no `ti-call`. The same entry refuses an object
+def whose name collides with a linked routine
+(`lib/lowering/compile-emit.chiral:304-305`), so a program cannot shadow a
+`native-lib` routine with its own crossing def: a probe defining `nb-beq` as a
+`=>` def that calls `print`, then calling `str-eq` from a `->` def, is refused
+with that message. An `i-call` reaches only a lowered def of the program
+(`lib/lowering/upper/lower.chiral:280-282`), so a routine is reached by a
+table and never by a call. The four steps above are every route from an extern
+name to a routine.
 
 ### No pure-declared extern crosses today
 
@@ -103,8 +111,9 @@ it from a def typed `(-> I64 I64)`. `bin/chirality run` on it prints `crossed`
 and exits 7. `E171` accepts the def, `crossing-wraps` routes `print` to
 `wrap-print` (`lib/lowering/tal/crossing-wraps.chiral:15`), and the write
 syscall runs inside a pure def. `load-extern`
-(`lib/module/loader.chiral:457-468`) refuses a redeclaration and a non-type and
-nothing else. The same lie reaches the datasheet: `crossings-of`
+(`lib/module/loader.chiral:457-468`) refuses a redeclaration and a non-type, and
+`load-extern-linear` (`:469-476`, `E159`) refuses a linear result on a spine with
+no `=>`. Nothing reads the name against a route. The same lie reaches the datasheet: `crossings-of`
 (`lib/module/loader.chiral:218-228`) reads `sig-prim-crosses`, so the module
 reports no crossing bound.
 
@@ -191,9 +200,9 @@ admits a dishonest one from any program.
   reads the same bit at `crossings-of`. The routine half is a fact about the
   image `emit-elf-m` assembles, so it runs where `ck-tiprog` runs, on the E76
   precedent (`lib/lowering/tal/sys-linkage.chiral:103-111`). B checks the same
-  thing later and spends a carrier. C is rejected under
-  `.planning/protocol/reconcile.md` §"Proper or not at all": it closes the
-  tree's population and leaves the hole the probe measured.
+  thing later and spends a carrier. C is rejected because it fails §1's
+  obligation: a program that declares the lie must be refused by the compiler,
+  and C closes the tree's population and leaves the hole the probe measured.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
@@ -213,17 +222,20 @@ No NEEDS-AUTHOR.
 - **Band:** none. `E184-E189` is spent and bands are advisory
   (`docs/decisions/decision-lane-split.md:39-49`); `--mint` takes the next free.
 - **Catalog row:**
-  `| E<NN> | **Extern honesty: a pure-declared extern reaches no crossing.** \`load-extern\` refuses an extern whose type carries no \`=>\` seat and whose name is a \`crossing-wraps\` key; \`emit-elf-m\` refuses an image whose \`native-lib\` holds a \`ti-sys\` or calls outside itself, or whose \`prim2lib-table\` names a routine outside it | law | none | internal | \`E171\` reads the declared arrow as its trust root, and the route reads the name; a \`(-> Str Unit)\` \`print\` crosses from a pure def today (\`enforcement/N27\` §2) | SH |`
+  `| E<NN> | **Extern honesty: a pure-declared extern reaches no crossing.** \`load-extern\` refuses an extern whose type carries no \`=>\` seat and whose name is a \`crossing-wraps\` key; \`emit-elf-m\` refuses an image whose \`native-lib\` holds a \`ti-sys\` or calls outside itself, or whose \`prim2lib-table\` names a routine outside it. A crossing is a \`ti-sys\` reached through \`ti-call\`; the arena growth \`ti-bnew\` and \`ti-cona\` reach is substrate and no crossing (\`lib/lowering/compile-emit.chiral:206-211\`) | law | none | internal | \`E171\` reads the declared arrow as its trust root, and the route reads the name; a \`(-> Str Unit)\` \`print\` crosses from a pure def today (\`enforcement/N27\` §2) | SH |`
 - **Ledger row:**
   `| E<NN> | extern-honesty | module/loader, lowering/compile-emit | design | **A pure-declared extern reaches no crossing.** \`E171\`'s trust root. The tree's 38 are honest, measured 2026-09-30; a program's own declaration is unchecked. | \`enforcement/N27\`, EN-38 | SH |`
 - **Size:** about six files and 120 to 160 lines. `lib/module/loader.chiral`
   about 15 lines on `load-extern`'s 12 (`:457-468`); `lib/typing/diag.chiral` one
   `Judg` arm and its rendering; `lib/lowering/compile-emit.chiral` about 40 lines
-  on `xw-fns`' 26-line walker (`:231-263`); two refusal samples under
+  on the `xw-fns` walker's pattern (`:231-263`); two refusal samples under
   `prog/samples/` at about 8 lines each, the probe above being one; gate rows
   with three mutants (drop the load refusal, point one `prim2lib-table` value at
   `nb-sys-write`, add a `ti-call` to `nb-arena-fail` in one `native-lib`
-  routine). Rebuild to `C1 == C2`.
+  routine). Rebuild to `C1 == C2`. **Emission:** both checks read and refuse and
+  add no function to the image, so an accepted program's bytes do not move. The
+  compiler's own bytes do, by the new loader and emit code, and the fixpoint
+  rebuild is what settles them.
 - **Related:** [[arcs/parts/enforcement-N26]], [[arcs/parts/enforcement-N20]],
   [[banks/port]].
 
@@ -232,5 +244,5 @@ No NEEDS-AUTHOR.
 | need | measured | owner |
 |---|---|---|
 | [[banks/port]] Shard 3 grades the derivation sound for an extern | false by §2's probe (`docs/banks/port.md:147-148`) | a `doc-audit` of the bank once this element builds |
-| the substrate exclusion lives only in compiler comments | `lib/lowering/compile-emit.chiral:206-211`, `:282-288`; no decision names it | none; a line in `docs/decisions/decision-effect-facets.md` |
+| the substrate exclusion lives only in compiler comments | `lib/lowering/compile-emit.chiral:206-211`, `:282-288`; no decision names it, and [[banks/memory]] calls RAM substrate (`docs/banks/memory.md:76-78`) without naming its syscalls | this element's catalog row states it, the citable reader-tier home once minted |
 | `E198`'s catalog row counts 34 prelude externs | 35 open `->` today, `bover` at `lib/prelude/prelude.chiral:130` added by `E200` | `E198`'s SPEC stage |
