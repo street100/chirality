@@ -3,7 +3,7 @@ element: E171
 slug: membrane-enforced-at-call-seam
 title: The `->`/`=>` membrane, enforced at the call
 design: arcs/parts/enforcement-N26.md
-status: draft
+status: audited
 updated: 2026-09-30
 ---
 
@@ -45,7 +45,7 @@ updated: 2026-09-30
 | `lib/typing/kernel.chiral:559-563` | `seat-sub` and `seat-none` sit beside `seat=` | `seat=` is there; no `seat-sub`, `seat-none` or `seat-at` is defined anywhere under `lib/` or `prog/` | agrees |
 | `lib/typing/kernel.chiral:434-529`, the 38 heads that open `(lam (sig c` | all 38 take the ambient | 3 reach no judgment (`infer-global` `:841`, `infer-prim` `:846`, `finish-tcon` `:1056`). 7 judge only types: `infer-pi`, `infer-pi-lin`, `infer-pi2` (`:854-879`), `check-tcon`, `check-tparams` (`:1036-1055`), `check-refine`, `check-ratoms` (`:1395-1423`). The design's erased rule makes those 7 pure on every path | **constrains**: 28 heads take the ambient. The 10 others take none and call `infer`/`check` with `seat-none`, so a type is pure by construction |
 | `lib/typing/kernel.chiral:920-935` | `infer-ann` checks its type pure | `infer-ann` infers `ty` then `infer-ann2` checks `tm` | agrees; the one head that holds both a pure and an ambient judgment |
-| `lib/typing/kernel.chiral:1101-1113`, `:1127-1143` | the quantity-0 rule lives at `infer-app2` | `check-con-args` checks each constructor argument against a field `(pair q ftyv)`, and a field may be written `(0 name ty)` (`lib/surface/parse.chiral:496-505`). `solve-slots` infers the same arguments and swallows a `tc-err` | **constrains**: a quantity-0 field is an erased argument (`lib/typing/effects.chiral:39-40`, "a q0 (erased, runtime-absent) position must be pure"). One helper `seat-at` serves all four quantity sites. `solve-slots` passes the same ambient; a refusal it swallows is raised again by `check-con-args` |
+| `lib/typing/kernel.chiral:1101-1113`, `:1127-1143` | the quantity-0 rule lives at `infer-app2` | `check-con-args` checks each constructor argument against a field `(pair q ftyv)`, and a field may be written `(0 name ty)` (`lib/surface/parse.chiral:496-505`). `solve-slots` infers the same arguments and swallows a `tc-err` | **constrains**: a quantity-0 field is an erased argument (`lib/typing/effects.chiral:39-40`, "a q0 (erased, runtime-absent) position must be pure"). One helper `seat-at` serves all four quantity sites. `solve-slots` passes the same ambient. A refusal it swallows leaves the slot unsolved, so the constructor is still refused: by `check-con-args` when another argument solves the slot, else as `jg-ctor-infer-params` (`:1088-1089`) |
 | `lib/typing/kernel.chiral:900-918`, `:981-996` | a quantity-0 `let` value is checked pure | `infer-let` and `check-let` infer the value with `q` in scope | agrees; both call `seat-at` |
 | `lib/module/loader.chiral:391`, `:398`, `:419`, `:437`, `:463`, `:508`, `:519`; `lib/surface/parse.chiral:807`; `lib/typing/kernel-core.chiral:58` | top-level callers pass the pure ambient | 9 sites, each a type or a def body checked at the top | agrees; each passes `seat-none` |
 | `tools/test/samples/e170_infer_arms.prog:292-380` | not named | 24 calls to `infer`/`check` at the old arity, in a fixture of the unported Phase 12 (`tools/test/run-tests.sh:423`) | **constrains**: the calls take `seat-none` in the kernel commit, and the fixture keeps its compile outcome |
@@ -75,8 +75,8 @@ the build converges at `C1 == C2`. The implement run measures both (step 2).
   `prog/prapanca/chatter/turn-test.prog:447` (`depth-ok`), `prog/demo/_eff.chiral:3`.
 - **Change:** each declared `->` becomes `=>`. `_eff.chiral`'s body becomes
   `(put "x")` under the same `(-> I64 Unit)`, so the only thing wrong with it is
-  the membrane. The live compiler accepts all five today, since a `=>` body may
-  call anything.
+  the membrane. The live compiler accepts all five today: a `=>` body may call
+  anything, and `_eff.chiral`'s `->` body is the defect this element closes.
 - **Check:** Phase 7 under `bin/chirality-bin`, the same counts as before.
   No compiler rebuild: none of these files is in `prog/compiler.prog`'s closure.
 - **Size:** S, 5 lines.
@@ -122,8 +122,9 @@ the build converges at `C1 == C2`. The implement run measures both (step 2).
      and the renderer arm `((jg-pure-crossing) "effectful application at a pure seat (use => not ->)")`.
   10. The 9 top-level sites (§2) pass `seat-none`. `e170_infer_arms.prog`'s 24
       calls pass `seat-none`.
-  11. `tools/test/arity.sh:548` wants 37 and names E171 beside E182's count;
-      `:571-572` want 38.
+  11. `tools/test/arity.sh:548-549` want 37, and `:548` names E171 beside
+      E182's count; `:571-572` want 38. The comments at `:533` and `:563` move
+      with them.
 - **The three sites `N25` replaces** stay single: `seat-sub`'s body (item 1),
   the ambient the `t-lam` arm passes (item 5), and the callee seat `infer-app2`
   hands `seat-sub` (item 6). The pure ambient is the one def `seat-none`, named by
@@ -169,23 +170,26 @@ the build converges at `C1 == C2`. The implement run measures both (step 2).
 | row | fixture | want |
 |---|---|---|
 | R1 direct | `(def eff (=> I64 I64) (lam (n) (do (put "x") n)))` and `(def f (-> I64 I64) (lam (n) (eff n)))` | refused, the E171 text |
-| R2 callback | `(def app (-> (=> I64 I64) I64 I64) (lam (g n) (g n)))` | refused |
-| R3 data field | `(data Box () (box (run (=> I64 I64))))`, a `->` def applying the field it matched | refused |
-| R4 partial application | `eff2 : (=> I64 I64 I64)`; a `->` body that binds `(eff2 n)` and saturates it | refused |
-| R5 quantity-0 argument | `(def k (-> (0 x I64) I64 I64) …)` applied to `(eff n)` inside a `=>` body | refused |
-| R6 quantity-0 `let` | `(let ((0 x (eff n))) n)` inside a `=>` body | refused |
-| R7 quantity-0 field | `(data Tag () (tag (0 w I64) (v I64)))`, `(tag (eff n) n)` inside a `=>` body | refused |
-| R8 type position | `(def pick (=> Unit (type 0)) …)`, `(the (pick unit) n)` inside a `=>` body | refused |
-| R9 non-arrow def | `(def v I64 (eff 3))` | refused |
+| R2 callback | `(def app (-> (=> I64 I64) I64 I64) (lam (g n) (g n)))` | refused, the E171 text |
+| R3 data field | `(data Box () (box (run (=> I64 I64))))`, a `->` def applying the field it matched | refused, the E171 text |
+| R4 partial application | `eff2 : (=> I64 I64 I64)`; a `->` body that binds `(eff2 n)` and saturates it | refused, the E171 text |
+| R5 quantity-0 argument | `(def k (-> (0 x I64) I64 I64) …)` applied to `(eff n)` inside a `=>` body | refused, the E171 text |
+| R6 quantity-0 `let` | `(let ((0 x (eff n))) n)` inside a `=>` body | refused, the E171 text |
+| R7 quantity-0 field | `(data Tag () (tag (0 w I64) (v I64)))`, `(tag (eff n) n)` inside a `=>` body | refused, the E171 text |
+| R8 type position | `(def pick (=> Unit (type 0)) …)`, `(the (pick unit) n)` inside a `=>` body | refused, the E171 text |
+| R9 non-arrow def | `(def v I64 (eff 3))` | refused, the E171 text |
 | R10 the demo | a root importing `demo/_eff` | refused, the E171 text |
 | A1 `=>` body | R1's `eff` called from a `=>` `compile-main` | compiles, runs, exit pinned |
-| A2 curried `=>` | `(def p (-> I64 (=> I64 I64)) (lam (n) (eff2 n)))` | compiles |
-| A3 pure calls pure | a `->` def calling a `->` def and a `->` extern | compiles |
+| A2 curried `=>` | R4's `eff2`, and `(def p (-> I64 (=> I64 I64)) (lam (n) (eff2 n)))` | compiles |
+| A3 pure calls pure | a `->` def calling a `->` def and a `->` extern; its `compile-main` calls no crossing | compiles |
 | A4 E42 | `prog/samples/e42_reject_pure_as_process.prog` | refused with "type mismatch", the `conv` refusal |
 | A5 the four roots | the four files of step 1 | each compiles |
 
 R5 to R8 sit in `=>` bodies on purpose: there the call refusal admits them, so
-only the erased rule refuses them.
+only the erased rule refuses them. Every R row pins the E171 text, since a row
+that wants only a refusal passes on any refusal. R8 needs it: the kernel leaves
+a global stuck (`lib/typing/kernel.chiral:682`), so under M4 `n` fails against
+`(pick unit)` as a type mismatch and the row stays refused.
 
 - **Mutants, each run, each pinning its full red set:**
   - **M1 refusal-off:** `seat-sub`'s body becomes `true`. Reddens R1 to R10.
@@ -193,10 +197,11 @@ only the erased rule refuses them.
   - **M2 erased-arg-off:** `seat-at` returns `amb` for every quantity. Reddens
     R5, R6, R7 only.
   - **M3 lambda-ambient-pure:** the `t-lam` arm passes `seat-none` in place of
-    `s`. Every `=>` body in a fixture's import closure is then refused, so the red
-    set holds A1, A4 and A5 and whichever of A2 and A3 import such a body; the
-    implement run pins the set it measures. No R row is in it: each stays refused
-    with the E171 text.
+    `s`. Every `=>` body that applies a crossing is then refused. Reddens A1
+    (`eff`), A2 (`eff2`), A4 (`poll-fds` applies `nb-poll`,
+    `lib/runtime/poll.chiral:82-86`, in the sample's import closure) and A5. A3
+    stays green: its root and the prelude hold no such body. No R row is in it:
+    each stays refused with the E171 text.
   - **M4 annotation-type-ambient:** `infer-ann` infers `ty` at `amb`. Reddens R8
     only.
   - A mutant that does not build scores BUILD:fail; one byte-identical to the
