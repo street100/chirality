@@ -100,7 +100,6 @@ Scope of this draft: local only, on one device. Anything across devices waits, a
 | the clock is rolled back while the stall is off | the stall keeps a time high-water mark inside the sealed bundle and refuses any clock earlier than it, at every unlock |
 | the whole device is restored, bundle and mark with it | rung 1 cannot see it. Rung 2 closes it with the secure element's monotonic counter |
 | the stall is off when an expiry passes | nothing opens without an unlock, and every unlock shreds expired entries before serving |
-| a lock copied off the device | it opens only by talking to a stall (L5), and a key leaves a stall only by a secure move that leaves no copy (T4) |
 
 ## Draft: shrinking bundles into smaller ones
 
@@ -116,7 +115,7 @@ Deeper bundles make each open touch less and put more keys on the reseal path. S
 
 ## Open
 
-- The two rules, L5 and T4, and what a lock's talk to a stall carries.
+- The two rules, L5 and T4: how a lock is brought to a stall, and how a stall moves.
 - B16 to B20, and how deep.
 - B11 to B15.
 - B6 to B10, and the person's-secret cost.

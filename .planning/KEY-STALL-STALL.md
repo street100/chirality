@@ -13,7 +13,7 @@ party (A9). This file covers the stall on its own device, in process.
 | T1 | The stall is plotted by its works, and the works say what it asks of a key. The author, 2026-09-30: *"lets look at what a stall asks for of the key by plotting out stall works and then use that to finish speccing the key"* |
 | T2 | The conflict below is resolved by factors on the device, as diverse as the spectrum needs. The author: *"yes we need to have diverse as shit factor stuff for the whole genuinely secure spectrum for em"* |
 | T3 | The works list stands. The author: *"This is good enough"* |
-| T4 | A stall can move securely. The author, 2026-09-30, naming the rule this model needs: *"a stall can move securely"*. Expiry held by the stall alone holds only while no copy of a key escapes the stall. A move carries a stall's holdings to another device and leaves nothing behind: the source shreds once the move completes, so at most one live copy exists. The move crosses devices, so its channel is later work, and this rule is the structure that work must keep |
+| T4 | A stall can move securely, so it can reach a lock to reseal it under a new key. The author, 2026-09-30: *"a stall can move securely and lock can talk to a stall"*. This rule and L5 in the lock file are the two that let revocation and rotation reach every lock. The move's channel is later work, and this rule is the structure it must keep |
 | T5 | Expiry is the stall's alone. The stall is the only reader of time, and it enforces expiry by shredding, which no clock rolled back can undo |
 
 ## A conflict the works surfaced, resolved by T2
