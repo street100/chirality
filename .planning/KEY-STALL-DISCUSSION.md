@@ -5,7 +5,7 @@ author. It holds the author's rulings verbatim, what was proposed and rejected
 with the reason, and the adversary list the piece designs are checked against.
 The pieces are designed one file each, in order: the lock, then the key, then
 the stall. Each is worked through with the author in session and written as it
-settles. A piece design is not dispatched.
+settles. The session does not dispatch a piece design.
 
 | piece | file | state |
 |---|---|---|
@@ -35,6 +35,7 @@ per-instance map changes that, and the model below grew from the answer.
 | A9 | *"you wrote out expectations of connectivity guarentee in core security protocol. massively backwards"*. No security property may depend on reaching another party |
 | A10 | *"we also control the locks too btw. and how they work"* |
 | A11 | *"lets design each individual piece to its own file starting with lock, so we can do key, so we can do stall"* |
+| A12 | *"the idea is no sides have to actually send anything fundamentallly exploitable over wire ever"*. The wire carries only what symmetric keys established in person protect, so nothing sent can be harvested now and broken later |
 
 ## Rejected, and why
 
