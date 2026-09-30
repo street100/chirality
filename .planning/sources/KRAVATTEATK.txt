@@ -1,0 +1,1511 @@
+IACR Transactions on Symmetric Cryptology
+ISSN 2519-173X, Vol. 2018, No. 1, pp. 5–28. DOI:10.13154/tosc.v2018.i1.5-28
+Key-Recovery Attacks on FullKravatte
+Colin Chaigneau1, Thomas Fuhr2, Henri Gilbert1,2, Jian Guo3,
+Jérémy Jean2, Jean-René Reinhard2 and Ling Song3,4
+1 University of Versailles Saint-Quentin-en-Yvelines (UVSQ), Versailles, France
+Colin.Chaigneau@uvsq.fr
+2 Agence nationale de la sécurité des systèmes d’information (ANSSI), Paris, France
+<Firstname.Lastname>@ssi.gouv.fr
+3 Nanyang Technological University, Singapore, Singapore
+guojian@ntu.edu.sg,songling.qs@gmail.com
+4 Institute of Information Engineering, Chinese Academy of Sciences, Beijing, China
+Abstract. This paper presents a cryptanalysis of fullKravatte, an instantiation of
+the Farfalle construction of a pseudorandom function (PRF) with variable input
+and output length. This new construction, proposed by Bertoni et al., introduces
+an eﬃciently parallelizable and extremely versatile building block for the design of
+symmetric mechanisms, e.g. message authentication codes or stream ciphers. It relies
+on a set of permutations and on so-called rolling functions: it can be split into a
+compression layer followed by a two-step expansion layer. The key is expanded and
+used to mask the inputs and outputs of the construction.Kravatteinstantiates
+Farfalle using linear rolling functions and permutations obtained by iterating the
+Keccak round function.
+We develop in this paper several attacks against this PRF, based on three diﬀerent
+attack strategies that bypass part of the construction and target a reduced number of
+permutation rounds. A higher order diﬀerential distinguisher exploits the possibility
+to build an aﬃne space of values in the cipher state after the compression layer.
+An algebraic meet-in-the-middle attack can be mounted on the second step of the
+expansion layer. Finally, due to the linearity of the rolling function and the low
+algebraic degree of theKeccak round function, a linear recurrence distinguisher can be
+found on intermediate states of the second step of the expansion layer. All the attacks
+rely on the ability to invert a small number of the ﬁnal rounds of the construction.
+In particular, the last two rounds of the construction together with the ﬁnal masking
+by the key can be algebraically inverted, which allows to recover the key.
+The complexities of the devised attacks, applied to theKravatte speciﬁcations
+published on the IACR ePrint in July 2017, or the strengthened version ofKravatte
+recently presented at ECC 2017, are far below the security claimed.
+Keywords: Cryptanalysis · Higher Order Diﬀerential· Algebraic Attack· Filtered
+LFSR
+1 Introduction
+Farfalle is an eﬃciently parallelizable permutation-based construction of a variable
+input and output lengthpseudorandom function (PRF) recently proposed by Bertoni
+et al. [BDH+16]. It represents an extremely versatile building block for the design of
+symmetric mechanisms. It can indeed be used either directly as a message authentication
+code (MAC), as the keystream generation part of a stream cipher, as a key derivation
+function (KDF), or otherwise in a mode of operation allowing to convert it into a more
+complex mechanism, for instance an authenticated encryption scheme or a block cipher of
+variable block length.
+Licensed under Creative Commons License CC-BY 4.0.
+Received: 2017-11-23, Accepted: 2018-01-23, Published: 2018-03-01
+
+6 Key-Recovery Attacks on Full Kravatte
+Farfalle takes as input a key and a (sequence of) data string(s) of arbitrary length(s)
+and produces an output of arbitrary length. Its construction involves two basic ingredients:
+a set ofpermutations of ab-bit state, and a family of so-calledrolling functionsused to
+derive distinctb-bit mask valuesfrom ab-bit mask keyor more generallyb-bit variants of
+a b-bit state.
+The Farfalle construction consists of acompression layerfollowed by anexpansion
+layer. The compression layer produces a singleb-bit accumulator valuefrom a tuple of
+b-bit blocks representing the input data. The expansion layer ﬁrst non-linearly transforms
+the accumulator value into ab-bit rolling stateand then non-linearly transforms a tuple
+of variants of this rolling state, produced by iterating the rolling function into a tuple of
+(truncated) b-bit output blocks. Both the compression and the expansion layer involve
+b-bit mask values derived from the key by thekey derivationpart of the construction.
+An eﬃcient instantiation of the Farfalle construction named Kravatte is also
+speciﬁed in [BDH+16, version 20170717:134002]. It is depicted in Figure 1. The underlying
+components are a set ofKeccak-p permutations of ab= 1600-bit state, and a family of
+simple F2-linear rolling functions. The variants ofKravatteare addressed according to
+the number of rounds in the internal permutations:nb rounds for the key derivation,nc
+rounds for the compression layer,nd rounds for the non-linear transformation applied of
+the accumulator, andne rounds for the expansion layer. The speciﬁcations ofKravatte
+published on the IACR ePrint in July 2017 use (nb,nc,nd,ne) = (6,6,4,4) and an
+announcement at ECC 2017 of a strengthened variant [BDH+17b] uses(nb,nc,nd,ne) =
+(6,6,6,6).
+Our Contributions
+In this paper, we present three families of attacks against fullKravatte, whose time and
+data complexities are far below the security claimed by the designers. Furthermore, one of
+them can even be successfully applied to strengthened variants ofKravatte.
+The ﬁrst two attack strategies focus on the expansion layerafter the application of
+its initial non-linear transformation. They exploit that all output blocks are generated
+from the same initial rolling state, and the small number ofKeccak-p rounds between the
+rolling state diversiﬁcation and the block outputs. They require a longKravatteoutput
+generated from a single and possibly unknown message. The compression layer and the
+derivation of the rolling state from the accumulator value do not contribute any security
+against these attacks. The third strategy focuses on a property of the compression layer.
+Meet-in-the-Middle Algebraic Attack. The ﬁrst attack can be seen as a meet-in-the-
+middle (MITM) algebraic attack, and bears some resemblance to the meet-in-the-middle
+approach applied to interpolation attacks [JK97]. The rolling state and the output masking
+key are the unknowns of an algebraic system built by forming expressions of the same
+intermediate state, either by forward computation from the rolling state, or by backward
+computation from the output. The expansion mechanism makes it possible to collect
+enough equations to solve the system by linearization.
+Linear Recurrence Distinguisher. The second attack strategy leverages the linear branch
+diversiﬁcation mechanism of the expansion layer: the rolling state can be assimilated to
+a short LFSR state, due to the restriction of the rolling function to only 320 bits of the
+1600-bit state. As a consequence, the linear complexity of the sequence of blocks obtained
+by application to consecutive rolling state values of a small number of the low-degree
+Keccak round function is also limited, i.e., this sequence satisﬁes a linear recurrence of
+order far smaller than what is expected from the size of the state. Furthermore, the
+recurrence polynomial of this sequence of blocks can be derived at a moderate cost. This
+observation provides the linear recurrence distinguisher used in our attack.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 7
+Higher Order Diﬀerential Distinguisher. The last attack strategy is essentially a higher
+order diﬀerential distinguisher. First, the compression layer ofFarfalle produces an
+accumulator state equal to theexclusive or of non-linear permutations of theb-bit blocks
+representing the input data. This property allows the compression layer to satisfy the
+design requirements of being eﬃciently parallelizable andincremental.1 However, it also
+allows an adversary to construct simple structures of2n n-block input values whose images
+by the compression layer form an aﬃne subspace of dimensionn of {0,1}b.
+Moreover, Kravatterelies on theKeccak-ppermutation, whose round function has an
+algebraic degree only two and the rolling function isF2-linear. Therefore, if we denote by
+r the number ofKeccak-p rounds of the partial computation —on input the accumulator
+state and up toϵﬁnal Keccak-p rounds— of any of the output blocks of the expansion
+layer, the algebraic degree of this partial expansion is upper bounded by2r. This implies
+that ifn> 2r, the sum of the outputs of this partial expansion over the accumulator values
+associated with one of the structures mentioned above is equal to zero. This observation
+provides the higher order diﬀerential distinguisher used in our attack.
+Last Round Attacks. The attacks all rely on the capacity to “invert” up to two of the
+last rounds of the expansion layer despite a ﬁnal masking of the output values by a key
+block. This can be done algebraically, by expressing the intermediate values as a function
+of the Kravatteoutput block and of the unknown key block, setting up a system of
+multivariate polynomial equations, and solving this system by linearization. Surprisingly,
+this is more eﬃcient than expected from the algebraic degree of the inverse of the last
+rounds due to the limited diﬀusion in a small number of iterations of the inverse round
+function ofKeccak.
+This notably oﬀers the possibility to leverage distinguishers on partial versions of
+Kravatte, and then mount key-recovery attacks on the full primitive. We give in Table 1
+a list of the key-recovery attacks that are described in the rest of the paper.
+Optimizations. Various technical improvements can be applied to the attack strategies
+in order to optimize the time, memory, or data complexity. We already note that some
+of these techniques improve some of the complexities but downgrade some others, which
+makes the selection of improvements a trade-oﬀ process. We discuss these optimizations in
+a dedicated section (Section 5) after the presentation of the attack strategies.
+Organization. We give a description ofKravatte in Section 2, an instantiation of
+the Farfalle construction. In Section 3, we describe a MITM algebraic attack and
+an attack based on the linear recurrence distinguisher ofKravattepartial expansion
+layer. Both attack strategies focus on the expansion layer ofKravatte. In Section 4,
+we describe a higher order diﬀerential attack onKravatte. In Section 5, we describe
+technical optimizations that can be applied to the attack strategies in order to improve
+their complexities, and provide a selection of attacks optimized either for time, memory or
+data complexity. Finally, we discuss in Section 6 the insights gained from these attacks.
+2 Speciﬁcations of Farfalle and Kravatte
+In this section, we give a description of permutation-based modeFarfalle and its original
+instantiation Kravatte, which is based on the permutation used inKeccak [BDPA11,
+NIS14]. The two primitivesFarfalle and Kravattehave both been designed by Bertoni
+et al., originally published on the IACR ePrint in [BDH+16], and strengthened versions
+have been accepted at ToSC and will be presented at the FSE 2018 conference [BDH+17a].
+1Incremental means that if two input data share the same preﬁx, their compression layer computations
+can be partly shared.
+8 Key-Recovery Attacks on Full Kravatte
+Table 1:Key-recovery attacks againstKravatteinstantiations for several(nd,ne) values.
+All attacks are independent ofnb and nc, and⋆means thatnd can take any value. The
+reference points to the section describing the attack type. The complexity ﬁgures are
+obtained after the selection of optimizations described in Section 5.
+(nd,ne) Type Data Memory Time Reference
+blocks bits elementary op.
+(4,4) Higher Order 274.7 262.3 2112.2 Section 4
+(⋆,4) MITM 227.8 276.9 2115.3 Subsec-
+tion 3.1
+(⋆,4) Linear Recurrence 251.2 251.2 265.1 Subsec-
+tion 3.2
+(⋆,4) Linear Recurrence 229.9 262.3 287.0 Subsec-
+tion 3.2
+(⋆,6) Linear Recurrence 288.4 288.4 2134.6 Subsec-
+tion 3.2
+2.1 The Farfalle Construction for Permutation-Based PRFs
+Kravatte is a permutation-based variable input and output length pseudo-random
+function. It takes as input a key and a sequence of bit strings, and returns an arbitrary-
+length output. It relies on theFarfalle construction, which allows to build a PRF from
+parallel applications of ﬁxed permutations. In this article and without loss of generality, we
+focus on input sequences that contain only one bit string, while the general construction
+allows for vectors of bit strings. Throughout this paper, theexclusive or of bits orb-bit
+blocks is denoted additively by “+”.
+Farfalle makes use of four permutations (possibly identical or related), denotedpb,
+pc, pd and pe of ab-bit block. Its instantiation requires the deﬁnition of three so-called
+rolling functions, denotedrollc, rolle and rollf. These functions should ensure that for an
+unknown valuex, an adversary cannot predict the value of any number of iterations of the
+rolling functionsrolli(x), nor the value ofrolli(x) +rollj(x) for i̸= j.
+The Farfalle construction takes as input a keyK and a messageM. For anℓi-block
+input message and aℓo-block output,Farfalle consists of the three following steps:
+Mask derivation: The keyKis paddedinto ab-bit stringK∥10∗, on which thepermutation
+pb isappliedandyields kin = pb(K∥10∗). Denotingkout = rollℓi+1
+c (kin), ℓi+ℓj masks
+are then computed askin
+i = rolli
+c(kin) for i= 0,...,ℓi −1, andkout
+j = rollj
+f(kout)
+for j = 0,...,ℓo −1.
+Compression layer:The message M is padded into a ℓi sequence of b-bit blocks mi,
+by appending a1-bit and a sequence of0-bits. Then, one compresses these data
+into a single b-bit block accumulator x, by XOR-ing a key mask to each block,
+applying the permutationpc to the results, and XOR-ing all the results together:
+Acc(M) =∑
+ipc
+(
+mi + kin
+i
+{
+.
+Expansion layer:In a ﬁrst step, the permutationpd is applied on the accumulator to get
+y = pd(Acc(M)). Then, in a second step,ℓo output blockszj are computed from
+this value by applying consecutively a rolling function, the permutationpe, and an
+XOR with the key maskkout
+j : namely,zj = pe
+(
+rollj
+e(y)
+{
++ kout
+j for j = 0,...,ℓo−1.
+The output ofFarfalle is the concatenation of bit stringsz0∥···∥zℓo−1.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 9
+2.2 The KravattePseudo-Random Function
+Kravatteis an instantiation of theFarfalle construction, which speciﬁes the internal
+components. The Figure 1 outlines the overall primitive that relies on four diﬀerent
+Keccak-p permutations [NIS14] on a block size ofb = 1600 bits. The only distinction
+between those four permutations namedpb, pc, pd and pe lies in their number of rounds,
+that we denote respectively bynb, nc, nd and ne.
+Since the ﬁrst publication, the designers substantially changed the construction of
+Farfalle and Kravatte, and as of the latestKravattespeciﬁcation [BDH+16], the
+permutations pb and pc consist of nb = nc = 6 rounds of the Keccak-p permutation,
+while the remaining two permutations containnd = ne = 4rounds. In a private commu-
+nication,2 upon discovery of the higher order diﬀerential attack described in Section 4,
+the designers considered increasing the numbers of rounds to(nb,nc,nd,ne) = (6,6,6,6).
+The resulting updated version has been presented by the designers at the ECC 2017
+conference [BDH+17b].
+To conveniently address the various versions throughout the paper, we use the notation
+Kravatte-(nd,ne) to refer to a version with speciﬁcnd (resp. ne) number of rounds in
+the permutationpd (resp. pe). Our results are independent ofpb and pc, which is why we
+do not mentionnb and nc.
+Like inKeccak, the 1600-bit state is represented as a5 ×5 ×64 three-dimensional
+bit array B, where each bit is denotedBx,y,z, with x,y = 0,...,4 and z = 0,...,63.
+Arithmetic operations performed on indicesx,y and z are reduced modulo5, 5 and 64,
+respectively, and we omit the modulo for the sake of simplicity.
+Additionally, whileFarfalle uses several rolling functions,Kravatteonly relies on
+one, that we simply denote byroll, and whosen-th iteration is depicted asn on Figure 1.
+More precisely,rollb = rollc = rolld = roll and rolle is the identity. Theroll function
+transforms a stateA into B = roll(A) as follows:
+Bx,y,z ← Ax,y,z if y <4,
+Bx,4,z ← Ax+1,4,z if x< 4,
+B4,4,z ← A0,4,z−7 + A1,4,z if z >60,
+B4,4,z ← A0,4,z−7 + A1,4,z + A1,4,z+3 if z≤60.
+Security Claims. In the original document, the designers ofKravatteclaim a security
+of 256 bits when the amount of data does not exceed2137 input and output blocks, that is
+ℓi + ℓo ≤2137.
+2.3 Round Function of the Keccak-pPermutation
+We now give a brief description of theKeccak-p permutation, which can also be found
+in [NIS14]. It is based on the iteration of a round function, deﬁned as the composition of
+the following operations (in this order), that each produce a stateA′from A:
+Linear Diﬀusionθ: The sum of the ﬁve bits of columns with indices(x−1,z) and (x+
+1,z −1) are added to bit each bit(x,y,z ) of the state:
+A′
+x,y,z ← Ax,y,z +
+4
+j=0
+Ax−1,j,z +
+4
+j=0
+Ax+1,j,z−1.
+Lane-Wise Rotationρ: Each lane of the state is rotated by a diﬀerent number of positions,
+whose exact values are not relevant for the description of the attacks.
+2November 5, 2017.
+10 Key-Recovery Attacks on Full Kravatte
+K||10∗ pb
+ℓi+1
+pd
+Acc(M) y
+pc
+0 kin
+m0 0 pe
+kout
+z0
+y0
+pc
+1 kin
+m1 1 pe
+kout
+z1
+y1
+pc
+ℓi−1 kin
+mℓi−1 ℓo−1 pe
+kout
+zℓo−1
+yℓo−1
+··· ···
+M
+Figure 1: The Kravatteprimitive. The input messageM is padded and split into the
+b-bit blocksmi. The function n refers to the linear functionx→ rolln(x).
+Lane-Preserving Permutationπ: Lanes positions are switched according to a constant
+pattern: A′
+x,y,z ← Ax+3y,x,z
+Substitution Layerχ: A 5-bit Sbox of degree two is computed on each row(y,z) of the
+state. More speciﬁcally, each output bit depends on three input bits by the following
+equation (omittingy and z indices):
+A′
+x ← Ax + Ax+1 ·Ax+2.
+Constant Additionι: A round constant produced by an LFSR is XOR-ed to the lane
+indexed by(0,0). We omit the exact values of the constants, as they are not relevant
+to understand the paper. We refer the interested reader to [NIS14] for more details.
+In the remaining of the paper, we also use the inverse of theKeccak-p round function,
+obtained by inverting the sequence of operations. The transformationsι, ρand π all have
+straightforward inverses. The inverse Sboxχ−1 has algebraic degree three, and omittingy
+and z indices, its polynomial expression is given by
+A′
+x ← Ax+1 ·Ax+3 ·Ax+4 + Ax+1 ·Ax+2 + Ax.
+The transformationθ−1 is a high-density linear layer whose exact expression is not relevant
+for the analysis conducted in the paper. It consists in XOR-ing to each bit of the state the
+sum of all ﬁve bits of about half of the columns of the state, and we note that, for a given
+column, the value XOR-ed to all the ﬁve positions is the same.
+3 Algebraic Cryptanalysis of Full Kravatte
+In this section, we describe key-recovery algebraic attacks againstKravatte-(nd,ne)
+for any nd and ne ∈{4,6}and for a single message. These attacks rely on a remark
+on the linearization of the algebraic systems describing iteratedKeccak-p−1 rounds, on
+the structure of the expansion layer in theKravatteconstruction, and on the small
+number ne of Keccak-p rounds in thepe permutation. We note that these attacks are
+entirely independent of the compression layer ofKravatteas well as the application ofpd
+on the accumulator that initiates the expansion layer.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 11
+y
+0 Keccak-pn1 Keccak-p−n2
+kout
+z0
+y0
+1 Keccak-pn1 Keccak-p−n2
+kout
+z1
+y1
+ℓo−1 Keccak-pn1 Keccak-p−n2
+kout
+zℓo−1
+yℓo−1
+...
+A-states =B-states
+Figure 2: Meet-in-the-middle algebraic attack onKravatte, with n1 forward andn2
+backward rounds,n1 + n2 = ne.
+We ﬁrst describe an attack based on a meet-in-the-middle strategy (Subsection 3.1),
+which can be enhanced by an observation borrowed from stream-cipher cryptanalysis
+(Subsection 3.2). This last technique can be further improved by reﬁning the study of the
+linearization of iteratedKeccak-p−1 rounds, which is covered in Section 5.
+3.1 Meet-in-the-Middle Algebraic Attack
+We present a key-recovery meet-in-the-middle (MITM) algebraic attack on fullKravatte.
+The key observation underlying the attack is that thesame unknown value at the output
+of pd is used at the input ofall the branches in the expansion phase. If we denote this
+value byy, then thej-th output block becomeszj = pe(rollj(y)) +kout. By considering a
+system of equations where the unknowns are bits of bothkout and ofy, we can mount
+a meet-in-the-middle attack by equating two states for Branchj: Aj = Bj, where Aj
+corresponds to n1 forward rounds ofKeccak-p applied on yj = rollj(y), and Bj to n2
+backward rounds ofKeccak-papplied onzj+kout, withn1 +n2 = ne. TheA-states contain
+expressions iny and can be precomputed, while theB-states contain output-dependent
+expressions inkout. By considering a single input message (possibly unknown) together
+with itsℓo-block output, forℓo suﬃciently large, we can collect enough equations to form
+a system that can be solved through linearization, which recoverskout.
+Linearization Principle. Linearization is a well-known technique to solve multivariate
+polynomial systems of equations. It relies on a fairly simple idea: the system of polynomial
+equations is turned into a system of linear equations by adding new variables that replace
+all the monomials of the system whose degree is strictly greater than 1. This linear system
+of equations can be solved using linear algebra if there are enough equations to make the
+linearized system overdetermined, typically at least on the same order as the number of
+variables after linearization. All the attacks from the paper heavily rely on this technique.
+In the case of the MITM algebraic attack onKravatte, the middle state can be
+described as a polynomial expression iny bits (resp. kout bits) in the forward (resp.
+backward) direction. By linearization and summation of both expressions, one gets a linear
+equation iny and kout monomials, with no composite monomial involving both types of
+unknowns.
+Basic Linearization. The most straightforward way to linearize algebraic expressions in
+n unknowns of degree limited byd is to introduce a new variable for every monomial in
+the unknowns of degree at mostd. The set of monomials considered has cardinality
+S(n,d)
+def
+=
+d
+i=1
+(n
+i
+{
+.
+12 Key-Recovery Attacks on Full Kravatte
+Table 2:Number of monomials in input (resp. output) variables afternrounds ofKeccak-p
+or Keccak-p−1 for b= 1600(log2 scale).
+n Keccak-p Keccak-p−1
+Basic Improved
+1 20.3 29.3 13.0
+2 38.0 77.3 36.5
+3 69.8 194.0 106.4
+This approach can be used directly in the context of the MITM algebraic attack on
+Kravatte. The algebraic degree of Keccak-p (resp. Keccak-p−1) is two (resp. three)
+and roll is linear, thus the number of monomials involved by a basic linearization is
+approximately S(b,2n1 ) +S(b,3n2 ). We give in Table 2 the number of monomials required
+to describe the forward and backward parts of the meet-in-the-middle algebraic system.
+Improved Linearization in the Backward DirectionThe number of monomials to con-
+sider in the backward direction can be drastically reduced if we take into account the
+row structure ofχ−1 non-linear layers and the absence of diﬀusion before the ﬁrstχ−1
+layer encountered. Indeed, through the backward computations, new monomials are only
+created in χ−1 layers through multiplicative combination of input sum of monomials.
+There are two limiting factors to the combination power of theχ−1 layers. First, theχ−1
+has only degree three, restricting the newly created monomials to the product of at most
+three input monomials. Secondly, it operates on only ﬁve inputs, which has a signiﬁcant
+eﬀect since input monomials for the externalχ−1 layer can be limited by position: as no
+diﬀusion takes places after the unmasking bykout, only ﬁvekout bit variables can occur
+in the monomials occurring at the output of a given Sbox. Consequently, the number of
+monomials required to express the outputs of an Sbox is upper bounded byS(5,3), so that
+expressing the outputs of all Sboxes only requiresN = b
+5 S(5,3) monomials. The input
+bits of internalχ−1 layers have undergone linear diﬀusion, so they cannot be restricted in
+the same manner. However, the degree limitation still applies, and sinceN monomials
+can be used to describe the polynomial expressions of all bits before theχ−1 layer, the
+number of monomials that appear in the output bits of this layers is upper-bounded by
+S(N,3). This can be iterated to cover more rounds. Note that the improved linearization
+does not apply in the forward direction due to the application ofroll and θprior to the
+ﬁrst χ layer. We give in Table 2 estimates for the number of monomials to consider for a
+small number ofKeccak-p rounds in the backward direction.
+Forne = 4, choosingn1 = n2 = 2, Kravattecan be attacked by a meet-in-the-middle
+algebraic attack. The attack requires 1
+1600 (238.0 + 236.5) ≈ 227.8 output blocks to get
+enough equations, has memory complexity(238.0 + 236.5)2 ≈276.9 bits to represent the
+system and the time for the resolution of the linearized system is at most cubic in the
+number of monomials, which yields about(238.0 + 236.5)3 ≈2115.3 elementary operations.
+The time complexity to build the system boils down to the construction of the227.8
+equations, where each requires to compute the expressions coming from both sides of
+the meet-in-the-middle. For one equation, the backward contribution is dominated by
+the product of three polynomials in320S(5,3) = 8000 monomials, while the forward
+contribution is dominated by the multiplication of two polynomials of at mostS(1600,2) ≈
+220.29 monomials iny. All in all, the time complexity is dominated by the time for solving
+the system.
+The above observations about how to linearize the backward computation of up to two
+last rounds ofKeccak-p and the results of Table 2 will be re-used in the key-recovery part
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 13
+of the attacks introduced in Subsection 3.2 and Section 4.
+3.2 Cancellation of Monomials Using a Linear Recurrence
+We now describe a second attack that exploits the linearity of the rolling function to cancel
+the monomials iny from the system. Indeed, after the application ofpd, the ﬁrst half of
+the remaining expansion layer can be seen as a ﬁltered linear recurrent sequence of states,
+with update functionroll and output functionKeccak-pn1 . Filtered linear recurrences, e.g.
+ﬁltered LFSR, are classic stream cipher constructions, which have been deeply studied. A
+line of work [Key76,RH07,RGH07] observes that not only do the LFSR state bits follow
+linear recurrences, but the same holds for the monomials that are formed from these bits.
+In this section, we start by exposing a recurrence polynomial of sequences of values
+taken by bits of the rolling state. We then show how this can be generalized to obtain a
+recurrence polynomial for sequence of values taken by products of bits of the rolling state.
+As the stateAj can be expressed as a sum of such products ofyj bits, this constitutes a
+linear complexity distinguisher on partialKravatte, with the lastn2 Keccak-p rounds
+and ﬁnal masking removed. Finally, we show this can be used to combine equations of the
+system describing the expansion phase ofKravatteto eliminate the monomials iny.
+Linear Recurrence of Rolling State Bits.As stated above, the beginning of the expansion
+layers acts like a LFSR ﬁltered by the ﬁxed non-linear functionKeccak-pn1 . After the
+initial valuey = pd(Acc(M)) of the rolling state is formed, it is updated linearly through
+the rolling functionroll: the value of the rolling state that appears at the start of Branchj
+is given byyj = rollj(y). The rolling functionroll is a linear transformation of the rolling
+state that leaves Planes 0 to 3 unchanged. The matrixMroll of size320 describing how
+roll aﬀects Plane 4 has a primitive characteristic polynomialProll of degree 320.3 By
+the Cayley-Hamilton theorem, we know thatProll(Mroll) = 0. We can associate to Biti
+of Plane 4 a vectorei of the standard basis ofF320
+2 , and the values taken by the Biti
+of Plane 4 of the stateyj in Branchj is then given byeT
+i ·Mj
+roll ·yroll, whereyroll is
+the restriction ofy to Plane 4. Then, we observe that the sequence of values taken by
+a given state bit of the part aﬀected byroll over the branches of the expansion layer
+(see Figure 3) is a linear recurrence sequence with recurrence polynomialProll. Indeed,
+noting Proll = ∑
+ncnXn, we have for allj:
+Proll(yj
+i) =eT
+i ·
+(
+n
+cnMj+n
+roll
+(
+·yroll = eT
+i ·
+(
+Mj
+roll ·Proll(Mroll)
+{
+·yroll = 0.
+Furthermore, the bits in Planes 0 to 3 follow a linear recurrence with recurrence polynomial
+X+ 1, so all the state bits follow the linear recurrence given by(X+ 1)·Proll.
+Linear Recurrence of Monomials Formed on the Rolling State.This can be generalized
+to the monomials formed from the bits of the rolling state. In the same way thatMroll
+describes the evolution of state bits, one can consider the matrixM≤d
+roll describing the
+evolution throughroll of monomials of degree at mostd in theyj state bits, since the
+transformation is also linear on this set. Indeed, the updated value of every state bit
+after roll is a linear combination of state bits before the update, so the product ofd
+updated values can be written, by developing the product of the linear combinations,
+as a linear combination of monomials of state bits before update with degree at mostd.
+The characteristic polynomialP≤d
+roll of this matrix provides a recurrence polynomial for
+all S(320,d) monomials of degree at mostd in the320 variables of Plane 4. It is also a
+recurrence polynomial for monomials of degree at mostd in all state variables with at
+3We explicitly giveProll in Appendix.
+14 Key-Recovery Attacks on Full Kravatte
+y
+0
+y0
+i
+1
+Keccak-pn1
+1
+y1
+i
+1
+Keccak-pn1
+2
+y2
+i
+Keccak-pn1
+ℓo−1
+yℓo−1
+i
+Keccak-pn1
+...
+Figure 3: Linear recurrence in theKravattebranches: the sequence(yj
+i)j of highlighted
+bits at a prescribed Position i across the branches j = 0,...,ℓo −1 follows a linear
+recurrence described by the polynomial(X+ 1)·Proll.
+least one variable coming from Plane 4, since the product of variables of Planes 0 to 3
+is constant and can be factored out, leaving a monomial of degree strictly less thand of
+variables from Plane 4. Monomials with variables only from Planes 0 to 3, together with
+the constant monomial, are constant and haveX + 1as recurrence polynomial. Thus,
+(X+ 1)·P≤d
+roll is a recurrence polynomial for all monomials of degree at mostd in all1600
+variables of the rolling state. SinceKeccak-p has degree two, the recurrence polynomial
+(X+ 1)·P≤2n1
+roll cancels the sequences of all monomials involved in the algebraic expression
+of the outputs of the ﬁrst part of the expansion layer. Its degree isS(320,2n1 ) + 1. We give
+estimates of this value forn1 = 2,3,4 in Table 3. For larger values ofn1, the technique
+is not applicable since the degree of the polynomial, e.g.,2146.5 for n1 = 5, and 2227.3
+for n1 = 6 goes beyond the limit set on the data complexity in the security claims of
+Kravatte.
+Computing the Recurrence Polynomial for Monomials of Degree at Mostd. Comput-
+ing the characteristic polynomial of a matrix usually requires to compute a determinant,
+but can be done in the case ofP≤d
+roll in time quasilinear in the size of the matrixM≤d
+roll,
+without even forming the matrix, due to algebraic properties of linear recurring sequences.
+Indeed, it has been shown in [Key76] that the roots of this polynomial are all simple and
+elements of the algebraic extensionF2[X]/Proll. Denoting byα the class ofX, they are
+given byαt, weret∈[1,2320 −1] takes all values with Hamming weight at mostd. Thus,
+P≤d
+roll can be formed as the product ofN = S(320,2n1 ) polynomials of the formX+ αt.
+In a ﬁrst stage, the polynomials whose roots are conjugates are multiplied together,
+resulting in a set of irreducible polynomials inF2[X]. In a second stage, these polynomials
+are multiplied together. Multiplication of two polynomials inF2[X] of degree at mostncan
+be performed eﬃciently for largenusing the Schönhage algorithm [Sch77], with asymptotic
+complexity M(n) = O(nlog nlog logn). This algorithm has been implemented in the
+gf2x library [BGTZ08] and experimental data indicates the hidden constant is small. To
+take full advantage of fast polynomial multiplications, the computation ofP≤d
+roll can be
+performed tree-wise: At each step, polynomials are multiplied by pairs, resulting in a
+set of half as many polynomials with double degree. Taking into account the asymptotic
+complexity of fast polynomial multiplication, the complexityTP of the computation can
+be estimated by
+log N
+i=0
+2iM
+(N
+2i
+{
+≤Nlog2 Nlog logN.
+We give estimates of this time complexityTP for small values ofn1 in Table 3.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 15
+Impact on the Cryptanalysis ofKravatte. Using the linear recurrence given by the
+polynomial (X+ 1)·P≤2n1
+roll = ∑
+jdjXj, we eliminate all monomials iny from the system.
+More precisely, thei-th equation is obtained by summingAi+j + Bi+j = 0equations:
+
+j
+dj ·Keccak-pn1
+(
+rolli+j(y)
+{
++
+
+j
+dj ·Keccak-p−n2
+(
+kout + zi+j
+{
+= 0,
+and since the ﬁrst sum is null due to the relation from the linear recurrence, this yields
+
+j
+dj ·Keccak-p−n2 (kout + zi+j) = 0. (1)
+As a consequence, in the casen2 = 2, the number of monomials to write this system
+goes down to236.5, since only the monomials inkout remain (see Table 2). Each equation
+of the system requiresS(320,2n1 ) consecutive output blocks to be formed, but since a
+sliding-window mechanism can be used to form the equations, onlyS(320,2n1 ) + 1
+1600 236.5
+blocks are necessary to form the system. We can process the available blocks on the
+ﬂy: For each block, we add its contribution to the system ofkout monomials in the
+equations prescribed by the recurrence polynomial, i.e., Blockzj contributes to Equation
+i if dj−i = 1. This does not increase the memory complexity, but increases the time
+complexity of building the system by a factor ofS(320,2n1 ).
+Applying this attack withn1 = 2, we can attackKravatte-(nd,4) for anynd. The
+recurrence polynomial to store has degree228.7, so to collect enough data to solve the
+linearizedsystem, weneed 228.7+ 1
+1600 236.5 ≈228.8 outputblocks. Computingtherecurrence
+polynomial requires about 240.7 basic operations(see Table 3). Solving the linearized
+system requiresTsolve = (236.5)3 ≈2109.5 operations, and a memory of
+(
+236.5{2
+≈273 bits.
+However, the most time-consuming part of the attack resides in the construction of the
+system. For each output block and every bit of the intermediate state, the bit is written
+as a linearized algebraic expression of bits inkout, depending onzj, as explained at the
+end of Subsection 3.1. Then, this expression is added to the equations it contributes to
+build, depending on the recurrence polynomial. Every equation is built by the addition
+of at mostS(320,2n1 ) contributions, and the cost of adding one contribution is given by
+the size of an expression, which is about236.5. Computing the algebraic expression of one
+bit essentially boils down to the multiplication of three polynomials in320S(5,3) = 8000
+monomials each that appear in the inversion ofn2 = 2 rounds ofKravatte. Overall,
+constructing the system amounts to approximately
+Tbuild =
+(
+S(320,2n1 ) + 1
+1600236.5
+{
+·1600 ·80003 + S(320,2n1 ) ·
+(
+236.5{2
+operations. We give estimations of the overall time complexityTP+Tbuild+Tsolve in Table 3,
+and stress again that there are several options to optimize this step, which are addressed
+in Section 5.
+With n1 = 4, the attack breaks the security claim ofKravatte-(nd,6) for anynd.
+Indeed, the recurrence polynomial has degree288.4 and can be computed in about2104
+simple operations, which allows to collect the equations using about288.4 output blocks.
+Then, the system can be constructed as before (with non-optimized computations, it
+requires about2161.4 basic operations) and solved similarly as in the casen1 = 2.
+We summarize the attack complexities in Table 3. Additional optimizations that further
+lower these complexities are presented in Section 5. In this table, the two ﬁrst lines provide
+attacks for the ePrint version of fullKravatte-(4,4), and the last line gives an attack for
+the strengthened variant announced at ECC 2017.
+16 Key-Recovery Attacks on Full Kravatte
+The Particular Case of One Backward Round.In the case of one backward round, i.e.,
+n2 = 1, Equation (1) can be solved by exhaustive search. Note that the linear layer of the
+round considered can be removed from the analysis, and thus no diﬀusion takes place. As
+a consequence, it is possible to recoverkout Sbox by Sbox, by guessing the ﬁvekout bits
+corresponding to a given Sbox, and checking that sums ofχ−1(kout + zj) over positions
+j determined by the recurrence polynomial yields zero, which is the case for the correct
+guess. For each sum, this gives at= 5-bit test on theg = 5guessed bits ofkout. With
+only one sum, the probability that no false alarm occurs is(1 −2−t)2g−1 ≈0.37, so the
+rate of Sboxes with false alarms on correspondingkout bits is too high to recover the
+complete kout by key enumeration. However, with two sums, one gets at= 10-bit test,
+and the probability of absence of false alarms raises to0.97, which amounts to about10
+Sboxes with false alarms, making a ﬁnal oﬄine key candidate enumeration possible.
+With (n1,n2) = (3,1), it is thus possible to attackKravatte-(nd,4) for anynd with
+a data complexity of251.2 blocks and a time complexity dominated by the recurrence
+polynomial computation timeTp = 265.1. The attack requires to precompute and store
+P≤3
+roll and thus has memory complexity251.2.
+Table 3:Degree and computation time of recurrence polynomial for all monomials iny
+after n1 rounds ofKeccak-p, and attack complexity againstKravatte-(nd,ne), for any
+nd and ne = n1 + n2. For optimized attacks, see Section 5.
+ne n1 + n2 deg
+(
+P≤d
+roll
+{
+TP Data∗ Memory∗ Time∗
+4 2 + 2 2 28.7 240.7 229.3 273.0 2109.5
+4 3 + 1 2 51.2 265.1 251.2 251.2 265.1
+6 4 + 2 2 88.4 2104.0 288.4 288.4 2161.4
+∗: These complexities are given without the optimizations addressed in Section 5.
+4 HigherOrderDiﬀerentialCryptanalysisofFull Kravatte
+In this section, we highlight the existence of higher order diﬀerential attacks against
+Kravatte. We describe in Subsection 4.1 a property of the compression layer ofFarfalle,
+which weakens the overall construction against higher order diﬀerential attacks. The process
+of our attack is depicted in Subsection 4.2. To experimentally validate the correctness of
+the approach, we use a round-reduced variant ofKravatte.
+In Subsection 4.3, we show how an adversary can use the higher order distinguisher
+to mount a chosen-message key-recovery attack againstKravatte-(nd,ne) such that
+nd+ ne ≤8. In the last section of the paper dedicated to various optimizations, we present
+a variant of this attack allowing to improve the overall data complexity (Subsection 5.2)
+and various techniques to substantially decrease the complexities.
+4.1 Construction of Aﬃne Spaces in the Accumulator
+We describe here a property of the compression layer ofFarfalle, already identiﬁed in
+[BDH+16, Section 5.4], that enables an adversary to construct an aﬃne space of dimension
+n in the accumulator block. Given ann-block padded messageM = (m0,...,mn−1), we
+recall that we denoteAcc(M) the associated accumulator value∑n−1
+i=0 pc
+(
+mi + kin
+i
+{
+.
+Let M0 = (m0
+0,...,m0
+n−1) and M1 = (m1
+0,...,m1
+n−1) denote an arbitrary pair of
+paddedmessagessuchthat m0
+i ̸= m1
+i forall i. Thesemessagesareusedtobuildthefollowing
+structure of2n n-block input messages:S= {(mϵ0
+0 ,...,mϵn−1
+n−1 ),(ϵ0,...,ϵn−1) ∈{0,1}n}.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 17
+0 Keccak-pne−ϵ Keccak-pϵ z0
+iz0
+i
+koutkout
+S0
+iS0
+i
+1 Keccak-pne−ϵ Keccak-pϵ z1
+iz1
+i
+koutkout
+S1
+iS1
+i
+ℓo−1 Keccak-pne−ϵ Keccak-pϵ zℓo−1
+izℓo−1
+i
+koutkout
+Sℓo−1
+iSℓo−1
+i
+pdXi ∈ Acc(S)
+...
+ne rounds
+0 Keccak-pne−ϵ Keccak-pϵ z0
+iz0
+i
+koutkout
+S0
+iS0
+i
+1 Keccak-pne−ϵ Keccak-pϵ z1
+iz1
+i
+koutkout
+S1
+iS1
+i
+ℓo−1 Keccak-pne−ϵ Keccak-pϵ zℓo−1
+izℓo−1
+i
+koutkout
+Sℓo−1
+iSℓo−1
+i
+pdXi ∈ Acc(S)
+...
+ne rounds
+0 Keccak-pne−ϵ Keccak-pϵ z0
+iz0
+i
+koutkout
+S0
+iS0
+i
+1 Keccak-pne−ϵ Keccak-pϵ z1
+iz1
+i
+koutkout
+S1
+iS1
+i
+ℓo−1 Keccak-pne−ϵ Keccak-pϵ zℓo−1
+izℓo−1
+i
+koutkout
+Sℓo−1
+iSℓo−1
+i
+pdXi ∈ Acc(S)
+...
+ne rounds
+0 Keccak-pne−ϵ Keccak-pϵ z0
+iz0
+i
+koutkout
+S0
+iS0
+i
+1 Keccak-pne−ϵ Keccak-pϵ z1
+iz1
+i
+koutkout
+S1
+iS1
+i
+ℓo−1 Keccak-pne−ϵ Keccak-pϵ zℓo−1
+izℓo−1
+i
+koutkout
+Sℓo−1
+iSℓo−1
+i
+pdXi ∈ Acc(S)
+...
+ne rounds
+0 Keccak-pne−ϵ Keccak-pϵ z0
+iz0
+i
+koutkout
+S0
+iS0
+i
+1 Keccak-pne−ϵ Keccak-pϵ z1
+iz1
+i
+koutkout
+S1
+iS1
+i
+ℓo−1 Keccak-pne−ϵ Keccak-pϵ zℓo−1
+izℓo−1
+i
+koutkout
+Sℓo−1
+iSℓo−1
+i
+pdXi ∈ Acc(S)
+...
+ne rounds
+∑
+i
+Sj
+i = 0
+Figure 4: Higher order diﬀerential distinguisher onKravatte. Summing over the whole
+aﬃne space Acc(S) the states obtained after application ofℓ= nd + ne −ϵrounds to the
+blocks Xi of the aﬃne space, i.e., summing along every bold line, yields zero.
+Let us denote byδi the one-block diﬀerenceδi = pc
+(
+m0
+i + kin
+i
+{
++ pc
+(
+m1
+i + kin
+i
+{
+. If
+n≪ b= 1600, theδi are linearly independent with overwhelming probability. It is easy to
+see thatAcc(S) is then then-dimensional aﬃne subspace Acc(M0) +⟨δ0,...,δn−1⟩.
+In other words, we can easily build structures of2n n-block messages that are trans-
+formed by the compression layer into an aﬃne space of one-block accumulator values of
+dimension n. Note that this does not depend on the number of rounds inpc.
+4.2 Higher Order Diﬀerential Attacks AgainstKravatte
+We can use the property ofFarfalle described above to mount higher order diﬀerential
+attacks onKravatte-(nd,ne), as long asnd + ne ≤8.
+Summing the images of a functionf over an aﬃne subspace of dimensionnis equivalent
+to applying then-th diﬀerential off to an element of the subspace [Lai94]. The round
+function of theKeccak-ppermutation used in theKravatteinstance is of algebraic degree
+two. Hence, the partial expansion layer, starting from the accumulator value and applying
+ℓpermutation layers, is of degree2ℓ. By building an aﬃne space of dimensionn= 2ℓ+ 1
+with an input structureSof 2n messages, each one containingn blocks, the sum over this
+aﬃne space of the intermediate values after the partial expansion is zero (see Figure 4).
+This distinguishing property can then be used to mount last-round attacks: Starting
+from theKravatteoutput values of the plaintext in the structure, by inverting the last
+ϵ= nd−ne−ℓpermutation layers of the expansion layer, and summing all the contributions,
+one gets equations on the output keykout: namely,∑
+m∈SKeccak-p−ϵ(kout + zm) = 0.
+To demonstrate the validity of the higher order diﬀerential distinguisher described
+above, we applied it onShortKravatte. In ShortKravatte, nd = 0 so that the
+expansion layer consists of four rounds of theKeccak-ppermutation, instead ofnd+ne = 8
+rounds for the fullKravatteinstance. Hence, with a structure of216+1 input messages of
+17 blocks, the higher order diﬀerential distinguisher spans the whole expansion layer and
+can be observed by summing directly the output values of the messages in the structure.
+4.3 Last-Round Attacks
+One Last-Round Attack. One can apply the higher order diﬀerential strategy to mount
+a basic key-recovery attack againstKravatte-(nd,ne), nd + ne ≤ 8, by considering
+a 7-round partial expansion layer and a ﬁnal last-round (i.e.,ϵ= 1). This implies to
+use structures of 227+1 = 2129 messages of 129 blocks. The higher order diﬀerential
+18 Key-Recovery Attacks on Full Kravatte
+distinguisher continues to apply through the linear layer of the last round. Thus, no
+diﬀusion takes place in the inverted part of the last round, and the key-recovery method
+given at the end of Subsection 3.2 for the case of one backward round applies, with the
+small variation that one getst= 10-bit tests by requesting two output blocks per message.
+This attack has a time and data complexity of2129 ×(129 + 2)≈2136.0, and negligible
+memory complexity.
+We have implemented this attack on a reduced version ofKravattewhere nd+ ne = 5
+using structures of217 messages of17 blocks, and ﬁnd that the number of candidates for
+kout is reduced from2256 to about218. We note thatkout can be uniquely determined
+using three to six output blocks.
+Two Last-Round Attack. We now describe how to improve the time and data complexity,
+leveraging the analysis of the algebraic expression ofKeccak-p−2(kout + z), in the same
+way as for the previous attack (Subsection 3.1). This enables to consider a higher order
+distinguisher overℓ= 6Keccak-p rounds (i.e.,ϵ= 2). The adversary builds a structureS
+of 265 plaintexts of65 blocks as described above. As a consequence, the265 intermediate
+values at any bit position before the penultimate non-linear layer sum to zero.
+As described in the previous section (see Table 2), the number of monomials involved
+in the system corresponding to the inversion of the two last rounds ofKravatte is
+about 236.5, and the system can be solved if one collects about the same number of
+equations. These can be obtained considering, for every message of the structure, outputs
+of 1
+1600 236.5 ≈225.9 blocks. The total data complexity (expressed as the sum of all input
+and output blocks) of this attack is therefore265 ×(65 + 225.9) ≈290.9 blocks. The system
+of equations can be computed on the ﬂy, therefore there is no need to store all the inputs
+and outputs ofKravatte. However, storing the system requires(236.5)2 = 273.0 bits of
+memory. The evaluation of the time complexity is more involved, as one needs to consider
+all the steps of the attack. For each equation and each input, the most expensive step
+consists in computing the penultimateχ−1 layer, which requires to get the product of
+three polynomial expressions, each of which can contain up to8000 monomials. Therefore,
+we can estimate the complexity of this step of the attack to236.5 ×265 ×80003 ≈2140.4
+bit operations. Solving the system of equations is far less expensive, as its time complexity
+is at most cubic in the number of equations, which leads to(236.5)3 = 2109.5 operations.
+As we will show in Section 5, these “naive” data and time complexities can be substan-
+tially improved using various optimizations.
+5 Optimization Techniques for the Cryptanalysis
+5.1 Minimizing the Number of Variables for Two Inverse Rounds
+In this section, we improve further the linearization ofKeccak-p−2. Notations used in the
+following are summarized on Figure 5.
+χ−1 θ−1 (π◦ ρ)−1 χ−1
+kout
+Fj Ej Dj Cj Bj
+Aj
+Figure 5: Notations used in Subsection 5.1.
+The attacks described in Section 3 and Section 4 are all based on the construction and
+the linearization of polynomial expressions whose variables are the bits ofkout. Each bit
+of Fj can be expressed as a low-degree polynomial in key bitskout, whose coeﬃcients
+are functions of the output statesAj. We have seen in Subsection 3.1 that using the
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 19
+row structure ofχ−1 layers and the absence of diﬀusion before the ﬁrstχ−1 layer enables
+to decrease the number of variables to be considered in the linearized expressions. We
+now show that this can be improved further by additionally considering the number of
+monomials in the polynomial expression ofχ−1, by limiting the number of considered bit
+positions of Fj and by summing two positions ofFj. We note that this improvement
+comes at the cost of a slight increase of the data complexity, since only one equation is
+extracted from each output block. We also note that this last optimization is compatible
+with the attacks presented in Section 3 and Section 4 because the sum over sets of output
+block messages they consider are performed consistently on all the positions of the blocks.
+We study each of the successive layers of the backward computation ofKravatte.
+External χ−1 Layer. The inverse Sbox has algebraic degree three. More precisely, we
+get the following expressions (we omit indexesy and z and the block numberj):
+Cx = Bx+1Bx+3Bx+4 + Bx+1Bx+2 + Bx
+=
+(
+kout
+x+1 + Ax+1 + 1
+{(
+kout
+x+3 + Ax+3 + 1
+{(
+kout
+x+4 + Ax+4
+{
++
+(
+kout
+x+1 + Ax+1 + 1
+{(
+kout
+x+2 + Ax+2
+{
++
+(
+kout
+x + Ax
+{
+.
+Introducing the new variableswx = kout
+x+1kout
+x+3kout
+x+4 + kout
+x+1kout
+x+2 + kout
+x , ux = kout
+x+3kout
+x+4 +
+kout
+x+2, andvx = kout
+x kout
+x+2, this can be rewritten aswx + Px(A), wherePx(A) is an aﬃne
+combination ofux, vx+1, vx+4, kout
+x+1, kout
+x+3, kout
+x+4, with coeﬃcients determined byA. The
+deﬁnition of new variables for the sum of monomials sharing the same coeﬃcient instead
+of for each monomial enables us to limit the number of variables per bit of theC state
+to 8, including the variablew with constant coeﬃcient and the coeﬃcient of the degree-0
+monomial. The total number of variables over the state is however the same with both
+approaches. For each of the320 Sboxes, one generates10 variables u,v of algebraic degree
+two in key bits and5 variables w of algebraic degree three. Taking into account the key
+bits, the total number of variables is therefore320 ×(5 + 10 + 5) = 6400at that point.
+This already improves on Subsection 3.1 since all degree-3 variables are not considered
+anymore.
+Intermediate Inverse Aﬃne Layer. The linear layers consist in the bit-moving layers
+ρand π and the linear diﬀusion layerθ. All these layers do not create new monomials:
+monomials are simply moved or added to other polynomial expressions. The linear layers
+only contribute indirectly to the complexity of the algebraic expressions by breaking
+any independent subset, leading to consider that any bit of the state can be aﬀected by
+monomials in variables coming from any position of the ﬁnal stateA. This is especially
+true for the high-diﬀusion transformationθ−1, whose output bits depend on approximately
+half of its input state. This has the eﬀect to allow the creation during the next non-linear
+layer of nearly all the combinations of monomials output by the previous non-linear layer.
+More precisely,ρ−1 and π−1 move every bit of the state. We denoteσ the permutation
+such that bitσ(x,y,z ) of the state is moved to position(x,y,z ). Then, θ−1 is a linear
+diﬀusion layer with the following property. For each columnDx,z of the state, there is a
+set of bit positionsSx,z such that each bit afterθ−1 is given by
+Ex,y,z = Dx,y,z +
+
+(x′,y′,z′)∈Sx,z
+Dx′,y′,z′.
+20 Key-Recovery Attacks on Full Kravatte
+Therefore, we have
+Ex,y,z = Cσ(x,y,z) +
+
+(x′,y′,z′)∈Sx,z
+Cσ(x′,y′,z′)
+= wσ(x,y,z) + Pσ(x,y,z)(A) +
+
+(x′,y′,z′)∈Sx,z
+(
+wσ(x′,y′,z′) + Pσ(x′,y′,z′)(A)
+{
+= w′
+x,y,z + Pσ(x,y,z)(A) +Qx,z(A).
+In this expression,w′
+x,y,z is a new variable deﬁned as the linear combination of all the
+w variables involved in the expression ofEx,y,z, andQx,z(A) is the sum of theP’s over
+position setSx,z. Please note that eachQx,z is considered to potentially involve all the
+u, v and kout variables, whereasPx,y,z only has7 potentially nonzero variables. Also,w
+variables inﬂuence ofE and F is completely given byw′variables, which are independent
+of A. Therefore, w′variables can replacew variables in the description of the algebraic
+expressions of allFj.
+Partial Internalχ−1 Layer. We now consider only two bits of information from the state
+Fj in a same column, e.g., at Positions(0,0,0) and (0,1,0), and sum their algebraic
+expressions. With this approach, we cancel out the multiplication of the term contributing
+the most monomials to the expressions of these bits, decrease the total number of variables
+and therefore limit the time and memory complexity of our attack by reducing the
+complexity of the ﬁnal linearized system. To this end, we denoteP′
+x,y,z = w′
+x,y,z+ Pσ(x,y,z).
+Omitting indexz, we have:
+F0,y =
+(
+P′
+1,y + Q1
+{(
+P′
+3,y + Q3
+{(
+P′
+4,y + Q4
+{
++
+(
+P′
+1,y + Q1
+{(
+P′
+2,y + Q2
+{
++
+(
+P′
+0,y + Q0
+{
+.
+When consideringF0,0 + F0,1, all products ofQ-components cancel out, asQ polynomials
+are identical over a column. In particular, all arbitrary products of threeu, v and kout
+variables do not occur anymore. We get:
+F0,0 + F0,1 =
+(
+P′
+1,0 + P′
+1,1
+{
+Q3Q4 +
+(
+P′
+3,0 + P′
+3,1
+{
+Q1Q4 +
+(
+P′
+4,0 + P′
+4,1
+{
+Q1Q3
++
+(
+P′
+1,0P′
+3,0 + P′
+1,1P′
+3,1
+{
+Q4 +
+(
+P′
+1,0P′
+4,0 + P′
+1,1P′
+4,1
+{
+Q3
++
+(
+P′
+2,0 + P′
+3,0P′
+4,0 + P′
+2,1 + P′
+3,1P′
+4,1
+{
+Q1 +
+(
+P′
+1,0 + P′
+1,1
+{
+Q2
++
+(
+P′
+0,0 + P′
+1,0P′
+2,0 + P′
+1,0P′
+3,0P′
+4,0 + P′
+0,1 + P′
+1,1P′
+2,1 + P′
+1,1P′
+3,1P′
+4,1
+{
+.
+All theQpolynomials are aﬃne combinations of the same set of all the320×(5+10) = 4800
+kout,u and v variables, and eachP′polynomial is an aﬃne combination of7 variables.
+Taking into account the constant coeﬃcients of these polynomials, the number of variables
+required to linearize the expression ofF0,0 + F0,1 is therefore:
+3 ×2 ×8 ×
+(4801
+2
+{
++
+(
+3 ×2 ×82 + 2×2 ×8
+{
+×4801 + 2×
+(
+8 + 82 + 83{
+,
+which gives approximately229.0 variables, instead of the approximately236.5 monomials
+obtained with the simpler bound from Section 3.
+Note that there is a trade-oﬀ between the number of variables of the linearized system
+and the number of equations that are obtained from on block. Indeed, by considering more
+than one pair of positions, additionalw′variables have to be considered, together with the
+monomials resulting from the products of these variables withkout,u and v variables. We
+do not investigate further this trade-oﬀ, since we are mainly concerned with the reduction
+of the size of the system in order to improve the attacks time complexity, and because this
+reduction of the system size limits the degradation of the data complexity.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 21
+5.2 Super Structure of Input Messages
+As already presented in Section 4, the higher order diﬀerential distinguisher used for
+the attack is based on the sum of output messages over a structure of input messages
+of dimensionn= 65. Due to the property ofFarfalle and the algebraic degree of the
+Keccak-pround function, this is guaranteed to lead to a sum of corresponding intermediate
+states equal to zero. In order to improve the data complexity, we use a super structure of
+messages, from which structures of dimension2n can be extracted. This technique has
+been used previously, e.g, in [DLMW15].
+Principle. Let us consider the set of messages obtained by the concatenation ofn+ t
+blocks, Blockj being chosen among two possibilities(mi
+j)i∈{0,1}:
+S=
+{
+(mϵ0
+0 ,···,mϵn+t−1
+n+t−1 ),(ϵ0,···,ϵn+t−1) ∈{0,1}n+t}
+.
+We can then extract from this super structure severaln-dimensional structures by ﬁxing
+the values of the blocks att given positions, and subsequently build from each of these
+structures equations in the output key bitskout.
+When extractingn-dimensional structures from ann+ t super structure, care has to
+be taken to avoid linear dependencies that decrease the expected amount of equations
+that can be formed. Indeed, let us considerS∗, an(n+ 1)-dimensional super structure,
+and then-dimensional structuresS0∗= m0 ∗...∗, S1∗= m1 ∗...∗, S∗0 = ∗...∗m0 and
+S∗1 = ∗...∗m1, where∗denotes consecutive positions with two possible values at each
+position, and 0 (resp. 1) denotes a position with ﬁxedm0 (resp. m1), value. Then, we
+have S0∗∪S1∗= S∗= S∗0 ∪S∗1. As a consequence, given the sum of the intermediate
+states over three of these ﬁve structures, we can derive linearly the sum over the remaining
+structures, and thus they does not provide additional equations to include into the system.
+We can obtain
+(n+t
+t
+{
+structures by selectingm0 blocks at exactlyt positions of the
+super structure, and keeping the choice among two values on the othern positions. These
+structures lead to linearly independent equations since the message containingn blocks
+equal tom1 at given positions only appear in one speciﬁc structure.
+Increasing the Number of Structures Extracted from a Super Structure.More gener-
+ally, we can obtainS(n+ t,t) structures by selectingm0 blocks at any given0 ≤i≤t
+positions of the super structure, and keeping the choice among two values on the othern
+positions. Indeed, let us associate to every structure an integer, whose binary represen-
+tation represents the indeterminate positions of the structure. Let us also associate to
+every message an integer whose binary representation is the selection pattern ofm0 and
+m1 blocks. Ordering the structures by decreasing value of their representative and the
+messages by decreasing values of their associated integers, the binary structure/message
+membership matrix(δMj∈Si)i,j is in row echelon form (see Figure 6 in Appendix), which
+proves the linear independence of equations generated from these structures.
+Finally, we remark that the(n+ t−i)-dimensional structures generated above can
+be generated linearly from then-dimensional structures where the ﬁxed message blocks
+are selected from{m0,m1}. It it thus possible to selectS(n+ t,t) such n-dimensional
+structures leading to independent equations.
+Computing Equations from Super Structures.There are at least two possible strategies
+to build the equation system using super structures. First, we can store all the data blocks
+that we get, and compute the system equation by equation, recomputing the contribution
+from each block of a given structure. Otherwise, we can handle the data block per block,
+building all the system of equations at once.
+22 Key-Recovery Attacks on Full Kravatte
+The ﬁrst strategy requires to store all the data blocks during the computation of the
+system, whereas the second approach has no speciﬁc memory requirements and potentially
+allows to spare computation time. Nevertheless, extra memory can be required for the
+construction of the system of equations itself. This will be studied in Subsection 5.3. In
+the following, we assume that we select the second approach, and compute all equations
+simultaneously, handling the available data block by block.
+Complexity Analysis. The major beneﬁt of using super structures of input messages is
+to reduce the data complexity of the attack. By considering super structures of sizen+ t
+and ℓo output blocks per message, the data complexity is(n+ t+ ℓo)2n+t blocks. The
+number of equations we get isbℓoS(n+ t,t), assuming one does not use the optimization
+from Subsection 5.1 and computesbequations per structure. Otherwise, only one equation
+is recovered per structure, and the total number of equations isℓoS(n+ t,t).
+We select the parameters of our attack as follows. One aims at gettingNeq equations,
+therefore we need thatbℓoS(n+ t,t) ≥Neq (resp. ℓoS(n+ t,t) ≥Neq) if we do not reduce
+(resp. we reduce) the number of equations. Thus, we chooseℓo = ⌈Neq/(S(N + t,t)b)⌉
+(resp. ℓo = ⌈Neq/S(N + t,t)⌉. As our aim is to reduce the amount of data necessary for
+the attack, we then need to chooset so as to minimize(n+ t+ ℓo)2n+t.
+If we combine these super structures with the reduction of the number of equations,
+we needNeq ≈229.0. This leads tot= 5, ℓo = 4and a data complexity of274.7 blocks.
+If we use only super structures, we needNeq ≈236.5 equations. We then computet= 4,
+ℓo = 5and reach a data complexity of273.9 blocks.
+5.3 Counters
+We specify here two algorithms that the adversary might use to build a system of equations
+from the outputs, and study their time and memory complexities, in order to determine
+the optimal choice in each version of our attack.
+Description of the Systems of Equations.The attacks we want to optimize are either
+based on the higher order diﬀerential property or on the use of a polynomial derived from
+a stream-oriented description of the expansion layer ofKravatte. Each equation of the
+system is derived from a linear relation on bit values two rounds before the output. It is
+obtained by summing the contributions of several output blocks. The expression of such
+a contribution requires the computation of the polynomial expression of one bit (or one
+linear combination of bits) two rounds before the end ofKravatte, considering key bits
+as variables.
+In the following, we consider that the bottleneck of such an operation consists in the
+multiplications of three polynomials that stems from the degree-3 term of the internalχ−1
+layer. The complexity of such an operation is estimated as the product of the number of
+terms of each of the three polynomials.
+Deﬁnitions and Notations. We callequation a relation involving key bits and newly
+introduced key-dependent variables. The equations we use are computed by summing
+polynomials that depend on one output block. We use the generic termexpression to refer
+to such a polynomial, which is computed by inverting two rounds ofKravatte. The
+addition of a given expression when building an equation is called acontribution.
+We useNeq to denote the total number of equations that is needed to solve the system,
+which is supposed to be equal to the number of variables. Therefore, we haveNeq = 229.0
+if optimization of Subsection 5.1 is implemented, and236.5 otherwise. We denote byS
+the number of contributions that one needs to add to get each equation. This number
+depends on the kind of distinguisher that is used. For the 6-round higher order diﬀerential
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 23
+distinguisher, we haveS = 265. If we use the linear recurrence distinguisher, we need to sum
+expressions over all the block positions given by the nonzero coeﬃcients of the recurrence
+polynomial. We estimate it as half the degree of the polynomial (see Table 3). Conversely,
+we callRthe average number of equations each computed expression contributes to. When
+handling a speciﬁc output block, one computes the polynomial expression of bits two rounds
+before the output, then add its contribution to theR equations (on average) it is involved
+in. We also denote byNpar the maximum number of equations that are being computed
+at the same time during the process. When using the linear recurrence distinguisher or
+the higher order diﬀerential distinguisher with super structures, we compute all equations
+in parallel, andNpar = Neq, whereas for the higher order diﬀerential distinguisher without
+super structures, we build1 or 1600 equations in parallel, depending on the number of
+bits of information we use per block. We also denote byNprod the number of products
+of three monomials that one needs to compute when inverting the internalχ−1 layer.
+In the general case,Nprod is dominated by the product of three polynomials in8000
+variables, which can be considered to cost80013 ≈238.9 elementary operations. If we apply
+optimizations of Subsection 5.1, the most expensive part consists in6 multiplications of3
+polynomials: 1 with 8 nonzero coeﬃcients and 2 with 4801 nonzero coeﬃcients. We then
+have Nprod = 6×8 ×48012 ≈230.0 elementary operations.
+A Direct Approach. The most straightforward way to proceed is to run through all the
+output blocks that are needed to get enough equations: For each of them, we compute each
+expression that is needed to build the system, and add it to all equations it contributes to.
+Using this technique does not require a speciﬁc amount of memory, other than the one
+used to store the linearized system. We assume that all expressions originating from a
+single block of output are computed independently. The time complexity to compute each
+expression in key bits that contributes to the system of equations isNprod operations. The
+total number of contributions isNeq ×S, and therefore the total number of expressions
+one needs to compute isNeq ×S/R. After computing these expressions, one needs to add
+them to the equations they contribute to. The total number such additions isNeq ×S.
+As the number of equations equals the number of variables, such an addition costsNeq
+elementary operations. Therefore, the time complexityTdirect of this technique is given by
+Tdirect = Neq ×S×
+(
+Nprod/R+ Neq
+{
+.
+An Optimization Based on the Use of Parity Counters.Our second technique relies on
+the following observation. Each of the polynomials that are multiplied during the internal
+χ−1 layer are linear combinations of output bits of the externalχ−1 layers. Such a bit only
+depends on the ﬁve bits of the output block corresponding to one Sbox output. Moreover,
+when expanding the products of the internalχ−1 layer, one gets the sum of products of
+three such bits, which only depends on15 bits of the output blocks, corresponding to the
+outputs of three Sboxes.
+For each equation, the computation of all theS contributions leads to computing
+several times these products, as soon asS exceeds 215. Our idea is then to compute
+these products only once for each valueV of the 15 output bits. This can be done in
+a precomputation step. Then, the contribution of each of these results is added to the
+ﬁnal equation if and only if the number of occurrences ofV is odd (as the sum of an
+even number of identical values cancels out in characteristic two). This can be achieved
+as follows: For each output block, one runs through all useful sets of three Sboxes, and
+update a parity counter for the15 output bits of these Sboxes, for each equation the
+current output block contributes to. Each parity counter consists of215 parity bits, which
+are used to store the parity of the number of occurrences of all values of the15 output
+bits of the set of three Sboxes deﬁning the counter. Then, one adds to each equation the
+24 Key-Recovery Attacks on Full Kravatte
+contribution corresponding of each possible value of each counter.
+We denote byNctr the number of counters that are used for each equation. In the
+general case, one needs a parity counter set for each possible combination of three output
+Sboxes, which makesNctr =
+(320
+3
+{
+≈222.4. When the number of equations is optimized,
+we consider the multiplications of six bits after the externalχ−1 layer with two dense
+polynomials. Therefore, one only needs at mostNctr = 6×
+(320
+2
+{
+≈218.2.
+The memory complexity of this step is the amount of memory that is needed to store
+all the parity bits, which isMctr = Npar ×Nctr ×215 bits. The time required for the
+attack encompasses the updates of parity counters and the addition of contributions of
+individual counter values to all the equations. The value of each counter only contributes
+to the coeﬃcients of monomials in key bits at the15 same positions. Therefore, adding
+the contribution of such a counter requires at most215 key additions. For each set
+of three Sboxes, there are215 counter values to consider. Therefore, we have:Tctr =
+Neq ×Nctr ×(S+ 230).
+Comparison Between the Two Techniques.From the formulae above, we always have
+Tdirect > N2
+eq ×S. If Tctr is smaller than this value, the time complexity of the second
+algorithm is better. This is equivalent toNctr ×(S+ 230) < Neq ×S. Moreover, the
+number of possible counters is bounded by
+(320
+3
+{
+≈222.4, whereas the number of equations
+is at least229.0 when optimization of Subsection 5.1 is implemented. Therefore, a suﬃcient
+condition for the second algorithm to be more eﬃcient becomesS+ 230 ≤229.0−22.4, which
+is equivalent toS ≥230−6.6 = 223.4. In our attacks,S is the number of elements of an
+aﬃne space of a higher order diﬀerential distinguisher or the number of nonzero coeﬃcients
+of a recurrence polynomial. In all cases we focus on, it is larger than this bound.
+The parity counter based attack should therefore be used in any case, unless one aims
+at optimizing the memory required by the attack and the storage of counter values is its
+bottleneck in terms of memory complexity.
+5.4 Optimizing the Attacks
+The high number of diﬀerent attacks and potential combinations of optimizations makes it
+diﬃcult to give an exhaustive list of all the possible combinations and their complexities.
+However, we give numerical applications for a few of them. These complexities are
+summarized in Table 1. We explain here how we obtain the optimized complexities.
+Linear-Recurrence Attack onKravatte-(⋆,4) withne = 2+2. We use both optimiza-
+tions of Subsection 5.1 and Subsection 5.3. As shown in Subsection 3.2, the precomputation
+step has a time complexity ofTP = 240.7 elementary operations and a memory complexity of
+228.7 bits to store the recurrence polynomial. As we reduce the number of variables, we only
+get one expression per block. The data complexity is then changed to228.7 + 229.0 ≈229.9
+blocks (from228.7 + 1
+1600 236.5). The time complexity to build the system is about277.5
+operations, and the memory complexity to store the counters is262.2 bits. Finally, solving
+the system requires
+(
+229{3
+= 287 operations, and storing it about258 bits.
+Overall, thetimecomplexityoftheattackis 287 basicoperations, thememorycomplexity
+is 262.3 bits and the data complexity is229.9 blocks.
+Linear-Recurrence Attack onKravatte-(⋆,6) with ne = 4 + 2. We use the same
+optimizations for the attack onne = 6rounds. The memory required for the attack is
+now mainly due to the storage of the recurrence polynomial, which requires288.4 bits. As
+the data complexity mainly comes from the high degree of this polynomial, it is still288.4
+blocks as in Subsection 3.2. Finally, the time complexity of this attack is dominated by
+the construction of the system, which amounts to2134.6 elementary operations.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 25
+Higher Order Diﬀerential Attack onKravatte-(4,4) Using All Optimizations. We
+now focus on attacks based on the higher order diﬀerential distinguisher, and ﬁrst try to
+apply all three optimizations. As shown in Subsection 5.2, the data complexity is274.7
+blocks. During the construction phase, the memory required for the parity counters is again
+262.2 bits, and its time complexity is2112.2 operations, which is the most time-consuming
+part of the attack. The memory and time complexities of the system resolution are the
+same as for the linear-recurrence attack, increasing the memory complexity to262.3 bits.
+Memory-optimized Higher Order Diﬀerential Attack on Kravatte-(4,4). As the
+memory required mainly comes from the storage of parity counters, we can drop the
+optimization based on super structures. The data complexity goes up to265 ×(65 + 229) ≈
+294 blocks, and the memory complexity drops to the258 bits required to store the system.
+The time complexity is left unchanged.
+Data-optimized Higher Order Diﬀerential Attack onKravatte-(4,4). Similarly, to
+minimize the amount of data needed for the attack, we can drop the optimization of Sub-
+section 5.1. As shown in Subsection 5.2, the data complexity decreases to273.9 blocks, but
+the number of equations required increases to236.5. The time and memory complexities of
+the construction step are respectively increased to2123.9 operations and273.9 bits. Adding
+the storage of the system (273 bits), the memory complexity of the attack becomes274.5
+bits.
+6 Concluding Remarks and Discussion
+We proposed in this paper several key-recovery attack strategies breaking the security
+claims of the recent PRF proposalKravatte. The attacks are primarily focused on
+either the convergence point or the divergence point of the high-level structure that allows
+to compress virtually any number of blocks to a single one in an incremental way, and
+conversely, to expand a single block to almost any number of output blocks. The properties
+of these two sensitive points of the computation, where all the input information is packed
+into a single block (right after the compressing phase and right before the second step of
+the expansion phase), together with the low algebraic degree of theKeccak-ppermutation,
+are leveraged in our attacks. From this ambitious and aggressive design structure and the
+proposed attacks, we would like to draw some high-level conclusions.
+First, the non-linear permutationspc in the compression layer do not prevent the
+construction of an aﬃne space at its output. This is inherent to the design and cannot
+be thwarted by simply increasing the number of rounds inpc. Secondly, the middle
+non-linear permutationpd applied to the accumulator does not increase the security of the
+expansion layer, as one can target the second step of the expansion layer, i.e., applications
+of pe to the evolving rolling state, independently. The design incentive was probably to
+factor out a part of the non-linear transformations of the expansion layer to increase the
+performances of the output generations, but it appears that such an optimization strongly
+decreases the security. Finally, the last non-linear permutationspe used to produce each
+output block inKravattehave low algebraic degree and are applied after a small linear
+diversiﬁcation mechanism. This results in a bit mixing much simpler than expected, which
+can be distinguished before the end of the expansion layer and used to recover the key by
+inverting the remaining part.
+We note that one can interpret all ours attacks in terms of stream cipher analysis,
+with either attacks on the IV-processing part (the compression layer) or on the keystream
+generation part (the expansion layer). RecastingKravattein this light may help to
+improve its design. We have no strong views on how best to patchKravatte while
+26 Key-Recovery Attacks on Full Kravatte
+retaining its incrementality and parallelizability and without incurring too strong a penalty
+on its performance.
+Acknowledgements
+This work has been partially supported by the French Agence Nationale de la Recherche
+through the BRUTUS project under Contract ANR-14-CE28-0015. The last author was
+partially supported by the Fundamental Theory and Cutting Edge Technology Research
+Program of Institute of Information Engineering, CAS (Grant No. Y7Z0341103), Youth
+Innovation Promotion Association CAS and the National Natural Science Foundation of
+China (Grants No. 61472415, 61732021 and 61772519).
+References
+[BDH+16] Guido Bertoni, Joan Daemen, Seth Hoﬀert, Michaël Peeters, Gilles Van Assche,
+and Ronny Van Keer. Farfalle: parallel permutation-based cryptography.
+Cryptology ePrint Archive, Report 2016/1188, 2016.
+[BDH+17a] Guido Bertoni, Joan Daemen, Seth Hoﬀert, Michaël Peeters, Gilles Van Assche,
+and Ronny Van Keer. Farfalle: Parallel Permutation-Based Cryptography.
+IACR Transactions on Symmetric Cryptology, 2017(4), 2017.
+[BDH+17b] Guido Bertoni, Joan Daemen, Seth Hoﬀert, Michaël Peeters, Gilles Van Assche,
+and Ronny Van Keer. Innovations in Permutation-Based Crypto. Slides from
+ECC 2017, 2017.
+[BDPA11] G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche. The Keccak reference.
+Round 3 submission to NIST SHA-3, 2011.
+[BGTZ08] Richard P. Brent, Pierrick Gaudry, Emmanuel Thomé, and Paul Zimmermann.
+Faster Multiplication in GF(2)[x]. In Alfred J. van der Poorten and Andreas
+Stein, editors, Algorithmic Number Theory, 8th International Symposium,
+ANTS-VIII, Banﬀ, Canada, May 17-22, 2008, Proceedings, volume 5011 of
+Lecture Notes in Computer Science, pages 153–166. Springer, 2008.
+[DLMW15] Itai Dinur, Yunwen Liu, Willi Meier, and Qingju Wang. Optimized inter-
+polation attacks on LowMC. In Tetsu Iwata and Jung Hee Cheon, editors,
+ASIACRYPT 2015, Part II, volume 9453 ofLNCS, pages 535–560. Springer,
+Heidelberg, November / December 2015.
+[JK97] Thomas Jakobsen and Lars R. Knudsen. The interpolation attack on block
+ciphers. In Eli Biham, editor,FSE’97, volume 1267 ofLNCS, pages 28–40.
+Springer, Heidelberg, January 1997.
+[Key76] E.L. Key. An Analysis of the Structure and Complexity of Nonlinear Binary
+Sequence Generators. IEEE Transactions on Information Theory, 22(6):732–
+736, 1976.
+[Lai94] Xuejia Lai. Higher Order Derivatives And Diﬀerential Cryptanalysis.Kluwer
+International Series In Engineering And Computer Science, pages 227–227,
+1994.
+[NIS14] NIST Computer Security Division. SHA-3 Standard: Permutation-Based
+Hash and Extendable-Output Functions. FIPS Publication 202, National
+Institute of Standards and Technology, U.S. Department of Commerce, May
+2014.
+C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard and L. Song 27
+[RGH07] S. Rønjom, G. Gong, and T. Helleseth. On Attacks on Filtering Generators
+Using Linear Subspace Structures. In S.W. Golomb, G. Gong, T. Helleseth,
+and H.-Y. Song, editors,SSC, volume 4893 ofLecture Notes in Computer
+Science, pages 204–217. Springer, 2007.
+[RH07] S. Rønjom and T. Helleseth. A New Attack on the Filter Generator.IEEE
+Transactions on Information Theory, 53(5):1752–1758, 2007.
+[Sch77] Arnold Schönhage. Schnelle Multiplikation von Polynomen über Körpern der
+Charakteristik 2. Acta Inf., 7:395–398, 1977.
+28 Key-Recovery Attacks on Full Kravatte
+A Appendix
+We explictly give the degree-320 recurrence polynomialProll used in Section 3 as
+Proll = x320 + x262 + x246 + x234 + x218 + x204 + x202 + x198 + x191 + x186 + x183 + x182
++ x176 + x172 + x134 + x133 + x131 + x125 + x123 + x117 + x109 + x106 + x105 + x102
++ x99 + x97 + x91 + x90 + x89 + x88 + x81 + x76 + x74 + x70 + x69 + x67 + x64 + x63
++ x61 + x60 + x59 + x58 + x55 + x53 + x48 + x47 + x45 + x44 + x41 + x39 + x38 + x35
++ x33 + x28 + x27 + x25 + x24 + x17 + x15 + x7 + 1.
+We note that the minimal polynomial given by theKravattedesigners in [BDH+16]
+corresponds to the inverse matrixM−1
+roll.
+Also, we visually represent the membership matrix discussed in the optimization relying
+of the super structures from Subsection 5.2.
+1111 1110 1101 1100 1011 1010 1001 1000 0111 0110 0101 0100 0011 . . .
+)
+)
+(
+
+**** 1 1 1 1 1 1 1 1 1 1 1 1 1 ...
+***0 1 1 1 1 1 1 ...
+**0* 1 1 1 1 1 1 ...
+**00 1 1 1 ...
+*0** 1 1 1 1 ...
+*0*0 1 1 ...
+*00* 1 1 ...
+0*** 1 1 1 1 1 ...
+0**0 1 1 ...
+0*0* 1 1 ...
+00** 1 ...
+Figure 6: Example of structure/message membership matrix, with(n,t) = (2,2).

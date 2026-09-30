@@ -1,0 +1,1902 @@
+Full-State Keyed Duplex With
+Built-In Multi-User Support
+Joan Daemen1,2, Bart Mennink1,3, and Gilles Van Assche2
+1 Digital Security Group, Radboud University, Nijmegen, The Netherlands
+joan@cs.ru.nl, b.mennink@cs.ru.nl
+2 STMicroelectronics, Diegem, Belgium
+gilles.vanassche@st.com
+3 CWI, Amsterdam, The Netherlands
+Abstract. The keyed duplex construction was introduced by Bertoni
+et al. (SAC 2011) and recently generalized to full-state absorption by
+Mennink et al. (ASIACRYPT 2015). We present a generalization of the
+full-state keyed duplex that natively supports multiple instances by de-
+sign, and perform a security analysis that improves over that of Mennink
+et al. in terms of a more modular security analysis and a stronger and
+more adaptive security bound. Via the introduction of an additional pa-
+rameter to the analysis, our bound demonstrates a signiﬁcant security
+improvement in case of nonce-respecting adversaries. Furthermore, by
+supporting multiple instances by design, instead of adapting the secu-
+rity model to it, we manage to derive a security bound that is largely
+independent of the number of instances.
+Keywords: Duplex construction, full-state, distinguishing bounds, au-
+thenticated encryption.
+1 Introduction
+Bertoni et al. [8] introduced the sponge construction as an approach to design
+hash functions with variable output length (later called extendable output func-
+tions (XOF)). The construction faced rapid traction in light of NIST’s SHA-
+3 competition, with multiple candidates inspired by the sponge methodology.
+Keccak, the eventual winner of the competition and now standardized as SHA-
+3 [27], internally uses the sponge construction. The sponge construction found
+quick adoption in the area of lightweight hashing [19, 32]. Also beyond the area
+of hash functions various applications of the sponge construction appeared such
+as keystream generation and MAC computation [12], reseedable pseudorandom
+sequence generation [10,30], and authenticated encryption [11,14]. In particular,
+the ongoing CAESAR competition for the development of a portfolio of authenti-
+cated encryption schemes has received about a dozen sponge-based submissions.
+At a high level, the sponge construction operates on a state of bbits. This is
+split into an inner part of size c bits and an outer part of size r bits, where b=
+c+ r. Data absorption and squeezing is done via the outer part, rbits at a time,
+interleaved with evaluations of a b-bit permutation f. Bertoni et al. [9] proved
+a bound on the security of the sponge construction in the indiﬀerentiability
+framework of Maurer et al. [37]. While it was clear from the start that this
+birthday-type bound in the capacity is tight for the unkeyed use cases, i.e.,
+hashing, for the keyed use cases of the sponge it appeared that a higher level of
+security could be achieved. This has resulted in an impressive series of papers
+on the generic security of keyed versions of the sponge, with bounds improving
+and the construction becoming more eﬃcient.
+1.1 Keyed Sponge and Keyed Duplex
+Keyed Sponge. Bertoni et al.’s original keyed sponge [13] was simply the
+sponge with input ( K∥M) where K is the key. Chang et al. [21] suggested an
+alternative where the initial state of the sponge simply contains the key in its
+inner part. Andreeva et al. [2] generalized and improved the analyses of both the
+outer- and inner-keyed sponge, and also considered security of these functions
+in the multi-target setting. In a recent analysis their bounds were improved by
+Naito and Yasuda in [42]. All of these results, however, stayed relatively close
+to the (keyless) sponge design that absorbs input in blocks of r bits in the
+outer part of the state. It turned out that, thanks to the secrecy of part of the
+state after key injection, one can absorb data over the full state, and therewith
+achieve maximal compression. Full-state absorbing was ﬁrst explicitly proposed
+in a variant of sponge for computing MACs: donkeySponge [14]. It also found
+application in various recent sponge-inspired designs, such as Chaskey [41].
+Nearly tight bounds for the full-state absorbing keyed sponge were given by
+Gaˇ zi et al. [29] but their analysis was limited to the case of ﬁxed output length.
+Mennink et al. [38] generalized and formalized the idea of the full-state keyed
+sponge and presented an improved security bound for the general case where the
+output length is variable.
+Keyed Duplex. Whereas the keyed sponge serves message authentication and
+stream encryption, authenticated encryption is mostly done via the keyed duplex
+construction [11]. This is a stateful construction that consists of an initialization
+interface and a duplexing interface. Initialization resets the state and a duplexing
+call absorbs a data block of at mostr−1 bits, applies the underlying permutation
+f and squeezes at most r bits. Bertoni et al. [11] proved that the output of
+duplexing calls can be simulated by calls to a sponge, a fortiori making duplex
+as strong as sponge.
+Mennink et al. [38] introduced the full-state keyed duplex and derived a
+security bound on this construction with dominating terms:
+µN
+2k + M2
+2c . (1)
+Here M is the data complexity (total number of initialization and duplexing
+calls), N the computational complexity (total number of oﬄine calls to f), µ≤
+2
+2M is a term called the “multiplicity,” and k the size of the key. This security
+bound was derived by describing the full-state keyed duplex in terms of the
+full-state keyed sponge. A naive bounding of µ (to cover the strongest possible
+adversary) yields a dominating term of the form 2 MN/2k, implying a security
+strength erosion of log 2 M with respect to exhaustive key search.
+The duplex construction ﬁnds multiple uses in the CAESAR competition [20]
+in the embodiment of the authenticated encryption mode SpongeWrap [11] or
+close variants of it. The recent line of research on improving bounds of sponge-
+inspired authenticated encryption schemes, set by Jovanovic et al. [35], Sasaki
+and Yasuda [46], and Reyhanitabar et al. [44], can be seen as an analysis of
+a speciﬁc use case of the keyed duplex. The Full-State SpongeWrap [38], an
+authenticated encryption scheme designed from the full-state keyed duplex, im-
+proves over these results. Particularly, the idea already found application in the
+Motorist mode of the CAESAR submission Keyak [16].
+Trading Sponge for Duplex. As said, the duplex can be simulated by the
+sponge, but not the other way around. This is the case because duplex pads
+each input block and cannot simulate sponge inputs with, e.g., long sequences of
+zeroes. It is therefore natural that Mennink et al. [38] derived a security bound
+on the full-state keyed duplex by viewing it as an extension to the full-state
+keyed sponge. However, we observe that the introduction of full-state absorption
+changes that situation: the full-state keyed duplex can simulate the full-state
+keyed sponge. All keyed usages of the sponge can be described quite naturally as
+application of the keyed duplex and it turns out that proving security of keyed
+duplex is easier than that of keyed sponge. Therefore, in keyed use cases, the
+duplex is preferred as basic building block over the sponge.
+1.2 Multi-Target Security
+The problem of multi-target security of cryptographic designs has been acknowl-
+edged and analyzed for years. Biham [17] considered the security of blockciphers
+in the multi-target setting and shows that the security strength can erode to
+half the key size if data processed by suﬃciently many keys is available. Various
+extensions have subsequently appeared [7,18,34]. It has been demonstrated (see,
+e.g., [5] for public key encryption and [22] for message authentication codes)
+that the security of a scheme in the multi-target setting can be reduced to the
+security in the single-target setting, at a security loss proportional to the number
+of keys used.
+However, in certain cases, a dedicated analysis in the multi-target setting
+could render improved bounds. Andreeva et al. [2] considered the security of
+the outer- and inner-keyed sponge in the multi-target setting, a proof which
+internally featured a security analysis of the Even-Mansour blockcipher in the
+multi-target setting. The direction of multi-target security got subsequently pop-
+ularized by Mouha and Luykx [40], leading to various multi-target security re-
+sults [4,33] with security bounds (almost) independent of the number of targets
+involved.
+3
+1.3 Our Contribution
+We present a generalization of the full-state keyed duplex that facilitates mul-
+tiple instances by design (Section 2.2). This generalization is realized via the
+formalization of a state initialization function that has access to a key array K
+consisting of u keys of size k, generated following a certain distribution. Given
+as input a key index δand an initialization vector iv, it initializes the state using
+iv and the δth key taken from K. We capture its functional behavior under the
+name of an extendable input function (XIF) and explicitly deﬁne its idealized
+instance.
+Unlike the approach of Mennink et al. [38], who viewed the full-state keyed
+duplex as an extension to the full-state keyed sponge, our analysis is a dedicated
+analysis of the full-state keyed duplex. To accommodate bounds for diﬀerent
+use cases, we have applied a re-phasing to the deﬁnition of the keyed duplex.
+In former deﬁnitions of the (keyed) duplex, a duplexing call consisted of input
+injection, applying the permutation f, and then output extraction. In our new
+deﬁnition, the processing is as follows: ﬁrst the permutation f, then output ex-
+traction, and ﬁnally input injection. This adjustment reﬂects a property present
+in practically all modes based on the keyed duplex, namely that the user (or
+adversary) must provide the input before knowing the previous output. The re-
+phasing allows us to prove a bound on keyed duplex that is tight even for those
+use cases. The fact that, in previous deﬁnitions, an adversary could see the out-
+put before providing the input allowed it to force the outer part of the state to a
+value of its choice, and as such gave rise to a term in the bound at worst MN/2c
+and at best µN/2c, where µ is a term that reﬂects a property of the transcript
+that needs to be bound by out-of-band reasonings.
+Alongside the re-phasing, we have eliminated the term µ and express the
+bound purely as a function of the adversary’s capabilities. Next to the total
+oﬄine complexity N, i.e., the number queries the adversary can make to f and
+the total online complexity M, i.e., the total number of construction queries (to
+keyed duplex or ideal XIF), we introduce two metrics: L and Ω, both reﬂecting
+the ability of the adversary to force the outer part of the state to a value of its
+choice. The metric L counts the number of construction queries with repeated
+path (intuitively, a concatenation of all data blocks up to a certain permutation
+call), which may typically occur in MAC functions and authenticated encryption
+schemes that do not impose nonce uniqueness. The metric Ω counts the number
+of construction queries where the adversary can overwrite the outer part of the
+state. Such a possibility may occur in authenticated encryption schemes that
+release unveriﬁed decrypted ciphertext (cf., [1]). A comparison of the scheme
+analyzed in this work with those in earlier works is given in Table 1.
+We prove in Section 4 a bound on the advantage of distinguishing a full-
+state keyed duplex from an ideal XIF in a multi-target setting. We here give the
+bound for several settings, all of which having multiple keys sampled uniformly
+at random without replacement. For adversaries with the ability to send queries
+with repeated paths and queries that overwrite the outer part of the state, the
+4
+Table 1: Comparison of the schemes analyzed in earlier works and this work. By
+“pure bound” we mean that the derived security bound is expressed purely as a
+function of the adversary’s capabilities. Diﬀerences in bounds are not reﬂected
+by the table.
+Full state Extendable Multi-target Pure bound
+absorption output
+Bertoni et al. [13] — ✓ — ✓
+Bertoni et al. [11] — ✓ — ✓
+Chang et al. [21] — ✓ — ✓
+Andreeva et al. [2] — ✓ ✓ —
+Gaˇ zi et al. [29] ✓ — — ✓
+Mennink et al. [38] ✓ ✓ — —
+Naito and Yasuda [42] — ✓ — ✓
+This work ✓ ✓ ✓ ✓
+dominating terms in our bound are:
+qivN
+2k + (L+ Ω)N
+2c . (2)
+The metric qiv denotes the maximum number of sessions started with the same
+iv but diﬀerent keys. For adversaries that cannot send queries with repeated
+paths or send queries that overwrite the outer part of the state, one of the
+dominating terms depends on the occurrence of multicollisions via a coeﬃcient
+νM
+r,c that is fully determined by the data complexity M and parameters r and c
+(see Section 6.5, and particularly Figure 4). For wide permutations we can have
+large rates (i.e., r> 2 log2(M) +c) and the dominating terms in our bound are:
+qivN
+2k + N
+2c−1 . (3)
+For relatively small rates the data complexity can be such thatM >2r−1 and for
+that range the dominating terms are upper bounded by (assuming ν2M
+r,c ≤ bM
+2r+1 ):
+qivN
+2k + bMN
+2b + M2
+2b . (4)
+For the case in-between where M is in the range 2 (r−c)/2 < M ≤2r−1, the
+bound becomes (assuming ν2M
+r,c ≤min(b/log 2r
+2M,b/4)):
+qivN
+2k + bN
+max(4,r −1 −log2 M)2c−1 . (5)
+This bound is valid for permutation widths of 200 and above. These bounds are
+signiﬁcantly better than that of [38].
+5
+Table 2: Application of our analysis to Ketje, Ascon, NORX, and Keyak. For the
+nonce misuse case, we consider L+ Ω = M/2. A “Strength” equal to s means
+that it requires a computational eﬀort 2 s to distinguish. Here, a= log2(Mr).
+Parameters Respecting (Eqns. (3-5)) Misuse (Eqn. (2))
+Scheme b c r Strength Eqn. Strength
+Ketje [15] Jr. 200 184 16 min {196 −a,177} (4,5) 189 −a
+Sr. 400 368 32 min {396 −a,360} (4,5) 374 −a
+Ascon [24] 128 320 256 64 min {317 −a,248} (4,5) 263 −a
+128a 320 192 128 min {318 −a,184} (4,5) 200 −a
+NORX [3] 32 512 128 384 127 (3) 137 −a
+64 1024 256 768 255 (3) 266 −a
+Keyak [16] River 800 256 544 255 (3) 266 −a
+Lake 1600 256 1344 255 (3) 267 −a
+Concretely, in implementations of duplex-based authenticated encryption
+schemes that respect the nonce requirement and do not release unveriﬁed plain-
+text, we have L = Ω = 0. Assuming keys are randomly sampled without re-
+placement, the generic security is governed by (3), (4), or (5). Depending on
+the parameters, a scheme is either in case (3), or case (4-5), where a transition
+happens for M = 2r−1. Table 2 summarizes achievable security strengths for the
+duplex-based CAESAR contenders.
+Our general security bound, covering among others a broader spectrum of
+key sampling distributions, is given in Theorem 1. It is noteworthy that, via the
+built-in support of multiple targets, we manage to obtain a security bound that
+is largely independent of the number of users u: the only appearance is in the
+key guessing part, qivN/2k, which shows an expected decrease in the security
+strength of exhaustive key search by a term log 2 qiv. Note that security erosion
+can be avoided altogether by requiring iv to be a global nonce, diﬀerent for each
+initialization call (irrespective of the used key).
+Our analysis improves over the one of [38] in multiple aspects. First, our secu-
+rity bound shows less security erosion for increasing data complexities. Whereas
+in (1) security strength erodes to k−log2 M, in (2) this is c−log2(L+ Ω) with
+L+ Ω <M. By taking c>k + log2 Mmax with Mmax some upper bound on the
+amount of data an adversary can get its hands on, one can guarantee that this
+term does not allow attacks faster than exhaustive key search.
+Second, via the use of parameters Land Ω our bound allows for a more ﬂexi-
+ble interpretation and a wide range of use cases. For example, in stream ciphers,
+L= Ω = 0 by design. This also holds for most duplex-based authenticated en-
+cryption schemes in the case of nonce-respecting adversaries that cannot obtain
+unveriﬁed decrypted ciphertexts.
+Third, even in the general case (with key size taken equal to c bits and no
+nonce restriction on iv), our bound still improves over the one of [38] by replacing
+6
+the multiplicity metric, that can only be evaluated a posteriori, by the metrics
+L and Ω, that reﬂect what the adversary can do.
+Fourth, in our approach we address the multi-key aspect natively. This allows
+us to determine the required set of properties on the joint distribution of all
+keys under attack. Theorem 1 works for arbitrary key sampling techniques with
+individual keys of suﬃcient min-entropy and the probability that two keys in the
+array collide is small enough, and demonstrates that the full-state keyed duplex
+remains secure even if the keys are not independently and uniformly randomly
+distributed.
+Finally, we perform an analysis on the contribution of outer-state multi-
+collisions to the bound that is of independent interest. This analysis strongly
+contributes to the tightness of our bounds, as we illustrate in the Stairway to
+Heaven graph in Figure 4.
+1.4 Notation
+For an integer n ∈N, we denote Zn = {0,...,n −1}and by Zn
+2 the set of bit
+strings of length n. Z∗
+2 denotes the set of bit strings of arbitrary length. For two
+bit strings s,t ∈Zn
+2 , their bitwise addition is denoted s+ t. The expression ⌊s⌋ℓ
+denotes the bitstring s truncated to its ﬁrst ℓ bits. A random oracle [6] RO:
+Z∗
+2 →Zn
+2 is a function that maps bit strings of arbitrary length to bit strings of
+some length n. In this paper, the value of n is determined by the context. We
+denote by (x)(y) the falling factorial power ( x)(y) = x(x−1) ···(x−y+ 1).
+Throughout this work, b denotes the width of the permutation f. The pa-
+rameters cand rdenote the capacity and rate, where b= c+r. For a state value
+s∈Zb
+2, we follow the general convention to deﬁne its outer part by s∈Zr
+2 and
+its inner part by ˆs∈Zc
+2, in such a way that s= s||ˆs. The key size is convention-
+ally denoted by k, and the number of users by u. Throughout, we assume that
+u ≤2k, and regularly use an encoding function Encode : Zu →Zk
+2, mapping
+integers from Zu to k-bit strings in some injective way.
+2 Constructions
+In Section 2.1, we will discuss the key sampling technique used in this work.
+The keyed duplex construction is introduced in Section 2.2, and we present its
+“ideal equivalent,” the ideal extendable input function, in Section 2.3. To suit
+the security analysis, we will also need an in-between hybrid, the randomized
+duplex, discussed in Section 2.4.
+2.1 Key Sampling
+Our keyed duplex construction has built-in multi-user support, and we start
+with a formalization of the key sampling that we consider. At a high level, our
+formalization is not speciﬁc for the keyed duplex, and may be of independent
+interest for modeling multi-target attacks.
+7
+In our formalization the adversary can invoke a keyed object (block cipher,
+stream cipher, PRF, keyed sponge, . . . ) with a key selected from a key array K
+containing u keys, each of length k bits:
+K = (K[0],..., K[u−1]) ∈
+(
+Zk
+2
+)u
+.
+These keys are sampled from the space of k-bit keys according to some dis-
+tribution DK. This distribution can, in theory, be anything. In particular, the
+distribution of the key with index δ may depend on the values of the δ keys
+sampled before.
+Two plausible examples of the key distribution are random sampling with
+replacement and random sampling without replacement . In the former case, all
+keys are generated uniformly at random and pairwise independent, but it may
+cause problems in case of accidental collisions in the key array. The latter distri-
+bution resolves this by generating all keys uniformly at random from the space
+of values excluding the ones already sampled. A third, more extreme, example
+of DK generates K[0] uniformly at random and deﬁnes all subsequent keys as
+K[δ] = K[0] + Encode(δ).
+Diﬀerent distributions naturally entail diﬀerent levels of security, and we
+deﬁne two characteristics of a distribution that are relevant for our analysis. Note
+that the characteristics take u as implicit parameter. The ﬁrst characteristic is
+the min-entropy of the individual keys, deﬁned as
+Hmin(DK) = −log2 max
+δ∈Zu,a∈Zk
+2
+Pr(K[δ] = a) , (6)
+or in words, minus the binary logarithm of the probability of the key value to
+be selected with the highest probability. The three example samplings outlined
+above have min-entropy k, regardless of the value u.
+The second characteristic is related to the maximum collision probability
+between two keys in the array:
+Hcoll(DK) = −log2 max
+δ,δ′∈Zu
+δ̸=δ′
+Pr(K[δ] = K[δ′]) . (7)
+Uniform sampling with replacement has maximum collision probability equal to
+2−k and so Hcoll(DK) = k. Sampling without replacement and our third example
+clearly have collision probability zero, giving Hcoll(DK) = ∞.
+2.2 Keyed Duplex Construction
+The full-state keyed duplex (KD) construction is deﬁned in Algorithm 1, and it
+is illustrated in Figure 1.
+It calls a b-bit permutation f and is given access to an array K consisting
+of u keys of size k bits. A user can make two calls: initialization and duplexing
+calls.
+In an initialization call it takes as input a key index δ and a string iv ∈Zb−k
+2
+and initializes the state as f(K[δ]||iv). In the same call, the user receives an r-bit
+8
+±
+K
+f
+iv
+Z ¾
+f
+Z ¾
+f
+Z ¾
+…
+Fig. 1: Full-state keyed duplex construction KDf
+K. In this ﬁgure, the sequence
+of calls is Z = KD .Init(δ,iv,σ,false), Z = KD .Duplexing(σ,true), and Z =
+KD.Duplexing(σ,false).
+output string Z and injects a b-bit string σ. A duplexing call just performs the
+latter part: it updates the state by applying f to it, returns to the user an r-bit
+output string Z and injects a user-provided b-bit string σ.
+Both in initialization and duplexing calls, the output string Z is taken from
+the state prior to the addition of σ to it, but the user has to provide σ before
+receiving Z. This is in fact a re-phasing compared to the original deﬁnition of the
+duplex [11] or of the full-state keyed duplex [38], and it aims at better reﬂect-
+ing typical use cases. We illustrate this with the SpongeWrap authenticated
+encryption scheme [11] and its more recent variants [38]. In this scheme, each
+plaintext block is typically encrypted by (i) applying f, (ii) fetching a block of
+key stream, (iii) adding the key stream and plaintext blocks to get a ciphertext
+block, and (iv) adding the plaintext block to the outer part of the state. By
+inspecting Algorithm 3 in [11], there is systematically a delay between the pro-
+duction of key stream and its use, requiring to buﬀer a key stream block between
+the (original) duplexing calls. In contrast, our re-phased calls better match the
+sequence of operations.
+The ﬂag in the initialization and duplexing calls is required to implement de-
+cryption in SpongeWrap and variants. In that case, the sequence of operations
+is the same as above, except that step (iii) consists of adding the key stream and
+ciphertext blocks to get a plaintext block. However, a user would need to see the
+keystream block before being able to add the plaintext block in step (iv). One
+can see, however, that step (iv) is equivalent to overwriting the outer part of the
+state with the ciphertext block. Switching between adding the plaintext block
+(for encryption) and overwriting with the ciphertext block (for decryption) is the
+purpose of the ﬂag. The usage of the ﬂag, alongside the re-phasing is depicted
+in Figure 1.
+Note that in Algorithm 1 in the case that the ﬂag is true, the outer part
+of the state is overwritten with σ. For consistency with the algorithms of con-
+structions we will introduce shortly, this is formalized as bitwise adding Z to σ
+before its addition to the state if ﬂag is true. Alternatively, one could deﬁne an
+authenticated encryption mode that does not allow overwriting the state with
+9
+Algorithm 1 Full-state keyed duplex construction KDf
+K
+Require: r<b , k≤b
+Instantiation: KD ←KDf
+K with K an array of u keys of size k
+Key array: KD.K
+DK
+←−−K
+Interface: Z = KD .Init(δ,iv,σ,ﬂag) with δ ∈ Zu, iv ∈ Zb−k
+2 , σ ∈ Zb
+2, ﬂag ∈
+{true,false}, and Z ∈Zr
+2
+s←f(K[δ]||iv)
+Z ←⌊s⌋r
+if ﬂag = true then σ←σ+ Z
+s←s+ σ
+return Z
+Interface: Z = KD.Duplexing(σ,ﬂag) with σ∈Zb
+2, ﬂag ∈{true,false}, and Z ∈Zr
+2
+s←f(s)
+Z ←⌊s⌋r
+if ﬂag = true then σ←σ+ Z
+s←s+ σ
+return Z
+the ciphertext block C. For example, encryption would be C = P + M ×Z,
+with P the plaintext block and M a simple invertible matrix. Upon decryption,
+the outer part of the state then becomes C+ (M + I) ×Z. If M is chosen such
+that M + I is invertible, the adversary has no control over the outer part of the
+state after the duplexing call. This would require changing “ σ ←σ+ Z” into
+“σ←σ+ M ×Z” in Algorithm 1.
+2.3 Ideal Extendable Input Function
+We deﬁne an ideal extendable input function (IXIF) in Algorithm 2. It has the
+same interface as KD, but instead it uses a random oracle RO: Z∗
+2 →Zr
+2 to
+generate its responses. In particular, every initialization call initializes a Path
+as Encode(δ)||iv. In both initialization and duplexing calls, an r-bit output is
+generated by evaluating RO(Path) and the b-bit input string σ is absorbed by
+appending it to the Path. Figure 2 has an illustration of IXIF (at the right).
+Note that IXIF properly captures the random equivalent of the full-state
+keyed duplex: it simply returns random values from Zr
+2 for every new path, and
+repeated paths result in identical responses. IXIF is in fact almost equivalent to
+the duplex as presented by Mennink et al. [38]: as a matter of fact, when (i) not
+considering multiple keys for our construction and (ii) avoiding overlap of the
+iv with the key (as possible in the construction of [38]), the ideal functionalities
+are the same. In our analysis, we do not consider overlap of the iv with the key
+as (i) it unnecessarily complicates the analysis and (ii) we discourage it as it
+may be a security risk if the keys in the key array K are not independently and
+uniformly randomly distributed.
+10
+Algorithm 2 Ideal extendable input function IXIFRO
+Instantiation: IXIF ←IXIFRO
+Path: IXIF.Path ←empty string
+Interface: Z = IXIF .Init(δ,iv,σ,ﬂag) with δ ∈ Zu, iv ∈ Zb−k
+2 , σ ∈ Zb
+2, ﬂag ∈
+{true,false}, and Z ∈Zr
+2
+Path ←Encode(δ)||iv
+Z ←RO(Path)
+if ﬂag = true then σ←σ+ Z
+Path ←Path||σ
+return Z
+Interface: Z = IXIF.Duplexing(σ,ﬂag) with σ∈Zb
+2 ﬂag ∈{true,false}, and Z ∈Zr
+2
+Z ←RO(Path)
+if ﬂag = true then σ←σ+ Z
+Path ←Path||σ
+return Z
+2.4 Randomized Duplex Construction
+To simplify our security analysis, we introduce a hybrid algorithm lying in-
+between KD and IXIF: the full-state randomized duplex (RD) construction. It
+is deﬁned in Algorithm 3. It again has the same interface as KD, but the calls
+to the permutation f and the access to a key array K have been replaced by
+two primitives: a uniformly random injective mapping φ: Zu×Zb−k
+2 →Zb
+2, and
+a uniformly random b-bit permutation π. The injective mapping φ replaces the
+keyed state initialization by directly mapping an input ( δ,iv) to a b-bit state
+value. The permutation π replaces the evaluations of f in the duplexing calls.
+In our use of RD, φ and π will be secret primitives. Figure 2 has an illustration
+of RD (at the left).
+3 Security Setup
+The security analysis in this work is performed in the distinguishability frame-
+work where one bounds the advantage of an adversary Ain distinguishing a real
+system from an ideal system.
+Deﬁnition 1. Let O,P be two collections of oracles with the same interface.
+The advantage of an adversary Ain distinguishing Ofrom Pis deﬁned as
+∆A(O; P) =
+⏐⏐Pr
+(
+AO→1
+)
+−Pr
+(
+AP→1
+)⏐⏐.
+Our proofs in part use the H-coeﬃcient technique from Patarin [43]. We will
+follow the adaptation of Chen and Steinberger [23]. Consider any information-
+theoretic deterministic adversary Awhose goal is to distinguish Ofrom P, with
+its advantage denoted
+∆A(O; P) .
+11
+Algorithm 3 Full-state randomized duplex construction RDφ,π
+Require: r<b
+Instantiation: RD ←RDφ,π
+State: RD.s←0b
+Interface: Z = RD .Init(δ,iv,σ,ﬂag) with δ ∈ Zu, iv ∈ Zb−k
+2 , σ ∈ Zb
+2, ﬂag ∈
+{true,false}, and Z ∈Zr
+2
+s←φ(δ,iv)
+Z ←⌊s⌋r
+if ﬂag = true then σ←σ+ Z
+s←s+ σ
+return Z
+Interface: Z = RD.Duplexing(σ,ﬂag) with σ∈Zb
+2 ﬂag ∈{true,false}, and Z ∈Zr
+2
+s←π(s)
+Z ←⌊s⌋r
+if ﬂag = true then σ←σ+ Z
+s←s+ σ
+return Z
+The interaction of Awith its oracle, either Oor P, will be stored in a transcript
+τ. Denote by DO(resp. DP) the probability distribution of transcripts that can
+be obtained from interaction with O(resp. P). Call a transcript τ attainable if
+it can be obtained from interacting with P, hence if Pr (DP= τ) >0. Denote by
+T the set of attainable transcripts, and consider any partition T = Tgood ∪Tbad
+of the set of attainable transcripts into “good” and “bad” transcripts. The H-
+coeﬃcient technique states the following [23].
+Lemma 1 (H-coeﬃcient Technique). Consider a ﬁxed information-theoretic
+deterministic adversary Awhose goal is to distinguish Ofrom P. Let ε be such
+that for all τ ∈Tgood:
+Pr (DO= τ)
+Pr (DP= τ) ≥1 −ε. (8)
+Then, ∆A(O; P) ≤ε+ Pr (DP∈Tbad).
+The H-coeﬃcient technique can thus be used to neatly bound a distinguishing
+advantage in the terminology of Deﬁnition 1, and a proof typically goes in four
+steps: (i) investigate what transcripts look like, which gives a deﬁnition for T,
+(ii) deﬁne the partition of T into Tgood and Tbad, (iii) investigate the fraction
+of (8) for good transcripts and (iv) analyze the probability that DP generates a
+bad transcript.
+12
+4 Security of Keyed Duplex Construction
+We prove that the full-state keyed duplex construction (KD) is sound. We do so
+by proving an upper bound for the advantage of distinguishing the KD calling
+a random permutation f from an ideal extendable input function (IXIF). Both
+in the real and ideal world the adversary gets additional query access to f and
+f−1, simply denoted as f.
+The main result is stated in Section 4.2, but before doing so, we specify the
+resources of the adversary in Section 4.1.
+4.1 Quantiﬁcation of Adversarial Resources
+We will consider information-theoretic adversaries that have two oracle inter-
+faces: a construction oracle, KDf
+K or IXIFRO, and a primitive oracle f. For
+the construction queries, it can make initialization queries or duplexing queries.
+Note that, when querying IXIFRO, every query has a path Path associated to
+it. To unify notation, we also associate a Path to each query (initialization or
+duplexing) to KDf
+K. This Path is deﬁned the straightforward way: it simply con-
+sists of the concatenation of Encode(δ),iv of the most recent initialization call
+and all σ-values that have been queried after the last initialization but before
+the current query. Using this formalization, every initialization or duplexing call
+that the adversary makes to KDf
+K or IXIFRO can be properly captured by a
+tuple
+(Path,Z,σ ) ,
+where, intuitively, Path is all data that is used to generate response Z ∈Zr
+2, and
+σ ∈Zb
+2 is the input string (slightly abusing notation; σ = σ if ﬂag = false and
+σ= σ+ (Z||0c) if ﬂag = true).
+Following Andreeva et al. [2], we specify adversarial resources that impose
+limits on the transcripts that any adversary can obtain. The basic resource met-
+rics are quantitative: they specify the number of queries an adversary is allowed
+to make for each type.
+– N: the number of primitive queries. It corresponds to computations requiring
+no access to the (keyed) construction. It is usually called thetime or oﬄine
+complexity. In practical use cases, N is only limited by the computing
+power and time available to the adversary.
+– M: the number of construction queries. It corresponds to the amount of
+data processed by the (keyed) construction. It is usually called the data or
+online complexity. In many practical use cases, M is limited.
+We remark that identical calls are counted only once. In other words, N only
+counts the number of primitive queries, andM only counts the number of unique
+tuples (Path,σ).
+It is possible to perform an analysis solely based on these metrics, but in
+order to more accurately cover practical settings that were not covered before
+13
+(such as the multi-key setting or the nonce-respecting setting), and to eliminate
+the multiplicity (a metric used in all earlier results in this direction), we deﬁne
+a number of additional metrics.
+– q: the total number of diﬀerent initialization tuples ( Encode(δ),iv). Param-
+eter q corresponds to the number of times an adversary can start a fresh
+initialization of KD or IXIF.
+– qiv: iv multiplicity, the maximum number of diﬀerent initialization tuples
+(Encode(δ),iv) with same iv, maximized over all iv values.
+– Ω: the number of queries with ﬂag = true.
+– L: equals the number of queries M minus the number of distinct paths. It
+corresponds to the number of construction queries that have the same Path
+as some prior query.
+In many practical use cases, q is limited, but as it turns out re-initialization
+queries give the adversary more power. The metric qiv is relevant in multi-target
+attacks, where clearly qiv ≤u. The relevance of Ω and L is the following. In
+every query with ﬂag equal to true, the adversary can force the outer part of the
+input to f in a later query to a chosen value α by taking σ = α. Note that, as
+discussed in Section 2.2, by adopting authenticated encryption schemes with a
+slightly non-conventional encryption method, Ω can be forced to zero. Similarly,
+construction queries with the same path return the same value Z, and hence
+allow an adversary to force the outer part of the input to f in a later query
+to a chosen value α by taking σ such that σ = Z + α. An adversary can use
+this technique to increase the probability of collisions in f(s) + σ and to speed
+up inner state recovery. By deﬁnition, L≤M −1 but in many cases L is much
+smaller. In particular, if one considers KD in the nonce-respecting setting, where
+no (Encode(δ),iv) occurs twice, the adversary never generates a repeating path,
+and L= 0.
+4.2 Main Result
+Our bound uses a function that is deﬁned in terms of a simple balls-into-bins
+problem.
+Deﬁnition 2. The multicollision limit function νM
+r,c, with M a natural number,
+returns a natural number and is deﬁned as follows. Assume we uniformly ran-
+domly distribute M balls in 2r bins. If we call the number of balls in the bin with
+the highest number of balls µ, then νM
+r,c is deﬁned as the smallest natural number
+x that satisﬁes:
+Pr (µ>x ) ≤ x
+2c .
+In words, when uniformly randomly sampling M elements from a set of 2 r el-
+ements, the probability that there is an element that is sampled more than x
+times is smaller than x2−c.
+14
+Theorem 1. Let f be a random permutation and RObe a random oracle. LetK
+be a key array generated using a distribution DK. Let KDf
+K be the construction
+of Algorithm 1 and IXIFRO be the construction of Algorithm 2 and let νM
+r,c
+be deﬁned according to Deﬁnition 2. For any adversary A with resources as
+discussed in Section 4.1, and with N + M ≤0.1 ·2c,
+∆A(KDf
+K,f ; IXIFRO,f) ≤(L+ Ω)N
+2c + 2ν2(M−L)
+r,c (N + 1)
+2c +
+(L+Ω+1
+2
+)
+2c +
+(M −q−L)q
+2b −q + M(M −L−1)
+2b +
+(M −q−L)q
+2Hmin(DK)+min{c,b−k}+ qivN
+2Hmin(DK) +
+(u
+2
+)
+2Hcoll(DK) .
+The proof is given in Section 4.3.
+For the case where k+ c ≤b−1, and where DK corresponds to uniform
+sampling without replacement, the bound simpliﬁes to
+∆A(KDf
+K,f ; IXIFRO,f) ≤(L+ Ω)N
+2c + 2ν2(M−L)
+r,c (N + 1)
+2c +
+(L+Ω+1
+2
+)
+2c +
+qivN
+2k + (M −q−L)q
+2k+c−1 + M(M −L−1)
+2b .
+The behavior of the function νM
+r,c is discussed in Section 6.5 and illustrated
+in the Figure 4, which we refer to as the Stairway to Heaven graph.
+4.3 Proof of Theorem 1
+Let Abe any information-theoretic adversary that has access to either, in the
+real world ( KDf
+K,f), or in the ideal world ( IXIFRO,f). Note that, as Ais
+information-theoretic, we can without loss of generality assume that it is deter-
+ministic, and we can apply the technique of Section 3. By the triangle inequality,
+∆A(KDf
+K,f ; IXIFRO,f)
+≤∆B(KDf
+K,f ; RDφ,π,f) + ∆C(RDφ,π,f ; IXIFRO,f) , (9)
+where RDφ,π for random injection function φ and random permutation π is
+the construction of Algorithm 3, and where Band Chave the same resources
+(N,M,q,q iv,L,Ω ) as A.
+In the last term of (9), RD calls an ideal injective function φ and a random
+permutation π, both independent of f, and IXIF calls a random oracle RO, also
+independent of f. The oracle access to f therefore does not “help” the adversary
+in distinguishing the two, or more formally,
+∆C(RDφ,π,f ; IXIFRO,f) ≤∆D(RDφ,π ; IXIFRO) . (10)
+where Dis an adversary with the same construction query parameters as A, but
+with no access to f.
+The two remaining distances, i.e, the ﬁrst term of (9) and the term of (10),
+will be analyzed in the next lemmas. The proof of Theorem 1 directly follows.
+15
+(±, iv)
+Á
+Z
+t
+¾
+¼
+Z
+t
+¾
+¼
+Z
+t
+¾
+…
+?
+(±, iv)
+Path
+¾
+RO
+Z
+Fig. 2: Distinguishing experiment of RD and IXIF.
+Lemma 2. For any adversary Dwith resources as discussed in Section 4.1 but
+with no access to f,
+∆D(RDφ,π ; IXIFRO) ≤
+(L+Ω+1
+2
+)
+2c + M(M −L−1)
+2b . (11)
+Lemma 3. For any adversary Bwith resources as discussed in Section 4.1,
+∆B(KDf
+K,f ; RDφ,π,f) ≤(L+ Ω)N
+2c + 2ν2(M−L)
+r,c (N + 1)
+2c + (M −q−L)q
+2b −q +
+(M −q−L)q
+2Hmin(DK)+min{c,b−k}+ qivN
+2Hmin(DK) +
+(u
+2
+)
+2Hcoll(DK) .
+(12)
+The proof of Lemma 2 is given in Section 5, and the proof of Lemma 3 is given
+in Section 6.
+5 Distance Between RD and IXIF
+In this section we bound the advantage of distinguishing the randomized du-
+plex from an ideal extendable input function, (11) of Lemma 2. The distin-
+guishing setup is illustrated in Figure 2. The derivation is performed using the
+H-coeﬃcient technique.
+Description of transcripts. The adversary has only a single interface, RDφ,π
+or IXIFRO, but can make both initialization and duplexing queries. Following
+the discussion of Section 4.1, we can unify the two diﬀerent types of queries, and
+summarize the conversation of Dwith its oracle in a transcript of the form
+τC = {(Pathj,Zj,σj)}M
+j=1 .
+The values Zj correspond to the outer part of the state just before σj gets
+injected. To make the analysis easier, we give at the end of the experiment for
+each query the inner value of the state at the momentZj is extracted (in the real
+world). We denote this as tj = tj||ˆtj with tj = Zj. In the IXIF, ˆtj is a value that
+16
+is randomly generated for each path Path and can be expressed as RO′(Path)
+for some random oracle RO′with c-bit output. We integrate those values in the
+transcript, yielding:
+τ = {(Pathj,tj,σj)}M
+j=1 .
+Deﬁnition of good and bad transcripts. We deﬁne a transcript τ as bad if
+it contains a t-collision or an s-collision, where s= t+ σ. A t-collision is deﬁned
+as equal t values despite diﬀerent Path values:
+∃(Path,t,σ ),(Path′,t′,σ′) ∈τ with
+(
+Path ̸= Path′)
+AND
+(
+t= t′)
+. (13)
+An s-collision is deﬁned as equal s values despite diﬀerent (Path,σ′) values:
+∃(Path,t,σ ),(Path′,t′,σ′) ∈τ with(
+(Path,σ) ̸= (Path′,σ′)
+)
+AND
+(
+t+ σ= t′+ σ′)
+. (14)
+In case the oracle is RDφ,π, a t-collision is equivalent to two diﬀerent inputs to
+π with identical outputs; an s-collision corresponds to the case of two identical
+inputs to f where the outputs are expected to be distinct. By considering these
+transcripts as bad, all queries properly deﬁne input-output tuples for φ and π.
+Bounding the H-coeﬃcient ratio for good transcripts. Denote O =
+RDφ,π and P = IXIFRO for brevity. Consider a good transcript τ ∈Tgood.
+For the real world O, the transcript deﬁnes exactly q input-output pairs for φ
+and exactly M −q−L input-output pairs for π. It follows that Pr (DO= τ) =
+1/((2b)(q)(2b)(M−q−L)). For the ideal world P, every diﬀerent Path deﬁnes ex-
+actly one evaluation of RO(Path)||RO′(Path), so Pr (DP= τ) = 2−(M−L)b. We
+consequently obtain that Pr (DO= τ)
+Pr (DP= τ) ≥1.
+Bounding the probability of bad transcripts in the ideal world. In
+the ideal world, every t is generated as RO(Path)||RO′(Path). As the number
+of distinct Path’s in τ is M −L, there are
+(M−L
+2
+)
+possibilities for a t-collision,
+each occurring with probability 2−b. The probability of such a collision is hence
+(
+M−L
+2 )
+2b .
+There are
+(M
+2
+)
+occasions for an s-collision. Denote by S the size of the subset
+of these occasions for which the adversary can (in the worst case) force the outer
+part of s = t+ σ to be a value of its choice. Note that S ≤
+(L+Ω+1
+2
+)
+. In the
+worst case, in these S occasions the outer part of s always has the same value
+and s-collision probability is 2−c. For the
+(M
+2
+)
+−S other occasions the s-collision
+probability is 2 −b. Thus, the probability of an s-collision is upper bound by
+(using our bound on S):
+(M
+2
+)
+−S
+2b + S
+2c ≤
+(M
+2
+)
+−
+(L+Ω+1
+2
+)
+2b +
+(L+Ω+1
+2
+)
+2c ≤
+(M
+2
+)
+−
+(L+1
+2
+)
+2b +
+(L+Ω+1
+2
+)
+2c .
+17
+The total probability of having a bad transcript is hence upper bound by:
+(M−L
+2
+)
+2b +
+(M
+2
+)
+−
+(L+1
+2
+)
+2b +
+(L+Ω+1
+2
+)
+2c = M(M −L−1)
+2b +
+(L+Ω+1
+2
+)
+2c .
+As the H-coeﬃcient ratio is larger than 1, this is the bound on the distinguishing
+advantage and we have proven Lemma 2.
+6 Distance Between KD and RD
+In this section we bound the advantage of distinguishing the keyed duplex from
+a randomized duplex, (12) of Lemma 3. The analysis consists of four steps. In
+Section 6.1, we revisit the KD-vs-RD setup, and exclude the case where the
+queries made by the adversary result in a forward multiplicity that exceeds a
+certain threshold Tfw. Next, in Section 6.2 we convert our distinguishing setup
+to a simpler one, called the permutation setup and illustrated in Figure 3. In
+this setup, the adversary has direct query access to the primitives φand πof the
+randomized duplex, and at the keyed duplex side, we deﬁne two constructions
+on top of f that turn out to be hard to distinguish from φ and π. We carefully
+translate the resources of the adversary Bin the KD-vs-RD setup to those of
+the adversary Cin the permutation setup. In Section 6.3 we subsequently prove
+a bound in this setup. This analysis in part depends on a threshold on backward
+multiplicities Tbw. In Section 6.4 where we return to the KD-vs-RD setup and
+blend all results. Finally, in Section 6.5 and Section 6.6 we analyze the function
+νM
+r,c that plays an important role in our analysis.
+We remark that forward and backward multiplicity appeared before in Bertoni
+et al. [10] and Andreeva et al. [2], but we resolve them internally in the proof.
+There is a speciﬁc reason for resolving forward multiplicity before the conver-
+sion to the permutation setup and backward multiplicity after this conversion.
+Namely, in the permutation setup, an adversary could form its queries so that the
+forward multiplicity equals M−q, leading to a non-competitive bound, while the
+backward multiplicity cannot be controlled by the adversary as it cannot make
+inverse queries to the constructions. It turns out that, as discussed in Section 6.4,
+we can bound the thresholds as functions of M, L, and Ω.
+6.1 The KD-vs-RD Setup
+As in Section 4.1, we express the conversation that Bhas with KDf
+K or RDφ,π
+in a transcript of the form:
+τC = {(Pathj,Zj,σj)}M
+j=1 .
+We denote by µfw the maximum number of occurrences in this transcript of a
+value Zj + σj over all possible values:
+µfw = max
+α
+#{(Pathj,Zj,σj) ∈τC |Zj + σj = α}. (15)
+18
+We now distinguish between two cases: µfw above some threshold Tfw and be-
+low it. Denoting O= ( KDf
+K,f) and P = ( RDφ,π,f), we ﬁnd using a hybrid
+argument,
+∆B(O; P) =
+⏐⏐Pr
+(
+BO→1
+)
+−Pr
+(
+BP→1
+)⏐⏐
+≤
+⏐⏐Pr
+(
+BO→1 ∧µfw ≤Tfw
+)
+−Pr
+(
+BP→1 ∧µfw ≤Tfw
+)⏐⏐+
+⏐⏐Pr
+(
+BO→1 ∧µfw >Tfw
+)
+−Pr
+(
+BP→1 ∧µfw >Tfw
+)⏐⏐
+≤
+⏐⏐Pr
+(
+BO→1 ∧µfw ≤Tfw
+)
+−Pr
+(
+BP→1 ∧µfw ≤Tfw
+)⏐⏐+
+max
+{
+Pr (µfw >Tfw for O) ,Pr (µfw >Tfw for P)
+}
+. (16)
+As we will ﬁnd out (and explicitly mention) in Section 6.4, the bound we will
+derive on Pr (µfw >Tfw) in fact applies to both Oand P, and for brevity denote
+the maximum of the two probabilities by Pr O,P(µfw >Tfw).
+6.2 Entering the Permutation Setup
+To come to our simpliﬁed setup we deﬁne two constructions: the Even-Mansour
+construction and a “state initialization construction.” The original Even-Mansour
+construction builds a b-bit block cipher from a b-bit permutation f and takes
+two b-bit keys K1 and K2 [25,26], and is deﬁned as f(x+K1) +K2. We consider
+a variant, where K1 = K2 = 0r||κ with κ a c-bit key, and deﬁne
+Ef
+κ(x) = f(x+ (0r||κ)) + (0r||κ) . (17)
+The state initialization construction is a dedicated construction of an injective
+function that maps an iv and a key selected from a key array K to a b-bit state
+and that takes a c-bit key κ.
+If
+κ,K(δ,iv) = f(K[δ]||iv) + (0r||κ) . (18)
+Now, let κ
+$
+← −Zc
+2 be any c-bit key. We callκthe inner masking key. Using the idea
+of bitwise adding the inner masking key twice in-between every two primitive
+evaluations [2, 21, 38], we obtain that: KDf
+K = RDIf
+κ,K,Ef
+κ. We thus obtain for
+(16), leaving the condition µfw ≤Tfw implicit:
+∆B(KDf
+K,f ; RDφ,π,f) = ∆B(RDIf
+κ,K,Ef
+κ,f ; RDφ,π,f)
+≤∆C(If
+κ,K,Ef
+κ,f ; φ,π,f ) . (19)
+Clearly an adversary Bcan be simulated by an adversary Cas any construction
+query can be simulated by queries to the initialization function Oi (If
+κ,K in the
+real world and φ in the ideal world) and the duplexing function Od (Ef
+κ in the
+real world and π in the ideal world). Hence, we can quantify the resources of
+adversary Cin terms of the resources of adversaryB, making use of the threshold
+Tfw on the multiplicity (cf., (16)). This conversion will be formally performed in
+Section 6.4.
+19
+±
+K
+f
+iv
+0
+𝜅
+t
+0
+𝜅
+s
+f
+0
+𝜅
+t
+f
+x y
+?
+Á
+(±, iv) t
+¼
+s t
+f
+x y
+Fig. 3: Permutation setup.
+6.3 Distinguishing Bound for the Permutation Setup
+We now bound ∆C(If
+κ,K,Ef
+κ,f ; φ,π,f ). The permutation setup is illustrated in
+Figure 3. The derivation is performed using the H-coeﬃcient technique.
+Description of transcripts. The adversary has access to either ( If
+κ,K,Ef
+κ,f)
+or (φ,π,f ). The queries of the adversary and their responses are assembled in
+three transcripts τf,τd, and τi.
+τf = {(xj,yj)}N
+j=1 The queries to f and f−1. The transcript does not code
+whether the query was y= f(x) or x= f−1(y).
+τi = {(δi,ivi,ti)}q′
+i=1 The queries to the initialization function Oi, If
+κ,K in the
+real world and φ in the ideal world.
+τd = {(si,ti)}M′
+i=1 The queries to the duplexing function Od, Ef
+κ in the real world
+and π in the ideal world.
+The resources of Care deﬁned by the number of queries in each transcript: N,
+M′, and q′, as well as qiv = maxα#{(δ,iv,t) ∈τi |iv = α}. In addition, the
+resources of Care limited on τd, for which the forward multiplicity must be below
+the threshold Tfw:
+max
+α
+#{(si,ti) ∈τd |¯si = α}≤ Tfw .
+To ease the analysis, we will disclose the full key array K and the inner
+masking key κ at the end of the experiment (in the ideal world, κ and the
+elements of K will simply be dummy keys). The transcripts are thus of the form
+20
+τ = (K,κ,τ f,τi,τd). Note that it is fair to assume that none of the transcripts
+contains duplicate elements (i.e., the adversary never queriesf twice on the same
+value). Additionally, as we consider attainable transcripts only and φ,π,f are
+injective mappings, τ does not contain collisions.
+We deﬁne the backward multiplicity as characteristic of the transcript τ:
+Deﬁnition 3. In the permutation setup, the backward multiplicity µbw is deﬁned
+as:
+µbw = max
+α
+(
+#{(si,ti) ∈τd |¯ti = α}+ #{(δ,iv,ti) ∈τi |¯ti = α}
+)
+.
+Deﬁnition of good and bad transcripts. In the real world, every tuple in
+(τf,τi,τd) deﬁnes exactly one evaluation of f. We deﬁne a transcript τ as bad if
+it contains an input or output collision of f or if the backward multiplicity is
+above some limit Tbw. In other words, τ is bad if one of the following conditions
+is satisﬁed. Input collisions between:
+τf and τi : ∃(x,y) ∈τf,(δ,iv,t) ∈τi with
+(
+x= K[δ]||iv
+)
+; (20)
+τf and τd : ∃(x,y) ∈τf,(s,t) ∈τd with
+(
+x= s+ 0r||κ
+)
+; (21)
+τi and τd : ∃(δ,iv,t) ∈τi,(s′,t′) ∈τd with
+(
+K[δ]||iv = s′+ 0r||κ
+)
+; (22)
+within τi : ∃(δ,iv,t),(δ′,iv′,t′) ∈τi with
+(
+δ̸= δ′)
+AND
+(
+K[δ]||iv = K[δ′]||iv′)
+.
+(23)
+Output collisions between:
+τf and τi : ∃(x,y) ∈τf,(δ,iv,t) ∈τi with
+(
+y= t+ 0r||κ
+)
+; (24)
+τf and τd : ∃(x,y) ∈τf,(s,t) ∈τd with
+(
+y= t+ 0r||κ
+)
+; (25)
+τi and τd : ∃(δ,iv,t) ∈τi,(s′,t′) ∈τd with
+(
+t+ 0r||κ= t′+ 0r||κ
+)
+. (26)
+Finally, τ is bad if the backward multiplicity µbw is above the threshold Tbw:
+µbw >Tbw . (27)
+Note that output collisions within τi are excluded by attainability of transcripts.
+Similarly, collisions (input or output) within τf as well as collisions within τd are
+excluded by attainability of transcripts.
+Bounding the H-coeﬃcient ratio for good transcripts. Denote O =
+(If
+κ,DK ,Ef
+κ,f) and P= (φ,π,f ) for brevity. Consider a good transcriptτ ∈Tgood.
+In the real world O, the transcript deﬁnes exactly q′+ M′+ N input-output
+pairs of f, so Pr (DO= τ) = 1/(2b)(q′+M′+N). In the ideal world P, every tuple
+in τf deﬁnes exactly N input-output pairs for f, every tuple in τi deﬁnes exactly
+q′ input-output pairs for φ, and every tuple in τd deﬁnes exactly M′ input-
+output pairs for π. It follows that Pr (DP= τ) = 1/((2b)(N)(2b)(q′)(2b)(M′)). We
+consequently obtain that Pr (DO= τ)
+Pr (DP= τ) ≥1.
+21
+Bounding the probability of bad transcripts in the ideal world. In the
+ideal world, κ is generated uniformly at random. The key array K is generated
+according to distribution DK, cf., Section 2.1. We will use the min-entropy and
+maximum collision probability deﬁnitions of (6) and (7).
+For (20), ﬁx any ( x,y) ∈τf. There are at most qiv tuples in τi with iv equal
+to the last b−k bits of x. For any of those tuples, the probability that the
+ﬁrst k bits of x are equal to K[δ] is at most 2 −Hmin(DK), cf., (6). The collision
+probability is hence at most qivN/2Hmin(DK).
+For (21), ﬁx any ( x,y) ∈τf. There are at most Tfw tuples in τd with x= s.
+For any of those tuples, the probability that ˆx = ˆs+ κ is 2 −c. The collision
+probability is hence at most TfwN/2c.
+For (24) or (25), we will assume ¬(27). Fix any (x,y) ∈τf. There are at most
+Tbw tuples in τi ∪τd with y = t. For any of those tuples, the probability that
+ˆy= ˆt+ κ is 2−c. The collision probability is hence at most TbwN/2c.
+For (22), ﬁx any ( δ,iv,t) ∈τi and any ( s′,t′) ∈τd. Any such combination
+sets (22) if 0 k||iv + s′ = K[δ]||0b−k + 0r||κ. Note that the randomness of K[δ]
+may overlap the one of κ. If k+ c≤b, the two queries satisfy the condition with
+probability at most 2−(Hmin(DK)+c), cf., (6). On the other hand, if k>b −c, the
+ﬁrst b−cbits of K[δ] has a min-entropy of at least Hmin(DK) −(k−(b−c)). In
+this case, the two queries satisfy the condition with probability at most
+2−(Hmin(DK)−(k−(b−c))+c) = 2−(Hmin(DK)+b−k) .
+The collision probability is hence at most M′q′
+2Hmin(DK)+min{c,b−k}, using that τi con-
+tains q′elements and τd contains M′elements.
+For (26), ﬁx any ( δ,iv,t) ∈τi and any ( s′,t′) ∈τd. As φ and π are only
+evaluated in forward direction, and φis queried at most q′times, the probability
+that t= t′ for these two tuples is at most 1 /(2b −q′). The collision probability
+is hence at most M′q′/(2b −q′).
+For (23), a collision of this form implies the existence of two distinct δ,δ′
+such that K[δ] = K[δ′]. This happens with probability at most
+(u
+2
+)
+/2Hcoll(DK),
+cf., (7).
+The total probability of having a bad transcript is at most:
+(Tfw + Tbw)N
+2c + PrP(µbw >Tbw) + M′q′
+2b −q′+
+M′q′
+2Hmin(DK)+min{c,b−k}+ qivN
+2Hmin(DK) +
+(u
+2
+)
+2Hcoll(DK) .
+(28)
+As the H-coeﬃcient ratio is larger than 1, Equation (28) is the bound on the
+distinguishing advantage.
+6.4 Returning to the KD-vs-RD Setup
+The resources of Ccan be computed from those of B(see Section 4.1) in the
+following way:
+22
+– q′≤q: for every query to Oi there must be at least one initialization query.
+– M′≤M−q−L: The minus Lis there because queries with repeated paths
+just give duplicate queries to Oi and the q initialization queries do not give
+queries to Od.
+The remaining resources have the same meaning for Band C. Filling in these
+values in Equation (28) and combining with Equation (16) yields:
+∆B(O; P) ≤
+(TfwN
+2c + PrO,P(µfw >Tfw)
+)
++ (29a)
+(TbwN
+2c + PrP(µbw >Tbw)
+)
++ (29b)
+(M −q−L)q
+2b −q + (M −q−L)q
+2Hmin(DK)+min{c,b−k} + (29c)
+qivN
+2Hmin(DK) +
+(u
+2
+)
+2Hcoll(DK) . (29d)
+Clearly µfw ≤M −q−L and µbw ≤M −L. So by taking Tfw = Tbw = M −L,
+lines (29a-29b) reduce to 2( M −L)N/2c. However, much better bounds can be
+obtained by carefully tuning Tfw and Tbw.
+Although the probabilities on the µfw and µbw are deﬁned diﬀerently (the
+former in the KD-vs-RD setup, the latter in the permutation setup), in essence
+they are highly related and we can rely on multicollision limit function of Deﬁni-
+tion 2 for their analysis. There is one caveat. Deﬁnition 2 considers balls thrown
+uniformly at random into the 2r bins, hence a bin is hit with probability 1/2r. In
+Lemma 6 in upcoming Section 6.6, we will prove that for non-uniform bin allo-
+cation where the probability that a ball hits any particular bin is upper bounded
+by y2−r, the multicollision limit function is at most νyM
+r,c . In our case the states
+are generated from a set of size at least 2b−M−N (for both Oand P) and thus
+its outer part is thrown in a bin with probability at most 2c/(2b−M−N), where
+we use that M + N ≤2b−1. Using the fact that νM
+r,c is a monotonic function in
+M and that 2b/(2b−M−N) <2 for any reasonable value of M+ N, we upper
+bound the multicollision limit function by ν2(M−L)
+r,c
+We ﬁrst look at (29b) and treat µbw. As it is a metric of the responses of
+queries to πand φ, it is a stochastic variable. It corresponds to the multicollision
+limit function of Deﬁnition 2, where M −L balls are distributed over 2 r bins,
+and each bin is hit with probability at most 2 /2r. Using above observation, we
+take Tbw = ν2(M−L)
+r,c , and (29b) becomes
+ν2(M−L)
+r,c N
+2c + ν2(M−L)
+r,c
+2c = ν2(M−L)
+r,c (N + 1)
+2c .
+The case of µfw in (29c) is slightly more complex. As discussed in Section 4.1,
+the adversary can enforce the outer part Zj + σj to match a value α in case
+Pathj is a repeating path. Moreover, for queries with ﬂag = true, it can also
+enforce the outer part to any chosen value. These total to L+ Ω queries. For
+23
+1
+4
+16
+64
+256
+1024
+4096
+2r-140 2r-120 2r-100 2r-80 2r-60 2r-40 2r-20 2r 2r+20
+ºM
+r,c
+M
+Lemma 4
+Lemma 5
+Asymptote
+Fig. 4: Stairway to Heaven graph: νM
+r,c computed with (33) for r+ c= 256, with
+upper bounds and asymptote for M →∞.
+the remaining queries, for simplicity upper bound by M−Lhere, the adversary
+has no control over the outer part. Therefore, if take Tfw = L+ Ω+ ν2(M−L)
+r,c , we
+have Pr (µfw >Tfw) =
+ν2(M−L)
+r,c
+2c . Namely, this is the probability that in the (at
+most) M−Lqueries where the adversary has no control over the outer part, the
+multiplicity is aboveν2(M−L)
+r,c assuming that the L+Ωqueries are manipulated to
+hit the same outer value as those ν2(M−L)
+r,c queries. Equation (29a) now becomes:
+(L+ Ω+ ν2(M−L)
+r,c )N
+2c + ν2(M−L)
+r,c
+2c = (L+ Ω)N
+2c + 2ν2(M−L)
+r,c (N + 1)
+2c .
+Plugging these two bounds into (29a-29b) yields the bound of Lemma 3.
+6.5 Bounds on νM
+r,c
+We will upper bound νM
+r,c by approximating the term Pr( µ>x ) in Deﬁnition 2
+by simpler expressions that are strictly larger.
+In Deﬁnition 2, µ is the maximum of the number of balls over all 2 r bins.
+If we model the number of balls in a particular bin as a stochastic variable Xi
+with some distribution function Di(x) = Pr( Xi ≤x), clearly, the distribution
+function of the maximum over all bins is the product of the distribution functions:
+Dmax(x) = ∏
+iDi(x). Assuming all variables have the same distribution and that
+they are independent, we hence obtain:
+Pr(µ>x ) = 1 −Pr(µ≤x) = 1 −(Pr(X ≤x))2r
+. (30)
+24
+The distributions that are of interest here are the number of balls in a bin,
+and they are not independent as they must sum to M. This means that if we
+know one distribution is high, the others are somewhat lower than if they would
+be independent. This makes that the value obtained by taking the product of
+factors Pr(X ≤x) slightly underestimates the probability Pr( µ≤x). Using the
+inequality (1 −ϵ)y ≥1 −ϵy, we obtain
+(Pr(X ≤x))2r
+= (1 −Pr(X >x))2r
+≥1 −2rPr(X >x) ,
+and we obtain for (30):
+Pr(µ>x ) <2rPr(X >x) . (31)
+We will now upper bound Pr(X >x). The number of ballsxin any particular
+bin has a binomial distribution. If the number of bins 2 r and the total number
+of balls M are large enough, for x > λthis is (tightly) upper bounded by a
+Poisson distribution with λ= M2−r. The probability that a Poisson-distributed
+variable X is larger than x is given by:
+Pr(X >x) =
+∑
+i≥x
+e−λλi
+i! = e−λλx
+x!
+∑
+i≥0
+λi
+(i+ x)(i)
+< e−λλx
+x!
+∑
+i≥0
+λi
+xi = xe−λλx
+(x−λ)x! .
+This yields for (31):
+Pr(µ>x ) <2r xe−λλx
+(x−λ)x! .
+From Deﬁnition 2, we obtain that νM
+r,c is upper bounded by the smallest value x
+that satisﬁes
+2be−λλx
+(x−λ)x! ≤1 , (32)
+with λ= M2−r. Remarkably, the dependence ofνM
+r,c on r,c and M is only via b=
+r+ cand λ= M2−r. Hence, it is a function in two variables band λrather than
+three. Taking the logarithm of (32), applying Stirling’s approximation (ln( x!) ≥
+1
+2 ln(2πx) + x(ln(x) −1)) and rearranging the terms gives:
+x(ln(x) −ln(λ) −1) + ln(x−λ) + 1
+2 ln(2πx) + λ≥ln(2)b. (33)
+We will now derive expressions from (32) and (33) that give insight in the
+behavior of this function for the full range of λ.
+Case λ <1. If we consider Equation (33) with value of x given and we look
+for the maximum value of x such that it holds. This gives the value of λ where
+νM
+r,c transitions from x−1 to x. We can now prove the following lemma.
+25
+Lemma 4. The value of λwhere νM
+r,c transitions from x−1 to xis lower bounded
+by 2−b/x.
+Proof. We need to prove that for λ= 2−b/x, inequality (33) holds:
+x(ln(x) −1) + ln(x−2−b/x) + 1
+2 ln(2πx) + 2−b/x ≥0 .
+For x>e all terms in the left hand side of this equation are positive and hence
+the equation is satisﬁed. The only other relevant value is x = 2 and it can be
+veriﬁed by hand that this is satisﬁed for all b. ⊓ ⊔
+If we substitute λ by M2−r, this gives bounds on M for which νM
+r,c achieves a
+certain value. If we denote by Mx the value where νM
+r,c transitions from x−1 to
+x, we have Mx ≥2r−b/x = 2((x−1)r−c)/x. In particular M2 ≥2(r−c)/2. It follows
+that νM
+r,c is 1 for M ≤2(r−c)/2. Clearly, M must be an integer value, so the value
+of νM
+r,c for M = 1 will be above 1 if r<c + 2.
+Case λ= 1. Equation (33) for λ= 1 reads
+x(ln(x) −1) + ln(x−1) + 1
+2 ln(2πx) + 1 ≥ln(2)b,
+and νM
+r,c is upper bounded by the smallest x such that this inequality holds, or
+equivalently, such that
+x≥ln(2)b−1 −ln(x−1) −1
+2 ln(2πx)
+ln(x) −1 .
+The right hand side of this equation is upper bounded by ln(2)b
+ln(x)−1 . Therefore, νM
+r,c
+is certainly upper bounded by the smallest x such that
+x≥ ln(2)b
+ln(x) −1 .
+This expression can be eﬃciently evaluated for all values of b, and it turns out
+that the value of ν2r
+r,c increases from b/4 for values of bclose to 200 to values b/6
+for values of b close to 2000.
+Case λ >1. For large λ, Equation (33) becomes numerically instable. We
+derive a formula for integer values of λ, or equivalently values of M that are a
+multiple of 2r (w.l.o.g.). By a change of variable from x to x= λ+ y we obtain
+for the left hand side of (32):
+2be−λλx
+(x−λ)x! = 2be−λλλ+y
+y(λ+ y)! = 2bλy
+y(λ+ y)y
+(λ/e)λ
+λ! ≤ 2bλy
+y
+√
+2πλ(λ+ y)y
+26
+using Stirling’s approximation. Now (32) holds provided that
+2bλy
+y
+√
+2πλ(λ+ y)y
+= 2b
+y
+√
+2πλ∏y
+i=1(1 + i
+λ)
+≤1 .
+Taking the logarithm:
+y∑
+i=1
+ln
+(
+1 + i
+λ
+)
++ ln(y) + 1
+2 ln(2πλ) ≥ln(2)b. (34)
+This equation allows eﬃciently computing νM
+r,c for M >2r and also to prove a
+simple upper bound for the range λ> 1.
+Lemma 5. For M a nonzero integer multiple of 2r, we have
+νM
+r,c ≤M
+2r + ν2r
+r,c
+⌈√
+M
+2r
+⌉
+.
+Proof. First of all, note that forλ= 1, (34) is satisﬁed for y= ν2r
+r,c−1. Therefore,
+we have
+Ξ :=
+ν2r
+r,c−1∑
+i=1
+ln(1 + i) + ln(ν2r
+r,c−1) + 1
+2 ln(2π) −ln(2)b≥0 .
+Our goal is to prove that (34) holds for y = ν2r
+r,c
+⌈√
+λ
+⌉
+. Since Ξ ≥0, we will in
+fact prove that
+ν2r
+r,c
+⌈√
+λ
+⌉
+∑
+i=1
+ln
+(
+1 + i
+λ
+)
++ ln(ν2r
+r,c
+⌈√
+λ
+⌉
+) + 1
+2 ln(2πλ) −ln(2)b≥Ξ.
+Note that
+ν2r
+r,c
+⌈√
+λ
+⌉
+∑
+i=1
+ln
+(
+1 + i
+λ
+)
++ ln(ν2r
+r,c
+⌈√
+λ
+⌉
+) + 1
+2 ln(2πλ) −ln(2)b−Ξ
+≥
+ν2r
+r,c
+⌈√
+λ
+⌉
+∑
+i=1
+ln
+(
+1 + i
+λ
+)
+−
+ν2r
+r,c−1∑
+i=1
+ln(1 + i) .
+This can be rewritten as
+ν2r
+r,c−1∑
+i=0
+
+
+⌈√
+λ
+⌉
+∑
+j=1
+ln
+(
+1 + i
+⌈√
+λ
+⌉
++ j
+λ
+)
+−ln(1 + i)
+
+,
+27
+and our claim holds if we can prove that the summand is at least 0 for all
+i= 0,...,ν 2r
+r,c−1. This is easily veriﬁed as
+⌈√
+λ
+⌉
+∑
+j=1
+ln
+(
+1 + i
+⌈√
+λ
+⌉
++ j
+λ
+)
+≥
+⌈√
+λ
+⌉
+∑
+j=1
+ln
+(
+1 + i
+⌈√
+λ
+⌉
+λ
+)
+= ln
+
+
+(
+1 + i
+⌈√
+λ
+⌉
+λ
+)⌈√
+λ
+⌉
+,
+which is at least
+ln
+(
+1 + i
+⌈√
+λ
+⌉2
+λ
+)
+≥ln(1 + i) ,
+as in general (1 + x)y ≥1 + xy. ⊓ ⊔
+Clearly, for large M, νM
+r,c asymptotically converges to M/2r.
+6.6 Dealing with Non-Uniform Sampling
+In this section we address the non-uniform balls-and-bins problem. We consider
+the balls-and-bins problems for some values r and c where the probability that
+a ball hits a particular bin (of the 2 r bins) is not 2 −r. In other words, the
+distribution is not uniform. In general the probability distribution for the n-th
+ball depends on how the previous n−1 balls were distributed. We denote this
+distribution by D and deﬁne D(i|s) as the probability that a ball falls in bin i
+given the sequence sof bins in which the previous n−1 balls fell. We denote by
+νD,M
+r,c the variant of the function with the same name with the given distribution.
+Deﬁnition 4. The multicollision limit function for some distribution D, νD,M
+r,c ,
+with M a natural number, returns a natural number and is deﬁned as follows.
+Assume we independently distribute M balls in 2r bins according to a distribution
+D. If we call the number of balls in the bin with the highest number of balls µ,
+then νD,M
+r,c is deﬁned as the smallest natural number x that satisﬁes:
+Pr (µ>x ) < x
+2c .
+We can now prove the following lemma.
+Lemma 6. If for every bin, according to the distribution D the probability for
+a ball to end up in that bin satisﬁes |D(i |s) −2−r|≤ y2−r for some y ≤0.1
+and any i and s, then νD,M
+r,c ≤ν2M
+r,c , provided M ≤y2c and r≥5.
+Before proving Lemma 6, note that in our application of the lemma in Section 6.4,
+the ith ball hits a certain bin with probability
+2c −(i−1)
+2b −(i−1) ≤p≤ 2c
+2b −(i−1) .
+Assuming that i−1 ≤y2c and y ≤0.1, we obtain that (1 −y) ·2−r ≤p ≤
+(1 +y) ·2−r, and that the condition imposed by Lemma 6 is satisﬁed. As in our
+setup there are in total M+ N queries to f, this is satisﬁed if M+ N ≤0.1 ×2c.
+28
+Proof. Consider the following two experiments:
+– Experiment 1: we drop 2M balls into 2r bins and the distribution is uniform.
+– Experiment 2: we drop M balls into 2r bins and the probability for a ball to
+land in any particular bin is between (1 −y) ·2−r and (1 + y) ·2−r.
+We need to prove that ν2M
+r,c of the ﬁrst experiment is at least νD,M
+r,c of the
+second experiment. The general strategy is as follows. First, we prove that
+ν2M
+r,c is lower bounded by some threshold t. Then, if for all x ≥ t, we have
+Pr
+(
+µexp 1 >x
+)
+≥Pr
+(
+µexp 2 >x
+)
+, then νD,M
+r,c ≤ν2M
+r,c because x= ν2M
+r,c satisﬁes
+the equation Pr
+(
+µexp 2 >x
+)
+< x
+2c. Clearly, the condition above is satisﬁed if for
+all x≥t and for all bins i, we have Pr
+(
+Xexp 1
+i >x
+)
+≥Pr
+(
+Xexp 2
+i >x
+)
+, where
+Xi is the number of balls in bin i. And in turn, it is satisﬁed if for all x≥tand
+for all bins i, we have Pr
+(
+Xexp 1
+i = x
+)
+≥Pr
+(
+Xexp 2
+i = x
+)
+.
+First, by the pigeonhole principle, in experiment 1 there is always a bin with
+max{2M/2r,1}balls, and ν2M
+r,c is at least this value: ν2M
+r,c ≥max{2M/2r,1}.
+Then, consider any bin and the probability that it contains exactly x balls. In
+experiment 1, the bin contains exactly x balls if in the sequence of 2 M balls, x
+balls fall into the particular bin and 2 M −x fall in another bin, and thus:
+Pr
+(
+Xexp 1
+i = x
+)
+=
+(2M
+x
+)
+·(2−r)x ·(1 −2−r)2M−x.
+For experiment 2 we likewise obtain, using the fact that the ith ball ends in the
+bin with probability (1 −y) ·2−r ≤p≤(1 + y) ·2−r for any i:
+Pr
+(
+Xexp 1
+i = x
+)
+≤
+(M
+x
+)
+·((1 + y) ·2−r)x ·(1 −(1 −y) ·2−r)M−x.
+Using that
+(2M
+x
+)
+/
+(M
+x
+)
+≥2x and (1−2−r)2 ≥1−2·2−r, the condition certainly
+holds if
+( 2
+1 + y
+1 −(1 −y) ·2−r
+1 −2−r
+)x
+≥
+(1 −(1 −y) ·2−r
+1 −2 ·2−r
+)M
+,
+which in turn certainly holds if
+( 2
+1 + y
+)x
+≥
+(
+1 + 1 + y
+2r −2
+)M
+,
+which in turn certainly holds if
+( 2
+1 + y
+)x
+≥
+(
+1 + 1 + y
+2r −2
+)max{M,2r−1}
+. (35)
+We have to prove that this condition holds for all x≥max{2M/2r,1}. The left
+hand side is increasing in x, whereas the right hand side is constant in x, and we
+29
+therefore only have to prove it for x= max{2M/2r,1}(w.l.o.g., assuming that
+x is integral). Therefore, our goal now is to prove that
+2
+1 + y ≥
+(
+1 + 1 + y
+2r −2
+)2r−1
+.
+Using that 1 + a≤ea and r≥5, the condition is satisﬁed if
+2
+1 + y ≥e(1+y) 16
+30 ,
+which in turn holds for y≤0.1. ⊓ ⊔
+Acknowledgments. Bart Mennink is supported by a postdoctoral fellowship
+from the Netherlands Organisation for Scientiﬁc Research (NWO) under Veni
+grant 016.Veni.173.017.
+References
+1. Andreeva, E., Bogdanov, A., Luykx, A., Mennink, B., Mouha, N., Yasuda, K.: How
+to securely release unveriﬁed plaintext in authenticated encryption. In: Sarkar and
+Iwata [45], pp. 105–125
+2. Andreeva, E., Daemen, J., Mennink, B., Van Assche, G.: Security of Keyed Sponge
+Constructions Using a Modular Proof Approach. In: Leander [36], pp. 364–384
+3. Aumasson, J., Jovanovic, P., Neves, S.: NORX v3.0 (2016), submission to CAESAR
+competition
+4. Bellare, M., Bernstein, D.J., Tessaro, S.: Hash-Function Based PRFs: AMAC and
+Its Multi-User Security. In: Fischlin and Coron [28], pp. 566–595
+5. Bellare, M., Boldyreva, A., Micali, S.: Public-Key Encryption in a Multi-user Set-
+ting: Security Proofs and Improvements. In: Preneel, B. (ed.) EUROCRYPT 2000.
+LNCS, vol. 1807, pp. 259–274. Springer (2000)
+6. Bellare, M., Rogaway, P.: Random Oracles are Practical: A Paradigm for Designing
+Eﬃcient Protocols. In: Denning, D.E., Pyle, R., Ganesan, R., Sandhu, R.S., Ashby,
+V. (eds.) ACM CCS ’93. pp. 62–73. ACM (1993)
+7. Bernstein, D.J.: The Poly1305-AES Message-Authentication Code. In: Gilbert, H.,
+Handschuh, H. (eds.) FSE 2005. LNCS, vol. 3557, pp. 32–49. Springer (2005)
+8. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: Sponge functions. Ecrypt
+Hash Workshop 2007 (May 2007)
+9. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: On the Indiﬀerentiability of
+the Sponge Construction. In: Smart, N.P. (ed.) EUROCRYPT 2008. LNCS, vol.
+4965, pp. 181–197. Springer (2008)
+10. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: Sponge-Based Pseudo-
+Random Number Generators. In: Mangard, S., Standaert, F. (eds.) CHES 2010.
+LNCS, vol. 6225, pp. 33–47. Springer (2010)
+11. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: Duplexing the Sponge:
+Single-Pass Authenticated Encryption and Other Applications. In: Miri and Vau-
+denay [39], pp. 320–337
+30
+12. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: The Keccak reference (Jan-
+uary 2011)
+13. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: On the security of the keyed
+sponge construction. Symmetric Key Encryption Workshop (February 2011)
+14. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: Permutation-based encryp-
+tion, authentication and authenticated encryption. Directions in Authenticated
+Ciphers (July 2012)
+15. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G., Van Keer, R.: CAESAR
+submission: Ketje v2 (September 2016)
+16. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G., Van Keer, R.: CAESAR
+submission: Keyak v2, document version 2.2 (September 2016)
+17. Biham, E.: How to decrypt or even substitute DES-encrypted messages in 2 28
+steps. Inf. Process. Lett. 84(3), 117–124 (2002)
+18. Biryukov, A., Mukhopadhyay, S., Sarkar, P.: Improved Time-Memory Trade-Oﬀs
+with Multiple Data. In: Preneel, B., Tavares, S.E. (eds.) SAC 2005. LNCS, vol.
+3897, pp. 110–127. Springer (2005)
+19. Bogdanov, A., Kneˇ zevi´ c, M., Leander, G., Toz, D., Varıcı, K., Verbauwhede, I.:
+Spongent: A Lightweight Hash Function. In: Preneel, B., Takagi, T. (eds.) CHES
+2011. LNCS, vol. 6917, pp. 312–325. Springer (2011)
+20. CAESAR: Competition for Authenticated Encryption: Security, Applicability, and
+Robustness (November 2014), http://competitions.cr.yp.to/caesar.html
+21. Chang, D., Dworkin, M., Hong, S., Kelsey, J., Nandi, M.: A keyed sponge con-
+struction with pseudorandomness in the standard model. NIST SHA–3 Workshop
+(March 2012)
+22. Chatterjee, S., Menezes, A., Sarkar, P.: Another Look at Tightness. In: Miri and
+Vaudenay [39], pp. 293–319
+23. Chen, S., Steinberger, J.P.: Tight Security Bounds for Key-Alternating Ciphers.
+In: Nguyen, P.Q., Oswald, E. (eds.) EUROCRYPT 2014. LNCS, vol. 8441, pp.
+327–350. Springer (2014)
+24. Dobraunig, C., Eichlseder, M., Mendel, F., Schl¨ aﬀer, M.: Ascon v1.2 (2016), sub-
+mission to CAESAR competition
+25. Even, S., Mansour, Y.: A Construction of a Cipher From a Single Pseudorandom
+Permutation. In: Imai, H., Rivest, R.L., Matsumoto, T. (eds.) ASIACRYPT ’91.
+LNCS, vol. 739, pp. 210–224. Springer (1991)
+26. Even, S., Mansour, Y.: A Construction of a Cipher from a Single Pseudorandom
+Permutation. J. Cryptology 10(3), 151–162 (1997)
+27. FIPS 202: SHA-3 Standard: Permutation-Based Hash and Extendable-Output
+Functions (2015)
+28. Fischlin, M., Coron, J. (eds.): EUROCRYPT 2016, Part I, LNCS, vol. 9665.
+Springer (2016)
+29. Gazi, P., Pietrzak, K., Tessaro, S.: The Exact PRF Security of Truncation: Tight
+Bounds for Keyed Sponges and Truncated CBC. In: Gennaro and Robshaw [31],
+pp. 368–387
+30. Gazi, P., Tessaro, S.: Provably Robust Sponge-Based PRNGs and KDFs. In: Fis-
+chlin and Coron [28], pp. 87–116
+31. Gennaro, R., Robshaw, M. (eds.): CRYPTO 2015, Part I, LNCS, vol. 9215. Springer
+(2015)
+32. Guo, J., Peyrin, T., Poschmann, A.: The PHOTON Family of Lightweight Hash
+Functions. In: Rogaway, P. (ed.) CRYPTO 2011. LNCS, vol. 6841, pp. 222–239.
+Springer (2011)
+31
+33. Hoang, V.T., Tessaro, S.: Key-alternating ciphers and key-length extension: Exact
+bounds and multi-user security. In: Robshaw, M., Katz, J. (eds.) CRYPTO 2016,
+Part I. LNCS, vol. 9814, pp. 3–32. Springer (2016)
+34. Hong, J., Sarkar, P.: New Applications of Time Memory Data Tradeoﬀs. In: Roy,
+B.K. (ed.) ASIACRYPT 2005. LNCS, vol. 3788, pp. 353–372. Springer (2005)
+35. Jovanovic, P., Luykx, A., Mennink, B.: Beyond 2 c/2 Security in Sponge-Based
+Authenticated Encryption Modes. In: Sarkar and Iwata [45], pp. 85–104
+36. Leander, G. (ed.): FSE 2015, LNCS, vol. 9054. Springer (2015)
+37. Maurer, U.M., Renner, R., Holenstein, C.: Indiﬀerentiability, Impossibility Results
+on Reductions, and Applications to the Random Oracle Methodology. In: Naor,
+M. (ed.) TCC 2004. LNCS, vol. 2951, pp. 21–39. Springer (2004)
+38. Mennink, B., Reyhanitabar, R., Viz´ ar, D.: Security of Full-State Keyed Sponge
+and Duplex: Applications to Authenticated Encryption. In: Iwata, T., Cheon, J.H.
+(eds.) ASIACRYPT 2015, Part II. LNCS, vol. 9453, pp. 465–489. Springer (2015)
+39. Miri, A., Vaudenay, S. (eds.): SAC 2011, LNCS, vol. 7118. Springer (2012)
+40. Mouha, N., Luykx, A.: Multi-key Security: The Even-Mansour Construction Re-
+visited. In: Gennaro and Robshaw [31], pp. 209–223
+41. Mouha, N., Mennink, B., Herrewege, A.V., Watanabe, D., Preneel, B., Ver-
+bauwhede, I.: Chaskey: An Eﬃcient MAC Algorithm for 32-bit Microcontrollers. In:
+Joux, A., Youssef, A.M. (eds.) SAC 2014. LNCS, vol. 8781, pp. 306–323. Springer
+(2014)
+42. Naito, Y., Yasuda, K.: New bounds for keyed sponges with extendable output:
+Independence between capacity and message length. In: Peyrin, T. (ed.) FSE 2016.
+LNCS, vol. 9783, pp. 3–22. Springer (2016)
+43. Patarin, J.: The “Coeﬃcients H” Technique. In: Avanzi, R.M., Keliher, L., Sica,
+F. (eds.) SAC 2008. LNCS, vol. 5381, pp. 328–345. Springer (2008)
+44. Reyhanitabar, R., Vaudenay, S., Viz´ ar, D.: Boosting OMD for Almost Free Au-
+thentication of Associated Data. In: Leander [36], pp. 411–427
+45. Sarkar, P., Iwata, T. (eds.): ASIACRYPT 2014, Part I, LNCS, vol. 8873. Springer
+(2014)
+46. Sasaki, Y., Yasuda, K.: How to Incorporate Associated Data in Sponge-Based
+Authenticated Encryption. In: Nyberg, K. (ed.) CT-RSA 2015. LNCS, vol. 9048,
+pp. 353–370. Springer (2015)
+32

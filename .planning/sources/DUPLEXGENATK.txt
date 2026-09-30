@@ -1,0 +1,1631 @@
+Generic Attack on Duplex-Based AEAD Modes
+using Random Function Statistics
+Henri Gilbert1,2, Rachelle Heim Boissier2, Louiza Khati1, Yann Rotella2
+1ANSSI, France
+2Université Paris-Saclay, UVSQ, CNRS, Laboratoire de mathématiques de Versailles,
+78000, Versailles, France
+Abstract. Duplex-based authenticated encryption modes with a suffi-
+ciently large key length are proven to be secure up to the birthday bound
+2
+c
+2 , wherec is the capacity. However this bound is not known to be tight
+and the complexity of the best known generic attack, which is based on
+multicollisions, is much larger: it reaches2c
+α where α represents a small
+security loss factor. There is thus an uncertainty on the true extent of
+security beyond the bound2
+c
+2 provided by such constructions. In this
+paper, we describe a new generic attack against several duplex-based
+AEAD modes. Our attack leverages random functions statistics and pro-
+duces a forgery in time complexityO(2
+3c
+4 ) using negligible memory and
+no encryption queries. Furthermore, for some duplex-based modes, our
+attack recovers the secret key with a negligible amount of additional com-
+putations. Most notably, our attack breaks a security claim made by the
+designers of the NIST lightweight competition candidateXoodyak. This
+attack is a step further towards determining the exact security provided
+by duplex-based constructions.
+Keywords: Cryptanalysis · Symmetric cryptography· AEAD · Duplex-
+based constructions · NIST lightweight competition· Xoodyak · Ran-
+dom functions
+1 Introduction
+Authenticated Encryption (AE), which allows to encrypt and authenticate a
+plaintext message in a combined way, is one of the main workhorses of symmet-
+ric cryptography. AE often offers the option to authenticate, in addition to the
+plaintext message, some extra data which, unlike the plaintext, are transmit-
+ted unencrypted. AE is then renamed Authenticated Encryption with Associ-
+ated Data (AEAD). A considerable research effort was devoted during the last
+years to the design and analysis of efficient and secure AEAD algorithms. Ex-
+amples of AEAD mechanisms largely deployed over the Internet are AES-GCM
+and Chacha20-Poly1305. In 2014-2019, the three-round process of the CAESAR
+competition for authenticated encryption resulted in the selection of a portfolio
+of six AEAD mechanisms chosen to address the needs of the three following
+use cases: lightweight applications, high-performance applications and provision
+of defense-in-depth features, e.g. nonce misuse resistance. Another symmetric
+algorithms selection initiative, the ongoing NIST lightweight cryptography stan-
+dardization process, aims at selecting (families of) algorithms suitable for use in
+constrained environment that comprise at least an AEAD mechanism and op-
+tionally a cryptographic hashing mechanism. The process was launched in 2018
+and has now reached its third round, where ten finalists are still being evaluated.
+Most existing AEAD algorithms are eitherblock cipher-basedorpermutation-
+based. In the first case, they result from the application of a suitable mode of
+operation to a block cipher or a tweakable block cipher. In the second case,
+they consist in the instantiation of a keyed mode of operation with a public
+permutation. In this paper, we focus on so-called duplex-based keyed modes.
+Seminal examples of such modes are SpongeWrap and MonkeyDuplex, both
+introduced by Bertoni, Daemen, Peeters and Van Assche [7,10]. Duplex-based
+modes can be viewed as an adaptation to the AEAD context of theSponge
+construction for hash functions introduced by the same authors in [8,6]. After
+an initialization phase allowing to derive ab-bit state from a key and an IV
+value, they essentially iterate calls to a key-less public permutationP of the
+state space {0, 1}b in alternance with an injection and/or extraction of data
+blocks on/from a dedicatedr-bit part (r < b) of the current state value in order
+to absorb additional data, encrypt and absorb the plaintext, and produce an
+authentication tag.1 The sizes r and c = b − r bits of the state parts affected
+(resp. unaffected) by data injections or extractions are named therate and the
+capacity. The corresponding state parts are referred to as theouter and theinner
+state.
+The security of duplex-based constructionshas been extensively studied
+during the last decade. Let us denote the total time complexity of an attack by
+T = σe +σd +qP +textra−op, whereσe and σd respectively represent the number
+of online calls toP caused by the adversary’s encryption requests and forgery
+attempts andqP represents the number of offline queries toP or its inverse. The
+last term textra−op represents the extra computations not taken into account
+in σe + σd + qP , e.g. computations of primitives involved in the initialization
+and finalization, basic read/write operations in memory, random samplings. It
+is measured as an equivalent number ofP computations.2 Let us further denote
+by qd the number of forgery attempts of the adversary. The initial security ar-
+guments for duplex constructions, which leveraged the indifferentiability of the
+sponge construction for hash functions, only allowed to guarantee the security
+of the duplex constructions as long asT ≪min{2
+c
+2 , 2κ} and qd ≪ 2τ , whereκ
+and τ represent the key length and the tag length. In [27,28], Jovanovicet al.
+1The name “duplex”, that conveys the idea of a bidirectional process, reflects the
+fact that in such constructions both a data block injection and a data block extraction
+to/from the current state can potentially take place between two consecutive invoca-
+tions ofP.
+2Note that in the attack considered in the sequel, textra−op will in practice be
+negligible compared toσe + σd + qP .
+2
+showed that in the nonce-respecting setting, the security of a series of duplex
+constructions can be ensured beyond the birthday bound2
+c
+2 , namely as long as
+T ≪min{2
+b
+2 , 2c
+α , 2κ} and qd ≪ 2τ , (1)
+where α represents a small constant upper bounded byr in [27] and a tighter,
+substantially smaller constant in [28]. The detail of the security proofs sections
+of [27,28] indicates however that the bounds (1) are only valid under the as-
+sumption thatσd is strongly limited: if one wants to avoid implicit assumptions
+about σd, the bounding conditions (1) must be replaced by the more complete
+(though still simplified) conditions:
+T ≪min{2
+b
+2 , 2c
+α , 2c
+σd
+, 2κ} and qd ≪ 2τ . (2)
+Unlike the conditions (1), the complete bounding conditions (2) can hardly
+be considered as ‘beyond-birthday bounds’. Forσd ≥ 2
+c
+2 , the conditionT ≪2c
+σd
+of (2) indeed impliesT ≪2
+c
+2 . Thus, the security of the considered duplex-based
+constructions without assumptions onσd can only be guaranteed as long as the
+birthday conditionT ≪2
+c
+2 is met.
+The bounding conditions (1) were used for dimensioning the family of duplex
+AEADs NORX, and led since 2014 to several other AEAD design proposals based
+on duplex-like constructions with a claimed security level strictly larger than
+c
+2 . Similar bounds were shown to still hold when instead of limiting the size of
+injected and extracted data blocks tor bits, one only limits the size of extracted
+data blocks tor bits but full-state data injections are permitted [30]. This leads
+to AEAD proposals where the efficiency of the associated data absorption phase
+is increased.A generalisationof the full-statekeyedduplex of[30] with multi-user
+support, accompanied by a refined security analysis, was published in [20].
+Genericattacksonduplex-basedconstructions. Thebestcurrentlyknown
+genericattacksonduplex-basedconstructionsarebasedonmulticollisions.These
+attacks match the security bound2c
+α where α represents a small security loss
+factor as stated before. They are presented in detail in [28] and can be roughly
+outlined as follows. First, the adversary submits sufficiently many calls to an
+encryption oracle in order to find a multicollision among the outer state values
+of a numberρ of states. Once this has been achieved, an exhaustive search for
+a c-bit value matching the inner state value of one of theseρ states is likely to
+succeed after about2c
+ρ trials.
+Our contribution.The end of the former discussion on the security of duplex-
+based constructions showed that in situations where the possibility of forgery
+attempts of non-negligible data complexityσd is not precluded, the complete
+bounding conditions (2) only prevent the existence of generic attacks of total
+complexity T ≪ 2
+c
+2 . It is therefore an open question whether there exists a
+3
+generic attack of total complexityT strictly comprised between2
+c
+2 and the com-
+plexity 2c
+α of multicollision-based attacks.3 In this paper, we provide a positive
+answer to the former open question by exhibiting a generic attack against a large
+family of duplex-based constructions of total time complexityT in O(2
+3c
+4 ). We
+rely on the analysis of random function statistics to design a two-phase forgery
+attack with a precomputation phase of time complexityO(2
+3c
+4 ) essentially equal
+to qP and an actual forgery phase of time complexityO(2
+3c
+4 ) essentially equal
+to σd. The valueσd can also be viewed as the data complexity of the attack
+measured in ciphertext blocks. The attack requires no encryption queries,i.e.
+σe = 0, and textra−op is negligible compared toqP and σd. For some of these
+constructions, our attack recovers the secret key.
+Our attack takes advantage of the following property shared by several au-
+thenticated encryption modes based on the duplex construction: for a ciphertext
+built by concatenating a fixed block multiple times, the decryption of a message
+consists in the iteration of a public function with domain and co-domainFc
+2.
+This public function is fully determined by the value of the ciphertext block. We
+are therefore able to precompute some of its parameters offline. Forgery strate-
+gies that just assume a “near to average” behaviour of the iterated function, e.g
+a cycle length of the path generated by a random point of{0, 1}c close to the
+expected value
+p
+π2c/8, do not seem to lead to forgery attack complexities bet-
+ter thanO(2c). We show that however, the following two-phase attack strategy
+allows an adversary to produce an existential forgery with a success probability
+close to 1 and a total (online and offline) computation timeT = O(2
+3c
+4 ).
+1) In an offline phase, a significant amountO(2
+3c
+4 ) of precomputation is ded-
+icated to the detection of ac-bit to c-bit function that possesses exceptional
+characteristics that exponentially deviate from an average behaviour, thus ren-
+dering its use in a forgery attack more efficient.
+2) In an online phase, the iteration of the function identified in the offline phase
+is used to produce forgery attempts whose success probability is exceptionally
+high.
+In slightly more detail, the offline phase aims at selecting a ciphertext block
+that determines a function whose graph possesses a large component in which all
+paths are terminated by the same exceptionally small cycle, of length at most a
+small predefined multiple of2
+c
+4 . This is shown to imply that for long ciphertexts
+obtained by repeating the selected ciphertext block, the tag is the image of one
+of the values of the former small cycle by a known function with a probability
+close to 1. This in turn allows to mount a forgery attack of offline, online and
+total time complexityO(2
+3c
+4 ).
+The precomputation phase needs to be run only once to break the same
+construction with as many different keys as desired. Further, we can adjust the
+trade-off between the precomputation phase and the online phase in order to
+3In other words, the questions whether the “birthday term”2c
+σd
+is an artifact of the
+proofs and whether the capacity valuec can be safely dimensioned well below2s, where
+s denotes the targeted security level remain open.
+4
+bring the complexity of the latter closer toO(2
+c
+2 ) at the expense of significantly
+increasing the complexity of the former.
+Previously published generic attacks against hash-based MACs or hash func-
+tionsalsorelyonthestatisticsofrandomfunctions[32,29,33,4].Suchattacksalso
+model, as the AEAD attack introduced here, one function that the considered
+construction allows to iterate as a random function. Yet, while previous attacks
+generally assume and exploit a “near to average” behaviour of a function selected
+at random, an essential feature of the attack presented here is that it selects and
+leverages instances of a function whose behaviour exceptionally deviates from
+average.
+Our attack is applicable to several duplex-based modes such as monkeyWrap,
+monkeyDuplex or Motorist. Most notably, our attack is applicable to Cyclist, the
+mode of the Lightweight Cryptography NIST competition finalistXoodyak[18].
+With a key recovery attack of complexity2148 applications of the state update
+functionXoodoo, we break the claim of achieving184-bit security against plain-
+text recovery and forgery attacks made by the designers in [18, Corollary 2, p.
+72]. Note that this does not threaten the112-bit security level required by the
+NIST. Our results are detailed in Section 5 and displayed in Table 5.
+Organization. The rest of this paper is organized as follows. Section 2 intro-
+duces definitions and results related to the statistics of random functions that
+are relevant for our attack and defines a ‘vanilla’ duplex-based AEAD mode that
+only captures those features of duplex-based constructions that are essential to
+understand our attack. Section 3 presents our attack and analyses its perfor-
+mance using the vanilla mode of Section 2 as the target in order to simplify
+its presentation. Section 4 presents experimental validations of essential features
+of the attack based on small scale implementations. Section 5 shows that the
+attack of Section 3 is applicable to several real-life duplex modes with minor
+adaptations. Section 5 also discusses variations encountered in AEADs such as
+Beetle [16] or Ascon [22] that, on the other hand, prevent the attack.
+2 Preliminaries
+In this section, we start by introducing key definitions and results related to
+the statistics of random functions. Next, we describe a simplified duplex-based
+authenticated encryption mode on which we will rely to describe our attack.
+This is followed by a short subsection on the security model on which we rely.
+2.1 Preliminaries on random functions
+Let Fn be the set of all functions which map a finite set of sizen ∈ N∗ to itself.
+Without loss of generality, we consider the set{1, . . . , n}. Each functionf in Fn
+determines a directed graphG(f) in which a vertex goes from nodei to nodej,
+i, j∈ {1, . . . , n}, if and only iff(i) = j [31,24]. In the following, for simplicity
+reasons, we say that a node belongs to the graph of a function when it belongs
+5
+to the set of nodes of this graph. We use the term “random function inFn” to
+refer to a function selected uniformly at random in the setFn.
+For anyf in Fn and any nodex in G(f), we can iteratef and consider the
+set ofsuccessors of x
+S(x) ={fi(x) | 0 ≤ i ≤ n − 1}.
+We denote by s(x) the size of this set. Since the graph has a finite number
+of nodes, the sequence {fi(x)}i≥0 is eventually periodic. Graphically, it thus
+corresponds to a path linked to acycle defined as
+C(x) ={fi(x) | ∃j >0, fi(x) =fi+j(x)}.
+We denote by µ(x) = #C(x) the length of this cycle orcycle length and by
+λ(x) =s(x) − #C(x) the length of this path ortail length. The tail lengthλ(x)
+is the smallest integeri such thatfi(x) ∈ C(x). The set of all nodesy ∈ G(f)
+such that C(y) = C(x) forms a connected component. Since all nodes in the
+same connected component have the same cycle, thecycle of a componentis
+well-defined.
+Our cryptanalysis relies on the attacker’s ability to find functions which have
+a large component with a small cycle. We formally characterize what should be
+understood by “large component with a small cycle” later on. To do so, we will
+need the two following definitions.
+Definition 1 (ν-component). Let 0 < ν <1
+2 . Aν-component is a component
+that has a cycle of size at mostn
+1
+2 −ν.
+Definition 2 ((s, ν)-component). Let 0 < ν < 1
+2 , 0 < s < 1. A (s, ν)-
+component is aν-component whose size is greater or equal tons.
+In order to estimate the complexity and success probability of our attack, we
+rely on the statistical analysis of random functions. Such an analysis has been
+extensively conducted in combinatorics [25,31,21,23,24]. In this paper, we will
+need the three following results.
+Expectancy of cycle length and tail length for a random point [23].For
+a random nodex in the graph of a random functionf ∈ Fn, Flajolet and Odlyzko
+have computed the asymptotic form of the expectancy of the cycle lengthµ(x)
+and tail lengthλ(x) using generating functions. They obtained an expectancy
+of pπn
+8 for both.
+Probability for a random point to belong to aν-component [25]. For
+a random nodex belonging to the graph of a random functionf ∈ Fn, Harris
+shows that the probability thatµ(x) is smaller thann
+1
+2 −ν is asymptotically
+pν = 1− e− 1
+2n2ν +
+√
+2π
+nν
+
+1 − ϕ(n−ν)
+
+=
+√
+2π
+2nν + O
+ 1
+n2ν
+
+6
+where ϕ(y) =
+Ry
+−∞(2π)−1
+2 e−1
+2 x2
+dx. This corresponds to the probability for a
+random nodex of the graph of a random function to belong to aν-component.
+For example, forν = 1
+4 andc a positive integer such thatn = 2c,pν =
+√
+2π
+2 ×2−c
+4 .
+Probability for a random function to have a(s, ν)-component [21].
+For a randomf ∈ Fn, the probabilityps,ν that G(f) has a(s, ν)-component has
+been estimated by DeLaurentis in a paper published at Crypto 1987 [21]. It is
+shown to be
+ps,ν =
+r
+2(1 − s)
+πs n−ν [1 +O (rn(s))]
+where rn(s) = s−2n−1
+2 −3ν + s
+−1
+2 n−ν + n−1
+3 . Thus, ps,ν ≈
+q
+2(1−s)
+πs n−ν. For
+example, if we takeν = 1
+4 , s = 0.65 as in Section 3.6, andc a positive integer
+such thatn = 2c, ps,ν ≃ 0.6 × 2−c
+4 .
+Probability for a random point to belong to its component’s cycle
+after l −1 applications off. Let x be a random point of a random function.
+Harris [25] gives the asymptotic density function of the number of successors
+s(x). More precisely, he provides the asymptotic density functionf1 of s√n for
+x >0
+f1(x) =xe−x2
+2 .
+Forl a positive integer, letpl be the probability thatfl−1(x) is in the cycle, that
+is, the probability thatλ(x) ≤ l − 1. Since the number of successors is greater
+than the tail length,pl is greater or equal to the probability forx to have strictly
+less thanl successors. Thus, we have
+pl ≥ 1 − e− l2
+2n .
+Notationalconventions. Forsimplicityandreadabilityreasons,whenitcomes
+to estimates resulting from statistics on random functions, we will use the sign
+“≤” where it would be more rigorous to use the smaller or equivalent sign “⪅”
+in the rest of the paper.
+2.2 Description of a vanilla duplex-based AEAD mode
+The duplex construction was designed by theKeccak team as a tool to build
+authenticated encryption modes [7,9]. The first proposal of such a mode is
+SpongeWrap [7], published in 2011. Today, many modes are based on this
+construction. In this paper, we define the simplified authenticated encryption
+mode DuplexAEAD. DuplexAEAD shares its structure with the modes of
+several duplex-based AEAD schemes. This mode is not meant to be used in
+7
+practice. It is defined for readability reasons: its sole purpose is to make the
+description of our attack simpler. We show in Section 5 how our attack can be
+adapted to several real-life duplex-based modes.
+DuplexAEAD is instantiated with a permutationP which operates on a
+b-bit stateS divided into two parts. The firstr bits of the state form theouter
+state S, whilst the nextc = b−r bits form theinner state bS. The state can thus
+be written as S = S||bS. As stated in Section 1, the parameterr is called the
+rate and the parameterc is called thecapacity. DuplexAEAD also involves two
+other public functions, namely, an initialisation functionPinit and a finalisation
+function Pfinal . The encryption algorithmE takes as input aκ-bit keyK, aη-bit
+nonce N, a plaintextM and associated dataA of variable length and returns
+a ciphertext C and a τ-bit tag T. The decryption algorithmD takes as input
+(K, N, A, C, T) and returns the plaintext M if the tag is valid. Otherwise, it
+returns ⊥.
+We assume for simplicity reasons that the length in bits of the plaintexts
+processed by DuplexAEAD is always divisible byr.4 Thus, any plaintextM
+can be split intor-bit blocks,M = M0||···|| Ml−1, wherel is the plaintext length
+in number of r-bit blocks. The ciphertext’s length is equal to the plaintext’s
+length, and can thus also be writtenC = C0||···|| Cl−1.
+The mode works as follows (see Figure 1):
+initial phase
+(K, N)
+A
+Pinit
+r
+c
+plaintext processing
+P
+M0 C0
+P
+M1 C1
+. . .
+. . .
+final phase
+Pfinal
+Ml−1 Cl−1 T
+Fig. 1.DuplexAEAD in encryption mode.
+4In practice, our cryptanalysis can be easily adapted to attack modes which can
+process plaintexts of arbitrary length, but this requires a short case-by-case analysis
+which we provide in Section 5. Note that the resulting adjustments have a negligible
+impact on the complexity of our attack and do not impact its success probability.
+8
+Initial phase. The encryption and decryption algorithms start by an initial
+phase. The key, the nonce and the associated data are processed by the initiali-
+sation functionPinit. The state is set to the output ofPinit.
+Plaintext processing.In encryption mode,DuplexAEAD then processes the
+plaintext and generates the ciphertext block by block as follows:
+1. The ciphertext block Ci is generated by XORing the outer state to the
+plaintext blockMi. That is,Ci ← S ⊕ Mi.
+2. The outer state is set to the just computed ciphertext block. That is,S ← Ci.
+3. The permutationP is applied to the state. That is,S ← P(S).
+Ciphertext processing. In decryption mode,DuplexAEAD then processes
+the ciphertext. The plaintextM is constructed as the ciphertext is processed
+but will only be outputted at the end of the final phase if the tag is valid. This
+phase works as follows:
+1. A plaintext blockMi is generated by XORing the outer state to the cipher-
+text blockCi. That is,Mi ← S ⊕ Ci.
+2. The outer state is set to the value of the ciphertext block. That is,S ← Ci.
+3. The permutationP is applied to the state. That is,S ← P(S).
+Final phase.During encryption (resp. decryption), plaintext (resp. ciphertext)
+processing is followed by a final phase in which the finalisation functionPfinal
+takes as input the state and computes aτ-bit tag. The encryption algorithm
+returns a ciphertext and the corresponding tag. The decryption algorithm checks
+whether the tag is valid. If so, it returns the plaintextM. Otherwise, it returns
+⊥.
+Domain separation.Actual duplex-based AE modes generally rely on domain
+separation for their security. In the case ofDuplexAEAD, we assume that the
+wayPinit and Pfinal are constructed fromP ensures domain separation between
+the processing of (K, N), the processing of A, the processing of M and the
+computation ofT. This can be done for example by XORing distinct constants
+to the inner state beforeP invocations in each phase.
+2.3 Security model
+For authenticated encryption, two security notions are involved, namely privacy
+and integrity. Since our attack aims at breaking integrity, we leave privacy aside.
+We do not fully formalise the security model but give somesimplified reminders
+to the reader.5 In the integrity setting, we have an adversaryA who has access
+to the following oracles:
+5For more details see for example [27].
+9
+- A primitive oracleOP that allows to call the public permutationP or its
+inverse P−1. It takes as input a valuev ∈ Fb
+2 and outputsP(v) ∈ Fb
+2 (resp.
+P−1(v) ∈ Fb
+2) for a call made toP (resp. P−1).
+- An encryption oracleOenc that takes as inputs a nonceN, associated data
+A and a plaintextM and returns a ciphertextC and a tagT computed with
+a secret keyK which is randomly sampled once for all (the same key is used
+by the decryption oracle).6 It implements the encryption algorithm of the
+analysed AEAD scheme based onP.
+- A decryption oracleOdec that takes as input a nonceN, associated dataA,
+a ciphertextC and a tagT and, using the keyK, returns the corresponding
+plaintext if the verification is correct,⊥ otherwise. Similarly to the previ-
+ous oracle, it implements the decryption algorithm of the analysed AEAD
+scheme.
+We assume that the adversaryA is nonce-respecting. Her goal is to provide
+a forgery, that is, an input (N, A, C, T) such thatOdec(N, A, C, T) ̸= ⊥ where
+(C, T) was not outputted by the encryption oracleOenc on an input(N, A,·)
+(for any plaintext). The probability to provide a forgery has to be negligible.
+As already mentioned in Section 1, we denote byqe, qd and qP the number
+of queries done to respectively the encryption oracle, the decryption oracle and
+the primitive oracle. We denote byσe the total number of plaintext blocks pro-
+cessed by the encryption oracle and byσd the total number of ciphertext blocks
+processed by the decryption oracle.
+In this paper, we construct a generic forgery attack against several duplex-
+based authenticated encryption modes. Our attack is generic in the sense that
+we do not exploit the properties of the permutationP but only properties of
+the mode itself [9]. It does not rely on nonce misuse or the release of unveri-
+fied plaintext. For some modes, our attack also recovers the secret key with a
+negligible amount of extra computation.
+3 Description of the attack
+In this section, we present a generic forgery attack against duplex-based authen-
+ticated encryption modes. For the sake of clarity, we first describe how the attack
+works on the simplified modeDuplexAEAD defined in Section 2.2. We show
+how to apply our attack to other authenticated encryption modes in Section 5.
+3.1 Observation on duplex-based AEAD modes
+We describe a simple property ofDuplexAEAD that is shared with many other
+duplex-based AE modes: for a ciphertext built by concatenating a fixed block
+multiple times, the decryption of a plaintext consists in the iteration of a known
+function with domain and co-domainFc
+2. This property is at the core of our
+attack. It is depicted in Figure 2.
+6Each parameter space is well defined according to the analysed AEAD scheme.
+10
+Let ℓ ∈ N∗ and β ∈ Fr
+2. Letβℓ be the ciphertext equal to the concatenation
+of ℓ r-bit blocks of constant valueβ, that is
+βℓ = β||···|| β| {z }
+ℓ
+.
+During the ciphertext decryption, the value of the outer state at the input of
+the state update functionP is equal to the current ciphertext block. Thus, the
+decryption ofβℓ corresponds to the iteration of the functionPβ defined as
+Pβ : Fc
+2 −→ Fc
+2
+x 7−→ \P(β||x) .
+Indeed, let x0 ∈ Fc
+2 be the value of the inner state obtained at the end of the
+initialphasefromthekey,thenonceandtheassociateddata.Afterprocessingthe
+first plaintext block, the value of the outer state is equal to the first ciphertext
+block β. Thus, the input of the state update function is exactlyβ||x0. As a
+consequence, the value of the inner state going into the second application ofP
+is β||x1 where x1 = Pβ(x0). In turn, the third one isβ||x2 where x2 = Pβ(x1) =
+P2
+β (x0). When the last plaintext block is constructed, right before the final phase,
+the state is thus of the form
+β||Pℓ−1
+β (x0) =β||xℓ−1 .
+Since the outer part of the state is equal toβ, it is known to the attacker. In
+particular, to recover the value of the state before the final phase, an attacker
+only needs to determine the value ofxℓ−1. SinceT = Pfinal (β||xℓ−1), it is suffi-
+cient for the attacker to recover the value ofxℓ−1 to find a forgery(N, A, C, T).
+As we will show more rigorously later on, our cryptanalysis relies on the fact
+that without knowingx0, an attacker is able to selectβ and ℓ such that she is
+able to both restrict and predict the space of all possiblexℓ−1 = Pℓ−1
+β (x0) with
+good probability.
+3.2 High level description of the attack
+Our attack aims at recovering the value ofxℓ−1. It was devised relying on the
+random functions statistics introduced in Section 2.1. Indeed, letn = 2c. P is a
+random permutation onFb
+2 and c = b−r is significantly smaller thanb. Thus, for
+any β randomly drawn fromFr
+2, we expectPβ to behave as a function randomly
+drawn fromFn.
+The attack consists of two phases.
+Precomputation phase. First, in a precomputation phase, an offline algorithm
+finds a valueβ such thatG(Pβ) has a large component with a small cycle, that
+is, a(s, ν)-component with greats and ν.
+11
+initial phase
+(K, N)
+A
+Pinit
+ciphertext processing
+β
+x0
+P
+β
+x1
+P
+. . .
+. . .
+final phase
+β
+xℓ−1
+Pfinal
+T
+Fig. 2.Decrypting βℓ.
+Online phase. Second, in an online phase,(N, A, C, T) queries are submitted to
+a decryption oracle, where the ciphertext isC = βℓ with ℓ sufficiently large and
+β is the output of the precomputation algorithm. Recall thatβ is chosen such
+that G(Pβ) has a large component with a small cycle. Since this component is
+large, it contains the unknown nodex0 with good probability. In that case, for
+a great enough value ofℓ, xℓ−1 belongs to the cycle of this component, which
+is small. Thus, the number of all possible values forxℓ−1 is reduced and can be
+efficiently exhausted by submitting(N, A, βℓ, T) queries to the decryption oracle
+where
+1. tags are produced by applyingPfinal to a state such thatS = β and such
+that the inner statebS belongs to the small cycle ofPβ’s large component;
+2. nonces are either randomly sampled or arbitrary distinct values;7
+3. the associated data is set to the empty stringε.8
+Our final attack, which balances the computational cost of the offline and
+online phases, provides a forgery in timeO(2
+3c
+4 ) with a negligible amount of
+memory. In the rest of this section, we provide a detailed description together
+with an analysis of the complexity and success probability of our full attack.
+Inourcomplexityandsuccessprobabilityanalysis,significanteffortswereput
+towards limiting the use of heuristic assumptions. This is illustrated for example
+by the use of the probability ps,ν [21] that a random function has a (s, ν)-
+component rather than a heuristic estimation of this value from the probability
+7In decryption queries, nonces can be repeated even in a nonce-respecting setting.
+For the purpose of our attack,x0 needs to behave as a point randomly sampled in
+the graph ofPβ. Thus, we can either require nonces to be randomly sampled or to be
+arbitrary distinct values.
+8For modes other than the full-state duplex, we could set the associated data to any
+value. In the case of the full-state duplex, the associated data must be chosen carefully
+(typically, the attack applies when the AD is set to the empty string).
+12
+pν that it has aν-component. Although we did not manage to get entirely rid
+of all heuristic assumptions, we intended to back each assumption with heuristic
+reasoning and/or small scale experiments.
+3.3 Precomputation phase
+In this section, we show how to construct an offline algorithm which outputsβ
+such thatG(Pβ) has a large component with a small cycle. By ‘having a large
+component with a small cycle’, we mean having a(s, ν)-component as defined in
+Section 2.1. We will set the parameterss and ν to their final values later in the
+paper. The offline algorithm also outputs the lengthµ of the(s, ν)-component’s
+cycle, as well as an elemente of this cycle.
+Our algorithm samples random valuesβ from Fr
+2 and random valuesx in
+Fc
+2 and investigates whether or not the component on whichx is located is a
+(s, ν)-component ofG(Pβ).
+When a randomβ and a randomx are generated, we start by investigating
+the cycle length of the component on whichx is located, that is, whether or
+not it is a ν-component. Cycle-finding algorithms such as Floyd’s or Brent’s
+algorithm provide a straightforward way to determine the component’s cycle
+length. These algorithms are typically used to find collisions on functions with
+a negligible amount of memory. In fact, the collisions found by these algorithms
+are located within the functions’ cycles. Thus, given a randomβ ∈ Fr
+2, which
+selects a randomPβ ∈ Fn, and a randomx ∈ Fc
+2, cycle-finding algorithms can
+be used to construct an algorithm which outputs bothµ(x), the cycle length of
+the connected component on whichx is located, and the value of a node in the
+cycle [26]. We call such an algorithmcycle. The algorithm cycle allows the
+attacker to determine whether or not the component on whichx is located is a
+ν-component, i.e. a component with a cycle of the desired lengthµ(x) ≤ n
+1
+2 −ν .
+To construct our final precomputation algorithm, two main issues remain to
+be solved.
+Issue 1. If the random β and the random x investigated are such that the
+componentonwhich x islocatedisnota (s, ν)-component,itdoesnotnecessarily
+mean thatG(Pβ) does not have a(s, ν)-component. There could be anx′ ̸= x
+such thatx′ belongs to a different component that has the desired cycle length
+and size. In particular, we must determine whether or not it is worth trying a
+different x′ ̸= x when cycle returns a cycle length value that is greater than
+n
+1
+2 −ν (x’scomponentisnota ν-component).Therearetwoimaginablestrategies.
+The first strategy consists in trying a single randomx for eachβ, and, whenever
+x has a component with a cycle size smaller thann
+1
+2 −ν, investigate whether or
+not the component has size greater or equal thansn. The second strategy would
+be to try severalx’s for each β. We stick to the first strategy. The following
+argument indeed suggests that the second strategy would be more costly. When
+conditioned by the failure of the first drawnx, the probability that a secondx′
+succeedswiththesame β isatmost ps,ν(1−s)
+1−ps,ν
+whilstforanewrandom (β′, x′),the
+13
+probability of success is at leastps,νs. Thus, the first strategy is better whenever
+s > 1
+2−ps,ν
+which is always true for our values ofs (which are always greater
+than 0.5) andν.
+Issue 2. Although cycle allows to detect ν-components, it does not provide
+a way to detect(s, ν)-components. Being fully certain that aν-component has
+the desired size would be prohibitingly costly. A strategy allowing to estimate
+that a ν-component is a (s, ν)-component with a sufficiently large probability
+has to be devised.9 The algorithmis_big implements this strategy. Note that
+in this algorithm, the notation ‘(., z)’ in Step 4 means that the first output
+(corresponding to the cycle length) is ignored. Each time the algorithm detects
+a small cycle, it checks whether or notω other random nodes belong to the same
+component. It then computes the proportionsobs of these new randomly chosen
+pointswhichbelongtothedesiredcomponent.Ifthisnumberisaboveathreshold
+value s + δ strictly larger thans, it decides thatx is likely to belong to a(s, ν)-
+component and returnsβ and the values of the cycle. We show that forδ = 2.33
+2√ω ,
+a selected component has size greater thans with great probability. Suppose that
+we have drawn a valueβ such thatβ has aν-component of unknown sizesβn.
+In that case, the random variablesobs is the mean ofω Bernoulli variables which
+are equal to1 with probabilitysβ and 0 with probability1 −sβ. By the Central
+Limit Theorem (CLT), we have that for allϵ ∈ R,
+p
+"
+sobs − sβ ≤ ϵ
+r
+sβ(1 − sβ)
+ω
+#
+= p (Y ≤ ϵ)
+where Y ⇝ N(0, 1). Thus, sinceδ = 2.33
+q
+1
+4ω and since forsβ < 1, sβ(1−sβ) ≤
+1
+4 , we have that
+sobs − sβ ≤ δ
+with probabilitypδ ≥ p
+ 
+Y ≤ 2.33
+
+> 0.99. Suppose that for a randomβ with a
+ν-component, we obtain a proportionsobs of randomx’s in this component such
+that sobs ≥ s + δ as required in Step 10 of the algorithmis_big. We know that
+with probabilitypδ ≥ 0.99:
+sβ ≥ sobs − δ ≥ s + δ − δ = s .
+As a conclusion, when our final offline algorithm offline_search returns a
+β, then it is such thatG(Pβ) has a ν-component with probability1, and the
+component considered has at least the desired size with probabilitypδ ≥ 0.99.
+9Given a point of the graphx, the introduction of an algorithm which estimatesx’s
+component’s size is going to significantly complicate our attack’s complexity analysis.
+We believe that we could have designed an attack without this extra algorithm by
+relying on the fact that a random component is large with great probability. However,
+unless increasing the complexity of the online phase, we would have then obtained
+lower success probabilities (roughly around0.5 rather than close to1).
+14
+Algo. offline_search(ω, s, ν)
+1 : while true do
+2 : β
+$
+← −Fr
+2; x
+$
+← −Fc
+2
+3 : ( µ, e) ← cycle(β, x)
+4 : if µ ≤ n
+1
+2 −ν then
+5 : if is_big(ω, s, β, µ, e)
+6 : return (β, µ, e)
+Algo. is_big(ω, s, β, µ, e)
+1 : δ ← 2.33
+2√ω ; j ← 0
+2 : for i = 1..ω do
+3 : k ← 0; inside_big ← false; y
+$
+← −Fc
+2
+4 : ( ., z) ← cycle(β, y)
+5 : while inside_big = false and k < µdo
+6 : if z = e then inside_big ← true
+7 : z ← Pβ(z)
+8 : k ← k + 1
+9 : if inside_big then j ← j + 1
+10 : if j
+ω ≥ s + δ return true
+11 : return false
+3.4 Analysis of the offline algorithm
+In this section, we analyse the success probability and complexity of the offline
+algorithm. As stated in Section 2.3, the complexity is expressed as a number
+of calls toP. This algorithm is at the core of our attack. It only needs to be
+executed once. Indeed, once it has succeeded in findingβ such thatG(Pβ) has a
+(s, ν)-component, a duplex-based mode with any key using the permutationP
+can be attacked.
+Complexity of the cycle-finding algorithm.We start by investigating the
+average complexity of the algorithmcycle. To construct this algorithm, we use
+Brent’s cycle-detection algorithm as a tool [14]. For a randomβ ∈ Fr
+2 and a
+random x ∈ Fc
+2, Brent’s algorithm recovers the cycle lengthµ(x) and a node
+of the cycle e ∈ C(x) after at most 2 max(µ(x), λ(x)) +µ(x) applications of
+Pβ. For a randomx, the cycle lengthµ(x) and the tail lengthλ(x) have the
+same expectation ofpπn
+8 [24] (See Section 2.1). Thus, we estimate the average
+complexity ofcycle in number of calls toP to be upper bounded by
+Tcycle = 3
+rπn
+8 .
+Complexity of the offline algorithm.We wish to compute the complexity of
+the offline algorithmoffline_search. First, the memory complexity is negligi-
+ble. As for the time complexity, we compute the average number of applications
+of P after which the algorithm returns a blockβ ∈ Fr
+2.
+First, we upper bound the average complexity ofis_big. This algorithm is
+executed when a pair(β, x) such thatx is located on aν-component ofG(Pβ)
+15
+has been selected. It takes as inputβ, µ = µ(x) ≤ n
+1
+2 −ν, an elemente of the
+cycle ofx’s component,s and an integerω. It performsω times a computation
+that essentially consists in the generation of a random point ofG(Pβ), one com-
+putation of the cycle algorithm, and at mostµ point comparisons andµ − 1 Pβ
+invocations. The average complexity ofis_big is thus upper bounded by
+
+Tcycle + n
+1
+2 −ν
+
+ω .
+The following estimation is heuristic, and implicitly relies on the assumption that
+the average complexity ofcycle for a random point of a random function does
+not significantly differ from the average complexity ofcycle for a random point
+of a fixed random function that has aν-component. We provide a reasoning
+to justify why it seems very unlikely that this assumption would significantly
+distort the complexity at the end of the section.
+We now compute the complexity ofoffline_search. First, we compute the
+complexity of one single iteration of a Step 1 loop ofoffline_search. Recall
+that pν is the probability for a random nodex ∈ Fc
+2 of a random function to
+belong to a ν-component. Each time a pair(β, x) is generated, the algorithm
+cycle is executed. Then, the algorithm executesis_big when a pair is such
+that x belongs to aν-component ofG(Pβ), which happens with probabilitypν.
+Finally, we need to compute after how many Step 1 iterations the algorithm
+returns a blockβ on average. At each iteration, the probability to generate a
+random β ∈ Fr
+2 such thatG(Pβ) has a (s, ν)-component is ps,ν. Given suchβ,
+the probability that the randomly drawnx ∈ Fc
+2 also belongs to this component
+is greater thans. Thus, on average, we select a nodex in a (s, ν)-component
+after less than 1
+ps,νs iterations. Heuristically, one can thus expect the overall
+complexity of our algorithm to be of the following form:
+1
+ps,νs
+h
+Tcycle + pν
+
+Tcycle + n
+1
+2 −ν
+
+ω
+i
+.
+Yet, we need to adjust this expression. Recall that a(s, ν)-component is aν-
+component of size greater or equal to sn. However, drawing a node in a ν-
+component of size exactlysn10 is not enough to make the algorithm stop. Indeed,
+if a randomly drawnβ ∈ Fr
+2 is such thatG(Pβ) has aν-component of size exactly
+sn, the probability thatsobs is greater thans + δ is smaller than1% (here, we
+use the central limit theorem again). We thus need to adjust our computation.
+To do so, we lower bound the probability that a random pair(β, x) is selected
+by the probability that it satisfies the two following conditions:
+(a) G(Pβ) has a(s+, ν)-component withs+ ≥ s + 2δ (recall thatδ = 2.33
+2√ω ).
+(b) x belongs to the(s+, ν)-component, so that the algorithmoffline_search
+randomly drawsω other values inFc
+2 and computessobs.
+Indeed, we show that satisfying these two conditions implies thatsobs ≥ s + δ
+with great probability, which is exactly the condition that needs to be satisfied
+for the algorithm to returnβ.
+10or greater thansn, but too close tosn to make the algorithm stop.
+16
+Assume that the algorithm randomly drawsβ ∈ Fr
+2 and x ∈ Fc
+2 such that
+conditions (a) and (b) are satisfied. Then by the central limit theorem, we have
+that for anyϵ ∈ R,
+p
+"
+sobs − s+ ≥ ϵ
+r
+s+(1 − s+)
+ω
+#
+= p (Y ≥ ϵ)
+whereY ⇝ N(0, 1). Forϵ = −2.33, we thus have that with probabilitypδ ≥ 0.99,
+sobs ≥ s+ − δ ≥ s + δ .
+Thus, the probability that a randomly chosenβ is selected is lower bounded by
+ps+,νs+pδ. It comes that the average complexity of the offline phase satisfies
+Toffline ≤ 1
+ps+,νs+pδ
+h
+Tcycle + pν
+
+Tcycle + n
+1
+2 −ν
+
+ω
+i
+= Tcycle
+0.99
+r π
+2(1 − s+)s+ nν
+"
+1 +pνω
+ 
+1 +n
+1
+2 −ν
+Tcycle
+!#
+≤ n
+1
+2 +ν
+s
+2π
+(1 − s+)s+
+
+1 +pνω
+ 
+1 +O(n−ν
+= n
+1
+2 +ν
+s
+2π
+(1 − s+)s+
+"
+1 +
+√
+2πω
+2nν + O
+ 1
+n2ν
+#
+=
+"
+1p
+(1 − s+)s+
+#h
+n
+1
+2 +ν√
+2π + n
+1
+2 ωπ + O
+
+n
+1
+2 −ν
+i
+.
+Fors+ = 0.73, ν= 1
+4 , the last expression is equivalent to
+q
+2π
+(1−s+)s+ n
+3
+4 < 6n
+3
+4 .
+The previously mentioned heuristic assumption on the similarity of the aver-
+age tail length of a random point of a random function that has aν-component
+and the average tail length of a random point of a random function only under-
+lies the second appearance ofTcycle in the first bound onToffline above. Even
+if these two statistics differed non-negligibly, this would not significantly distort
+the complexity. Sinceis_big is executed only when aν-component is detected,
+Tcycle in its second occurence is multiplied bypνω ≪ 1 whilst it appears other-
+wise on its own.
+Success probability of the offline algorithm.We consider that the algo-
+rithm is successful if the valueβ outputted by the offline algorithm is such that
+Pβ has a(s, ν)-component. We have seen in Section 3.3 that when aβ is selected
+(that is,sobs ≥ s + δ), the central limit theorem guarantees that the real size of
+the ν-component investigated is greater thansn with probability pδ. It comes
+that the success probability of the offline algorithmpoffline is equal topδ ≥ 0.99.
+17
+3.5 Online phase
+In this section, we describe and analyse the online algorithmonline_algo. The
+online phase consists in submitting(N, A, C, T) queries to the decryption oracle
+Odec with C = βℓ where β has been outputted by the offline algorithm. In the
+following, we describe how the tags are constructed and how we choose the value
+of ℓ.
+Algo. online_algo(β, e, µ, ℓ, m)
+1 : for i = 1..m do
+2 : N
+$
+← −Fη
+2 ; y ← e
+3 : for j = 1..µ do
+4 : T ← Pfinal (β||y)
+5 : if Odec(N, ε, βℓ, T) ̸= ⊥
+6 : return (N, ε, βℓ, T)
+7 : else y ← Pβ(y)
+8 : return false
+Recall that we denote byx0 the inner state at the end of the decryption’s
+initial phase, and that when the ciphertextC is equal to βℓ, the state before
+the final phase is equal toβ||Pℓ−1
+β (x0). Recall thatβ, which has been outputted
+by the offline algorithm, is such thatG(Pβ) has a large component with a small
+cycle of this large component’s cycle. Since this component is large,x0 belongs to
+it with great probability. In that case, one can chooseℓ large enough forPℓ
+β(x0)
+to be likely to reach the small cycle ofG(Pβ)’s large component. The number of
+candidates for the state before the final phase, and thus for the possible tags, is
+thereby reduced.
+More formally, assume that the offline algorithm has been successful, that is,
+it has outputtedβ, µ and e such thatG(Pβ) has a(s, ν)-component with a cycle
+of length µ and such thate is an element of this cycle. IfG(Pβ) has a (s, ν)-
+component, x0 belongs to this component with probability greater than or equal
+to s. Ifx0 belongs to the(s, ν)-component, Pℓ−1
+β (x0) reaches the cycle with the
+probability pℓ introduced in Section 2.1. It comes that with probability at least
+pℓs, Pℓ−1
+β (x0) belongs to the cycle. Here, we implicitly rely on the assumption
+that the random variable tail length of a random point of a random function such
+that this random point belongs to a(s, ν)-component has the same distribution
+as the tail length of a random point of a random function. Although we do not
+believe this assumption to be true in the sense that the distributions are not
+strictly equal, we believe that they are close enough for it not to impact our
+attack significantly. Small scale experiments described in Section 4 corroborate
+this assumption.
+18
+We now analyse Algorithmonline_algo. For a nonceN ∈ Fη
+2, this online
+phase consists in submitting the following(N, A, C, T) queries to the decryption
+oracle:
+ 
+N, ε, βℓ, Pfinal (β||Pi
+β(e))
+
+for i = 0, . . . , µ− 1 .
+Time complexity. For each nonce, the attacker submitsµ decryption queries
+with a ciphertext ofℓ blocks, and for each decryption query, she must also apply
+Pfinal to the current stateβ||y where y is the current cycle element and apply
+Pβ to y in order to try exhaustively all the cycle elements. Sinceℓ = O(n
+1
+2 ),
+the time complexity incurred by the above invocations ofPβ and Pfinal at each
+decryption query is negligible compared to the time complexity of a decryption
+query with C = βℓ, that can be approximated by ℓ applications of P. The
+time complexity for each nonce is thus well approximated byµℓ and thus upper
+bounded by
+n
+1
+2 −νℓ .
+Thus, for m nonces, the average complexity of the online phase in number of
+calls toP verifies
+Tonline ≤ n
+1
+2 −νmℓ .
+Probability of success.For each nonce, the probability of success is exactly the
+probability thatPℓ−1
+β (x0) belongs to the cycle which we showed to be at least
+pℓs. If we repeat this experiment withm nonces, the probability of success is
+thus at least
+ponline = 1− (1 − pℓs)m .
+3.6 Complexity and success probability of the attack
+The complexity of the attack is the sum of the complexities of the online algo-
+rithm and the offline algorithm. Note that in practice, the attacker only needs
+to run the precomputation offline algorithm once in order to be able to execute
+the online phase to attack the same duplex-based mode with any secret key. The
+average complexityTonline + Toffline of the attack can be upper bounded by
+n
+1
+2 −νmℓ +
+"
+1p
+(1 − s+)s+
+#h
+n
+1
+2 +ν√
+2π + n
+1
+2 ωπ
+i
++ O
+
+n
+1
+2 −ν
+
+.
+Similarly, the overall success probability of the attack is of the form
+psuccess = pofflineponline ≥ pδ [1 − (1 − pℓs)m]
+≥ 0.99(1 − e−mpℓs) (since ∀x ∈ R, e−x > 1 − x).
+In order to have an overall probability of successpsuccess greater than0.95, we
+want 1 − e−mpℓs to be greater than 0.96. Recall from Section 2.1 that pℓ ≥
+1 − e
+−l2
+2n . We setℓ = 3√n so thatpℓ ≥ 0.988. We also set the following values:
+19
+• ω = 210; thus2δ = 2.33√ω < 0.08;
+• s+ = 0.73; thuss = s+ − 2δ = 0.65.
+Since pℓ ≥ 0.988 and s = 0.65, ponline is greater than0.96 for m ≥ 5. We thus
+set m = 5. Thus, the complexity has the form
+15n1−ν + 6n
+1
+2 +ν + 4π210
+√
+3 n
+1
+2 + O
+
+n
+1
+2 −ν
+
+.
+To balance the above expression, we setν = 1
+4 , we get an attack of complexity
+at most21n
+3
+4 + O(√n) = 21× 2
+3c
+4 + O(√n) in number of calls toP.11
+Note that the complexity of the online phase is at most15n1−ν. In particular,
+given β such thatG(Pβ) has a component of size greater thanns with a cycle
+length close to1, the online complexity can be brought close to2
+c
+2 +4.
+3.7 Key-recovery
+For modes such thatPinit is reversible for known nonce and associated data, our
+forgery attack also recovers the secret key withℓ = O(√n) extra applications of
+P, which is negligible compared to the complexity of the forgery. Indeed, if the
+decryption oracle receives a forgery(N, A, C, T), it returns the corresponding
+plaintext. This allows the attacker to recover the state at the end of the initial
+phase with ℓ = O(√n) extra applications of P−1.12 As a consequence, if the
+function Pinit is reversible for known nonce and associated data, the attacker
+recovers the secret key.
+4 Small scale experiments
+Our attack relies on the assumption that thePβ’s derived from a public per-
+mutation P defined on Fb
+2 behave as random functions onFc
+2. To statistically
+verify this assumption, we implemented some experiments using the permuta-
+tion Xoodoo[12] as P. The main reason behind this choice is its use in the
+finalist of the NIST lightweight cryptography competitionXoodyak, but an-
+other permutation used in practice with a reasonably large value ofb would
+have done just as well. We took toy values compared toXoodyakfor the capac-
+ity (c ≤ 40) in order for computer experiments to remain easy to achieve. Since
+our attack relies mainly on the random function statistics results introduced in
+Section 2.1, we designed a test for each of these results. We also implemented
+the algorithmoffline_search for small values ofc.
+11Note that ν = 1
+4 is not the fully optimal choice in general. Rather, the optimal
+choice forν is ν = 1
+2
+
+1
+2 − logn
+√
+2π/(
+p
+s+(1 − s+)15)
+
+. For example, forn = 2128,
+the optimal choice is approximately0.256.
+12The plaintext also allows to verify that the recovered state before the final phase
+is correct, making the key recovery possible with only a negligible amount of extra
+computations regardless of the tag length.
+20
+Algo. cycle_expectancy(Ω)
+1 : tot ← 0
+2 : for i = 1..Ω do
+3 : β
+$
+← −Fr
+2; x
+$
+← −Fc
+2
+4 : ( µ, e) ← cycle(β, x)
+5 : tot ← tot + µ
+6 : return tot/Ω
+Algo. nu_components(Ω, ν)
+1 : ctr ← 0
+2 : for i = 1..Ω do
+3 : β
+$
+← −Fr
+2; x
+$
+← −Fc
+2
+4 : ( µ, e) ← cycle(β, x)
+5 : if µ ≤ n
+1
+2 −ν then ctr ← ctr + 1
+6 : return ctr/Ω
+Expectancy of cycle/tail length.We wish to verify that for a randomβ ∈ Fr
+2
+and for a random nodex ∈ G(Pβ), the expectancy of the cycle lengthµ(x) and
+tail length λ(x) are both equal topπn
+8 , with n = 2c. Note that the variance
+of the cycle length and tail length for a random node of a random function
+is equal toσ2
+µ = n
+2
+3 − 2π
+16
+
+[25]. Regarding the cycle length, we use the algo-
+rithm cycle_expectancy. AfterΩ tries, by the Central Limit Theorem, the ob-
+served average cycle lengthmean outputted by the algorithmcycle_expectancy
+is such that with probability about0.99:
+mean ∈
+rπn
+8 − 2.58σµ√
+Ω
+;
+rπn
+8 + 2.58σµ√
+Ω
+
+.
+Setting Ω = 14000, we verify whethermean is in this interval in our tests (see
+Table 1). We use a similar algorithm and reasoning for the tail length.13 As
+shown in Table 1, all our experimental results match the theory.
+c 28 32 36 40
+Expectancy 10267 41068 164274 657098
+Confidence interval [10080, 10454] [40321, 41817] [161283, 167266] [645130, 669065]
+tail mean 10323 40971 163732 654775
+cycle mean 10255 41620 164445 650156
+Table 1.Expectancy of cycle length and tail length
+Probability for a random point to belong to aν-component. We wish
+to verify that for a randomβ ∈ Fr
+2 and for a random node x ∈ G(Pβ), the
+13Here, we make the assumption that the standard deviation for the tail length is the
+same as the cycle length’s. This assumption does not affect our attack, it only affects
+how to interpret our test results.
+21
+probability that x belongs to aν-component is pν. To do so, we use the algo-
+rithm nu_components and focus in practice on experiments whereν = 1
+4 as it is
+the value used in our attack. DrawingΩ random (x, β) pairs and computing the
+proportion of such pairs such thatx belongs to aν-component of Pβ amounts
+to computing the mean ofΩ Bernoulli variables equal to1 with probabilitypν
+and 0 with probability1−pν. By the Central Limit Theorem, since the standard
+variation of the above variables isσν =
+p
+pν(1 − pν), we have that
+proportion ∈
+
+pν − 2.58σν√
+Ω
+; pν + 2.58σν√
+Ω
+
+with probability≥ 0.99. We verify in our experiments thatproportion is indeed
+in this confidence interval for various values ofc and Ω. Our results, which match
+the theory, are displayed in Table 2.
+c 28 32 36 40
+Ω 71344 142688 285376 570752
+ν-component
+Expectancy 0.009792 0.004896 0.002448 0.0012
+Conf. interval[0.0088,0.0110][0.0044,0.0054][0.0022,0.0027][0.0011,0.0013]
+proportion 0.010162 0.004787 0.002400 0.001242
+(s, ν)-component
+ps+,νs+pδ 0.002740 0.001370 0.000685 0.000342
+ps,νs 0.002973 0.001487 0.000743 0.000372
+frequency 0.003714 0.001647 0.000880 0.000517
+Table 2.Probability for a random node in the graph of a random function to belong
+to aν-component and experimental verification of (the detection of) the occurence of
+(s, ν)-components.
+Probabilityforarandomfunctiontohavea (s, ν)-component. Verifying
+that for a randomβ ∈ Fr
+2, the probability thatG(Pβ) has a(s, ν)-component is
+ps,ν is hard in practice as it is too costly to determine with probability1 whether
+or notG(Pβ) has a(s, ν)-component. Instead, we make an indirect verification.
+We drawΩ random (x, β) pairs and compute the proportionfrequency of such
+pairs such that:
+– Pβ has aν-component (the component to whichx belongs);
+– the estimated sizesobs of this component (given by the proportion, among
+ω = 1000, of newly chosen random points that belong to this component) is
+22
+at leasts + δ with δ = 2.33
+2√ω , so that the actual size of the component is very
+likely to be at leastsn.14
+We compare the foundfrequency values with two values:
+– the lower boundps,νs on the probability thatPβ has a(s, ν)-component and
+x belongs to it;
+– the conservative lower boundps+,νs+pδ on the average value offrequency
+used in the complexity estimate of the offline algorithm of Section 3.4, where
+s+ = s + 2δ.
+This algorithm is easy to derive from the algorithmoffline_search introduced
+in Section 3.3. We make this experiment for various values ofΩ and c and with
+s = 0.65, s+ = 0.73, as they are the values used in our attack. Our results
+match the theory and are displayed in Table 2. The difference (in favour of the
+adversary) between theoretical bounds and experimental values forfrequency
+in Table 2 can be at least partially explained as follows. The valueps,ν is the
+probability that a component is aν-component of sizegreater or equalto s. The
+probability that a random point belongs to a(s, ν)-component is thus strictly
+greater thanps,νs as the proportion of the points belonging to a component of
+size greater thans is greater thans.
+c β (b − c bits) µ
+28
+1473b86a 2607d6e5 5234df22 4c111c51 122e188f 37586e28
+10
+5b74f306 40ac1d69 2bb9c59f 6e8479b7 3d6ec314 7
+32
+67b9632a 032ec1a3 1f3b4f8c 7c641f59 39e3cab6 3aaa4444
+4
+73bf377d 7f1f6b35 6412ffb2 523d5180 54465a4f
+36
+59189691 3e3769f2 293b1b6f 0cc0af85 7d96b0a4 0e1c201b
+122
+137523e8 11f61a60 6c06c85f 762716b7 276c730
+40
+7b2fb641 7874c3d6 171abbc2 231ebf22 4e6e1ad3 2d6df079
+18
+7e6457aa 7816dd2a 011fe0f3 1de6ee24 56f1ed
+Table 3.We provide a few examples of obtainedβ values such thatPβ has a(s, ν)-
+component withµ ≪ 2
+c
+4 . Although we only provide one for eachc, several values ofβ
+are available for eachc.
+14To reduce the execution time of the implementation, to detect whether or not two
+points x, x′ are in the same component, we checked whetherµ(x) = µ(x′) instead of
+doing the exhaustive verification made inis_big.
+23
+Some values ofβ. Lastly, we implemented the algorithmoffline_search for
+small values of c and for s = 0.65. A few examples of obtainedβ values are
+displayed in Table 3.
+Probability for a random point to belong to its component’s cycle
+after ℓ − 1 applications of the random function.In order to verify the
+applicability of Harris’ result on the number of successors provided in Section 2.1
+to points randomly drawn in a(s, ν)-component, a fortioriwhen the function is
+randomly sampled from the set of allPβ’s rather than randomly sampled inFn,
+we also conducted the following experiment. For allβ values displayed in Table 3,
+we checked whether the points that were found to be in the(s, ν)-component
+had a tail length smaller thanℓ = 3√n. For all theseβ, 100% of the points found
+to be in the(s, ν)-component have a tail length smaller thanℓ. This gives us
+reasonable confidence in the fact that this assumption is realistic and does not
+lead to a significant overestimation of the success probability of the attack.
+5 Application to concrete duplex-based modes
+In this section, we apply the attack previously described on the simplifiedDu-
+plexAEAD mode to concrete AEAD duplex-based modes. Whilst our attack
+can be easily adapted to many of them as summarized in Table 5, others frus-
+trate our attack. For all the modes presented in Table 5, our attack enables key
+recovery.
+5.1 Highlights
+For the attack to succeed, we identify two requirements:
+1. In decryption mode, the ciphertext blocks must overwrite the outer state at
+least in part;
+2. The tag must be determined by the state before the final phase, in such a
+way that a correct guess on this state gives us the correct tag.
+As a consequence, we will show that in all modes for which the attack is
+applicable, the padding rule applied to the message does not matter, even though
+when the padding rule is made block by block the complexity of our attack can
+be slightly greater.
+As a main concrete implication, we provide an attack onXoodyak that
+breaks the claim of achieving 184-bit security against plaintext recovery and
+forgery attacks made by the designers in [18, Corollary 2, p. 72] but does not
+threaten the 112-bit security level required by NIST for the lightweight compe-
+tition. The attack also breaks the penultimateNORX version NORX v2 [1] but not
+the more recent versionNORX v3 [2].
+Secondly we highlight two reasons that prevent our attack from applying to
+modes such as Beetle [16], Ascon [22] orNORX v3 [2] in Section 5.3. We mainly
+identify two reasons:
+24
+Mode monkeyWrap/monkeyDuplex Cyclist Motorist
+Scheme NORX v2(3) Ketje KNOT Xoodyak Keyak
+Instance N-32 N-64 Jr Sr Mi Ma KNOT-AEAD Xoodyak River Lake
+b 512 1024 200 400 800 1600 256 384 384 512 384 800 1600
+r 384 768 16 32 128 256 64 192 96 128 192 544 1344
+r′ (1) 382 766 14 30 126 254 64 192 96 128 192 544 1344
+c 128 256 184 368 672 1344 192 192 288 384 192 256 256
+Sec. level(2) 128 256 96 128 128 128 125 128 189 253 184 128 128
+T 2102 2198 2144 2282 2506 21014 2148 2148 2220 2292 2148 2196 2196
+Table 4.Summary of our results. Our attack is the best known generic attack against
+the modes displayed in blue;(1)r′ is the length of the outer state part that is overwritten
+by ciphertext blocks taking into a account a potential block by block padding such
+as in monkeyDuplex;(2)Claimed plaintext integrity security level for a key and tag
+of sufficient, potentially maximal, length;(3)Note that a more efficient (although not
+generic) attack has been devised in [15].
+– the use of a linear application that prevents outer state overwriting such as
+the feedback functionproposed in the Beetle mode [16] (requirement 1 is not
+fulfilled);15
+– the use of the secret key in the final phase to produce the tag such as in Ascon
+and NORX v3 [22,2]. Indeed, in that case, a correct guess on the state before
+the final phase does not determine the tag (requirement 2 is not fulfilled).
+5.2 Schemes to which the attack can be applied
+The attack is applicable to the following duplex-based constructions: the Cy-
+clist, monkeyDuplex and Motorist modes. Therefore, the attack is applicable to
+Xoodyak, Ketje, KNOT, NORX v2 and Keyak. This section is made to help
+the reader check attack details for all AEAD algorithms on which the attack is
+applicable.
+15Although the first mode that uses a feedback function is COFB [17], this mode is
+out of scope as it is not duplex-based (in fact, it is not even permutation-based but
+block-cipher based).
+25
+Cyclist mode. A well known representative of the family of duplex-based ci-
+phers isXoodyak [18], a finalist of the NIST lightweight cryptography compe-
+tition.16 Xoodyak uses the permutationXoodoo as its state update function.
+As explained in Section 3.5, the specification of the initial phase does not
+influence the applicability of the attack. Hence, we only focus on the ciphertext
+processing and the final phase. After the initial phase, a byte is set to‘80‘ and
+is XORed into the state, but this is only the case for the first block. Thus, we
+consider that the processing of the first ciphertext block belongs to the initial
+phase. Moreover, each time a ciphertext block overwrites the outer state, a byte
+set to‘01‘ is XORed into the state at the bit positionsr + 1, . . . , r+ 817, where
+r = 24bytes = 192bits [18, p. 68]. Thus, the permutationP on which we need
+to applyoffline_search is
+P : F384
+2 −→ F384
+2
+s 7−→Xoodoo[12](s ⊕ 0192||07||1||0184) .
+If one considers the padding rule10∗ together with the interface provided by the
+Xoodyakauthors, one can notice that all those transformations are determinis-
+tic in the value of the inner state just before processing the last ciphertext block.
+Hence, we can guess the last state value, and apply the final phase (consider-
+ing the padding for the last block inside this transformation) to the last block
+and apply the attack. This means that for any tag length, our attack strategy
+provides a forgery with a complexity of2148.4.
+When a valid decryption query is provided to the decryption oracle, the
+corresponding plaintext is returned. The plaintext allows the attacker to check
+that her guess on the state before the final phase is correct as she can invert the
+whole process. Doing so, she can also recover the state just after processing the
+key. As long as the key is smaller than 44 bytes, it is copied entirely in the state
+and thenA, N and M are processed. Thus,Pinit is reversible for knownN and
+A. As described in Section 3.7 the attack can thus be turned into a key recovery
+for Xoodyak.
+For at-byte tag and aκ-bit secret key withκ ≤ 192, the authors claim that
+Xoodyak has a security strength level in bits ofmin(184, κ,8t) in computation
+wherethedataislimitedto 96+κ/2.Ourattackbreaksthisclaimfor κ ≥ 152 and
+t ≥ 19. Our attack not only produces a forgery but also recovers the secret key.
+Typically, forκ = 192and t = 24, there should be no attack with a complexity
+under 2184 in time and2192 in data. Yet, our attack has a complexity of2148.4.
+MonkeyDuplex: Ketje, KNOT andNORX v2. Ketje [12], KNOT-AEAD
+[34] andNORX v2 [1] use the mode monkeyDuplex defined originally in 2014 for
+16For more details onXoodyak’s specification, we refer to [18] at page 62 for the
+keyed mode together with pages 67 and 68 for the full description of what is relevant
+for our analysis.https://csrc.nist.gov/Projects/lightweight-cryptography/
+17Notethattheratecalled r inthispaperisdenotedby n inXoodyak’sspecification.
+26
+Ketje [11]. However, those algorithms differ in the padding rule applied to the
+message.
+– In KNOT-AEAD, the padding is made by ‘appending a single 1 and the
+smallest number of 0’s to the bit string such that the length of the padded
+bit string is a multiple ofr bits’. Thus, the technique used forXoodyakcan
+be applied.
+– In Ketje and in NORX, the padding is made block by block [12, 1.3, p. 4]
+and [1, p. 9-10] with the rule pad10∗1[r](|M|) which is the multi-rate padding
+as defined in [7]. Both ciphers allow to process bit strings of length smaller
+or equal18 to r′ = r − 2. To deal with this padding rule, we consider that
+every plaintext block is of length exactlyr′, meaning that the padding rule
+is just the concatenation of11 to each block. By doing the same technique
+together with the domain separation as forXoodyak, that is considering
+that the position corresponding to those two bits are in fact inside the inner
+state and that the XOR of11 is part of theKetje inner permutationP (or
+part of theNORX inner permutation), we can apply our attack, by considering
+the effective rate to ber′ = r − 2 instead ofr.
+For these three constructions, the final phase is deterministic in the inner
+state after processing the plaintext or the ciphertext so our attack can be ap-
+plied. Both ciphers come with 4 different instances and our attack leads to the
+complexities listed in Table 5. Moreover, when the decryption oracle sends back
+the plaintext, a key recovery is possible as the state is directly initialized with
+key and nonce without applying any transformation.
+Motorist:Keyak. Keyak[13]isafamilyofauthenticatedencryptionschemes
+which is a third-round candidate of the CAESAR competition. The features of
+the Motorist mode that are of interest for our attack are:
+– Decryption overwrites the outer state with ciphertext blocks values and in
+between there are applications ofP where P is aKeccak-p permutation.
+– An encoding (in byte) of the size of the processed message blocks is XORed
+into the state at theRa + 1byte position, whereRa is the absorbing rate in
+bytes (Ra = r
+8 ).
+– For the tag generation, given a (public) tag length, the tag is determined by
+the state before the final phase.
+Thus, the attack can also be applied onKeyakinstances by just changing the
+function that is iterated and considering the XOR of the bytes that encode the
+length of ciphertext and associated data to be part of the decryption function.
+However, Keyak comes with instances that can work independently (Pis-
+tons), in order to highly parallelize encryption and decryption of large amount
+of data. To do so, the authors ofKeyak propose to do several initialization in
+parallel, process independently 4, 8 or more strings and then mix everything
+18This value is calledρmax in [7, p. 335]
+27
+together at the end. However, if one would like to guess the tag, one would have
+to guess independently every inner state in all parallel instances as they are all
+initialized differently. So, our attack onKeyak is also applicable on all instances
+but make sense only for the non-parallelized instances, that isRiver Keyak
+and Lake Keyak. For these instances, the key can also be recovered.
+5.3 Modes that frustrate our attack
+In this section, we will look into authenticated encryption modes to which the
+attack cannot be applied. Two main features frustrate our cryptanalysis. The
+first one consists of a final key addition just at the beginning of the final phase
+and the second one is the use of afeedback functionas proposed in the mode
+Beetle [16].
+Key-dependent final phase. Our attack allows to reduce the space of all
+possible values of the final state before the final phase. For the modes to which
+the attack applies, a correct guess on this state can be transformed into a forgery,
+and, under certain conditions, into a key recovery. However, some proposals
+such as Ascon [22] or the third version ofNORX [2] for the CAESAR competition
+slightly change the final phase by making it not only dependent on the state after
+processing the plaintext or ciphertext, but also key dependent. As explained at
+the beginning of this section, the final tag must be fully determined by the state
+just before the final phase. When the key is involved in the final phase, even if
+the correct state value is guessed, an attacker does not knowa priorithe secret
+key and so the state recovery does not lead to a forgery attack.
+Absence of outer state overwriting.In another line of research, Chakraborti
+et al. proposed in 2018 a family of AEAD constructions named Beetle [16]. Beetle
+is not strictly speaking a duplex-based construction as the use of afeedback
+function between two consecutive invocations of the permutationP avoids, when
+both a data injection and a data extraction take place, that ther-bit outer
+state value after the data injection be equal to the extracted data block as
+in traditional duplexing, and allows to render both values almost independent.
+Thus, the use of a feedback function prevents the attack by making the outer
+state overwriting impossible. Unlike duplex-based constructions which do not use
+a feedback function twist, the Beetle construction is claimed to provide a security
+level min{b
+2 , c− log(r), r} without any restriction on decryption queries [16,3].
+The Beetle construction is used in the Beetle and SPARKLE [5] finalists of the
+NIST lightweight cryptography standardization process.
+The same effect also occurs in Subterranean 2.0 [19] which is a second round
+candidate of the NIST-lightweight competition and a duplex-like proposal. In
+order to generate the ciphertext blocks, two bits of the state are XORed to serve
+as a keystream. It prevents the attack in the same way that the feedback function
+of the Beetle mode does, as the attacker can not predict the value of the outer
+state before the next application of the update function.
+28
+6 Conclusion
+In this paper, we provided a generic attack against several duplex-based AEAD
+modes. Constructed as a forgery attack, our cryptanalysis can be transformed
+into a key recovery for most modes to which it applies. It has a complexity equiv-
+alent toO(2
+3c
+4 ) applications of the state update function and thus represents an
+improvement from previous generic attacks against duplex-based modes. It is
+also memory-less. Further, the complexity of the online phase can be brought
+close to2
+c
+2 at the cost of increasing the time complexity of the pre-computation
+phase (which needs to be run only once) aboveO(2
+3c
+4 ).
+Acknowledgements. We wish to thank Jérôme Plût and Hugues Randriam
+for our insightful conversations on the statistics of random functions.
+References
+1. Aumasson, J.P., Jovanovic, P., Neves, S.: NORX v2. Submission to the Caesar
+competition (2015),https://competitions.cr.yp.to/round2/norxv20.pdf
+2. Aumasson, J.P., Jovanovic, P., Neves, S.: NORX v3. Submission to the Caesar
+competition (2016),https://competitions.cr.yp.to/round3/norxv30.pdf
+3. Banik, S., Chakraborti, A., Iwata, T., Minematsu, K., Nandi, M., Peyrin, T.,
+Sasaki, Y., Sim, S.M., Todo, Y.: GIFT-COFB. Cryptology ePrint Archive, Report
+2020/738 (2020),https://eprint.iacr.org/2020/738
+4. Bao, Z., Guo, J., Wang, L.: Functional graphs and their applications in generic at-
+tacks on iterated hash constructions. IACR Transactions on Symmetric Cryptology
+2018(1), 201–253 (2018). doi:10.13154/tosc.v2018.i1.201-253
+5. Beierle, C., Biryukov, A., Cardoso dos Santos, L., Großschädl, J., Perrin, L.,
+Udovenko, A., Velichkov, V., Wang, Q.: Lightweight AEAD and hashing using
+the Sparkle permutation family. IACR Transactions on Symmetric Cryptology
+2020(S1), 208–261 (2020). doi:10.13154/tosc.v2020.iS1.208-261
+6. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: On the indifferentiability of
+the sponge construction. In: Smart, N.P. (ed.) Advances in Cryptology – EURO-
+CRYPT2008.LectureNotesinComputerScience,vol.4965,pp.181–197.Springer,
+Heidelberg, Germany, Istanbul, Turkey (Apr 13–17, 2008). doi:10.1007/978-3-540-
+78967-3_11
+7. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: Duplexing the sponge:
+Single-pass authenticated encryption and other applications. In: Miri, A., Vau-
+denay, S. (eds.) SAC 2011: 18th Annual International Workshop on Selected Ar-
+eas in Cryptography. Lecture Notes in Computer Science, vol. 7118, pp. 320–
+337. Springer, Heidelberg, Germany, Toronto, Ontario, Canada (Aug 11–12, 2012).
+doi:10.1007/978-3-642-28496-0_19
+8. Bertoni, G., Daemen, J., Peeters, M., Assche, G.V.: Sponge functions (2007),
+https://keccak.team/files/SpongeFunctions.pdf
+9. Bertoni, G., Daemen, J., Peeters, M., Assche, G.V.: Cryptographic sponge func-
+tions (2011),https://keccak.team/files/CSF-0.1.pdf
+10. Bertoni, G., Daemen, J., Peeters, M., Assche, G.V.: Permutation-based en-
+cryption, authentication and authenticated encryption (July 2012),http://www.
+hyperelliptic.org/djb/diac/record.pdf
+29
+11. Bertoni, G., Daemen, J., Peeters, M., Assche, G.V., Keer, R.V.: Ketje v1. Sub-
+mission to Caesar competition (2014),http://competitions.cr.yp.to/round1/
+ketjev1.pdf
+12. Bertoni, G., Daemen, J., Peeters, M., Assche, G.V., Keer, R.V.: Ketje v2. Round
+3 candidate for the Caesar competition (2016),http://competitions.cr.yp.to/
+round3/ketjev2.pdf
+13. Bertoni, G., Daemen, J., Peeters, M., Assche, G.V., Keer, R.V.: Keyak v2. Submis-
+sion to the Caesar competition (2016),https://competitions.cr.yp.to/round3/
+keyakv22.pdf
+14. Brent, R.P.: An improved monte carlo factorization algorithm. In:
+BIT Numerical Mathematics. p. 176–184. Berlin, Heidelberg (1980).
+doi:https://doi.org/10.1007/BF01933190
+15. Chaigneau, C., Fuhr, T., Gilbert, H., Jean, J., Reinhard, J.R.: Cryptanal-
+ysis of NORX v2.0. Journal of Cryptology 32(4), 1423–1447 (Oct 2019).
+doi:10.1007/s00145-018-9297-9
+16. Chakraborti, A., Datta, N., Nandi, M., Yasuda, K.: Beetle family of
+lightweight and secure authenticated encryption ciphers. IACR Transac-
+tions on Cryptographic Hardware and Embedded Systems 2018(2), 218–241
+(2018). doi:10.13154/tches.v2018.i2.218-241, https://tches.iacr.org/index.
+php/TCHES/article/view/881
+17. Chakraborti, A., Iwata, T., Minematsu, K., Nandi, M.: Blockcipher-based authen-
+ticated encryption: How small can we go? In: Fischer, W., Homma, N. (eds.) Cryp-
+tographic Hardware and Embedded Systems – CHES 2017. Lecture Notes in Com-
+puter Science, vol. 10529, pp. 277–298. Springer, Heidelberg, Germany, Taipei,
+Taiwan (Sep 25–28, 2017). doi:10.1007/978-3-319-66787-4_14
+18. Daemen, J., Hoffert, S., Peeters, M., Van Assche, G., Van Keer, R.: Xoodyak, a
+lightweight cryptographic scheme. IACR Transactions on Symmetric Cryptology
+2020(S1), 60–87 (2020). doi:10.13154/tosc.v2020.iS1.60-87
+19. Daemen, J., Massolino, P.M.C., Mehrdad, A., Rotella, Y.: The subterranean 2.0
+cipher suite. IACR Transactions on Symmetric Cryptology 2020(S1), 262–294
+(2020). doi:10.13154/tosc.v2020.iS1.262-294
+20. Daemen, J., Mennink, B., Assche, G.V.: Full-state keyed duplex with built-in
+multi-user support. In: Takagi, T., Peyrin, T. (eds.) Advances in Cryptology –
+ASIACRYPT 2017, Part II. Lecture Notes in Computer Science, vol. 10625, pp.
+606–637. Springer, Heidelberg, Germany, Hong Kong, China (Dec 3–7, 2017).
+doi:10.1007/978-3-319-70697-9_21
+21. DeLaurentis,J.M.:Componentsandcyclesofarandomfunction.In:Pomerance,C.
+(ed.) Advances in Cryptology – CRYPTO’87. Lecture Notes in Computer Science,
+vol. 293, pp. 231–242. Springer, Heidelberg, Germany, Santa Barbara, CA, USA
+(Aug 16–20, 1988). doi:10.1007/3-540-48184-2_21
+22. Dobraunig, C., Eichlseder, M., Mendel, F., Schläffer, M.: Ascon v1.2: Lightweight
+authenticated encryption and hashing. Journal of Cryptology34(3), 33 (Jul 2021).
+doi:10.1007/s00145-021-09398-9
+23. Flajolet, P., Odlyzko, A.M.: Random mapping statistics. In: Quisquater, J.J., Van-
+dewalle, J. (eds.) Advances in Cryptology – EUROCRYPT’89. Lecture Notes
+in Computer Science, vol. 434, pp. 329–354. Springer, Heidelberg, Germany,
+Houthalen, Belgium (Apr 10–13, 1990). doi:10.1007/3-540-46885-4_34
+24. Flajolet, P., Sedgewick, R.: Analytic Combinatorics. Cambridge University
+Press (2009), http://www.cambridge.org/uk/catalogue/catalogue.asp?isbn=
+9780521898065
+30
+25. Harris, B.: Probability Distributions Related to Random Mappings. The Annals of
+Mathematical Statistics31(4), 1045 – 1062 (1960). doi:10.1214/aoms/1177705677,
+https://doi.org/10.1214/aoms/1177705677
+26. Joux, A.: Algorithmic Cryptanalysis. Chapman and Hall/CRC (2009).
+doi:https://doi.org/10.1201/9781420070033
+27. Jovanovic, P., Luykx, A., Mennink, B.: Beyond2c/2 security in sponge-based au-
+thenticated encryption modes. In: Sarkar, P., Iwata, T. (eds.) Advances in Cryp-
+tology – ASIACRYPT 2014, Part I. Lecture Notes in Computer Science, vol. 8873,
+pp. 85–104. Springer, Heidelberg, Germany, Kaoshiung, Taiwan, R.O.C. (Dec 7–11,
+2014). doi:10.1007/978-3-662-45611-8_5
+28. Jovanovic,P.,Luykx,A.,Mennink,B.,Sasaki,Y.,Yasuda,K.:Beyondconventional
+security in sponge-based authenticated encryption modes. Journal of Cryptology
+32(3), 895–940 (Jul 2019). doi:10.1007/s00145-018-9299-7
+29. Leurent, G., Peyrin, T., Wang, L.: New generic attacks against hash-based MACs.
+In:Sako,K.,Sarkar,P.(eds.)AdvancesinCryptology–ASIACRYPT2013,PartII.
+Lecture Notes in Computer Science, vol. 8270, pp. 1–20. Springer, Heidelberg,
+Germany, Bengalore, India (Dec 1–5, 2013). doi:10.1007/978-3-642-42045-0_1
+30. Mennink, B., Reyhanitabar, R., Vizár, D.: Security of full-state keyed sponge and
+duplex: Applications to authenticated encryption. In: Iwata, T., Cheon, J.H. (eds.)
+Advances in Cryptology – ASIACRYPT 2015, Part II. Lecture Notes in Computer
+Science, vol. 9453, pp. 465–489. Springer, Heidelberg, Germany, Auckland, New
+Zealand (Nov 30 – Dec 3, 2015). doi:10.1007/978-3-662-48800-3_19
+31. Moon, J.W.: Counting Labelled Trees. Canadian Mathematical Congress 1970,
+William Clowes and Sons (1970)
+32. Peyrin, T., Sasaki, Y., Wang, L.: Generic related-key attacks for HMAC. In: Wang,
+X., Sako, K. (eds.) Advances in Cryptology – ASIACRYPT 2012. Lecture Notes in
+Computer Science, vol. 7658, pp. 580–597. Springer, Heidelberg, Germany, Beijing,
+China (Dec 2–6, 2012). doi:10.1007/978-3-642-34961-4_35
+33. Peyrin, T., Wang, L.: Generic universal forgery attack on iterative hash-based
+MACs. In: Nguyen, P.Q., Oswald, E. (eds.) Advances in Cryptology – EURO-
+CRYPT2014.LectureNotesinComputerScience,vol.8441,pp.147–164.Springer,
+Heidelberg, Germany, Copenhagen, Denmark (May 11–15, 2014). doi:10.1007/978-
+3-642-55220-5_9
+34. Zhang, W., Ding, T., Yang, B., Bao, Z., Xiang, Z., Ji, F., Zhao, X.: KNOT.
+Round 2 candidate for the NIST Lightweight Cryptography project (2019),
+https://csrc.nist.gov/CSRC/media/Projects/lightweight-cryptography/
+documents/round-2/spec-doc-rnd2/knot-spec-round.pdf
+31

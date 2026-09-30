@@ -1,0 +1,708 @@
+SюјѢџю: a ﬂexible coding for tree hashing
+Guido Bertoni1, Joan Daemen1, Michaël Peeters2, and Gilles Van Assche1
+1 STMicroelectronics
+2 NXP Semiconductors
+Abstract. We propose a ﬂexible, fairly general, coding for tree hash modes. The coding does
+not deﬁne a tree hash mode, but instead speciﬁes a way to format the message blocks and
+chaining values into inputs to the underlying function for any topology, including sequential
+hashing. The main beneﬁt is to avoid input clashes between diﬀerent tree growing strategies,
+even before the hashing modes are deﬁned, and to make the SHA-3 standard tree-hashing
+ready.
+Keywords: hash function, tree hashing, indiﬀerentiability, SHA-3
+1 Introduction
+A hashing modecan be seen as a recipe for computing digests over messages by means of a
+number of calls to an underlying function. This underlying function may be a ﬁxed-input-
+length compression function, a permutation or even a hash function in its own right. We
+use the terminner functionand symbol f for the underlying function and the termouter
+hash functionand symbolF for the function obtained by applying the hashing mode to the
+inner function.
+The hashing mode splits the message into substrings that are assembled into inputs
+for the inner function, possibly combined with one or morechaining valuesand so-called
+frame bits. Such an input tof is called anode [6]. The chaining values are the results of calls
+to f for other nodes.
+Hashing modes serve two main purposes. The ﬁrst is to build a variable-input-length
+hash function from a ﬁxed-input-length inner function and the second is to build a tree
+hash function. In tree hashing, several parts of the message may be processed simulta-
+neously and parallel architectures can be used more eﬃciently when hashing a single
+message than in sequential hashing [16,8,22,3,9,6].
+1.1 Motivation and prior art
+The motivation for standardizing a tree hash mode, or to have a tree-hash-ready SHA-3
+standard, was discussed at various occasions during the SHA-3 competition on the NIST
+hash-forum mailing list [17]. A few candidates, like MD6, SANDstorm and Skein, pro-
+posed built-in tree hash modes [21,23,10]. At the Third SHA-3 Candidate Conference,
+Lucks, McGrew and Whiting motivated why the SHA-3 standard should support paral-
+lelized tree hashing [14].
+Diﬀerent applications or use cases call for diﬀerent approaches to tree hashing and
+diﬀerent tree topologies. For instance, some environments favor cuĴing the input mes-
+sage in consecutive pieces and hashing these pieces independently, while others favor to
+hash interleaved pieces of data, see, e.g., [11]. In his presentation at ESC 2013, Lucks sug-
+gested to use an-ary tree with much potential parallelism and to let the implementation
+choose the most appropriate evaluation strategy [13]. As another example, some appli-
+cations require to keep the intermediate hash values (e.g., to be able to re-compute the
+digest if only a part of the input changes), whereas the mere exploitation of parallelism
+does not require it.
+Given all this diversity, it seems diﬃcult to agree on a “one-size-ﬁts-all” tree hash
+mode. Instead, we take the diﬀerent approach of allowing diﬀerent tree hash modes to
+co-exist. However, the co-existence of diﬀerent modes on top of existing (serial) hash func-
+tions calls for caution. While each individual hash mode can be proven secure, the joint
+use of several modes can become insecure, in particular due to the diﬀerent coding con-
+ventions that could collide into equal inputs to the inner function. This paper proposes a
+way to bring together diﬀerent tree hash modes in a secure way and follows ideas pre-
+sented in [5, Slides 54-59].
+1.2 Our contribution
+We show that it is possible to deﬁne a tree hash coding, i.e., a way to format the input
+to the inner function, that can cover a wide range of tree hash modes. For a carefully
+designed tree hash coding, one can prove that the union of all tree hash modes compatible
+with it issound. By sound we mean that it does not introduce any weaknesses on top of
+the risk of collisions in the inner function. More precisely, a hashing mode is sound if
+the advantage of diﬀerentiatingF from a random oracle, assumingf has been randomly
+selected, is upper bound byq2/2n+1, withq the number of queries tof and n the length
+of the chaining values [1,15,7,6].
+As a result, tree hash modes compatible with the deﬁned coding can be progressively
+introduced while preserving their joint security. Also, as an additional beneﬁt, a tree hash
+mode following the coding convention is sound by construction, without the need of ad-
+ditional proofs.
+For proving soundness, we use the results of [6], in which we specify a set of conditions
+for a tree (or sequential) hashing mode to be sound. We assume that to the choice off is
+aĴached a security parameter, like the capacity in the speciﬁc case of sponge functions or
+the security strength [18,2]. We consider this security parameter to be speciﬁed together
+with f and to remain constant for its entire use in a tree hash mode.
+The remainder of this paper is structured as follows. In Section2 we explain the range
+of possibilities of our proposed sound tree hash coding and illustrate it with some exam-
+ples. In Section3 we specify SюјѢџю, the coding we propose, while in Section4 we deﬁne
+what it means for a hashing mode to be compatible with SюјѢџю and prove that any such
+tree hash mode is sound. In Section5 we give some examples of modes and in Section6
+we discuss the use of SюјѢџю in the context of making the SHA-3 standard tree-hashing
+ready.
+2 Functionality supported by SюјѢџю
+We start by recalling the very general concept of node and tree of nodes. We then capture
+the functionality of SюјѢџю with trees of hops and how nodes and hops relate to one
+another. Finally, some ﬁgures illustrate the concepts.
+2.1 Modeling tree hash modes
+We refer to [6, Section 2] for a detailed description of the model. We here give a short
+summary.
+2
+A tree is a directed graph ofnodes. Informally speaking, each node is hashed with
+the inner functionf and the output is given to its parent node as a chaining value. The
+exception is for the ﬁnal node (i.e., the root of the tree), which does not have a parent, and
+the output of the outer hash functionF(M) is the output off applied to this ﬁnal node.
+A tree hash modeT speciﬁes a tree of nodes as a function of the input message length
+jMj and some speciﬁc parametersA. In particular, it is up to the mode to deﬁne how
+the tree scales as a function ofjMj, how the message bits are spread on the nodes, which
+nodes takes chaining values from which nodes, etc.
+For a ﬁxedjMj and A, a tree hashing mode speciﬁes precisely how to format the inputs
+to the inner functionf with bits from the message, chaining values and frame bits. The
+laĴer are constant bits for padding or domain separation. The union of tree hash modes
+is deﬁned in [6, Section 7.3]. The unionTunion of k tree hashing modesTi simply means
+that the user has a choice parameter indicating the chosen modei composed with the tree
+parameters Ai for the particular modei. WithTunion, the user can thus reach any node
+tree that someTi can produce.
+2.2 From generality to functionality
+The model of the tree using nodes is very general and allows modeling even the most
+cumbersome tree hash mode, e.g., where a node inputs 2 chaining value bits from child
+#4 then 7 message bits, etc. We now introduce some concepts that restrict this general
+model to one that can be easily represented and yet is suﬃciently ﬂexible to cover all
+practical cases we can think of.
+We represent trees in terms ofhops that model how message and chaining values are
+distributed over nodes. Any tree of hops uniquely maps to a tree of nodes, so they are
+still supported by the model mentioned above. However, not all trees of nodes (such as
+the cumbersome example above) can be represented in trees of hops.
+In SюјѢџю, any tree of hops is encoded into a tree of nodes. In other words, the func-
+tionality supported by SюјѢџю is exactly that of all possible trees of hops that can be built.
+SюјѢџю-compatible tree hash modes are not required to generate all possible hop trees,
+but instead they can focus on the desired subset of them. In the sequel, we deﬁne what
+the hops are and how they are encoded into nodes.
+2.3 Hops and hop trees
+Unlike a node that may simultaneously contain message bits and chaining values, there
+are two distinct types of hops:message hopsthat contain only message bits andchaining
+hops that contain only chaining values.
+The hops form a tree, with the root of the tree called theﬁnal hop. Such a hop tree
+determines the parallelism that can be exploited by processing multiple message hops or
+chaining hops in parallel.
+Each hop has a single outgoing edge. A message hop has no incoming edges. The
+number of incoming edges of a chaining hop is called itsdegree d. The hops at the other
+end of these edges are called thechild hopsof that chaining hop. The edges to a hop are
+labeled with numbers 0 tod   1 and the hop at the end of edge 0 is called theﬁrst child
+hop. There is exactly one hop that has no outgoing edge and we call it theﬁnal hop. There
+is exactly one path from each hop to the ﬁnal hop.
+3
+We deﬁne the position of a hop in a hop tree by an index, that speciﬁes the path to
+follow to reach this hop starting from the ﬁnal hop. It consists of a sequence of integers
+a = a0a1 . . .an 1. Indexing is deﬁned in a recursive way:
+– The index of the ﬁnal hop is the empty sequence, denoted.
+– The index of thei-th child of a hop with indexa has indexajji   1.
+The length of this sequence speciﬁes the distance of the speciﬁed hop to the ﬁnal hop and
+is called itsheight. The height of the hop tree is the maximum height over all hops.
+2.4 Interleaving the input over message hops
+In general, message bits are distributed onto message hops from the ﬁrst to the last child.
+In streaming applications, one may wish to divide message substrings over multiple
+hops as the message becomes available. For this purpose chaining hops have an aĴribute
+called interleaving block sizeI that determines how this shall be done. The principle is that
+a chaining hop distributes the message bits it receives over its child hops. It hands the ﬁrst
+I bits to its ﬁrst child, the second sequence ofI bits to its second child and so on. AĞer
+reaching the last of its child hops, it returns to its ﬁrst child and so on. When a receiving
+hop is also a chaining hop, it will distribute the message bits over its child hops according
+to its own interleaving block size. When this process ends is determined by the hashing
+mode. For example, it can be when the end of the message is reached or when the hops
+have reached some maximum size speciﬁed in the mode’s parameters.
+A mode that does not make use of message block interleaving can set the interleaving
+block size of the chaining hops to a value that is larger than any message that may be
+presented, and we sayI = ¥.
+The way message bits are distributed is formally captured by theGetMessage function
+in Deﬁnition1 below. For examples with block interleaving, please see Sections5.2 and 5.3.
+2.5 Mapping hops to nodes
+One can deﬁne hashing modes where the concepts of node and hop coincide by imposing
+that each node contains exactly one hop. Withkangaroo hoppingdeﬁned below, however,
+the ﬁrst child hop is coded before its parent in the same node.
+In a mode without kangaroo hopping, the node tree is constructed from the hop tree
+using the same topology. A node contains exactly one hop. The nodes are constructed by
+puĴing message bits in nodes containing a message hop and by puĴing chaining values
+in nodes containing a chaining hop.
+The motivation for kangaroo hopping is the following. The length of (a node mapped
+from) a chaining hop is the number of children multiplied by the length of the chaining
+value. Compared to sequential hashing, this corresponds to an overhead. Also, there is
+typically some additional computational overhead per call tof . Kangaroo hopping re-
+duces this overhead by puĴing multiple hops per node in a way that does not jeopardize
+the potential parallelism expressed in the hop tree. A chaining hop has an aĴribute that
+says whether kangaroo hopping must be applied on it, and if so, the chaining hop is also
+called akangaroo hop. When encoding a kangaroo hop into a node, the node contains its
+ﬁrst child hop itself instead the chaining value (itsf -image). For the other child hops it
+contains the chaining values as usual. Hence, when evaluatingF(M), instances off can
+4
+process child hops in parallel and then the instance off for the ﬁrst child continues pro-
+cessing the parent hop.
+Kangaroo hopping can be applied in a recursive way, i.e., the ﬁrst child hop may also
+be a kangaroo hop. All in all, a node may contain a message hop followed by zero, one
+or more chaining hops, or one or more chaining hops. Kangaroo hopping reduces the
+number of nodes to the total number of hops minus the number of kangaroo hops. It is
+easy to see that the number of nodes can be reduced to the number of message hops, but
+not to less.
+The result of applyingf to the ﬁnal node is the output ofF. The last hop in this node
+is the ﬁnal hop. The result of applyingf to an inner node is a chaining value.
+2.6 Illustrations
+We illustrate these concepts with some examples in Figures1, 2 and 3. These ﬁgures depict
+hop trees with the following conventions. Message hops have sharp corners, chaining
+hops have rounded corners. The ﬁnal hop has a grey ﬁll, the others a white ﬁll. An edge
+between child and parent has an arrow and enters the parent from above if the chaining
+value obtained by applyingf to the child hop is in the parent hop. It has a short dash and
+enters the parent hop from the leĞ in the case of kangaroo hopping. Hops on the same
+horizontal line are in the same node.
+In Figure1 there are in total 5 hops: 4 message hopsM0 to M3 and one chaining hop
+Z. The ﬁnal node contains both the ﬁnal hopZ and M0 because of kangaroo hopping.
+The total number of nodes is 4.
+Fig. 1.Example of a hop tree with application of kangaroo hopping.M0 and Z are in the
+same node.
+In Figure2 there are in total 7 hops: 4 message hopsM00, M01, M10, M11, and three
+chaining hopsZ0, Z1 and Z. The ﬁnal node contains only the ﬁnal hopZ. The hopsM00
+and Z0 are in a single node. Similarly,M10 and Z1 are in a single node. The total number
+of nodes is 5.
+In Figure3 there is only a single hop, that is at the same time a message hop and the
+ﬁnal hop. Clearly, there is only a single node containing this hop.
+5
+Fig. 2.Another example of a hop tree.M00 and Z0 are in the same node, as well asM10
+and Z1.
+Fig. 3.Example of a hop tree with a single node
+3 The SюјѢџю tree coding
+In this section we specify the SюјѢџю tree coding. The goal of this coding is to allow a tree
+hash mode to encode a hop tree into the input off . From this deﬁnition, it should be clear
+how the evaluation ofF(M) must be processed.
+For a SюјѢџю-compatible tree hash mode to be sound, the individual parts (e.g., mes-
+sage bits, chaining values) must be unambiguously recovered by parsing the node tree.
+Of course, such a decoding never occurs in practice but must be ensured for satisfying
+tree-decodability. The coding adds frame bits for tree-decodability, as well as to ensure
+domain separation between inner nodes and the ﬁnal node.
+The coding is based on a number of simple principles:
+– Nodes, namely inputs tof , can be unambiguously decoded into hopsfrom the end.
+This is done by
+ coding in a trailing frame bit whether it is a chaining hop or a message hop;
+ allowing at most a single message hop per node, and this at the beginning;
+ allowing the parsing of a chaining hop from the end.
+– The parsing of a chaining hop from the end is made possible in the following way:
+ it is a series of chaining values followed by an interleaving block size;
+ an interleaving block size consists of 2 bytes;
+ at the end of the chaining values their number is appended in suﬃx-free coding;
+ the length of the chaining values is determined by the security strength off .
+– We apply simple padding between the hops in a node, so as to allow the alignment
+of these elements to byte boundaries, 64-bit word boundaries or to any other desired
+boundaries. (This is up to the mode to deﬁne.)
+– We apply simple padding at the end of inner nodes. Where appropriate, this can be
+used by a mode to ensure that diﬀerent sibling inner nodes have the same length. This
+may simplify the implementation, e.g., if sibling inner nodes are processed in parallel
+using SIMD instruction. (Again, this is up to the mode to deﬁne.)
+6
+3.1 Formal description of SюјѢџю
+We specify the SюјѢџю tree coding in Figure4 below. In our speciﬁcation we use the Aug-
+mented Backus-Naur Form (ABNF), which is used for describing the syntax of program-
+ming languages or document formats [20]. (We refer to the Wikipedia entries for ABNF.)
+In short, an ABNF speciﬁcation is a set of derivation rules, where anon-terminal symbol
+is assigned a sequence of symbols or a choice of a set of sequences of symbols, separated
+by j. Symbols that never appear on a leĞ side are terminals. Non-terminal symbols are
+enclosed between the pair⟨⟩. In our case, theterminals are either the frame bits ‘0’ and
+‘1’, frame bits whose value is speciﬁed in the text (FRAME_BIT), bits coming from the
+message (MESSAGE_BIT), bits coming from chaining values (CHAINING_BIT), or the
+empty string ‘’. The expressionn⟨x⟩ denotes a sequence ofn elements of type⟨x⟩. In the
+language of [6], the produced nodes compose atree template, i.e., a tree with placeholders
+for message bits and chaining values.
+⟨ﬁnal node⟩ ::= ⟨node⟩ ‘1’
+⟨inner node⟩ ::= ⟨node⟩ ⟨padSimple⟩ ‘0’
+⟨node⟩ ::= ⟨message hop⟩ | ⟨chaining hop⟩ | ⟨kangaroo hopping⟩
+⟨kangaroo hopping⟩ ::= ⟨node⟩ ⟨padSimple⟩ ⟨chaining hop⟩
+⟨message hop⟩ ::= ⟨message bit string⟩ ‘1’
+⟨message bit string⟩ ::= ‘’ |⟨message bit string⟩ MESSAGE_BIT
+⟨chaining hop⟩ ::= nrCVs⟨CV⟩ ⟨coded nrCVs⟩ ⟨interleaving block size⟩ ‘0’
+⟨CV⟩ ::= nCHAINING_BIT
+⟨coded nrCVs⟩ ::= ⟨integer⟩ ⟨length of integer⟩
+⟨integer⟩ ::= ⟨frame byte string⟩
+⟨frame byte string⟩ ::= ‘’ |⟨frame byte string⟩ 8FRAME_BIT
+⟨length of integer⟩ ::= 8FRAME_BIT
+⟨interleaving block size⟩ ::= ⟨mantissa⟩ ⟨exponent⟩
+⟨mantissa⟩ ::= 8FRAME_BIT
+⟨exponent⟩ ::= 8FRAME_BIT
+⟨padSimple⟩ ::= ‘1’ |⟨padSimple⟩ ‘0’
+Fig. 4.Deﬁnition of SюјѢџю tree hash coding
+The production rules for⟨node⟩ express which sequences of hops can be encoded in a
+node. E.g., if the node contains one message hop followed by two chaining hops because of
+kangaroo hopping,⟨node⟩ expands to⟨message hop⟩ ⟨padSimple⟩ ⟨chaining hop⟩ ⟨padSimple⟩
+⟨chaining hop⟩.
+The length of the chaining values⟨CV⟩ is n bits, wheren is a multiple of 8 to ensure
+byte-alignment. If the functionf has worst-case (or collision resistance) security strength
+s [18], then we taken equal to s multiplied by two and rounded to a multiple of 8, i.e.,
+7
+n = 8⌈s/4⌉. In the case of a sponge function with capacityc, n = 8⌈c/8⌉, e.g., ifc = 256
+bits, then a⟨CV⟩ consists of 32 bytes [2]. We assume that the security strength of the inner
+function is known from the context.
+When interpreted as an integer, a byte has the value
+å
+0i<8
+bi2i, (1)
+where the ﬁrst bit in a byte has index0 and the last7.
+The ⟨coded nrCVs⟩ codes the number of chaining values and is a positive integer. It
+consists of two ﬁelds:
+– ⟨integer⟩: a byte string that can be decoded to an integer using the functionOS2IP(X)
+speciﬁed in the RSA Labs standard PKCS#1[12],
+– ⟨length of integer⟩: a single byte that codes the length (in bytes) of the⟨integer⟩ ﬁeld.
+The interleaving block size codes an integer using a ﬂoating point representation. Its
+ﬁrst byte is the mantissam and its second byte is the exponente. The value of the inter-
+leaving block sizeI is then given by
+I = 2e(2m + 1) .
+The largest possible value that the interleaving block size can have with this coding is
+(29   1)2255, obtained by seĴing all bits in its coding to 1. In practice no message will ever
+aĴain this length and we use it to denote that there is no interleaving. This value will be
+denoted byI = ¥ in the remainder of this paper.
+Within a node, the chaining bits must come from child nodes with increasing indexes,
+starting from0 at the beginning of the node, across all chaining hops of the node. When
+kangaroo hopping is not used, the node indexing matches the hop indexing, but not in
+general.
+The encoding of the message bits in the tree should allow the reconstruction of the
+message by applyingGetMessage to the ﬁnal hop according to following deﬁnition. Note
+that reconstructing the message from the nodes is an operation that is relevant in proving
+soundness rather than something to be used in practice.
+Deﬁnition 1. GetMessage is deﬁned by the following recursion:
+– GetMessage(message hop) is the message hop’s message string
+– GetMessage(chaining hop) = DeInterleave(L, I), where
+ L is an ordered list obtained by callingGetMessage() on each child hop,
+ I is the input chaining hop’s interleaving block size aĴribute, and
+ DeInterleave(L, I) extracts the ﬁrstI bits fromL0, then the ﬁrstI bits fromL1, …, up
+to the last item of list, then back toL0, and so on, until all strings inL are empty. Extracting
+more bits than available reduces to extracting all remaining bits.
+Deﬁnition 2. A tree template is SюјѢџю-compatible if its nodes are compliant with the coding
+speciﬁed in Figure4, if the number of⟨CV⟩ and the block interleaving size are coded as explained
+above, and if the chaining bits and message bits are as deﬁned above.
+8
+3.2 Illustrations
+We apply the SюјѢџю encoding to the examples depicted on Figures1, 2 and 3. In these
+examples, we use the following conventions. Bit values are wriĴen as0 or 1, while se-
+quences of 8 bits can be wriĴen in hexadecimal notation preﬁxed with0x with numerical
+value following Eq. (1). Spaces are inserted only for reading purposes. IfMa is a message
+hop, we denote byMa its message bits. Similarly, ifZa is a chaining hop, we denote by{Ia}
+the encoding of its interleaving block size. Then,CVb is the chaining value resulting from
+the application off to the node with indexb. Finally,0 indicates a non-negative number
+of bits0 determined by the tree hash mode, typically inserted for alignment purposes.
+The example corresponding to Figure1 is given in Table1. In the ﬁnal node,⟨node⟩
+expands to ⟨message hop⟩ ⟨ padSimple⟩ ⟨ chaining hop⟩, while in all other nodes it simply
+expands to⟨message hop⟩.
+The example corresponding to Figure2 is given in Table2. In two inner nodes,⟨node⟩
+expands to⟨message hop⟩ ⟨ padSimple⟩ ⟨ chaining hop⟩ and in two other inner nodes,⟨node⟩
+expands to⟨message hop⟩. In the ﬁnal node,⟨node⟩ simply expands to⟨chaining hop⟩.
+For sequential hashing (Figure3), this reduces to a single ﬁnal node containingM11,
+and the relationship between the inner and outer hash functions reduces to
+F(M) = f (Mjj11). (2)
+Node indexEncoding
+2 M31 10 0
+1 M21 10 0
+0 M11 10 0
+ M01 10 CV0 CV1 CV2 0x03 0x01 {I}0 1
+Table 1.Encoding for the hop tree example depicted in Figure1
+Node indexEncoding
+10 M111 10 0
+1 M101 10 CV10 0x01 0x01 {I1}0 10 0
+00 M011 10 0
+0 M001 10 CV00 0x01 0x01 {I0}0 10 0
+ CV0 CV1 0x02 0x01 {I}0 1
+Table 2.Encoding for the hop tree example depicted in Figure2
+4 SюјѢџю-compatible tree hash modes and soundness
+We deﬁne SюјѢџю-compatible tree hash modes in the following way.
+Deﬁnition 3. A tree hash mode is SюјѢџю-compatible if it generates only SюјѢџю-compatible
+templates.
+9
+We will now prove that any SюјѢџю-compatible tree hash mode, as well as the union of
+any set of SюјѢџю-compatible tree hash modes, is sound by proving a number of lemmas.
+We start by deﬁningS as a tree hash mode that can generate all SюјѢџю-compatible
+templates. By construction, this mode is SюјѢџю-compatible. Its parametersA must de-
+scribe the whole hop tree structure with each hop’s aĴributes, plus the length of all mes-
+sage blocks and the number of zeroes inserted by⟨padSimple⟩. This mode is not meant to
+be used in practice but only in the scope of this proof.
+Lemma 1. Given a node instance produced byS (i.e., with SюјѢџю coding) and the knowledge of
+the security strength off , one can recover indices of all hops, the message strings of the message
+hops, the location and indices (relative to the given node instance index) of the chaining values,
+and the interleaving block size aĴributes of all chaining hops.
+Proof. From the deﬁnition of SюјѢџю in Figure4, it is clear that a⟨node⟩, obtained aĞer re-
+moving the trailing bit from a⟨ﬁnal node⟩ or ⟨inner node⟩ (and in the laĴer case, also remov-
+ing the⟨padSimple⟩ padding), consists of a possible⟨message hop⟩ followed by one or more
+⟨chaining hop⟩s, with simple padding in between. A⟨chaining hop⟩ in turn consists of a se-
+quence of⟨CV⟩s followed by an encoding of their number and a⟨interleaving block size⟩.
+Parsing a⟨node⟩ can be done starting at the end. If the last bit is1 it simply consists of
+a single message hop. Otherwise, it ends with a chaining hop. In the laĴer case, the last
+two bytes code the interleaving block size of the chaining hop and the byte before that
+denotes the length of the ﬁeld coding the number of chaining values and allows localizing
+it. Decoding this ﬁeld yields the number of chaining values and together with their lengths
+uniquely determines their positions in the node, including the start of the chaining hop
+in the node. This allows continuing the parsing until reaching the beginning of the⟨node⟩
+or the end of the⟨message hop⟩ in the beginning of the⟨node⟩.
+The interleaving block size of a chaining hop can be computed from the coding in
+⟨interleaving block size⟩ at its end and the message string of the⟨message hop⟩ (if any) can
+be obtained by removing the trailing bit1.
+The index of the last⟨chaining hop⟩ is that of the⟨node⟩. Whenever kangaroo hopping
+is used, the index of a⟨chaining hop⟩ or ⟨message hop⟩ is recursively the index of the next
+⟨chaining hop⟩ with 0 concatenated to it. This is in line with the node indexing speciﬁed in
+Section 3.1.
+The indices of the nodes corresponding with the⟨CV⟩s in a⟨node⟩ can be obtained by
+appending to the last hop index 0 for the ﬁrst CV , 1 for the second and so on, throughout
+all the⟨chaining hop⟩s of the node instance from beginning to end. ⊓ ⊔
+To prove the soundess ofS, we use the three conditions that are shown to be suﬃcient
+in [6]. We now informally summarize them.
+– The mode must betree-decodable. This means that the tree can be parsed to retrieve the
+frame bits, message bits and chaining bits unambiguously. There must be a decoding
+algorithm Adecode that can parse the tree progressively on subtrees, starting from the
+ﬁnal node only, and each time adding a new inner node and pointing at the corre-
+sponding chaining value. Also, the process must terminate by requiring that one can
+distinguish between complete and compliant trees, subtrees that are compliant except
+for some missing nodes (calledﬁnal-subtree-compliant), and incompliant trees.
+– The mode must bemessage-complete. This means that the message can be reconstructed
+from the complete tree.
+10
+– The mode must beﬁnal-node separable. This essentially means that one can tell the dif-
+ference between ﬁnal nodes and inner nodes.
+Lemma 2. The tree hash modeS is tree-decodable.
+Proof. First, there are no tree instances that are both compliant and ﬁnal-subtree-compliant.
+Lemma 1 proves that one can always unambiguously decode chaining values and distin-
+guish them from other kind of bits given only one node instance. This means that a ﬁnal
+subtree S is a proper ﬁnal subtree iﬀ there are chaining values pointing to nodes missing
+in S.
+Second, the algorithmAdecode can be deﬁned as follows. Given a tree instanceS with
+index setJ, it ﬁrst recursively decodes tree node instances ofS as in the proof of Lemma1.
+If at any point, the coding does not follow the grammar deﬁned in Figure4 or when
+the string is too short to contain the number of⟨CV⟩s coded in⟨coded nrCVs⟩, it returns
+“incompliant”.
+The algorithmAdecode then looks for nodes that have chaining values pointing to nodes
+missing inS (i.e., whose index is not inJ). If there no such chaining values, return “compli-
+ant”. Otherwise, return “ﬁnal-subtree-compliant” and the index of such a missing node
+using a deterministic rule (e.g., the missing node with the ﬁrst index in lexicographical
+order).
+The algorithmAdecode runs in linear time in the number of bits in the tree instance, as
+can be seen in the proof of Lemma1. ⊓ ⊔
+Lemma 3. The tree hash modeS is message-complete.
+Proof. Given a compliant tree instanceS, the algorithmAmessage can be deﬁned similarly
+to theGetMessage function in Deﬁnition1. From Lemma1, the necessary hop aĴributes
+can be extracted from the tree instance.
+Clearly, this algorithm runs in linear time in the number of bits in the tree instance.⊓ ⊔
+Lemma 4. The tree hash modeS is ﬁnal-node separable.
+Proof. SюјѢџю enforces domain separation between ﬁnal and inner nodes, as the trailing
+bit of a ﬁnal node is always1 and that of an inner node is always0. ⊓ ⊔
+Theorem 1. Any SюјѢџю-compatible tree hash mode, as well as the union of any set of SюјѢџю-
+compatible tree hash modes, is sound.
+Proof. From the previous lemmas and [6, Theorem 1], it follows thatS is sound.
+The set ZT of tree templates that a SюјѢџю-compatible tree hash modeT produces
+is included in those produced byS, i.e.,ZT  Z S . Therefore,T can be implemented by
+running S as a sub-procedure, aĞer encodingT ’s parameters in the format thatS accepts.
+This only restricts what an aĴacker can query, soT is at least as secure asS.
+When taking the union of two or more SюјѢџю-compatible tree hash modes, if the tree
+instances produced by each of the united modes are SюјѢџю-compatible, then so are the
+tree instances produced by the union. It follows that the union of SюјѢџю-compatible tree
+hash modes is SюјѢџю-compatible and the argument above carries over to the union.⊓ ⊔
+11
+5 Examples of tree hash modes
+In this section we give some examples of tree hash modes that can be realized with the
+SюјѢџю coding. In general, specifying a mode mainly comes down to specifying how the
+tree grows as a function of the size of the input message. These modes are parameterized
+and the value of the parameters must be known at the time of hashing a message.
+For fully specifying a tree hash mode compliant with SюјѢџю, one has to specify the
+number of hops and their indices, how the message bits are distributed onto message
+hops, and for each chaining hop whether kangaroo hopping is applied. In addition, the
+mode has to specify the length of the padding elements as they appear in the grammar
+of Figure 4. For the padding between hops, this can be derived from a simple strategy,
+such as always align on bytes, on 64-bit boundaries or on the input block size (or rate) of
+the inner hash functionf . If desired, the mode can also specify how to use the padding
+at the end of inner nodes to ensure that sibling nodes executed in parallel branches have
+the same length.
+In our examples, unless otherwise speciﬁed, the message is split intoB-bit blocksMi,
+i.e.,
+M = M0jjM1jj . . .jjMn 1,
+with n = ⌈jMj/B⌉ and where the last blockMn 1 may be shorter thanB bits.
+5.1 Final node growing
+With ﬁnal node growing, the hop tree has ﬁxed height1 and the number of leaves in-
+creases as a function of the input message length. There is only a single chaining hop,
+namely the ﬁnal hop. The indices of the message hops are integers0 to n   1 and the
+message string in message hop with indexi is Mi, hence each message hop has a ﬁxed
+maximum size B. Interleaving is not applied, so the interleaving block size in the ﬁnal
+hop isI = ¥.
+This mode can be useful to enable a large amount of potential parallelism, namely up
+to n = ⌈jMj/B⌉ message hops can be processed in parallel if the corresponding message
+blocks are available at the same time. In practice, a numberp of independent processesPj,
+j = 0, . . ., p   1 can be set up, which does not depend on the tree structure other than in
+the total number of message hops. Each processPj could take care of message hops with
+indices j + kp.
+The drawback of this method is an extra cost proportional to the message length, asn
+chaining values of lengthc must be processed in the ﬁnal node. This extra cost represents
+approximately a fractionc/B of the nominal work, which can be made arbitrarily small
+by choosingB large enough.
+This mode has two parameters:
+– B, the maximum size of message string in message hops, and
+– whether or not kangaroo hopping shall be applied in the ﬁnal hop.
+5.2 Leaf interleaving
+With leaf interleaving, the hop tree has a ﬁxed topology, i.e., its height is1 and it has
+D message hops, withD a parameter. The size of the message hops depends on the in-
+put message length. The message is distributed over the leaves as it arrives in blocks of
+12
+size B. The message hops have indicesi 2 f 0, 1,. . ., D   1g and their message string is
+MijjMi+Djj . . .jjMi+(si 1)D with si = ⌈(n   i)/D⌉. The interleaving block size in the ﬁnal
+hop shall be set toI = B. IfjMj < DB, there are message hops with zero message bits.
+(Note that an alternate message assignment procedure is proposed later in this section.)
+This mode is useful if one wants to hash a message in up toD parallel threads. The
+drawback is thatD represents a limit in the potential parallelism, and this value must be
+chosen beforehand.
+This method has a ﬁxed extra cost, independent of the message length, as the ﬁnal
+node has to processD chaining values.
+This mode has three parameters:
+– B, the interleaving block size,
+– D, the number of message hops, and
+– whether or not kangaroo hopping shall be applied in the ﬁnal hop.
+Ensuring equal-length inner nodesIn the implementation, it may be interesting to en-
+sure that all theD nodes processed simultaneously have equal block length w.r.t. the inner
+function f . For theD (or D   1, if kangaroo hopping is applied) inner nodes, this can be
+achieved by systematically adding bits with value0 in the ⟨padSimple⟩ padding of the
+⟨inner node⟩ production rule. A simple procedure consists in adding padding bits so as to
+match the length of the longest inner node.
+When kangaroo hopping is applied, the ﬁnal node has the possibility to add padding
+bits aĞer the message hop, just before the chaining values of theD   1 inner nodes are
+added, i.e., in the⟨padSimple⟩ padding of the⟨kangaroo hopping⟩ production rule. The pro-
+cessing of allD pieces of message can therefore be aligned, even with kangaroo hopping.
+Avoiding systematic block alignmentImplementations can also be made easier when
+the interleaving block sizeB is equal to, or a multiple of, the input block size (or rate)r of
+the inner hash functionf . This avoids re-shuﬄing of the input message bytes, in particular
+for implementations that process less thanD nodes in parallel.
+But there is a potential eﬃciency problem in this case if care is not taken in the way
+the message bits are spread on theD message hops, in particular for the lastjMj mod DB
+bits. If the message bits are cyclically spread by blocks ofB bits onto theD message hops
+until exhaustion, message hops will very oĞen contain a whole number ofr-bit blocks.
+AĞer adding frame and padding bits, the resulting nodes will systematically be just a few
+bits longer than a whole number ofr-bit blocks. This would be unfortunate, as the inner
+function f would need to process an additional block containing only frame and padding
+bits and no message payload, and this amounts to quite an extra ﬁxed cost compared to
+just processing the ﬁnal hop. E.g., ifB = r = 1024, D = 4 and the message length is3208
+(mod 4096), the last3208 bits would be split as1024 + 1024 + 1024 + 136, causing3 extra
+blocks to be absorbed without any payload.
+To address this, the mode can simply spread the lastjMj mod DB bits as equally as
+possible (up to, say, bytes) onto theD hops. The mode remains SюјѢџю-compatible since
+the GetMessage function in Deﬁnition1 simply concatenates the last blocks of each nodes,
+even if they have less thanI = B bits. Taking the same example as above, the last3208
+bits could instead be spread as800 + 800 + 800 + 808 and avoid the3 extra blocks men-
+tioned above. Note that this technique requires to know the end of the messageDB bits
+in advance or to have a buﬀer ofDB bits.
+13
+Let us specify a possible alternate procedure, which we illustrate in the case that the
+message and interleaving block sizes are byte-aligned, i.e.,jMj and B are multiples of
+8. Withm = jMj/8 and b = B/8, we concentrate on the lastm mod Db bytes. Ifm mod
+Db = 0, message hops all contain whole blocks, and there is nothing to do. Ifm mod Db >
+0, we proceed as follows.
+– Let M′ be the lastm mod Db bytes ofM.
+– For i from 0 to D   1:
+ Move the ﬁrst
+⌊ m+i
+D
+⌋
+remaining bytes fromM′ to thei-th message hop.
+5.3 Macro- and microscopic leaf interleaving
+Diﬀerent orders of magnitudes for the block interleaving sizeI can be useful depending
+on the kind of parallelism that one wishes to exploit. At one end of the spectrum is a
+single-instruction multiple-data (SIMD) unit of a modern processor or core. Such a unit
+can naturally compute two (or more) instances of the same primitive in parallel. For the
+processor or core to be able to fetch data in one shot, it is interesting to process simulta-
+neously data blocks that are located close to one another. SuitableI values for addressing
+this are, e.g., 64 bits or the input block size (or rate) off .
+At the other end of the spectrum is the case of independent processors, cores or even
+machines that process diﬀerent parts of the input in parallel. In contrast, it is here impor-
+tant to avoid diﬀerent processors or cores having to fetch the same memory addresses, or
+to avoid copying identical blocks of data for two diﬀerent machines. SuitableI values for
+addressing this are in the order of kilobytes or megabytes.
+The two cases can coexist, for instance, if several cores are used to hash in parallel and
+each core has a SIMD unit. A suitable tree structure is one with height2, as depicted in
+Figure 2. The subtrees rooted byZ0 and Z1 are handled by diﬀerent cores, whereas the
+leaves are processed together in the SIMD units. The ﬁnal hopZ splits the message to
+hash into macroscopic blocks (largeI), while the intermediate chaining hopsZ0 and Z1
+further split the macroscopic blocks into microscopic blocks suitable for the SIMD unit
+(small I).
+The tree hash mode of Section5.2 can be generalized to support such mixed interleav-
+ing block sizes.
+5.4 Binary tree
+With a binary tree, the tree topology evolves as a function of the input message size. All
+chaining hops have degree2, and the message strings in the message hops have a ﬁxed
+maximum sizeB. The height of the message hops depends on the length of the message
+and the position of the message string of that message hop in the message. Interleaving
+is not applied, so the interleaving block size in all chaining hops isI = ¥.
+This mode is useful if one wants to limit the eﬀort to re-compute the hash when only
+a small part of the message changes. This requires that the chaining values are stored.
+Hence, in this application, kangaroo hopping is not interesting.
+The hop tree can be deﬁned in the following way. We ﬁrst arrange the message blocks
+Mi in a linear array to form the message hops. Each message hop can be seen as a tree
+with height 0. Then we apply the following procedure iteratively: combine the trees in
+pairs starting from 0 by adding a chaining hop and connecting the two root hops to it. If
+14
+the number of trees is odd, the last tree is just kept as such. Applying this⌈log2 n⌉ times
+will reduce the number of trees to a single one. The most recently added hop is the ﬁnal
+hop. The indices of the hops follow directly from the tree topology. Figure5 illustrates the
+case for three diﬀerent numbers of blocks.
+Fig. 5.Examples of binary trees with 9, 11 and 14 leaves
+This mode has one parameter:
+– B, the maximum size of message strings in the message hops.
+5.5 Equal parts
+If the length of the input message is known in advance, one can choose to divide the
+message in a chosen numberD of (almost) equal parts. The hop tree has a ﬁxed topology,
+i.e., it has height1, with the ﬁnal hop andD message hops. The size of the message hops
+depends on the message size and onD, namely,B = ⌈jMj/D⌉, and message hop with
+index i contains Mi. Interleaving is not applied, so the interleaving block size in the ﬁnal
+hop isI = ¥.
+This mode has two parameters:
+– D, the number of message hops, and
+– whether or not kangaroo hopping shall be applied in the ﬁnal hop.
+6 Application to Kђѐѐюј and SHA-3
+In the future, one may standardize tree hash modes. By adopting SюјѢџю coding from the
+start, any future SюјѢџю-compatible tree hash mode using Kђѐѐюј [4] as inner function
+15
+can be introduced while guaranteeing soundness of the union of that new mode and any
+compatible tree hash mode(s) deﬁned up to that point. The sequential hash mode will then
+simply correspond with the single-hop case of Figure3. As shown in Eq. (2), this comes
+down to appending two bits to the message before presenting to the inner function:
+– a bit1 to indicate it is a message hop, and
+– a bit1 to indicate it is the ﬁnal node.
+The draĞ of FIPS 202 contains both the arbitrary output length instances SHAKE128
+and SHAKE256, calledextendable-output functions, and the SHA-2 drop-in replacement in-
+stances SHA3-224 to SHA3-512 with their traditional ﬁxed output length [19]. In addition,
+the diﬀerent SHA-3 instances and possible future uses of Kђѐѐюј are domain-separated
+by appending a (short) ﬁxed suﬃx. While Kђѐѐюј’s multi-rate padding already oﬀers
+domain seperation between instances with diﬀerent capacities, the suﬃx also separates
+instances with equal capacities. In particular, the last bit of the suﬃx is always1, reserv-
+ing 0 for future uses, and the one before last bit is1 for the extendable-output functions
+and 0 for the SHA-2 drop-in’s.
+All the instances in the FIPS 202 draĞ are sequential. The extendable-output functions
+SHAKE128 and SHAKE256 have a suﬃx that allows for future SюјѢџю-compatible tree
+hash modes, as we discuss below. We now focus on these two functions, as it would not
+make much sense to combine tree hashing with the SHA-2 drop-in’s. The reason is that to
+carry over the full security of the underlying hash function, one has to set the tree-level
+chaining value lengthn equal to the capacityc (or n equal to twice the security strength
+in general). As for SHA3-n, the FIPS 202 draĞ setsc = 2n, one would need to deﬁne some
+ad-hoc construction on top of it to get two output blocks (like a mask generating function),
+and this would be absurd given that SHA3-n is obtained by truncating Kђѐѐюј’s output.
+The extendable-output functions are deﬁned in two steps:
+– ﬁrst RawSHAKE128(△) = Kђѐѐюј[c = 256](△jj11), with11 the domain separation
+suﬃx of the extendable-output functions, and
+– then SHAKE128(M) =RawSHAKE128(Mjj11),
+and similarly for SHAKE256 [19]. This means that RawSHAKE128/256 can be seen as the
+inner function f (△) and SHAKE128/256 as the outer functionF(M) as in Eq. (2). Future
+tree hash modes can possibly use SюјѢџю coding on top of RawSHAKE128/256. In the
+expressions above, the notation△ suggests a SюјѢџю-compatibly formaĴed input.
+As domain separation and SюјѢџю coding are realized by appending suﬃciently few
+bits, there is no performance penalty induced by these suﬃxes for messages that consist
+of byte sequences and rate values that are a multiple of 8. The domain separation suﬃx
+consists of two bits (i.e.,11), while the last bits induced by SюјѢџю coding depend on the
+type of node, i.e., whether the last hop is a message (1) or a chaining hop (0), followed by
+whether the node is ﬁnal (1) or not (100). In addition, the implementer has also to apply
+the multi-rate padding (101). Together, all this ﬁts in one byte (assuming that the mode
+does not add any extra bit0 at the end of inner nodes, the use of which being discussed
+in Section5.2).
+Let us take as example RawSHAKE128(△) =Kђѐѐюј[c = 256](△jj11), although this
+works equally well with RawSHAKE256 as it uses the same suﬃxes and only the capacity
+diﬀers. With sequential hashing,△ reduces to△ = Mjj11 and, together, the suﬃxes and
+multi-rate padding can be seen as padding with1111101. In hexadecimal notation, using
+16
+Kђѐѐюј’s bit numbering conventions [4], namely from the least to the most signiﬁcant bit
+and consistently with Eq. (1), this becomes0x1F 0x00 0x80 if jMj mod r < r   8 or 0x9F
+otherwise. For other node types, the diﬀerent byte-level paddings are shown in Table3.
+Node type Bit-level Byte-level padding
+inner node with chaining hop 010 11 101 0x3A 0x00 0x80 (or 0xBA)
+inner node with only message hop110 11 101 0x3B 0x00 0x80 (or 0xBB)
+ﬁnal node with chaining hop 01 11 101 0x1E 0x00 0x80 (or 0x9E)
+ﬁnal node with only message hop11 11 101 0x1F 0x00 0x80 (or 0x9F)
+Table 3.Bit- and byte-level padding for RawSHAKE128/256, assuming no extra bit0 at
+the end of inner nodes. The last row corresponds to SHAKE128/256 [19].
+7 Conclusion
+We showed that it is possible to deﬁne a fairly general coding for tree hashing, such that
+any tree hash mode compatible with this coding is sound and remains sound even when
+considered in a larger set of compatible tree hash modes. We proposed a concrete cod-
+ing called SюјѢџю. In the current FIPS 202 draĞ, the SHA-3 extendable-output functions
+chosen by NIST adopt SюјѢџю for sequential hashing as a special case of tree hashing.
+Acknowledgments
+We would like to thank Stefan Lucks, Dan Bernstein and the members of the NIST hash
+team for useful discussions.
+References
+1. M. Bellare and P . Rogaway,Random oracles are practical: A paradigm for designing eﬃcient protocols, ACM
+Conference on Computer and Communications Security 1993 (ACM, ed.), 1993, pp. 62–73.
+2. G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche,On the indiﬀerentiability of the sponge construction,
+Advances in Cryptology – Eurocrypt 2008 (N. P . Smart, ed.), Lecture Notes in Computer Science, vol.
+4965, Springer, 2008,http://sponge.noekeon.org/, pp. 181–197.
+3. , Suﬃcient conditions for sound tree hashing modes, Symmetric Cryptography (Dagstuhl, Germany)
+(H. Handschuh, S. Lucks, B. Preneel, and P . Rogaway, eds.), Dagstuhl Seminar Proceedings, no. 09031,
+Schloss Dagstuhl - Leibniz-Zentrum fuer Informatik, Germany, 2009.
+4. , The Kђѐѐюј reference, January 2011,http://keccak.noekeon.org/.
+5. , Kђѐѐюј and the SHA3 standardization, presentation at NIST, February 2013,http://csrc.nist.
+gov/groups/ST/hash/sha-3/documents/Keccak-slides-at-NIST.pdf .
+6. , Suﬃcient conditions for sound tree and sequential hashing modes, International Journal of Information
+Security (2013),http://dx.doi.org/10.1007/s10207-013-0220-y .
+7. J. Coron, Y. Dodis, C. Malinaud, and P . Puniya,Merkle-Damgård revisited: How to construct a hash function,
+Advances in Cryptology – Crypto 2005 (V . Shoup, ed.), LNCS, no. 3621, Springer-Verlag, 2005, pp. 430–
+448.
+8. I. Damgård,A design principle for hash functions,, Advances in Cryptology – Crypto ’89 (G. Brassard, ed.),
+LNCS, no. 435, Springer-Verlag, 1989, pp. 416–427.
+9. Y. Dodis, L. Reyzin, R. Rivest, and E. Shen,Indiﬀerentiability of permutation-based compression functions
+and tree-based modes of operation, with applications to MD6, Fast SoĞware Encryption (O. Dunkelman, ed.),
+Lecture Notes in Computer Science, vol. 5665, Springer, 2009, pp. 104–121.
+17
+10. N. Ferguson, S. Lucks, B. Schneier, D. Whiting, M. Bellare, T. Kohno, J. Callas, and J. Walker,The Skein
+hash function family, Submission to NIST, 2008,http://skein-hash.info/.
+11. S. Gueron,A j-lanes tree hashing mode andj-lanes SHA-256, Journal of Information Security4 (2013), 4–11.
+12. RSA Laboratories,PKCS # 1 v2.2 RSA Cryptography Standard, 2012.
+13. S. Lucks, Tree hashing: A simple generic tree hashing mode designed for SHA-2 and SHA-3, applicable to other
+hash functions, Early Symmetric Crypto (ESC), 2013.
+14. S. Lucks, D. McGrew, and D. Whiting,BaĴeries included: Features and modes for next generation hash func-
+tions, The Third SHA-3 Candidate Conference, 2012.
+15. U. Maurer, R. Renner, and C. Holenstein,Indiﬀerentiability, impossibility results on reductions, and applica-
+tions to the random oracle methodology, Theory of Cryptography - TCC 2004 (M. Naor, ed.), Lecture Notes
+in Computer Science, no. 2951, Springer-Verlag, 2004, pp. 21–39.
+16. R. C. Merkle,Secrecy, authentication, and public key systems, PhD thesis, UMI Research Press, 1982.
+17. NIST, Mailing list on NIST’s cryptographic hash workshops and hash algorithm competition, http://csrc.
+nist.gov/groups/ST/hash/email_list.html.
+18. , NIST special publication 800-57, recommendation for key management (revised), March 2007.
+19. , Federal information processing standard 202, SHA-3 standard: Permutation-based hash and
+extendable-output functions (draĞ), April 2014,http://csrc.nist.gov/groups/ST/hash/sha-3/sha-3_
+standard_fips202.html.
+20. P . Overell,Augmented BNF for syntax speciﬁcations: ABNF, Internet Request for Comments, RFC 5234,
+January 2008.
+21. R. Rivest, B. Agre, D. V . Bailey, S. Cheng, C. Crutchﬁeld, Y. Dodis, K. E. Fleming, A. Khan, J. Krishna-
+murthy, Y. Lin, L. Reyzin, E. Shen, J. Sukha, D. Sutherland, E. Tromer, and Y. L. Yin,The MD6 hash function
+– a proposal to NIST for SHA-3, Submission to NIST, 2008,http://groups.csail.mit.edu/cis/md6/.
+22. P . Sarkar and P . J. Schellenberg,A parallelizable design principle for cryptographic hash functions, Cryptology
+ePrint Archive, Report 2002/031, 2002,http://eprint.iacr.org/.
+23. M. Torgerson, R. Schroeppel, T. Draelos, N. Dautenhahn, S. Malone, A. Walker, M. Collins, and H. Or-
+man, The SANDstorm hash, Submission to NIST, 2008,http://www.sandia.gov/scada/documents/
+SANDstorm_Submission_2008_10_30.pdf.
+18

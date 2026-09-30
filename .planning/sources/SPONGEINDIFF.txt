@@ -1,0 +1,730 @@
+On the Indiﬀerentiability of the Sponge
+Construction
+Guido Bertoni 1, Joan Daemen 1, Micha¨ el Peeters2, and Gilles V an Assche 1
+sponge@noekeon.org
+1 STMicroelectronics
+2 NXP Semiconductors
+Abstract. In this paper we prove that the sponge construction intro-
+duced in [4] is indiﬀerentiable from a random oracle when bei ng used
+with a random transformation or a random permutation and dis cuss its
+implications. T o our knowledge, this is the ﬁrst time indiﬀe rentiability
+has been shown for a construction calling a random permutati on (in-
+stead of an ideal compression function or ideal block cipher ) and for a
+construction generating outputs of any length (instead of a ﬁxed length).
+1 Introduction
+All cryptographic hash functions of any signiﬁcance known t oday , i.e., MD4,
+MD5, the SHA and RIPEMD [15] families and several others, sha re the same
+design paradigm. They all consist of the iterated applicati on of a compression
+function. The iteration mechanism is known as Merkle-Damg ˚ ard [8, 16] and guar-
+antees that if the compression function is collision-resis tant, the resulting hash
+function is collision-resistant. This is a very attractive property as collision-
+resistance appears to be one of the most important propertie s of cryptographic
+hash functions. The compression functions of the above ment ioned hash func-
+tions were designed with collision-resistance in mind. Dur ing the last years, with
+the recent collision attacks on SHA-1 as culminating point, it has become clear
+that designing a compression function that is both collisio n-resistant and eﬃ-
+cient is not an easy task. Moreover, weaknesses have been sho wn in the Merkle-
+Damg ˚ ard construction itself. While it does guarantee cert ain properties such as
+collision-resistance on the condition that the underlying compression function
+has the same property , this is not the case for all properties that are expected
+from cryptographic hash functions. A well known example of s uch a weakness,
+discussed in [7], is the insecurity of the MAC function const ructed from a Merkle-
+Damg ˚ ard hash function by feeding the latter with the secret key followed by the
+message.
+In [7] Coron et al. propose a number of variants of the Merkle- Damg ˚ ard
+construction that do not have this and other weaknesses. F or each of these con-
+structions they provide theorems stating that if the compre ssion function is
+constructed using an ideal component, i.e., a ﬁnite input le ngth (FIL) random
+oracle or an ideal block cipher (used as Davies-Meyer compre ssion function), the
+hash function behaves as a random oracle [3] with output trun cated to a ﬁxed
+length. They present their theorems in the indiﬀerentiabil ity framework that was
+introduced by Maurer et al. in [14]. As a (truncated) random o racle has all de-
+sired properties that may be expected from a cryptographic h ash function, this
+provides a direction for the design of hash functions that do not only provide re-
+sistance against collision search, but are as strong as a tru ncated random oracle
+with respect to many criteria. Instead of constructing an eﬃ cient compression
+function that is collision-resistant, one shall now design an eﬃcient function that
+behaves as a FIL random oracle, or in other words, a random n + m to n bit
+compression function, or an ideal block cipher. In the meanw hile, several other
+hash function constructions have been shown to be indiﬀeren tiable from a ran-
+dom oracle, see for example [2, 6]. Note that indiﬀerentiabi lity is not the only
+approach to proving properties of hash function constructi ons: some authors an-
+alyze the properties of the compression function that can be preserved by the
+construction [1, 2].
+Recently , we introduced a new iterative hash function const ruction, called
+a sponge [4]. It builds upon a ﬁxed-length transformation (i .e., with codomain
+equal to domain) or permutation f instead of a compression function and can
+generate output strings of inﬁnite length. In [4] we proved t hat when f is a
+random transformation or permutation, the resulting funct ion is only distin-
+guishable from a random oracle with probability below N (N + 1) / 2c+1, where
+N is the number of calls to f (and f − 1) and c is a security parameter related to
+the size of the domain of f . At ﬁrst sight, one may consider the indistinguisha-
+bility proof as an argument that it behaves as a random oracle with probability
+1 − N (N + 1)/ 2c+1. However, this is restricted to adversaries that can only qu ery
+the sponge function and not f (and f − 1). In a concrete hash function, f is pub-
+licly speciﬁed and this is of limited interest. W e also inclu ded computations of
+the complexity of a number of so-called critical operations and discussed how this
+impacts the classical properties expected from hash functi ons such as collision-
+resistance and (2nd)-preimage resistance. However, this d oes not result in lower
+bounds for the security of these properties but rather upper bounds to the reach-
+able security level. In this paper we apply the approach of [7 ] to the sponge con-
+struction and demonstrate that the advantage of an adversar y in diﬀerentiating
+the sponge construction from a random oracle is about N (N + 1) / 2c+1 if the
+underlying f is a random transformation and an even smaller upper bound if it
+is a random permutation.
+As discussed above, this implies that the sponge constructi on when calling a
+random transformation or permutation has all properties of a random oracle as
+long as c is large enough. Hence we are now able to provide the security bounds
+for collision-resistance and (2nd)-preimage resistance t hat are lacking in [4].
+There are several iterative hash function constructions th at have been shown
+to be indiﬀerentiable from a random oracle. However, the spo nge construction
+has two unique features. First, it can generate long outputs . While other con-
+structions can only behave as a random oracle whose output ha s been truncated
+to a ﬁxed length, a random sponge does not have this limitatio n and may also
+2
+serve as a reference for stream ciphers. Second, it can be bui lt using a permu-
+tation, where both f and f − 1 can be queried by the adversary . Paradoxically ,
+collision-resistance and (2nd)-preimage resistance can b e realized by employing
+a function that is easy to invert.
+In [4] our main goal was to deﬁne a reference for security prop erties of hash
+designs. With our indiﬀerentiability result, we prove that the resistance of the
+sponge construction calling a random transformation or per mutation is as good
+as that of a random oracle, lower bounded by about N (N + 1) / 2c+1. This coin-
+cides with what is presented in [4] as the ﬂat sponge claim . Despite our original
+intention in [4], we argue that the sponge construction can l ead to practical
+hash function designs. First of all, as mentioned in [4], the support for long
+outputs is a useful feature for a hash function when being use d as a mask gener-
+ating function (MGF) or a key derivation function (KDF). Sec ond, instead of a
+collision-resistant compression function (Merkle-Damg ˚ ard) or a random-looking
+compression function or ideal block cipher (as in [7]), it ta kes the design of a
+random-looking permutation. As a good block cipher should b ehave as a set of
+(independent and) random-looking permutations, hash func tion design can now
+beneﬁt from insights gained in block cipher design. However , as opposed to a
+block cipher, a permutation has no key schedule and has not th e concerns that
+come with it such as its computational overhead and possible related-key weak-
+nesses. This makes in our opinion the sponge construction a v ery interesting
+alternative to the constructions based on a compression fun ction.
+The remainder of this paper is organized as follows. Section 2 gives a short
+introduction to indiﬀerentiability applied to hash functi on constructions and is
+followed by Section 3 that deﬁnes and discusses the sponge co nstruction in the
+indiﬀerentiability setting. Section 4 gives the actual pro ofs and ﬁnally Section 5
+discusses its implications.
+2 Indiﬀerentiability from a random oracle
+Indiﬀerentiability deals with the interaction between sys tems where the objective
+is to show that two systems cannot be told apart by an adversar y able to query
+both systems but not knowing a priori which system is which. F or hash function
+constructions, a random oracle serves as an ideal system.
+W e use the deﬁnition of random oracle from [3]. A random oracl e, denoted
+RO, takes as input binary strings of any length and returns for e ach input a
+random inﬁnite string, i.e., it is a map from Z∗
+2 to Z∞
+2 , chosen by selecting each
+bit of RO(x) uniformly and independently , for every x. In [7] and other papers
+on the subject, one does not consider indiﬀerentiability fr om a random oracle,
+but rather a random oracle with output truncated to a ﬁxed num ber of bits.
+The indiﬀerentiability framework was introduced by Maurer et al. in [14]
+and is an extension of the classical notion of indistinguish ability . Coron et al.
+applied it to iterated hash function constructions in [7] an d demonstrated for
+a number of iterated hash function constructions that they a re indiﬀerentiable
+from a random oracle if the compression function is a random F IL oracle. In
+3
+Fig. 1. The diﬀerentiability setup
+this section we give a brief introduction to these subjects; for a more in-depth
+treatment, we refer to the original papers.
+In the context of iterated hashing the adversary shall disti nguish between two
+systems that each have two components, as illustrated in Fig ure 1. The system
+at the left is the combination of the ideal compression funct ion F and the hash
+function construction C. The adversary can make queries to both components
+separately , where the latter in turn calls the former to cons truct its responses.
+This is denoted by C[F]. These are the two diﬀerent interfaces to the system to
+the left.
+The system at the right consists of a random oracle (with trun cated output)
+RO providing the same interface as C[F]. T o be indiﬀerentiable from the system
+at the left, the system at the right also needs a subsystem oﬀe ring the same
+interface to the adversary as the ideal compression functio n F. This is called a
+simulator P and its role is to simulate the ideal compression function F so that
+no distinguisher can tell whether it is interacting with the system at the left or
+with the one at the right. The output of P should look consistent with what the
+distinguisher can obtain from the random oracle RO as if P was F and RO was
+C[F]. T o achieve that, the simulator can query the random oracle , denoted by
+P[RO]. Note that the simulator does not see the distinguisher’s q ueries to the
+random oracle.
+Indiﬀerentiability of C[F] from a random oracle RO is now satisﬁed if there
+exists a simulator P such that no distinguisher can tell the two systems apart
+with non-negligible probability , based on their responses to queries it may send.
+W e repeat here the deﬁnition as given in [7] where the hash fun ction construction
+is called T uring machine C, the ideal compression function is called ideal primitive
+F and the random oracle is called ideal primitive G.
+Deﬁnition 1 ([7]). A Turing machine C with oracle access to an ideal primitive
+F is said to be (tD , t S , q, ϵ ) indiﬀerentiable from an ideal primitive G if there
+4
+Fig. 2. The padded sponge construction
+exists a simulator P[G], such that for any distinguisher D it holds that:
+|Pr [ D[C[F], F] = 1] − Pr [ D[G, P[G]] = 1] |< ϵ. (1)
+The simulator has oracle access to G and runs in time at most tS . The distin-
+guisher runs in time at most tD and makes at most q queries. Similarly, C[F]
+is said to be indiﬀerentiable from G if ϵ is a negligible function of the security
+parameter k.
+Now, it is shown in [14] that if C[F] is indiﬀerentiable from a random oracle,
+then C[F] can replace the random oracle in any cryptosystem, and the r esulting
+cryptosystem is at least as secure in the ideal compression f unction model as in
+the random oracle model. This is much stronger than the indis tinguishability of
+C[F] from a random oracle, which just merely means that an attack er that can
+query C[F], but has no direct access to F, cannot distinguish it from a random
+oracle. As said, for hash function constructions indisting uishability makes little
+sense as, for any concrete hash function, the compression fu nction F is public
+and hence accessible to the adversary .
+3 The sponge construction
+3.1 Deﬁnition
+In this section we deﬁne the sponge construction. Our deﬁnit ion is a special case
+of the more general deﬁnition in [4]. T o simplify the present ation, we restrict
+the input and output of the sponge to binary strings instead o f a more general
+alphabet. Our indiﬀerentiability result can however easil y be extended to the
+generic deﬁnition. The (padded) sponge construction is ill ustrated in Figure 2.
+In the sequel, we generally denote by x a message in Z∗
+2, and by p a sequence
+of blocks of r bits each (i.e., p ∈ Zr
+2
+∗), indexed from 0 to |p| −1, with |p|the
+number of r-bit blocks of p.
+Deﬁnition 2. For positive integers r, c , a sponge function S[F] maps binary
+strings with length a multiple of r to binary strings of any requested length, i.e.,
+Zr
+2
+∗ to Z∞
+2 . A sponge calls a transformation F operating on Zr+c
+2 = Zr
+2 × Zc
+2
+as described in Algorithm 1. Here c is called the capacity and r is called the
+5
+bitrate3 of the sponge. The (group) operation ⊕ denotes the bitwise addition of
+r-bit blocks and 0r is the all-zero block, the neutral element of this group. The
+input p to a sponge function must consist of one or more blocks and sha ll not
+have 0r as last block, i.e., |p|> 0 and p|p|−1 ̸= 0 r .
+Algorithm 1 The sponge construction S[F]
+Input p = p0p1 . . . p |p|− 1 and requested length n
+Require: |p| ≥ 1 and p|p|− 1 ̸= 0 r
+Output z ∈ Zn
+2
+s = ( sa, s c) = (0 r , 0c )
+for i = 0 to |p| −1 do
+(sa, s c) = F(sa ⊕ pi, s c)
+end for
+for i = 0 to ⌈n
+r ⌉ − 1 do
+Append sa to the output
+(sa, s c) = F(sa, s c)
+end for
+Discard the last r⌈n
+r ⌉ − n bits
+3.2 Graph representation of sponge operation
+In [4] we used a graph representation to prove bounds on succe ss probability of
+generating collisions. W e adopt this graph representation in the speciﬁcation of
+our simulators. In our discussions on the graphs, we need to c learly distinguish
+between the ﬁrst r bits and the last c bits of an r + c-bit variable s. F or this, we
+again use the notation of [4]: A = Zr
+2 and C = Zc
+2 and we call the ﬁrst r bits of
+s its A-part sa, and the last c bits its C-part sc.
+W e consider the transformation F as a directed graph whose vertex set (called
+nodes) is A × C and whose edges are ( s, F(s)). It has both 2 r+c nodes and edges.
+F rom the node graph, we derive the (directed) supernode grap h, with vertex set
+(called supernodes) equal to C. In this graph, an edge ( sc, t c) is in the edge set if
+and only if ∃sa, t a such that (( sa, s c), (ta, t c)) is an edge in the node graph. The
+set of supernodes is a partition of the nodes where a supernod e contains the 2 r
+nodes with the same C-part.
+The sponge construction operates on a chaining variable s and its operation
+can be seen as a walk through the node graph of the chaining var iable. W e denote
+the chaining variable before processing pi by si. Its initial value is s0 = (0 r , 0c).
+Then for each block pi, it performs a two-step transition. First, it moves to the
+node s′ within the same supernode with s′a = si, a ⊕ pi, and then it follows the
+edge starting from s′, arriving in si+1. After processing all blocks of p it is in
+3 The bitrate r is not to be confused with rate meaning the number of block cip her
+calls it takes to implement the compression function, as in, e.g., [12].
+6
+node s|p|. Then it gives out the A-part of s|p| as z0. F or each additional block zi
+produced, it follows the edge from s|p|+i− 1 arriving in s|p|+i and gives out the
+A-part of the latter as zi. Note that this can be considered a special case of the
+above two-step transition if we extend p with blocks p|p|+i = 0 r for all i ≥ 0.
+Clearly , the chaining variable si is completely determined by the ﬁrst i blocks
+of p. W e call this a path to si. Or more exactly:
+Deﬁnition 3 ([4]). First, the empty string is a path to the node (0r , 0c). Then,
+if p is a path to node s = ( sa, s c) and there is an edge ((sa ⊕ a, s c), t ) in the node
+graph, p′ = pa is a path to node t.
+Note that although a path completely determines a node, ther e may be many
+paths to a node.
+It follows from the above that zj of z = S[F](p) is the A-part of the node
+with path p0rj . And so, given a path p (diﬀerent from 0 rj ) to a node s, one
+can ﬁnd its A-part by a call to the sponge construction. W e have sa = zj with
+z = S[F](p′) and p′ and j given by p = p′0rj such that p′ is a valid sponge input,
+i.e., |p′|> 0 and p′
+|p′|−1 ̸= 0 r . F or a path of form 0 rj there is no such p′ and
+hence the sponge construction cannot be queried to obtain sa.
+3.3 The padded sponge construction
+The sponge construction S[F](p) only supports input strings p ∈ Zr
+2
+∗ where p is
+not the empty string and has last block diﬀerent from 0 r . T o allow the input to
+be any binary string in Z∗
+2, one needs to deﬁne an injective mapping pad( x) that
+converts any binary string x to a valid sponge input. The simplest such mapping
+pad(x) consists in padding the string with a single bit 1 and a numbe r w of
+zeroes with 0 ≤ w < r so that pad( x) contains a multiple of r bits. T o indicate
+the sponge construction including the padding operation, w e use the symbol S′:
+S′[F](x) ≜ S[F](pad(x)).
+3.4 The distinguisher’s setting
+W e give proofs of indiﬀerentiability for the cases that F is a random trans-
+formation or a random permutation. A random transformation (permutation)
+operating on a certain domain is a transformation selected r andomly and uni-
+formly from all transformations (permutations) operating on that domain.
+The adversary shall distinguish between two systems using t heir responses
+to sequences of queries. At the left is the system ( S′[F], F). The padded sponge
+construction S′[F] provides one interface denoted by H, taking a binary string
+x ∈ Z∗
+2 and an integer n and returning a binary string y ∈ Zn
+2 , the sponge output
+truncated to n bits. If F is a random transformation it has a single interface
+F1 which takes as input an element s of Zr+c
+2 and returns t = F(s), an element
+of the same set. If F is a random permutation, it has an additional interface
+F− 1 that implements the inverse of F. Note that the sponge construction in
+Algorithm 1 only uses the interface F1.
+7
+At the right is the system ( RO, P[RO]). It oﬀers the same interface as the
+left system, i.e., RO provides the interface H and returns an output truncated
+to the requested length. W e deﬁne two simulators, one for the case of a ran-
+dom transformation and another one for the case of a random pe rmutation.
+The transformation simulator provides a single interface F1. The permutation
+simulator provides both interfaces F1 and F− 1.
+Let X be either ( S′[F], F) or ( RO, P[RO]). The sequence of queries Q to X
+consist of a sequence of queries to the interface H, denoted Q0 and a sequence of
+queries to the interface F1 (and F− 1), denoted Q1. Q0 is a sequence of couples
+(x, n ), with x ∈ Z∗
+2 and n a positive integer. Q1 is a sequence of couples ( s, b )
+with s ∈ Zr+c
+2 and b either 1 or −1, indicating whether the interface F1 or F− 1
+is addressed. In the case that F is a transformation, b is restricted to 1.
+3.5 The cost of queries
+Deﬁnition 1 suggests expressing an upper bound to the advant age of a distin-
+guisher in terms of the number of queries q. The bounds provided in [7] however
+also make use of parameter ℓ , the maximum input length of the queries. In our
+bounds we use another measure for the query complexity which is more natural
+when applied to the sponge construction. W e call this measur e cost and denote
+it by N . The cost N of queries to a system X is the total number of calls to F
+or F− 1 it would yield if X = ( F, S′[F]), either directly due to queries Q1, or
+indirectly via queries Q0 to S′[F]. The cost of a sequence of queries is fully de-
+termined by their number and their input and output lengths. Each query to F1
+or F− 1 contributes 1 to the cost. A query to H with an ℓ -bit input contributes
+⌊ℓ
+r ⌋+ ⌈n
+r ⌉to the cost (assuming the simple padding of Section 3.3 is use d). Our
+bounds in terms of cost are comparable to those of [7]: for a ﬁx ed output size,
+as considered in [7], N is an aﬃne function of q and qℓ .
+In the sequel, we consider the indiﬀerentiability as in Deﬁn ition 1 but with
+the cost N replacing the number of queries q and their maximum length ℓ .
+4 Indiﬀerentiability proofs
+4.1 The simulators we use in our proofs
+W e deﬁne simulators for the case that F is a random transformation and for the
+case of a random permutation. In both cases, the simulator sh ould behave as a
+deterministic function and give responses to queries Q1 that in combination with
+the responses to queries Q0 to the random oracle shall minimize the probability
+that the system ( RO, P[RO]) can be distinguished from a system ( S′[F], F). In
+this section we informally explain how our simulators work.
+A simulator keeps track of the queries it received and the res ponses it returned
+in a graph, very similar to the graphs discussed in Section 3. 2. The only diﬀerence
+is that initially the simulator graph has no edges and for eac h new query F1(s)
+(or F− 1(s)) the simulator generates a response t and adds the edge ( s, t ) (or
+8
+Fig. 3. Example of simulator graph. The rooted supernodes are in bol d. Paths are
+indicated in italic next to the nodes having a path.
+(t, s )). Note that using the responses of the simulator to its quer ies, the adversary
+can fully reconstruct the simulator graph.
+In order to motivate the design of the simulators, we now disc uss properties
+of this graph that it has at any moment during or after the quer ies, using an
+example depicted in Figure 3.
+F or a subset of the nodes in the simulator graph, the adversar y knows a path.
+F rom Deﬁnition 3, it is clear that these are the nodes that hav e an incoming edge
+and are in a supernode that can be reached from supernode 0 c by following the
+directed edges from supernode to supernode. F or this purpos e, we deﬁne the set
+of rooted supernodes R as the subset of C containing 0 c and all the supernodes
+accessible from it through the supernode graph. By extensio n, we say that a node
+s = ( sa, s c) is rooted if sc ∈ R. So the adversary knows paths to all rooted nodes
+that have an incoming edge from another rooted node, plus the empty path of
+9
+the (0 r , 0c) node. F or each of these rooted nodes it can query the interfa ce H
+of the system hoping to reveal an inconsistency , which is evi dence that it is not
+(S′[F], F). W e call sponge-consistent the responses to a sequence of queries Q
+that do not result in such inconsistency .
+W e will now explain why our simulators generate sponge-cons istent responses
+(up to 2 c queries Q1). Whenever a simulator receives a query F1(s) with s rooted,
+it will result in an image t with known path. Therefore, the simulator constructs
+the A-part of t to be sponge-consistent by querying RO using the path to t
+(except for the all-zero path). When the simulator receives a query F1(s) with
+s not rooted, no path to the image t is known and it chooses t randomly from
+all the nodes (with no incoming edge, if F is a random permutation).
+The idea is that the simulators are designed so that a call to F1(s) results only
+in the path of a single node becoming known, that of t = F(s) if s is rooted.
+F or that, when selecting tc for a rooted node s, they exclude the supernodes
+with outgoing edges (cases a and c in Figure 3). Additionally , they avoid the
+occurrence of nodes with multiple paths. F or that, when sele cting tc for a rooted
+node s, they exclude the rooted supernodes (case b in Figure 3) and those with
+outgoing edges (case c in Figure 3). The permutation simulator avoids paths of
+nodes becoming known as a result of a call to F− 1(s) altogether by excluding
+rooted supernodes when selecting tc.
+Let O be the set of supernodes with an outgoing edge. When the simul ator
+receives a query F1(s) with s a rooted node and all supernodes are rooted or have
+an outgoing edge, i.e., if R ∪ O = C, it can no longer ensure sponge-consistency
+and we call the simulator saturated. As every query to the simulator adds at
+most one edge and that hence R ∪ O can be extended by at most 1 per query ,
+this cannot happen before 2 c queries.
+4.2 When being used with a random transformation
+The simulator for the case that F is a random transformation is given in Algo-
+rithm 2. W e prove the indiﬀerentiability by means of a series of lemmas and a
+ﬁnal theorem.
+Lemma 1. To every node in the simulator graph there is at most one path,
+unless the simulator is saturated.
+Proof. First, we show that the rooted supernodes in the supernode gr aph form a
+tree. When no edges exist, this is indeed the case. The only wa y to create a new
+rooted node is by calling F1(s) with s rooted. Assuming the simulator is not
+saturated, this happens only in ﬁrst part of Algorithm 2 (lin es 4–12), if s is rooted
+and has no outgoing edge. The new edge only adds a single super node to R as
+the simulator selects it from the supernodes with no outgoin g edges. Moreover,
+the new edge cannot arrive in a rooted supernode (because the simulator selects
+tc from C \ R) or in a supernode from which a rooted supernode can be reache d
+(because the simulator select tc from the supernodes with no outgoing edges).
+10
+Algorithm 2 The transformation simulator P[RO]
+1: Interface F1 , taking node s as input
+2: if node s has no outgoing edge then
+3: if node s is rooted AND R ∪ O ̸= C (no saturation) then
+4: Construct path to t: ﬁnd path to s, append sa and call the result p
+5: Write p as p = p′0rj where p′ does not end with 0 r
+6: if p′ can be unpadded into x then
+7: Assign to ta the value zj with z = RO(x)
+8: else
+9: Choose ta randomly and uniformly
+10: end if
+11: Choose tc randomly and uniformly from C \ (R ∪ O)
+12: Let t = ( ta, t c)
+13: else
+14: Choose t randomly and uniformly from all nodes
+15: end if
+16: Add an edge from s to t
+17: end if
+18: return the node t at the end of the outgoing edge from s
+Then, for two connected supernodes ( sc, t c), there exists only one edge in
+the simulator graph of the form (( sa, s c), (ta, t c)). This is because the simulator
+chooses a distinct C-part for each new rooted node (unless it is saturated).
+Finally , since A is a group, each r-bit block of the path is uniquely determined
+by the transitions on the A-part of the nodes. ⊓ ⊔
+F or a given set of queries Q and their responses X(Q), we deﬁne the sponge
+consistency as the property that the responses to Q0 are equal to those that
+one would obtain by applying the sponge construction from th e responses to Q1
+(when the queries Q1 suﬃce to perform this calculation), i.e., that X(Q0) =
+S′[X(Q1)](Q0). By construction, the queries, and their responses, made t o the
+system ( S′[F], F) are sponge-consistent. F or the sponge-consistency of the queries,
+and their responses, made to ( RO, P[RO]), we refer to the following lemma.
+Lemma 2. Given queries to the simulator P[RO] described in Algorithm 2 and
+to RO, it returns sponge-consistent responses, unless the simul ator is saturated.
+Proof. The adversary can check by querying the random oracle for spo nge-
+consistency for every node s in the simulator graph to which it knows the path
+p. The all-zero path does not correspond to a block that can be o utput by the
+sponge construction, so without loss of generality we assum e that p ̸= 0 rj .
+Given the path p to the node s, its A-part must be equal to zj with z =
+RO(x), where pad( x) = p′ and p′ is a valid sponge input given by p = p′0rj . As
+Lemma 1 says, there is only a single path to any rooted node in t he simulator
+graph, and thus the simulator guarantees this equality for t he response t to every
+query to F1(s) with s a rooted node, as long as it is not saturated.
+11
+W e also need to show that no path is assigned to a node unless it s A-part is
+chosen by the lines 6–9 of Algorithm 2. Indeed, the supernode tc (at line 11) is
+the only supernode that becomes rooted due to the query . This is because the
+simulator excludes supernodes with outgoing edges in the se lection of tc (as long
+as the simulator is not saturated).
+It follows that the simulator guarantees sponge-consisten cy for all queries Q
+up to saturation. ⊓ ⊔
+Lemma 3. Any sequence of queries Q0 up to cost 2c can be converted to a
+sequence of queries Q1 where Q1 gives at least the same amount of information
+to the adversary and has no higher cost than Q0.
+Proof. A query in Q0 consists of an input x and a length n. Let p = pad( x)0r⌈n
+r ⌉
+and we can now convert this query into |p|queries to F1. Let s0 = (0 r , 0c) and
+si+1 = F1(si, a ⊕ pi, s i, a) for 0 ≤ i < |p|be the responses to the new queries. As
+Lemma 2 says that all queries up to cost 2 c are sponge-consistent, the output
+to the original ( x, n ) query consists of the concatenation of the A-parts of s|p|
+to s|p|+⌈n
+r ⌉− 1 truncated to n bits. By the deﬁnition of the cost of queries, the
+original query in Q0 has cost |p|and it results in |p|queries in Q1, each one with
+cost 1.
+This process can be repeated for all queries in Q0 resulting in a sequence
+of queries Q1 with the same cost. If there are queries in Q0 with inputs having
+common preﬁxes, these can give rise to the same queries in Q1 resulting in a
+reduction in cost. ⊓ ⊔
+Lemma 4. The advantage of an adversary in distinguishing between F and
+P[RO] with the responses to a sequence of N < 2c queries Q1 is upper bounded
+by:
+fT(N ) = 1 −
+N∏
+i=1
+(
+1 − i
+2c
+)
+.
+Proof. The advantage is deﬁned as
+Adv(A) = |Pr[A[F] = 1] − Pr[A[P[RO]] = 1] |
+The response sequence x to a sequence of N diﬀerent queries is a sequence of N
+values in A × C. W e can provide an upper bound of the advantage by computing
+the probability distributions of the outcomes of the querie s to F on the one hand
+and to P[RO] on the other. The optimal adversary gives back 1 for the resp onse
+sequence x if Pr( x|F) > Pr(x|P[RO]) and 0 otherwise, yielding the following
+upper bound:
+Adv(A) ≤ 1
+2
+∑
+x
+|Pr(x|F) − Pr(x|P[RO])|, (2)
+where the righthand side of this equation is known as the vari ational distance.
+Since F is a transformation over A × C chosen randomly and uniformly , the
+responses to the diﬀerent queries are independent and unifo rmally distributed
+over A × C. It follows that all (2 r 2c)N possible outcomes are all equiprobable.
+12
+By inspecting Algorithm 2, the simulator always returns uni form values for
+the A-part of the image. F or the C-part, the simulator chooses it non-uniformly
+only if the pre-image s is rooted. T o obtain the greatest possible variational dis-
+tance, the optimum strategy consists in creating N rooted nodes. As a response
+to the ﬁrst query , it may return all values but 0 r . At each subsequent query , one
+value of C is added to R, and thus for each query , the simulator returns a C-part
+value diﬀerent from 0 r and all previous ones. Note that by restricting N < 2c
+the simulator will not be saturated. Using this strategy giv es us an upper bound
+on the variational distance. So for the simulator, there are (2r )N (2c − 1)(N )
+(where a(n) denotes a!/ (a − n)!) possible responses with diﬀerent C-parts, each
+with equal probability ((2 r )N (2c − 1)(N ))− 1, and the (2 r )N ((2c)N − (2c − 1)(N ))
+others have probability 0. This gives:
+Adv(A) ≤ 1 − (2c − 1)(N )
+(2c)N = 1 −
+N∏
+i=1
+(
+1 − i
+2c
+)
+. (3)
+⊓ ⊔
+W e have now all ingredients to prove the following theorem.
+Theorem 1. A padded sponge construction calling a random transformati on,
+S′[F], is (tD , t S , N, ϵ )-indistinguishable from a random oracle, for any tD , tS =
+O(N 2), N < 2c and any ϵ with ϵ > f T(N ).
+Proof. As discussed in Lemma 3 we can construct from a set of query seq uences
+Q0, Q 1 an equivalent sequence of queries Q1′◦Q1 with no higher cost and giving
+at least the same information. So, without loss of generalit y , we only need to
+consider adversaries using queries Q
+1
+= Q1′◦Q1 and their response X(Q
+1
+) and
+no queries Q0.
+F or any ﬁxed query Q
+1
+, we look at the problem of distinguishing the random
+variable F(Q
+1
+) from the random variable P[RO](Q
+1
+). F or a sequence of queries
+Q
+1
+with cost N , Lemma 4 upper bounds the advantage of such an adversary to
+fT(N ).
+W e have tS = O(N 2) as for each query to the simulator with s rooted, it
+must ﬁnd the path to s and send a query to the random oracle of cost equal to
+the length of the path to s. The length of the path to s it upper bounded by N ,
+the total number of rooted supernodes in the simulator graph . ⊓ ⊔
+If N is signiﬁcantly smaller than 2 c, we can use the approximation 1 −x ≈ e− x
+for x ≪ 1 to simplify the expression for fT(N ):
+fT(N ) ≈ 1 − e− N (N +1)
+2c+1 < N (N + 1)
+2c+1 . (4)
+4.3 When being used with a random permutation
+The simulator for the case that F is a random permutation is given in Algo-
+rithm 3. W e now can prove indiﬀerentiability using a series o f similar lemmas.
+13
+Algorithm 3 The permutation simulator P[RO]
+Interface F1, taking node s as input
+if node s has no outgoing edge then
+if node s is rooted AND R ∪ O ̸= C (no saturation) then
+Construct path to t: ﬁnd path to s, append sa and call the result p
+Write p as p = p′0rj where p′ does not end with 0 r
+if p′ can be unpadded into x then
+Assign to ta the value zj with z = RO(x)
+else
+Choose ta randomly and uniformly
+end if
+Choose tc randomly and uniformly from C \ (R ∪ O) and such that ( ta, t c) has
+no incoming edge yet
+Let t = ( ta, t c)
+else
+Choose t randomly and uniformly from all nodes that have no incoming e dge
+yet
+end if
+Add an edge from s to t
+end if
+return the node t at the end of the outgoing edge from s
+Interface F− 1, taking node s as input
+if node s has no incoming edge then
+Choose ta randomly and uniformly
+Choose tc randomly and uniformly from C \ R and such that ( ta, t c) has no outgoing
+edge yet
+Let t = ( ta, t c)
+Add an edge from t to s
+end if
+return the node t at the beginning of the incoming edge into s
+14
+The proofs of Lemma 1 and Lemma 2 are valid for the permutation simulator
+with respect to all calls to F1 but do naturally not consider calls to F− 1. The
+proofs can simply be extended to the permutation simulator c ase by noting that
+the F− 1 interface of the simulator excludes rooted nodes in the sele ction of the
+response, implying that a call to F− 1 cannot lead to new rooted nodes and
+hence also not to new paths. The proof of Lemma 3 is valid for th e permutation
+simulator as it is. Finally , the output produced by the inter faces F1 and F− 1
+are consistent, i.e., if F1(s) = t then F− 1(t) = s and vice-versa.
+Instead of Lemma 4 we now have the following lemma.
+Lemma 5. The advantage of an adversary in distinguishing F and P[RO] with
+the responses to a sequence of N < 2c queries Q1 is upper bounded by:
+fP(N ) = 1 −
+N − 1∏
+i=0
+(
+1 − i+1
+2c
+1 − i
+2r 2c
+)
+.
+Proof. The proof is similar to that of Lemma 4. Since F is a permutation over
+A × C chosen randomly and uniformly , the only limitation is that f or the i-th
+query , the image (or preimage) shall not be equal to any of the found images (or
+preimage), resulting in (2 r 2c) − i possibilities. This leads to (2 r 2c)(N ) possible
+outcomes each with probability ((2 r 2c)(N ))− 1 and (2 r 2c)N − (2r 2c)(N ) outcomes
+with probability 0.
+F rom inspecting Algorithm 3 if follows that the adversary ob tains the greatest
+possible variational distance when he creates N rooted nodes. This leads to the
+same distribution as for the transformation simulator. The possible outcomes
+of the permutation simulator are a subset of the possible out comes for F. This
+gives:
+Adv(A) ≤ 1 − (2r )N (2c − 1)(N )
+(2r 2c)(N )
+= 1 −
+N − 1∏
+i=0
+(
+1 − i+1
+2c
+1 − i
+2r 2c
+)
+. (5)
+⊓ ⊔
+These lemmas and proofs result in the following theorem, whe re the proof is
+similar to that of Theorem 1.
+Theorem 2. A padded sponge construction calling a random permutation, S′[F],
+is (tD , t S , N, ϵ )-indistinguishable from a random oracle, for any tD , tS = O(N 2),
+N < 2c and and for any ϵ with ϵ > f P(N ).
+If N is signiﬁcantly smaller than 2 c, fP (N ) can be approximated closely by:
+fP (N ) ≈ 1 − e− (1− 2− r )N 2+(1+2− r )N
+2c+1 < (1 − 2− r )N 2 + (1 + 2 − r )N
+2c+1 . (6)
+Note that using a random permutation results in a better boun d than using a
+random transformation. By assigning distinct C-part values of rooted nodes, the
+simulators tend to generate an output distribution which is closer to that of a
+permutation than to that of a transformation.
+15
+5 Discussion and conclusions
+W e have proven that the sponge construction calling a random transformation
+or permutation is indiﬀerentiable from a random oracle and o btained concrete
+bounds. Here, the security parameter is the capacity c and not the output length
+of the hash function. Note that other constructions also con sider the size of the
+internal state as a security parameter, e.g., [13].
+One may ask the question: what does this say about resistance to classical
+attacks such as collision-resistance, including multicol lisions [9], (2nd) preimage
+resistance, including long-message attacks [10] and herdi ng [11]? In general, it
+is expected that a hash function oﬀers the same resistance as would a random
+oracle, truncated to the hash function’s output length n. The success probability
+after q queries is about q2/ 2n+1 for generating collisions and q/ 2n for generating
+a (2nd) preimage. The sponge construction does not have a ﬁxe d output length.
+However, when a hash function with the sponge construction i s used in an ac-
+tual cryptographic scheme, its output will be truncated. Ou r indiﬀerentiability
+bounds in terms of the capacity c permit to express up to which output length
+n such a hash function may oﬀer the expected resistance. F or ex ample, it oﬀers
+collision resistance (as a truncated random oracle would) f or any output length
+smaller than the capacity and (2nd) preimage resistance for any output length
+smaller than half the capacity . In other words, when for inst ance c = 512, a ran-
+dom sponge oﬀers the same resistance as a random oracle but wi th a maximum
+of 2 256 in complexity .
+A function with the sponge construction can be used to build a MAC function
+(by just pre-pending the key to the input) or, thanks to its lo ng output, to build
+a synchronous stream cipher (by taking as input the concaten ation of a key and
+an IV). Alternatively , the sponge construction can be used a s a reference for
+expressing security claims when building new such designs.
+Note that the bounds we have provided only hold when the spong e construc-
+tion makes use of a random transformation or random permutat ion. When a
+concrete transformation or permutation is taken, no such bo unds can be given.
+See for example [5] and also [14] for discussions on this subj ect. However, our
+bounds do say that using the sponge construction excludes ge neric attacks with
+a success probability higher than the maximum of our bound N (N +1)
+2c+1 and the
+success probability the attack would have for a random oracl e. By generic at-
+tacks we mean here attacks such as those described in [9–11], that do not exploit
+speciﬁc properties of the transformation or permutation us ed but only properties
+of the construction.
+References
+1. E. Andreeva, G. Neven, B. Preneel, and T. Shrimpton, Seven-property-preserving
+hashing: ROX , Advances in Cryptology – Asiacrypt 2007 (K. Kurosawa, ed.) ,
+LNCS, no. 4833, Springer-Verlag, 2007, pp. 130–146.
+16
+2. M. Bellare and T. Ristenpart, Multi-property-preserving hash domain extension
+and the EMD transform , Advances in Cryptology – Asiacrypt 2006 (X. Lai and
+K. Chen, eds.), LNCS, no. 4284, Springer-Verlag, 2006, pp. 2 99–314.
+3. M. Bellare and P . Rogaway, Random oracles are practical: A paradigm for designing
+eﬃcient protocols , ACM Conference on Computer and Communications Security
+1993 (ACM, ed.), 1993, pp. 62–73.
+4. G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche, Sponge functions , Ecrypt
+Hash Workshop 2007, May 2007, also available as public comme nt to NIST from
+http://www.csrc.nist.gov/pki/HashWorkshop/Public Comments/2007 May.html.
+5. R. Canetti, O. Goldreich, and S. Halevi, The random oracle methodology, revisited ,
+Proceedings of the 30th Annual ACM Symposium on the Theory of Computing,
+ACM Press, 1998, pp. 209–218.
+6. D. Chang, S. Lee, M. Nandi, and M. Yung, Indiﬀerentiable security analysis of
+popular hash function with preﬁx-free padding , Advances in Cryptology – Asiacrypt
+2006 (X. Lai and K. Chen, eds.), LNCS, no. 4284, Springer-Ver lag, 2006, pp. 283–
+298.
+7. J. Coron, Y. Dodis, C. Malinaud, and P . Puniya, Merkle-Damg ˚ ard revisited: How
+to construct a hash function , Advances in Cryptology – Crypto 2005 (V. Shoup,
+ed.), LNCS, no. 3621, Springer-Verlag, 2005, pp. 430–448.
+8. I. Damg ˚ ard, A design principle for hash functions, , Advances in Cryptology –
+Crypto ’89 (G. Brassard, ed.), LNCS, no. 435, Springer-Verl ag, 1989, pp. 416–427.
+9. A. Joux, Multicollisions in iterated hash functions. Application t o cascaded con-
+structions, Advances in Cryptology – Crypto 2004 (M. F ranklin, ed.), LN CS, no.
+3152, Springer-Verlag, 2004, pp. 306–316.
+10. J. Kelsey and B. Schneier, Second preimages on n-bit hash functions for much less
+than 2n work, Advances in Cryptology – Eurocrypt 2005 (R. Cramer, ed.), L NCS,
+no. 3494, Springer-Verlag, 2005, pp. 474–490.
+11. T. Kohno and J. Kelsey, Herding hash functions and the Nostradamus attack ,
+Advances in Cryptology – Eurocrypt 2006 (S. Vaudenay, ed.), LNCS, no. 4004,
+Springer-Verlag, 2006, pp. 222–232.
+12. H. Kuwakado and M. Morii, Indiﬀerentiability of single-block-length and rate-
+1 compression functions , Cryptology ePrint Archive, Report 2006/485, 2006,
+http://eprint.iacr.org/.
+13. S. Lucks, A failure-friendly design principle for hash functions , Advances in Cryp-
+tology – Asiacrypt 2005 (B. Roy, ed.), LNCS, no. 3788, Spring er-Verlag, 2005,
+pp. 474–494.
+14. U. Maurer, R. Renner, and C. Holenstein, Inidiﬀerentiability, impossibility results
+on reductions, and applications to the random oracle method ology, Theory of Cryp-
+tography - TCC 2004 (Moni Naor, ed.), Lecture Notes in Comput er Science, no.
+2951, Springer-Verlag, 2004, pp. 21–39.
+15. A. J. Menezes, P . C. van Oorschot, and S. A. Vanstone, Handbook of applied cryp-
+tography, CRC Press, 1997.
+16. R. Merkle, One way hash functions and DES , Advances in Cryptology – Crypto
+’89 (G. Brassard, ed.), LNCS, no. 435, Springer-Verlag, 198 9, pp. 428–446.
+17
