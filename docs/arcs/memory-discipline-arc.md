@@ -91,7 +91,7 @@ proves the first was right.
 | `memory-discipline/M5` | compose and grade: per-phase and per-runtime profile composition, with an optional static size bound from `E38` | compose | law | connect | 2 | open | `E85` |
 | `memory-discipline/M6` | `mem-region` is reached, or it moves to SEEDED with the reason. It is the only reclamation discipline in the tree and nothing imports it | discipline | tool | connect | 3 | open | `unminted` |
 | `memory-discipline/M7` | one `alloc-region` runs on every backend, with ISA-specific allocation assembly left in `Mach` primitives | discipline | law | new | 4 | open | `unminted` |
-| `memory-discipline/M8` | the linear indexed buffer: one mechanism, an in-place indexed write and a one-load indexed read under a linear binder, carrying bytes, `I64` words and boxed values, with the index bounded the way `mem-put-checked` bounds an offset | seam | primitive | new | 5 | open | `unminted` |
+| `memory-discipline/M8` | the linear indexed buffer: one mechanism, an in-place indexed write and a one-load indexed read under a linear binder, carrying bytes, `I64` words and boxed values, with the index bounded the way `mem-put-checked` bounds an offset | seam | primitive | new | 5 | designed | `unminted` |
 
 ### Coverage
 
