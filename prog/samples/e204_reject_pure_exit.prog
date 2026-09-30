@@ -1,0 +1,5 @@
+; E204 L4: an erased outer binder over a pure spine. ty-crosses reads the whole
+; spine, finds no `=>`, and `exit` is a crossing-wraps key. The loader refuses it.
+(import "prelude/prelude")
+(extern exit (-> (0 A (type 0)) (-> I64 A)))
+(def compile-main (=> Unit I64) (lam (u) 0))

@@ -16,6 +16,7 @@
 (import "lowering/tal/bytes")           ; native-lib : the byte/string runtime routines
 (import "lowering/tal/sys-linkage")         ; E70: link-lib -- the wrap-* E51 wrappers + sys-lib crossings
 (import "lowering/x64/elf")                 ; elf-file : Bytes -> Bytes (+ pack-u16/u32/bcat/bslice)
+(import "lowering/tal/erase")               ; E204: prim2lib-table, the pure prims' native-lib targets
 
 ; E89: checked arena init. On mmap failure exits 1.
 ; scaffold/chirality/native.py `_entry_stub`. `e_entry` points HERE. It zeroes the
@@ -287,12 +288,68 @@
 ; here, and H7 above is what makes a profile-less program still not
 ; "everything permitted".
 
+; ---- E204: the pure library, closed at emit ---------------------------------
+; A pure prim erases to a call into native-lib (prim2lib-table), and a pure
+; extern reaches the same routines. So native-lib must reach no crossing: no
+; routine in it holds a ti-sys, and no ti-call in it names a routine outside
+; it; every prim2lib-table target is a member. The arena growth that ti-bnew
+; and ti-cona reach is substrate, not a crossing (see H8's scope above), and is
+; not walked. Read-only: this check refuses and adds nothing to the image.
+; Independent of the syscall registry, which is swappable data that ck-tiprog
+; keys by name.
+(declare plib-names (-> (List TIFn) (List Str)))
+(declare plib-instr (-> (List Str) Str TInstr (Maybe Str)))
+(declare plib-code (-> (List Str) Str TCode (Maybe Str)))
+(declare plib-branches (-> (List Str) Str (List (Pair (Pair I64 (List I64)) TCode)) (Maybe Str)))
+(declare plib-fns (-> (List Str) (List TIFn) (Maybe Str)))
+(declare plib-targets (-> (List Str) (List (Pair Str Str)) (Maybe Str)))
+(declare pure-lib-offender (-> (List TIFn) (List (Pair Str Str)) (Maybe Str)))
+(def plib-names (lam (fs)
+  (case fs (nil nil) ((cons f r) (cons (tifn-nm f) (plib-names r))))))
+(def plib-instr (lam (mem fn i)
+  (case i
+    ((ti-sys d nr a) (some (str-cat fn " holds ti-sys")))
+    ((ti-call d f a)
+      (case (names-mem mem f)
+        (true  (none))
+        (false (some (str-cat fn (str-cat " calls " (str-cat f " outside native-lib")))))))
+    (_ (none)))))
+(def plib-code (lam (mem fn c)
+  (case c
+    ((t-seq i rest) (case (plib-instr mem fn i)
+      ((some m) (some m))
+      (none     (plib-code mem fn rest))))
+    ((ti-ret s) (none))
+    ((ti-tcase s bx brs dflt)
+      (case (plib-branches mem fn brs)
+        ((some m) (some m))
+        (none (case dflt (none (none)) ((some d) (plib-code mem fn d)))))))))
+(def plib-branches (lam (mem fn brs)
+  (case brs (nil (none)) ((cons b r) (case b ((pair hd code)
+    (case (plib-code mem fn code) ((some m) (some m)) (none (plib-branches mem fn r)))))))))
+(def plib-fns (lam (mem fs)
+  (case fs (nil (none)) ((cons f r) (case f ((ti-fn nm np nr code)
+    (case (plib-code mem nm code) ((some m) (some m)) (none (plib-fns mem r)))))))))
+(def plib-targets (lam (mem t)
+  (case t (nil (none)) ((cons p r) (case p ((pair k v)
+    (case (names-mem mem v)
+      (true  (plib-targets mem r))
+      (false (some (str-cat "prim " (str-cat k (str-cat " routes to " (str-cat v " outside native-lib")))))))))))))
+(def pure-lib-offender (lam (lib t)
+  (let (mem (plib-names lib))
+    (case (plib-fns mem lib)
+      ((some m) (some m))
+      (none     (plib-targets mem t))))))
+
 ; emit-elf-m: THE emit entry, manifest-aware. `emit-elf` below is the
 ; manifest-free face (an unprofiled program) the older callers still use.
 (def emit-elf-m (=> (List NFn) (List Str) Str (Maybe (List Str)) ElfR)
   (lam (nfns lits entry ports)
     (let (obj (reify-all nfns))
     (let (image (app-tfn native-lib (app-tfn link-lib obj)))
+    (case (pure-lib-offender native-lib prim2lib-table)
+      ((some m) (elf-err (str-cat "E204 pure library REFUSED emit: " m)))
+      (none
     (case (ck-tiprog linux-syscalls image)
       ((sbad m) (elf-err (str-cat "E76 chokepoint REFUSED emit: " m)))
       ((sok)
@@ -320,7 +377,7 @@
                       ((some he)
                         (case (offs-lookup offs "heapreserve")
                           (none    (elf-err "no heapreserve cell in emitted offsets"))
-                          ((some hr) (elf-ok (assemble-elf code off hp hb he hr))))))))))))))))))))))))
+                          ((some hr) (elf-ok (assemble-elf code off hp hb he hr))))))))))))))))))))))))))
 
 ; the manifest-free face: a caller with no Sig in hand (the legacy 3-RT shuttle,
 ; and any embedder that only has NFns) emits under H7 alone -- no profile to

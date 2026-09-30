@@ -12,6 +12,7 @@
 (import "typing/kernel")              ; Term / Sig / infer / check / eval-term / i->qty
 (import "prelude/list")
 (import "typing/diag")                 ; E157: Reason -- ld-err/bad! carry a VALUE, not a sentence
+(import "lowering/tal/crossing-wraps") ; E204: the crossing registry, read by load-extern-honest
 
 ; ---- Core -> the shared kernel Term (decision #1: bridge at install) ----------
 ; Near-1:1 (Core mirrors terms.py). Drops the surface-only binder NAMES (Term is
@@ -454,6 +455,20 @@
 ; SCOPE: this is the TYPE-LEVEL discipline. At rung 1 an Fd is a raw integer at
 ; runtime, and this adds no machine authority over it.
 (declare load-extern-linear (-> Sig Str Term LoadR))
+; E204 -- extern honesty. An extern whose name is a crossing-wraps key routes
+; to a crossing at emit: the erased call becomes the wrap, and the wrap holds a
+; ti-sys. Declared with a pure `->` spine it would let a `->` def perform that
+; crossing unseen. So a spine that never crosses (ty-crosses false) and names a
+; crossing-wraps key is refused. A `=>` spine passes to load-extern-linear.
+(declare load-extern-honest (-> Sig Str Term LoadR))
+(def load-extern-honest
+  (lam (s name tyt)
+    (case (ty-crosses tyt)
+      (true  (load-extern-linear s name tyt))
+      (false
+        (case (cw-lookup crossing-wraps name)
+          (none     (load-extern-linear s name tyt))
+          ((some w) (ld-err (r-judged (subj-extern name) (jg-extern-pure-crossing)))))))))
 (def load-extern (-> Sig Str Core LoadR)
   (lam (s name tyc)
     (case (sig-prim-ty s name)
@@ -464,7 +479,7 @@
             ((tc-err m) (ld-err m))
             ((tc-ok tty tu)
               (case tty
-                ((v-type l) (load-extern-linear s name tyt))
+                ((v-type l) (load-extern-honest s name tyt))
                 (_ (ld-err (r-judged (subj-extern name) (jg-extern-nontype))))))))))))
 (def load-extern-linear
   (lam (s name tyt)

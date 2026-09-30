@@ -382,6 +382,12 @@ run_phase 33 "the coverage composite (E200 bover)"               span-over.sh
 # rows under it, pinning each one's full red set.
 run_phase 36 "the membrane refused at the call (E171)"          membrane.sh
 
+# ---- Phase 37: extern honesty, load and emit (E204) ---------------------------
+# Three poison compilers on the base run, two mutants, and three poison builds
+# in each mutant leg: eleven compiler generations, each a tree copy, a blob
+# resolve and a compile.
+run_phase 37 "extern honesty, load and emit (E204)"   extern-honesty.sh
+
 # ---- registration: the witness for every dispatch line above ----------------
 # not-a-phase: this file IS the dispatch table; the block below invokes its witness.
 #

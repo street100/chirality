@@ -127,8 +127,10 @@ mut_sub() {
 mutant_build() {
   local label="$1" rel="$2" want="$3" old="$4" new="$5"
   local tree="$MUT_WORK/tree-$label" cc="$MUT_WORK/$label.cc"
+  # E204: CHIRALITY_MUTANT_SRC, read per call, names the tree to poison.
+  local src="${CHIRALITY_MUTANT_SRC:-$MUT_REPO}"
   rm -rf "$tree"; mkdir -p "$tree"
-  cp -a "$MUT_REPO/lib" "$MUT_REPO/prog" "$MUT_REPO/bin" "$tree/" 2>/dev/null \
+  cp -a "$src/lib" "$src/prog" "$src/bin" "$tree/" 2>/dev/null \
     || { echo "FAIL:copy"; return; }
   local f="$tree/$rel"
   [ -f "$f" ] || { echo "FAIL:no-such-file($rel)"; return; }

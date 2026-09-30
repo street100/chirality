@@ -1,0 +1,6 @@
+; E204 L1: a crossing-wraps key declared with a pure `->` spine. Before E204
+; this ran and printed `crossed` from a `->` def. The loader refuses it.
+(import "prelude/prelude")
+(extern print (-> Str Unit))
+(def f (-> I64 I64) (lam (n) (let (u (print "crossed")) n)))
+(def compile-main (=> Unit I64) (lam (u) (f 7)))
