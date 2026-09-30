@@ -4,11 +4,12 @@ The relay for the key-stall design, opened 2026-09-30 from a session with the
 author. It holds the author's rulings verbatim, what was proposed and rejected
 with the reason, and the adversary list the piece designs are checked against.
 The pieces are designed one file each, in order: the lock, then the key, then
-the stall.
+the stall. Each is worked through with the author in session and written as it
+settles. A piece design is not dispatched.
 
 | piece | file | state |
 |---|---|---|
-| lock | `.planning/KEY-STALL-LOCK.md` | dispatched 2026-09-30 |
+| lock | `.planning/KEY-STALL-LOCK.md` | in discussion with the author |
 | key | `.planning/KEY-STALL-KEY.md` | after the lock |
 | stall | `.planning/KEY-STALL-STALL.md` | after the key |
 
