@@ -170,7 +170,8 @@ this stage. Two shapes are real; a third fell at step 1.
   constant time. `Bytes` reads by index, and every write returns a fresh copy
   (`lib/lowering/tal/bytes.chiral:603-610`), so a table filled one id at a time
   costs a copy per id and holds no `TalSig`. The in-place indexed write FD-57
-  section 5 names is `memory-discipline/M4`, open and unbuilt. So the bound
+  section 5 names is `memory-discipline/M8`, the linear indexed buffer, open and
+  unbuilt, rostered 2026-09-29 after the author's ruling on this row's mint. So the bound
   stays `O(log n)` and Shape A's map conversion sits inside Shape B with a
   different key type.
 - **What it buys over A:** each lookup after load compares ids where A runs

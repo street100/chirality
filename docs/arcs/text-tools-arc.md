@@ -152,8 +152,8 @@ candidate, O(m·L) per candidate, which is fzf's default `v2`. Where unit-cost
 edit distance suffices, Myers's bit-vector computes the same matrix a word at a
 time, O(⌈m/w⌉·L), at 17 word operations per byte once a 256-entry table is built
 per query. Both need a table written in place: `FD-56` item (k), the in-place
-indexed write on an `I64` buffer under a linear binder, which no roster row
-holds today and whose nearest row is `memory-discipline/M4`'s byte builder.
+indexed write on an `I64` buffer under a linear binder, held since 2026-09-29 by
+`memory-discipline/M8`, the linear indexed buffer.
 
 ### `text-tools/P3` — edit script over two sequences · element `unminted`
 
@@ -238,7 +238,7 @@ matched it. Evidence: [[records/findings]] `FD-56` §1 to §6.
   call goes, and nothing in it is replaced by the table.
 - **Blocking conditions.** An in-place indexed write on an `I64` buffer under a
   linear binder, and an indexed read that lowers to one load: `FD-56` items (k)
-  and (i), held by no roster row today.
+  and (i), held by `memory-discipline/M8` since 2026-09-29.
 - **The prefilter.** A required literal extracted from each pattern is
   searched ahead of the automaton, which confirms each candidate. Every one of
   `prose-lint`'s eight patterns carries one (`prog/prose-lint.prog:75-146`,
@@ -463,7 +463,7 @@ Order is forced by dependency, not preference.
 1. **P2 score**: small, and turns prefix completion into ranked select. ⚑ This
    item read *"unblocked by anything"*. Its dynamic program and its bit-vector
    table each need an in-place indexed write on an `I64` buffer (`FD-56` item
-   (k)), which no roster row holds. Corrected 2026-09-29.
+   (k)), held by `memory-discipline/M8`. Corrected 2026-09-29.
 2. **P1 / E173**: **slice 1 is built**, 2026-09-01. The open fork this list used
    to carry is closed by the SPEC: a pattern is a runtime value, because a pattern
    in the corpus is built from `argv` and staticness buys no totality. What

@@ -1,9 +1,9 @@
 ---
 node: arc-memory-discipline
 layer: navigation
-related: [arcs/README, goals/local-ai, goals/self-hosting, benchmarks/text-matcher-allocation, records/author-calls, status-ledger, index]
+related: [arcs/README, goals/local-ai, goals/self-hosting, benchmarks/text-matcher-allocation, records/author-calls, records/memory-discipline, arcs/text-tools-arc, arcs/parts/lowering-and-emit-LE25, status-ledger, index]
 status: current
-updated: 2026-09-18
+updated: 2026-09-29
 ---
 
 # Arc: the value-cell heap's discipline
@@ -14,6 +14,7 @@ updated: 2026-09-18
 - reserved element block: `E81-E85`, already minted. Bands may overlap and are
   advisory ([[decisions/decision-lane-split]], ruled 2026-09-06)
 - build-state authority: [[status-ledger]]
+- checklist: [[records/memory-discipline]], prefix `MD`, opened 2026-09-29.
 
 Opened 2026-09-06. The design has existed since 2026-08-05 in
 `.planning/MEMORY-DISCIPLINE-ARC.md`, five slices deep with `E81` built, and it
@@ -39,6 +40,8 @@ run survives it.
 | the byte-`Pool` discipline it parallels | `lib/memory/mem-linear.chiral`, `(memory linear\|region)` | SEEDED, zero importers. ⚑ **This row read `E22` at IMPLEMENTED and §2 above said the discipline *"was built as `E22`"*, both corrected 2026-09-18.** `docs/elements/ledger.md:164` reads `design` and `docs/elements/catalog.md:128` reads *"bump arena only; region *types* deferred"*, so `E22` is the allocator, region types and GC-outside-TCB beyond the bump arena and carries neither profile clause. The clauses' home module has zero importers |
 | `mem-region`, the only reclamation discipline in the tree | `lib/memory/` | SEEDED, zero importers |
 | the `Mach` record-of-functions precedent the seam copies | `mach-x64`, `mach-listing` | ENFORCED |
+| a linear write in place, over bytes only | `pool-write` at `lib/ports/pool.port:27`, and its checked form `mem-put-checked` at `lib/memory/mem-linear.chiral:26-28`. The pool is written in place, but each write takes a `Bytes` cell and each `pool-read` (`lib/ports/pool.port:30`) returns a fresh one, and the pool lives in the byte heap, so it holds no `I64` word and no boxed value | SEEDED |
+| a write into a value-cell buffer | `bput-u8` at `lib/lowering/tal/bytes.chiral:603-610` returns a fresh `Bytes`, so every indexed write copies the whole buffer | none in place |
 
 Four of the six modules under `lib/memory/` have zero importers, `mem-region`
 included.
@@ -70,6 +73,12 @@ proves the first was right.
    importers today.
 4. **One `alloc-region` runs on every backend.** The discipline is
    ISA-agnostic, and ISA-specific allocation assembly stays in `Mach` primitives.
+5. **A buffer is written in place.** One mechanism gives an indexed write that
+   mutates in place and an indexed read that lowers to one load, under a linear
+   binder, for every element type a consumer names: a byte for `M4`'s emit
+   buffer, an `I64` word for [[arcs/text-tools-arc]] P2, P3 and P5, and a boxed
+   value for `lowering-and-emit/LE25`'s id-keyed tables. Observed as a write
+   whose cost does not grow with the buffer's length.
 
 ## Roster
 
@@ -78,19 +87,22 @@ proves the first was right.
 | `memory-discipline/M1` | the `Alloc` policy seam and `alloc-bump`: the discipline dimension over the `Mach` seam, threaded orthogonally so a profile selects ISA and discipline independently | seam | primitive | new | 2 | built | `E81` |
 | `memory-discipline/M2` | `alloc-region`: phases run in regions reset at their boundaries, so peak becomes the max-phase live set | discipline | law | new | 1 | open | `E82` |
 | `memory-discipline/M3` | `alloc-reuse`, FBIP: a linear drop becomes an in-place reuse, and the map churn goes | discipline | law | new | 1 | open | `E83` |
-| `memory-discipline/M4` | `alloc-dps`: a destination-passing emit buffer, and `nb-bcat`'s quadratic goes | discipline | law | new | 1 | open | `E84` |
+| `memory-discipline/M4` | `alloc-dps`: a destination-passing emit buffer written through `M8`'s byte buffer, and `nb-bcat`'s quadratic goes | discipline | law | new | 1 | open | `E84` |
 | `memory-discipline/M5` | compose and grade: per-phase and per-runtime profile composition, with an optional static size bound from `E38` | compose | law | connect | 2 | open | `E85` |
 | `memory-discipline/M6` | `mem-region` is reached, or it moves to SEEDED with the reason. It is the only reclamation discipline in the tree and nothing imports it | discipline | tool | connect | 3 | open | `unminted` |
 | `memory-discipline/M7` | one `alloc-region` runs on every backend, with ISA-specific allocation assembly left in `Mach` primitives | discipline | law | new | 4 | open | `unminted` |
+| `memory-discipline/M8` | the linear indexed buffer: one mechanism, an in-place indexed write and a one-load indexed read under a linear binder, carrying bytes, `I64` words and boxed values, with the index bounded the way `mem-put-checked` bounds an offset | seam | primitive | new | 5 | open | `unminted` |
 
 ### Coverage
 
 Every requirement is served: 1 by M2, M3 and M4; 2 by M1 and M5; 3 by M6; 4 by
-M7. Every row serves one. `M5` and `M6` are `connect`: `E38`'s grading and
+M7; 5 by M8. Every row serves one. `M4` builds on `M8`, and so do
+[[arcs/text-tools-arc]] P2, P3 and P5 and `lowering-and-emit/LE25`. `M5` and `M6` are `connect`: `E38`'s grading and
 `mem-region` are built and nothing reaches either.
 
 ## Resume state
 
+⚑ **2026-09-29: `M8` joins the roster.** The in-place indexed write had no row, and `M4`'s element `E84` names only the emit buffer. The author ruled on 2026-09-29 that the write is built properly and `LE25` over it ([[records/author-calls]]). **Next: `M8`, `element-design`.** `LE25`'s mint waits on that design. `MD-01` in [[records/memory-discipline]] holds the reasoning.
 
 ⚑ **2026-09-06: opened.** The design was five slices deep in `.planning/MEMORY-DISCIPLINE-ARC.md` since 2026-08-05 with `E81` built and no tracked arc. **Next: `M2`, `alloc-region`**, the slice the dependency graph puts first above the seam.
 `E81` is built at `d6ad519` and `M2` is next, the slice the dependency graph
