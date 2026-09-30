@@ -29,7 +29,7 @@
 (def endpoint Str "http://100.64.0.5:11434")
 (def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
 
-(declare show-chunks (-> (List Chunk) I64 Unit))
+(declare show-chunks (=> (List Chunk) I64 Unit))
 (def show-chunks
   (lam (cs i)
     (case cs

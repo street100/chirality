@@ -15,7 +15,7 @@
 (import "ports/ports")
 ; the EXACT malformed multi-line JSON shape the 0.5b emitted (missing brace, code fences)
 (def malformed Str "```json\n[\n{\"kind\": \"image-file\", \"target\": \"prior_pass_flags\"},\n{\"kind\": \"sentence-group\", \"target\": \"2019 benchmark logged a 37 percent throughput gain (table 4, measured).\"},\n{\"kind\": \"reference\", \"target\": \"CVE patched per the published changelog\"},\n{\"kind\": \"sentence-group\", \"target\": \"users likely prefer the cleaner API\"}\n]\n```")
-(declare dump (-> (List Perspective) I64))
+(declare dump (=> (List Perspective) I64))
 (def dump (lam (ps) (case ps (nil 0) ((cons p rest) (do (put (str-cat "  ITEM: <<" (str-cat (persp-question p) ">>\n"))) (dump rest))))))
 (declare pcount (-> (List Perspective) I64))
 (def pcount (lam (ps) (case ps (nil 0) ((cons p rest) (+ 1 (pcount rest))))))

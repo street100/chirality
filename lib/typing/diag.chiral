@@ -108,6 +108,7 @@
   (jg-not-a-ctor)         (jg-ctor-other-data)  (jg-ctor-nondata)
   (jg-ctor-infer-params)  (jg-def-ty-nontype)   (jg-declare-ty-nontype)
   (jg-no-prior-declare)   (jg-extern-nontype)   (jg-dparam-nontype)
+  (jg-pure-crossing)
   (jg-not-positive)       (jg-linear-field-decl) (jg-field-nontype))
 
 ; ---- a DECLARATION, as the loader knows one ---------------------------------
@@ -465,6 +466,7 @@
         ((jg-dparam-nontype)    "data parameter is not a type")
         ((jg-not-positive)      (str-cat "not strictly positive: " n))
         ((jg-linear-field-decl) (str-cat "linear field declared non-1: " n))
+        ((jg-pure-crossing)     "effectful application at a pure seat (use => not ->)")
         ((jg-field-nontype)     "field type is not a type")))))
 
 ; WHICH noun the two counts are counting, read off the subject instead of off a

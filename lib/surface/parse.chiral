@@ -804,7 +804,7 @@
                                         (case (elab env nil tysurf) ((p-err m) (mf-bad (mf-elab m)))
                                           ((p-ok tycore)
                                             (let (tyt (core->term tycore))
-                                              (case (infer sig (ctx-nil) tyt)
+                                              (case (infer sig (ctx-nil) seat-none tyt)
                                                 ((tc-err m) (mf-bad (mf-elab (dg-msg m))))
                                                 ((tc-ok tty tu)
                                                   (case tty

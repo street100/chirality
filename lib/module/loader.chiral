@@ -388,14 +388,14 @@
 (def load-def (-> Sig Str Core Core LoadR)
   (lam (s name tyc bodyc)
     (let (tyt (core->term tyc))
-      (case (infer s (ctx-nil) tyt)
+      (case (infer s (ctx-nil) seat-none tyt)
         ((tc-err m) (ld-err m))
         ((tc-ok tty tu)
           (case tty
             ((v-type l)
               (let (bodyt (core->term bodyc))
                 (let (s2 (sig-add-global s name tyt bodyt))
-                  (case (check s2 (ctx-nil) bodyt (eval-term nil tyt))
+                  (case (check s2 (ctx-nil) seat-none bodyt (eval-term nil tyt))
                     ((ck-err m) (ld-err m))
                     ((ck-ok u)  (ld-ok s2))))))
             (_ (ld-err (r-judged (subj-def name) (jg-def-ty-nontype))))))))))
@@ -416,7 +416,7 @@
 (def load-declare (-> Sig Str Core LoadR)
   (lam (s name tyc)
     (let (tyt (core->term tyc))
-      (case (infer s (ctx-nil) tyt)
+      (case (infer s (ctx-nil) seat-none tyt)
         ((tc-err m) (ld-err m))
         ((tc-ok tty tu)
           (case tty
@@ -434,7 +434,7 @@
       (none (ld-err (r-judged (subj-def name) (jg-no-prior-declare))))
       ((some tyt)
         (let (bodyt (core->term bodyc))
-          (case (check s (ctx-nil) bodyt (eval-term nil tyt))
+          (case (check s (ctx-nil) seat-none bodyt (eval-term nil tyt))
             ((ck-err m) (ld-err m))
             ((ck-ok u)  (ld-ok (sig-set-global-body s name bodyt)))))))))
 
@@ -460,7 +460,7 @@
       ((some x) (ld-err (r-redeclared (subj-extern name) (dc-ty x) (dc-ty (core->term tyc)))))
       (none
         (let (tyt (core->term tyc))
-          (case (infer s (ctx-nil) tyt)
+          (case (infer s (ctx-nil) seat-none tyt)
             ((tc-err m) (ld-err m))
             ((tc-ok tty tu)
               (case tty
@@ -505,7 +505,7 @@
     (case params
       (nil (ok!))
       ((cons pk rest)
-        (case (infer s ctx pk)
+        (case (infer s ctx seat-none pk)
           ((tc-err m) (bad! m))
           ((tc-ok pty pu) (case pty
             ((v-type l) (check-dparams s (ctx-bind (q0) (eval-term (env-of ctx) pk) ctx) rest))
@@ -516,7 +516,7 @@
     (case fields
       (nil (ok!))
       ((cons f rest) (case f ((field q fname fty)
-        (case (infer s pctx fty)
+        (case (infer s pctx seat-none fty)
           ((tc-err m) (bad! m))
           ((tc-ok fty-ty fu) (case fty-ty
             ((v-type l)

@@ -377,6 +377,11 @@ run_phase 32 "the widening multiply, both names (E189)"          mul-widen.sh
 # binary is shipped. That is four generations at about 40 s each.
 run_phase 33 "the coverage composite (E200 bover)"               span-over.sh
 
+# ---- Phase 36: the membrane refused at the call (E171) -----------------------
+# Its four mutants each rebuild a compiler from a scratch lib/ and re-run the
+# rows under it, pinning each one's full red set.
+run_phase 36 "the membrane refused at the call (E171)"          membrane.sh
+
 # ---- registration: the witness for every dispatch line above ----------------
 # not-a-phase: this file IS the dispatch table; the block below invokes its witness.
 #

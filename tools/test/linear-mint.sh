@@ -185,10 +185,13 @@ refuse "the leak: omega let, never burned" \
   "${CAP}(extern mint (=> I64 Cap))
 (def compile-main (=> I64 I64) (lam (n) (let (c (mint 9)) 42)))"
 
+# the value is a variable, so the erased seat is pure and the membrane (E171
+# rule 2) stays silent; the binder rule is the only one left to report.
 refuse "let at ZERO -- erased without ever being discharged" \
   "let binds a linear value at quantity 0" \
   "${CAP}(extern mint (=> I64 Cap))
-(def compile-main (=> I64 I64) (lam (n) (let ((0 c (mint 9))) 42)))"
+(def f (=> (1 c Cap) I64) (lam (c) (let ((0 d c)) 42)))
+(def compile-main (=> I64 I64) (lam (n) (f (mint 9))))"
 
 admit "let at 1, burned once -- the correct lifecycle" \
   "${CAP}(extern mint (=> I64 Cap))

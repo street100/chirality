@@ -52,7 +52,7 @@ E11's classifier joined the closure*).
 | class | how it gets said | state | element |
 |---|---|---|---|
 | calling a syscall the program never declared | port registries plus the emit chokepoint | refuses. `sys-check.chiral` ships and `ck-tiprog` runs at `compile-emit.chiral:296` | E76 |
-| IO from something that reads as pure | pure `->` against process `=>` | **unwired.** `typing/effects` and `typing/row-infer` are not in the compiler binary, and `Judg` has no effect constructor | E12, E171 |
+| IO from something that reads as pure | pure `->` against process `=>` | **wired at the call, 2026-09-30.** E171 refuses a `->` body applying a `=>` callee (`jg-pure-crossing`), phase 36. The effect row beyond the one bit is `enforcement/N25` | E12, E171 |
 | a dependency exceeding its grant | capability types, module datasheet fencing | partial | E161 |
 | secret leaving by the wrong exit | linear `Secret` with one guarded exit | type-checks. No entry in `crossing-wraps`, so nothing executes it | |
 | ambient authority through globals or environment | | none | |

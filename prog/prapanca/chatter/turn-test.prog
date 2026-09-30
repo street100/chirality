@@ -444,7 +444,7 @@
 ; code-decided axis. A plain factual question still gets `research`; a message carrying a
 ; MULTIPLICITY marker gets `deep-research`. Both decisions are markers, not judgements, and both
 ; are mesh-free — assign-plan only dials for the residue rung.
-(def depth-ok (-> Unit Bool)
+(def depth-ok (=> Unit Bool)
   (lam (_)
     (and (wants-depth? "Tell me about some different specific ways that type theory developed")
     (and (wants-depth? "compare and contrast the two designs")

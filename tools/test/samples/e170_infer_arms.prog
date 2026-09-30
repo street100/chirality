@@ -289,7 +289,7 @@
     (case ts
       (nil 0)
       ((cons t r)
-        (+ (case (infer ia-sig ia-ctx t)
+        (+ (case (infer ia-sig ia-ctx seat-none t)
              ((tc-err m) 0)
              ((tc-ok ty u) (case (<=i 4 (ia-tried-row ty ia-wants)) (true 0) (false 1))))
            (ia-vacuous r))))))
@@ -306,10 +306,10 @@
 ; same usage vector. `t-lam` synthesizes nothing and is judged by D.
 (def ia-coheres? (-> Term Bool)
   (lam (t)
-    (case (infer ia-sig ia-ctx t)
+    (case (infer ia-sig ia-ctx seat-none t)
       ((tc-err m) true)
       ((tc-ok ty u)
-        (case (check ia-sig ia-ctx t ty)
+        (case (check ia-sig ia-ctx seat-none t ty)
           ((ck-err m) false)
           ((ck-ok u2) (ia-useq u u2)))))))
 
@@ -326,7 +326,7 @@
       ((cons w r)
         (+ (case (ia-vsame? ty w)
              (true 0)
-             (false (case (check ia-sig ia-ctx t w) ((ck-ok u) 1) ((ck-err m) 0))))
+             (false (case (check ia-sig ia-ctx seat-none t w) ((ck-ok u) 1) ((ck-err m) 0))))
            (ia-neg-row t ty r))))))
 
 (declare ia-neg-count (-> (List Term) I64))
@@ -335,7 +335,7 @@
     (case ts
       (nil 0)
       ((cons t r)
-        (+ (case (infer ia-sig ia-ctx t)
+        (+ (case (infer ia-sig ia-ctx seat-none t)
              ((tc-err m) 0)
              ((tc-ok ty u) (ia-neg-row t ty ia-wants)))
            (ia-neg-count r))))))
@@ -352,14 +352,14 @@
   (lam (ts)
     (case ts
       (nil 0)
-      ((cons t r) (+ (case (infer ia-sig ia-ctx t) ((tc-err m) 1) ((tc-ok ty u) 0))
+      ((cons t r) (+ (case (infer ia-sig ia-ctx seat-none t) ((tc-err m) 1) ((tc-ok ty u) 0))
                      (ia-err-count r))))))
 (declare ia-err-tagsum (-> (List Term) I64))
 (def ia-err-tagsum
   (lam (ts)
     (case ts
       (nil 0)
-      ((cons t r) (+ (case (infer ia-sig ia-ctx t) ((tc-err m) (ia-tag t)) ((tc-ok ty u) 0))
+      ((cons t r) (+ (case (infer ia-sig ia-ctx seat-none t) ((tc-err m) (ia-tag t)) ((tc-ok ty u) 0))
                      (ia-err-tagsum r))))))
 
 (def ia-lam Term (t-lam (t-var 0)))
@@ -372,12 +372,12 @@
       ; and it is the lambda -- tag 3, decided by ia-tag and not by the message
       (+ (case (=i (ia-err-tagsum ia-arms) 3) (true 0) (false 1))
         ; the arm infer refuses is the arm check INTRODUCES, against a function
-        (+ (case (check ia-sig ia-ctx ia-lam ia-arrow-v) ((ck-ok u) 0) ((ck-err m) 1))
+        (+ (case (check ia-sig ia-ctx seat-none ia-lam ia-arrow-v) ((ck-ok u) 0) ((ck-err m) 1))
           ; and it is refused against a non-function -- the discrimination is
           ; what makes the acceptance mean something
-          (+ (case (check ia-sig ia-ctx ia-lam (v-primty "I64")) ((ck-ok u) 1) ((ck-err m) 0))
+          (+ (case (check ia-sig ia-ctx seat-none ia-lam (v-primty "I64")) ((ck-ok u) 1) ((ck-err m) 0))
             ; and `infer` still refuses it in the presence of that success
-            (case (infer ia-sig ia-ctx ia-lam) ((tc-err m) 0) ((tc-ok ty u) 1))))))))
+            (case (infer ia-sig ia-ctx seat-none ia-lam) ((tc-err m) 0) ((tc-ok ty u) 1))))))))
 
 ; ---- E: annotation transparency (infer-ann), generated ---------------------
 ; `the T t` synthesizes T whenever t does, for every arm of the sum: annotating a
@@ -385,10 +385,10 @@
 ; annotating it with a type it does not have is refused.
 (def ia-ann-ok? (-> Term Bool)
   (lam (t)
-    (case (infer ia-sig ia-ctx t)
+    (case (infer ia-sig ia-ctx seat-none t)
       ((tc-err m) true)
       ((tc-ok ty u)
-        (case (infer ia-sig ia-ctx (t-ann t (quote-val ia-lvl ty)))
+        (case (infer ia-sig ia-ctx seat-none (t-ann t (quote-val ia-lvl ty)))
           ((tc-err m2) false)
           ((tc-ok ty2 u2) (and (ia-vsame? ty ty2) (ia-useq u u2))))))))
 
@@ -400,7 +400,7 @@
       ((cons w r)
         (+ (case (ia-vsame? ty w)
              (true 0)
-             (false (case (infer ia-sig ia-ctx (t-ann t (quote-val ia-lvl w)))
+             (false (case (infer ia-sig ia-ctx seat-none (t-ann t (quote-val ia-lvl w)))
                       ((tc-ok ty2 u2) 1) ((tc-err m) 0))))
            (ia-annneg-row t ty r))))))
 
@@ -411,7 +411,7 @@
       (nil 0)
       ((cons t r)
         (+ (case (ia-ann-ok? t) (true 0) (false 1))
-           (+ (case (infer ia-sig ia-ctx t)
+           (+ (case (infer ia-sig ia-ctx seat-none t)
                 ((tc-err m) 0)
                 ((tc-ok ty u) (ia-annneg-row t ty ia-wants)))
               (ia-ann-fails r)))))))
@@ -428,10 +428,10 @@
 
 (def ia-app-ok? (-> Term Bool)
   (lam (t)
-    (case (infer ia-sig ia-ctx t)
+    (case (infer ia-sig ia-ctx seat-none t)
       ((tc-err m) true)
       ((tc-ok ty u)
-        (case (infer ia-sig ia-ctx (t-app (ia-id-at (quote-val ia-lvl ty)) t))
+        (case (infer ia-sig ia-ctx seat-none (t-app (ia-id-at (quote-val ia-lvl ty)) t))
           ((tc-err m2) false)
           ((tc-ok ty2 u2) (ia-vsame? ty ty2)))))))
 
@@ -443,7 +443,7 @@
       ((cons w r)
         (+ (case (ia-vsame? ty w)
              (true 0)
-             (false (case (infer ia-sig ia-ctx (t-app (ia-id-at (quote-val ia-lvl w)) t))
+             (false (case (infer ia-sig ia-ctx seat-none (t-app (ia-id-at (quote-val ia-lvl w)) t))
                       ((tc-ok ty2 u2) 1) ((tc-err m) 0))))
            (ia-appneg-row t ty r))))))
 
@@ -454,7 +454,7 @@
       (nil 0)
       ((cons t r)
         (+ (case (ia-app-ok? t) (true 0) (false 1))
-           (+ (case (infer ia-sig ia-ctx t)
+           (+ (case (infer ia-sig ia-ctx seat-none t)
                 ((tc-err m) 0)
                 ((tc-ok ty u) (ia-appneg-row t ty ia-wants)))
               (ia-app-fails r)))))))
@@ -476,17 +476,17 @@
 
 (def ia-pi-law? (-> Qty Seat Term Bool)
   (lam (q s a)
-    (case (infer ia-sig ia-ctx a)
+    (case (infer ia-sig ia-ctx seat-none a)
       ((tc-err m) false)
       ((tc-ok aty au)
-        (case (infer ia-sig ia-ctx (t-pi q s a a))
+        (case (infer ia-sig ia-ctx seat-none (t-pi q s a a))
           ((tc-err m2) false)
           ((tc-ok pty pu) (ia-vsame? aty pty)))))))
 
 (def ia-pi-neg? (-> Qty Seat Bool)
   (lam (q s)
-    (and (case (infer ia-sig ia-ctx (t-pi q s (t-lit-i 5) ia-i64)) ((tc-err m) true) ((tc-ok ty u) false))
-         (case (infer ia-sig ia-ctx (t-pi q s ia-i64 (t-lit-i 5))) ((tc-err m) true) ((tc-ok ty u) false)))))
+    (and (case (infer ia-sig ia-ctx seat-none (t-pi q s (t-lit-i 5) ia-i64)) ((tc-err m) true) ((tc-ok ty u) false))
+         (case (infer ia-sig ia-ctx seat-none (t-pi q s ia-i64 (t-lit-i 5))) ((tc-err m) true) ((tc-ok ty u) false)))))
 
 (declare ia-pi-row (-> Qty Seat (List Term) I64))
 (def ia-pi-row
@@ -613,10 +613,10 @@
 
 (def ia-subject? (-> Term Bool)
   (lam (t)
-    (case (infer ia-sig ia-ctx t)
+    (case (infer ia-sig ia-ctx seat-none t)
       ((tc-err m) true)
       ((tc-ok ty u)
-        (case (infer ia-sig ia-ctx (ia-nf t))
+        (case (infer ia-sig ia-ctx seat-none (ia-nf t))
           ((tc-err m2) false)
           ((tc-ok ty2 u2) (ia-vsame? ty ty2)))))))
 

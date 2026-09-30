@@ -530,7 +530,7 @@ rl="$(retired "$REPO/lib" | wc -l)"
 if [ "$rl" -eq 0 ]; then ok "neither retired Judg arm appears under lib/ or prog/"
 else bad "$rl surviving reference(s) to the two retired arms:"; retired "$REPO/lib" | sed 's/^/          /'; fi
 
-# ... and `Judg` reads 36 arms, counted out of the file.
+# ... and `Judg` reads 37 arms, counted out of the file.
 # ⚑ THE COUNT TAKES EVERY `(jg-` HEAD ON A LINE, ALL OF THEM.  Judg's arms run
 # three to a line, so doc.sh:298-307's paren-balanced walk is the device but its
 # one-arm-per-line `print` is not: a line count reads 13 and grades nothing.
@@ -545,8 +545,8 @@ judg_arms() {  # judg_arms FILE -> the number of Judg constructor heads
     }' "$1"
 }
 narm="$(judg_arms "$DIAG")"
-if [ "$narm" = "36" ]; then ok "Judg has exactly 36 arms (38 before E182, two retired)"
-else bad "Judg has $narm arms, wanted 36"; fi
+if [ "$narm" = "37" ]; then ok "Judg has exactly 37 arms (38 before E182, two retired; E171 added one)"
+else bad "Judg has $narm arms, wanted 37"; fi
 
 # (b) r-arity is CONSTRUCTED at exactly two sites -- the two live comparisons the
 # element repointed, and no invented third one.
@@ -560,7 +560,7 @@ else bad "r-arity is constructed at $ns site(s), wanted 2:"; sites "$REPO/lib" |
 
 # M7 -- PUT THE ARM BACK.  A scratch lib/ gets `${JG_TP}` restored to `Judg` and
 # check-tcon reverted to build it.  Both halves of G7 must see it: the arm count
-# reads 37 and r-arity's construction sites drop to one.  Without this row the
+# reads 38 and r-arity's construction sites drop to one.  Without this row the
 # scans pass on needles matching nothing anywhere, which is what they would do if
 # either name were merely renamed.
 if mutlib "M7 put-the-arm-back" lib/typing/diag.chiral \
@@ -568,8 +568,8 @@ if mutlib "M7 put-the-arm-back" lib/typing/diag.chiral \
    && mutlib_also "M7 put-the-arm-back" lib/typing/kernel.chiral \
      "s|${AR}(subj-data dn) (llen Term (decl-params decl)) (llen Term args))|(r-judged (subj-data dn) (${JG_TP}))|"; then
   m7r="$(retired "$MUTLIB" | wc -l)"; m7a="$(judg_arms "$MUTLIB/typing/diag.chiral")"; m7s="$(sites "$MUTLIB" | wc -l)"
-  if [ "$m7r" -gt 0 ] && [ "$m7a" = "37" ] && [ "$m7s" -eq 1 ]; then
-    ok "M7 put-the-arm-back -- both scans move: $m7r surviving reference(s), Judg 37, r-arity at 1 site"
+  if [ "$m7r" -gt 0 ] && [ "$m7a" = "38" ] && [ "$m7s" -eq 1 ]; then
+    ok "M7 put-the-arm-back -- both scans move: $m7r surviving reference(s), Judg 38, r-arity at 1 site"
   else
     bad "M7 put-the-arm-back -- the scans did not move: $m7r reference(s), Judg $m7a, r-arity at $m7s site(s)"
   fi

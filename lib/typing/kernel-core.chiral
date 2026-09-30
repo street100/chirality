@@ -55,6 +55,6 @@
 (def recheck (lam (sp c)
   (case (=i (cert-cver c) (spec-cver sp))
     (false (v-wrong-carrier (spec-cver sp) (cert-cver c)))
-    (true (case (infer (mk-sig nil nil nil nil nil nil nil nil nil) (ctx-nil) (cert-tm c))  ; closed-core cert: empty Sig
+    (true (case (infer (mk-sig nil nil nil nil nil nil nil nil nil) (ctx-nil) seat-none (cert-tm c))  ; closed-core cert: empty Sig
       ((tc-ok ty use) (v-accepted))
       ((tc-err msg)   (v-rejected (dg-msg msg) "")))))))

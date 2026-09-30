@@ -10,9 +10,9 @@
 ; the data layer can reference Term without a cycle -- E04 decision #7); this file
 ; OWNS the Value ADT + the judgment. Convergence seams:
 ;   q : Qty (E5, imported here -- E3's I64 placeholder converged to Qty at E4);
-;   Seat concrete 2-point (E12/E39 supply the rich row-bearing Seat, compared by
-;   seat= only); the effect-row allow_eff threading + membrane seams
-;   (on_apply/on_binder/erased_allow) -> E12; subtype's Pi row-subsumption ->
+;   Seat concrete 2-point, threaded through the judgment as the ambient `amb`
+;   (E171): the refusal is in infer-app2, rule 3 (on-binder) is E159's, and the
+;   row over Seat is enforcement/N25's; subtype's Pi row-subsumption ->
 ;   E39; globals/prims, data values, let, literals -> E6/full-ADT assembly.
 (import "typing/qtt")                 ; brings prelude + Qty (q0/q1/qw) + uzero/uadd/uscale/qfits
 (import "typing/refine")              ; Constraint + entails/is-empty/satisfies/c-* (VRefine, E04 #6)
@@ -431,24 +431,24 @@
 (declare quote-neut  (-> I64 Neut (List Value) Term))
 (declare normalize   (-> Term Term))
 (declare spine->apps (-> Term I64 (List Value) Term))
-(declare infer       (-> Sig Ctx Term TcR))
-(declare check       (-> Sig Ctx Term Value CkR))
-(declare check-body  (-> Sig Ctx Term Value CkR))
-(declare subsume     (-> Sig Ctx Term Value CkR))
+(declare infer       (-> Sig Ctx Seat Term TcR))
+(declare check       (-> Sig Ctx Seat Term Value CkR))
+(declare check-body  (-> Sig Ctx Seat Term Value CkR))
+(declare subsume     (-> Sig Ctx Seat Term Value CkR))
 (declare subtype     (-> I64 Value Value Bool))
 (declare infer-pi    (-> Sig Ctx Qty Term Term TcR))
 (declare infer-pi2   (-> Sig Ctx I64 Term Term TcR))
-(declare infer-app   (-> Sig Ctx Term Term TcR))
-(declare infer-app2  (-> Sig Ctx Term Value (List Qty) TcR))
+(declare infer-app   (-> Sig Ctx Seat Term Term TcR))
+(declare infer-app2  (-> Sig Ctx Seat Term Value (List Qty) TcR))
 (declare infer-pi-lin (-> Sig Ctx Qty I64 Term Term TcR))
-(declare infer-let   (-> Sig Ctx Qty Term Term TcR))
-(declare infer-let2  (-> Sig Ctx Qty Term Term Value (List Qty) TcR))
-(declare check-let   (-> Sig Ctx Qty Term Term Value CkR))
-(declare check-let2  (-> Sig Ctx Qty Term Term Value Value (List Qty) CkR))
-(declare infer-let3  (-> Sig Ctx Qty Term Term Value (List Qty) TcR))
-(declare check-let3  (-> Sig Ctx Qty Term Term Value Value (List Qty) CkR))
-(declare infer-ann   (-> Sig Ctx Term Term TcR))
-(declare infer-ann2  (-> Sig Ctx Term Term Value TcR))
+(declare infer-let   (-> Sig Ctx Seat Qty Term Term TcR))
+(declare infer-let2  (-> Sig Ctx Seat Qty Term Term Value (List Qty) TcR))
+(declare check-let   (-> Sig Ctx Seat Qty Term Term Value CkR))
+(declare check-let2  (-> Sig Ctx Seat Qty Term Term Value Value (List Qty) CkR))
+(declare infer-let3  (-> Sig Ctx Seat Qty Term Term Value (List Qty) TcR))
+(declare check-let3  (-> Sig Ctx Seat Qty Term Term Value Value (List Qty) CkR))
+(declare infer-ann   (-> Sig Ctx Seat Term Term TcR))
+(declare infer-ann2  (-> Sig Ctx Seat Term Term Value TcR))
 (declare infer-global (-> Sig Ctx Str TcR))
 (declare infer-prim   (-> Sig Ctx Str TcR))
 ; ---- E04 slice 4b-i: the con/tcon typing arms + helpers ----------------------
@@ -463,22 +463,22 @@
 (declare check-tcon      (-> Sig Ctx Str (List Term) (Maybe Value) TcR))
 (declare check-tparams   (-> Sig Ctx (List Term) (List Term) (List Value) (Maybe Value) Str TcR))
 (declare finish-tcon     (-> Sig Ctx (Maybe Value) Str TcR))
-(declare check-con       (-> Sig Ctx Str Str (List Term) (Maybe Value) TcR))
-(declare con-with-targs  (-> Sig Ctx Str Str (List Term) (Maybe Value) DataDecl (List Field) TcR))
-(declare con-check       (-> Sig Ctx Str Str (List Term) (List Value) (List Field) TcR))
-(declare check-con-args  (-> Sig Ctx (List Term) (List (Pair Qty Value)) (List Qty) UR))
-(declare solve-con-params (-> Sig Ctx I64 (List Field) (List Term) (Maybe (List Value))))
-(declare solve-slots     (-> Sig Ctx I64 (List Field) (List Term) (List (Maybe Value)) (List (Maybe Value))))
+(declare check-con       (-> Sig Ctx Seat Str Str (List Term) (Maybe Value) TcR))
+(declare con-with-targs  (-> Sig Ctx Seat Str Str (List Term) (Maybe Value) DataDecl (List Field) TcR))
+(declare con-check       (-> Sig Ctx Seat Str Str (List Term) (List Value) (List Field) TcR))
+(declare check-con-args  (-> Sig Ctx Seat (List Term) (List (Pair Qty Value)) (List Qty) UR))
+(declare solve-con-params (-> Sig Ctx Seat I64 (List Field) (List Term) (Maybe (List Value))))
+(declare solve-slots     (-> Sig Ctx Seat I64 (List Field) (List Term) (List (Maybe Value)) (List (Maybe Value))))
 (declare slots-init      (-> I64 (List (Maybe Value))))
 (declare slot-get        (-> (List (Maybe Value)) I64 (Maybe Value)))
 (declare slot-set        (-> (List (Maybe Value)) I64 Value (List (Maybe Value))))
 (declare slots-all       (-> (List (Maybe Value)) (Maybe (List Value))))
 ; ---- E04 slice 4b-ii: the case typing arm + helpers --------------------------
-(declare check-case      (-> Sig Ctx Term (List KArm) (Maybe Term) (Maybe Value) TcR))
-(declare case-branches   (-> Sig Ctx DataDecl (List Value) Term (List KArm) CaseSt CaseR))
-(declare proc-branch     (-> Sig Ctx DataDecl (List Value) Term (List KArm) Str I64 Term (List Field) (Maybe Value) (Maybe (List Qty)) (List Str) CaseR))
-(declare proc-branch2    (-> Sig Ctx DataDecl (List Value) Term (List KArm) Str I64 Term (List (Pair Qty Value)) (Maybe Value) (Maybe (List Qty)) (List Str) CaseR))
-(declare branch-finish   (-> Sig Ctx Term (List KArm) Str (List Qty) (List (Pair Qty Value)) (Maybe Value) (Maybe (List Qty)) (List Str) DataDecl (List Value) CaseR))
+(declare check-case      (-> Sig Ctx Seat Term (List KArm) (Maybe Term) (Maybe Value) TcR))
+(declare case-branches   (-> Sig Ctx Seat DataDecl (List Value) Term (List KArm) CaseSt CaseR))
+(declare proc-branch     (-> Sig Ctx Seat DataDecl (List Value) Term (List KArm) Str I64 Term (List Field) (Maybe Value) (Maybe (List Qty)) (List Str) CaseR))
+(declare proc-branch2    (-> Sig Ctx Seat DataDecl (List Value) Term (List KArm) Str I64 Term (List (Pair Qty Value)) (Maybe Value) (Maybe (List Qty)) (List Str) CaseR))
+(declare branch-finish   (-> Sig Ctx Seat Term (List KArm) Str (List Qty) (List (Pair Qty Value)) (Maybe Value) (Maybe (List Qty)) (List Str) DataDecl (List Value) CaseR))
 ; E04 #6 R3: the path-sensitivity narrow hook (refine.py _narrow)
 (declare narrow-branch   (-> Ctx Term Str Ctx))
 (declare narrow-side     (-> Ctx Str Bool Bool OperR OperR Ctx))
@@ -492,8 +492,8 @@
 (declare is-cmp-op       (-> Str Bool))
 (declare unann-term      (-> Term Term))
 (declare both-oper?      (-> OperR OperR Bool))
-(declare finish-case     (-> Sig Ctx DataDecl (Maybe Term) (List Qty) CaseSt TcR))
-(declare case-with-default (-> Sig Ctx (Maybe Value) (Maybe (List Qty)) (List Qty) Term TcR))
+(declare finish-case     (-> Sig Ctx Seat DataDecl (Maybe Term) (List Qty) CaseSt TcR))
+(declare case-with-default (-> Sig Ctx Seat (Maybe Value) (Maybe (List Qty)) (List Qty) Term TcR))
 (declare finish-join     (-> Value (Maybe (List Qty)) (List Qty) TcR))
 (declare bind-fields     (-> Ctx (List (Pair Qty Value)) Ctx))
 (declare nth-qty         (-> (List Qty) I64 Qty))
@@ -530,7 +530,7 @@
 (declare check-ratoms    (-> Sig Ctx (List RfAtom) TcR))
 (declare obase-i64?      (-> Value Bool))
 (declare operand-ok?     (-> Value Bool))
-(declare check-against   (-> Sig Ctx Term Value Constraint CkR))
+(declare check-against   (-> Sig Ctx Seat Term Value Constraint CkR))
 (declare refine-entails? (-> Value Constraint Bool))
 (declare subtype-into    (-> I64 Value Value Constraint Bool))
 (declare unann-lit       (-> Term (Maybe I64)))
@@ -561,6 +561,14 @@
     (case a
       ((s-pure) (case b ((s-pure) true) (_ false)))
       ((s-proc) (case b ((s-proc) true) (_ false))))))
+
+; E171: the membrane. `seat-none` is the pure ambient: every top-level caller,
+; every type judgment and every erased position runs at it. `seat-sub` is the
+; one rule, read once, in `infer-app2`: a crossing callee needs a crossing seat.
+(def seat-none Seat (s-pure))
+(def seat-sub (-> Seat Seat Bool)
+  (lam (callee amb) (case (seat-crosses callee) (false true) (true (seat-crosses amb)))))
+(def seat-at (-> Qty Seat Seat) (lam (q amb) (case q ((q0) seat-none) (_ amb))))
 
 (def qeq (-> Qty Qty Bool)
   (lam (a b)
@@ -817,23 +825,23 @@
 ; infer dispatches; the multi-step elimination/formation forms are shallow
 ; helpers so each function's parens are locally countable.
 (def infer
-  (lam (sig c t)
+  (lam (sig c amb t)
     (case t
       ((t-var ix)         (ctx-lookup c ix))
       ((t-type l)         (tc-ok (v-type (+ l 1)) (uzero (ctx-len c))))
       ((t-pi q s dom cod) (infer-pi sig c q dom cod))
       ((t-lam b)          (tc-err (r-judged (subj-none) (jg-infer-lam))))
-      ((t-app f a)        (infer-app sig c f a))
-      ((t-let q v b)      (infer-let sig c q v b))
-      ((t-ann tm ty)      (infer-ann sig c tm ty))
+      ((t-app f a)        (infer-app sig c amb f a))
+      ((t-let q v b)      (infer-let sig c amb q v b))
+      ((t-ann tm ty)      (infer-ann sig c amb tm ty))
       ((t-global n)       (infer-global sig c n))
       ((t-prim n)         (infer-prim sig c n))
       ((t-primty n)       (tc-ok (v-type 0) (uzero (ctx-len c))))       ; a prim type : Type 0
       ((t-lit-i v)        (tc-ok (v-primty "I64") (uzero (ctx-len c)))) ; I64 literal : I64
       ((t-lit-s v)        (tc-ok (v-primty "Str") (uzero (ctx-len c)))) ; Str literal : Str
       ((t-tcon dn args)   (check-tcon sig c dn args none))              ; applied data type : Type 0
-      ((t-con dn cn args) (check-con sig c dn cn args none))            ; constructor : VTCon
-      ((t-case sc arms df) (check-case sig c sc arms df none))          ; case
+      ((t-con dn cn args) (check-con sig c amb dn cn args none))            ; constructor : VTCon
+      ((t-case sc arms df) (check-case sig c amb sc arms df none))          ; case
       ((t-refine base atoms) (check-refine sig c base atoms)))))        ; {base | atoms} : Type 0
 
 ; global/prim: look the declared type up in the Sig, eval it (globals have closed
@@ -853,7 +861,7 @@
 ; type; result Type(max l1 l2). Usage is empty at formation (types erase).
 (def infer-pi
   (lam (sig c q dom cod)
-    (case (infer sig c dom)
+    (case (infer sig c seat-none dom)
       ((tc-err m) (tc-err m))
       ((tc-ok dty du)
         (case dty
@@ -869,7 +877,7 @@
       (false (infer-pi2 sig c l1 dom cod)))))
 (def infer-pi2
   (lam (sig c l1 dom cod)
-    (case (infer sig (ctx-bind (q0) (eval-term (env-of c) dom) c) cod)
+    (case (infer sig (ctx-bind (q0) (eval-term (env-of c) dom) c) seat-none cod)
       ((tc-err m) (tc-err m))
       ((tc-ok cty cu)
         (case cty
@@ -878,38 +886,42 @@
 
 ; application: f must infer to a Pi; check the arg against the domain; usage is
 ; u_f + q * u_a (the QTT app rule); result type is the codomain at the arg.
+; E171: a Pi that crosses (`s`) applies only at a seat that does (`seat-sub`).
 (def infer-app
-  (lam (sig c f a)
-    (case (infer sig c f)
+  (lam (sig c amb f a)
+    (case (infer sig c amb f)
       ((tc-err m) (tc-err m))
-      ((tc-ok fty fu) (infer-app2 sig c a fty fu)))))
+      ((tc-ok fty fu) (infer-app2 sig c amb a fty fu)))))
 (def infer-app2
-  (lam (sig c a fty fu)
+  (lam (sig c amb a fty fu)
     (case fty
       ((v-pi q s dom cod)
-        (case (check sig c a dom)
-          ((ck-err m) (tc-err m))
-          ((ck-ok au) (tc-ok (clos-apply cod (eval-term (env-of c) a))
-                             (uadd fu (uscale q au))))))
+        (case (seat-sub s amb)
+          (false (tc-err (r-judged (subj-none) (jg-pure-crossing))))
+          (true
+            (case (check sig c (seat-at q amb) a dom)
+              ((ck-err m) (tc-err m))
+              ((ck-ok au) (tc-ok (clos-apply cod (eval-term (env-of c) a))
+                                 (uadd fu (uscale q au))))))))
       (_ (tc-err (r-judged (subj-none) (jg-apply-nonfn)))))))
 
 ; let (infer mode): infer the val's type + usage in the outer ctx, bind it at q,
 ; infer the body in the extended ctx, then close the binder (audit its usage vs q,
-; fold q*uv back). No allow_eff/erased_allow/on_binder -- the row/membrane layer is
-; E12, kept as the seat. Ports kernel.py infer's Let arm (:457).
+; fold q*uv back). The value runs at `(seat-at q amb)`, pure when erased (E171);
+; the row is enforcement/N25's. Ports kernel.py infer's Let arm (:457).
 (def infer-let
-  (lam (sig c q v b)
-    (case (infer sig c v)
+  (lam (sig c amb q v b)
+    (case (infer sig c (seat-at q amb) v)
       ((tc-err m) (tc-err m))
-      ((tc-ok vty uv) (infer-let2 sig c q v b vty uv)))))
+      ((tc-ok vty uv) (infer-let2 sig c amb q v b vty uv)))))
 (def infer-let2
-  (lam (sig c q v b vty uv)
+  (lam (sig c amb q v b vty uv)
     (case (linear-binder-bad sig q vty)                   ; E159: q must be 1
       (true (tc-err (r-linear (subj-let-binder) q)))
-      (false (infer-let3 sig c q v b vty uv)))))
+      (false (infer-let3 sig c amb q v b vty uv)))))
 (def infer-let3
-  (lam (sig c q v b vty uv)
-    (case (infer sig (ctx-bind q vty c) b)
+  (lam (sig c amb q v b vty uv)
+    (case (infer sig (ctx-bind q vty c) amb b)
       ((tc-err m) (tc-err m))
       ((tc-ok bty ub)
         (case (close-binder ub q uv)
@@ -918,15 +930,15 @@
 
 ; annotation (the ty tm): ty must be a type; eval it; flip to check tm against it.
 (def infer-ann
-  (lam (sig c tm ty)
-    (case (infer sig c ty)
+  (lam (sig c amb tm ty)
+    (case (infer sig c seat-none ty)
       ((tc-err m) (tc-err m))
-      ((tc-ok tyty tu) (infer-ann2 sig c tm ty tyty)))))
+      ((tc-ok tyty tu) (infer-ann2 sig c amb tm ty tyty)))))
 (def infer-ann2
-  (lam (sig c tm ty tyty)
+  (lam (sig c amb tm ty tyty)
     (case tyty
       ((v-type l)
-        (case (check sig c tm (eval-term (env-of c) ty))
+        (case (check sig c amb tm (eval-term (env-of c) ty))
           ((ck-err m) (tc-err m))
           ((ck-ok u) (tc-ok (eval-term (env-of c) ty) u))))
       (_ (tc-err (r-judged (subj-none) (jg-ann-nontype)))))))
@@ -935,38 +947,38 @@
 ; _check_against, a check_hook that fires on the expected value form) -- else the
 ; normal term dispatch. Intro forms (lam) check directly; everything else infers.
 (def check
-  (lam (sig c t want)
+  (lam (sig c amb t want)
     (case want
-      ((v-refine base cns) (check-against sig c t base cns))
-      (_ (check-body sig c t want)))))
+      ((v-refine base cns) (check-against sig c amb t base cns))
+      (_ (check-body sig c amb t want)))))
 (def check-body
-  (lam (sig c t want)
+  (lam (sig c amb t want)
     (case t
       ((t-lam b)
         (case want
           ((v-pi qp s dom cod)
-            (case (check sig (ctx-bind qp dom c) b (clos-apply cod (fresh (ctx-len c))))
+            (case (check sig (ctx-bind qp dom c) s b (clos-apply cod (fresh (ctx-len c))))
               ((ck-err m) (ck-err m))
               ((ck-ok ub) (strip-binder ub qp))))
           (_ (ck-err (r-judged (subj-none) (jg-lam-nonfn))))))
-      ((t-var ix)     (subsume sig c t want))
-      ((t-type l)     (subsume sig c t want))
-      ((t-pi q s d k) (subsume sig c t want))
-      ((t-app f a)    (subsume sig c t want))
-      ((t-ann tm ty)  (subsume sig c t want))
-      ((t-let q v b)  (check-let sig c q v b want))
+      ((t-var ix)     (subsume sig c amb t want))
+      ((t-type l)     (subsume sig c amb t want))
+      ((t-pi q s d k) (subsume sig c amb t want))
+      ((t-app f a)    (subsume sig c amb t want))
+      ((t-ann tm ty)  (subsume sig c amb t want))
+      ((t-let q v b)  (check-let sig c amb q v b want))
       ; con/tcon check bidirectionally against `want` (kernel.py routes the ext
       ; handler with the expected type; NOT infer-then-subsume -- the expected
       ; supplies the ctor's type parameters).
       ((t-tcon dn args)   (tcr->ckr (check-tcon sig c dn args (some want))))
-      ((t-con dn cn args) (tcr->ckr (check-con sig c dn cn args (some want))))
-      ((t-case sc arms df) (tcr->ckr (check-case sig c sc arms df (some want))))
-      (_ (subsume sig c t want)))))                    ; global/prim/lit: infer then subsume
+      ((t-con dn cn args) (tcr->ckr (check-con sig c amb dn cn args (some want))))
+      ((t-case sc arms df) (tcr->ckr (check-case sig c amb sc arms df (some want))))
+      (_ (subsume sig c amb t want)))))                    ; global/prim/lit: infer then subsume
 
 ; subsume: the ONE infer->check boundary; subtyping is consulted exactly here.
 (def subsume
-  (lam (sig c t want)
-    (case (infer sig c t)
+  (lam (sig c amb t want)
+    (case (infer sig c amb t)
       ((tc-err m) (ck-err m))
       ((tc-ok got use)
         (case (subtype (ctx-len c) got want)
@@ -979,18 +991,18 @@
 ; type (routing through `check` so an expected refinement still fires), then close
 ; the binder. Ports kernel.py check's Let arm (:502).
 (def check-let
-  (lam (sig c q v b want)
-    (case (infer sig c v)
+  (lam (sig c amb q v b want)
+    (case (infer sig c (seat-at q amb) v)
       ((tc-err m) (ck-err m))
-      ((tc-ok vty uv) (check-let2 sig c q v b want vty uv)))))
+      ((tc-ok vty uv) (check-let2 sig c amb q v b want vty uv)))))
 (def check-let2
-  (lam (sig c q v b want vty uv)
+  (lam (sig c amb q v b want vty uv)
     (case (linear-binder-bad sig q vty)                   ; E159: q must be 1
       (true (ck-err (r-linear (subj-let-binder) q)))
-      (false (check-let3 sig c q v b want vty uv)))))
+      (false (check-let3 sig c amb q v b want vty uv)))))
 (def check-let3
-  (lam (sig c q v b want vty uv)
-    (case (check sig (ctx-bind q vty c) b want)
+  (lam (sig c amb q v b want vty uv)
+    (case (check sig (ctx-bind q vty c) amb b want)
       ((ck-err m) (ck-err m))
       ((ck-ok ub) (close-binder ub q uv)))))
 
@@ -998,8 +1010,9 @@
 ; Ports data.py _check_tcon (:131) / _check_con (:193) / _ctor_field_types (:148)
 ; / _infer_ctor_params (:166) over the Term-based DataDecl. Folded into the closed
 ; infer/check dispatch: each handler takes a (Maybe Value) expected -> TcR; check
-; passes (some want), infer passes none. No allow_eff (the row layer is E12, kept
-; as the existing seat). QTT usage accumulates via uadd/uscale.
+; passes (some want), infer passes none. Each argument runs at `(seat-at q amb)`
+; with its field's q, so an erased field is pure (E171); the row is
+; enforcement/N25's. QTT usage accumulates via uadd/uscale.
 
 (def tcr->ckr (lam (r) (case r ((tc-ok ty u) (ck-ok u)) ((tc-err m) (ck-err m)))))
 (def i->qty
@@ -1049,7 +1062,7 @@
         (case args
           (nil (tc-err (r-judged (subj-none) (jg-tcon-arity))))
           ((cons arg arest)
-            (case (check sig c arg (eval-term env pk))       ; arg : param kind
+            (case (check sig c seat-none arg (eval-term env pk))       ; arg : param kind
               ((ck-err m) (tc-err m))
               ((ck-ok u)  (check-tparams sig c prest arest
                             (cons (eval-term (env-of c) arg) env) expected dn)))))))))
@@ -1065,41 +1078,41 @@
 ; from the args (bare-param occurrences); then each arg checks against its
 ; instantiated field type, QTT usage = sum q_i * u_i.
 (def check-con
-  (lam (sig c dn cn args expected)
+  (lam (sig c amb dn cn args expected)
     (case (sig-data sig dn)
       (none (tc-err (r-unbound (subj-data dn))))
       ((some decl)
         (case (ctor-fields decl cn)
           (none (tc-err (r-judged (subj-ctor cn) (jg-not-a-ctor))))
-          ((some fields) (con-with-targs sig c dn cn args expected decl fields)))))))
+          ((some fields) (con-with-targs sig c amb dn cn args expected decl fields)))))))
 (def con-with-targs
-  (lam (sig c dn cn args expected decl fields)
+  (lam (sig c amb dn cn args expected decl fields)
     (case expected
       ((some e)
         (case e
           ((v-tcon dn2 targs)
             (case (str-eq dn dn2)
-              (true  (con-check sig c dn cn args targs fields))
+              (true  (con-check sig c amb dn cn args targs fields))
               (false (tc-err (r-judged (subj-ctor cn) (jg-ctor-other-data))))))
           (_ (tc-err (r-judged (subj-ctor cn) (jg-ctor-nondata))))))
       (none
         (case (=i (llen Term (decl-params decl)) 0)
-          (true  (con-check sig c dn cn args nil fields))
-          (false (case (solve-con-params sig c (llen Term (decl-params decl)) fields args)
+          (true  (con-check sig c amb dn cn args nil fields))
+          (false (case (solve-con-params sig c amb (llen Term (decl-params decl)) fields args)
                    (none (tc-err (r-judged (subj-ctor cn) (jg-ctor-infer-params))))
-                   ((some targs) (con-check sig c dn cn args targs fields)))))))))
+                   ((some targs) (con-check sig c amb dn cn args targs fields)))))))))
 (def con-check
-  (lam (sig c dn cn args targs fields)
+  (lam (sig c amb dn cn args targs fields)
     (case (ctor-field-types sig (rev-vals targs) fields)
       ((ft-err m) (tc-err m))
       ((ft-ok fts)
         (case (=i (llen Term args) (llen Field fields))
           (false (tc-err (r-arity (subj-ctor cn) (llen Field fields) (llen Term args))))
-          (true  (case (check-con-args sig c args fts (uzero (ctx-len c)))
+          (true  (case (check-con-args sig c amb args fts (uzero (ctx-len c)))
                    ((u-err m) (tc-err m))
                    ((u-ok u)  (tc-ok (v-tcon dn targs) u)))))))))
 (def check-con-args
-  (lam (sig c args fts acc)
+  (lam (sig c amb args fts acc)
     (case args
       (nil (u-ok acc))
       ((cons arg arest)
@@ -1107,15 +1120,15 @@
           (nil (u-err (r-judged (subj-none) (jg-ctor-arity))))
           ((cons ft frest)
             (case ft ((pair q ftyv)
-              (case (check sig c arg ftyv)
+              (case (check sig c (seat-at q amb) arg ftyv)
                 ((ck-err m) (u-err m))
-                ((ck-ok ua) (check-con-args sig c arest frest (uadd acc (uscale q ua)))))))))))))
+                ((ck-ok ua) (check-con-args sig c amb arest frest (uadd acc (uscale q ua)))))))))))))
 
 ; _infer_ctor_params: solve a param ONLY where some field is a bare occurrence
 ; (bare-param), by inferring the matching arg's type; None if any param unsolved.
 (def solve-con-params
-  (lam (sig c np fields args)
-    (slots-all (solve-slots sig c np fields args (slots-init np)))))
+  (lam (sig c amb np fields args)
+    (slots-all (solve-slots sig c amb np fields args (slots-init np)))))
 (def slots-init
   (lam (n) (case (<=i n 0) (true nil) (false (cons none (slots-init (- n 1)))))))
 (def slot-get
@@ -1125,7 +1138,7 @@
   (lam (slots p v) (case slots (nil nil)
     ((cons x r) (case (=i p 0) (true (cons (some v) r)) (false (cons x (slot-set r (- p 1) v))))))))
 (def solve-slots
-  (lam (sig c np fields args slots)
+  (lam (sig c amb np fields args slots)
     (case fields
       (nil slots)
       ((cons f frest)
@@ -1135,12 +1148,12 @@
             (case f ((field q fname fty)
               (let (p (bare-param np fty))
                 (case (<i p 0)
-                  (true  (solve-slots sig c np frest arest slots))
+                  (true  (solve-slots sig c amb np frest arest slots))
                   (false (case (slot-get slots p)
-                           ((some x) (solve-slots sig c np frest arest slots))
-                           (none (case (infer sig c arg)
-                                   ((tc-err m)   (solve-slots sig c np frest arest slots))
-                                   ((tc-ok ty u) (solve-slots sig c np frest arest (slot-set slots p ty)))))))))))))))))
+                           ((some x) (solve-slots sig c amb np frest arest slots))
+                           (none (case (infer sig c (seat-at (i->qty q) amb) arg)
+                                   ((tc-err m)   (solve-slots sig c amb np frest arest slots))
+                                   ((tc-ok ty u) (solve-slots sig c amb np frest arest (slot-set slots p ty)))))))))))))))))
 (def slots-all
   (lam (slots) (case slots
     (nil (some nil))
@@ -1252,7 +1265,7 @@
 
 ; the per-branch fold, threading (result_ty, joined-usage, covered-set) as CaseSt.
 (def case-branches
-  (lam (sig c decl targs scrut arms st)
+  (lam (sig c amb decl targs scrut arms st)
     (case arms
       (nil (cr-ok st))
       ((cons a rest)
@@ -1262,43 +1275,43 @@
               (true (cr-err (r-judged (subj-ctor cn) (jg-dup-branch))))
               (false (case (ctor-fields decl cn)
                        (none (cr-err (r-judged (subj-ctor cn) (jg-branch-nonctor))))
-                       ((some fields) (proc-branch sig c decl targs scrut rest cn nvars body fields rty joined covered)))))))))))))
+                       ((some fields) (proc-branch sig c amb decl targs scrut rest cn nvars body fields rty joined covered)))))))))))))
 (def proc-branch
-  (lam (sig c decl targs scrut rest cn nvars body fields rty joined covered)
+  (lam (sig c amb decl targs scrut rest cn nvars body fields rty joined covered)
     (case (ctor-field-types sig (rev-vals targs) fields)
       ((ft-err m) (cr-err m))
       ((ft-ok fts)
         (case (=i nvars (llen Field fields))
           (false (cr-err (r-judged (subj-ctor cn) (jg-branch-arity))))
-          (true  (proc-branch2 sig c decl targs scrut rest cn nvars body fts rty joined covered)))))))
+          (true  (proc-branch2 sig c amb decl targs scrut rest cn nvars body fts rty joined covered)))))))
 ; proc-branch2: NARROW the outer ctx from the guard (refine.py runs narrow_hooks
 ; on the ctx BEFORE binding fields), then bind fields; length refs stay on the
 ; un-narrowed c (narrow preserves length), only the infer/check env is tightened.
 (def proc-branch2
-  (lam (sig c decl targs scrut rest cn nvars body fts rty joined covered)
+  (lam (sig c amb decl targs scrut rest cn nvars body fts rty joined covered)
     (let (ctx2 (bind-fields (narrow-branch c scrut cn) fts))
       (case rty
-        (none (case (infer sig ctx2 body)
+        (none (case (infer sig ctx2 amb body)
                 ((tc-err m) (cr-err m))
                 ((tc-ok rt ub)
                   (case (ensure-escapes c ctx2 rt)
                     ((esc-err m) (cr-err m))
-                    ((esc-ok rt2) (branch-finish sig c scrut rest cn ub fts (some rt2) joined covered decl targs))))))
-        ((some rtv) (case (check sig ctx2 body rtv)
+                    ((esc-ok rt2) (branch-finish sig c amb scrut rest cn ub fts (some rt2) joined covered decl targs))))))
+        ((some rtv) (case (check sig ctx2 amb body rtv)
                       ((ck-err m) (cr-err m))
-                      ((ck-ok ub) (branch-finish sig c scrut rest cn ub fts (some rtv) joined covered decl targs))))))))
+                      ((ck-ok ub) (branch-finish sig c amb scrut rest cn ub fts (some rtv) joined covered decl targs))))))))
 (def branch-finish
-  (lam (sig c scrut rest cn ub fts rty joined covered decl targs)
+  (lam (sig c amb scrut rest cn ub fts rty joined covered decl targs)
     (case (check-binders ub (ctx-len c) 0 fts)
       ((u-err m) (cr-err m))
       ((u-ok x)
         (let (ubo (take-qty ub (ctx-len c)))
-          (case-branches sig c decl targs scrut rest
+          (case-branches sig c amb decl targs scrut rest
             (cst rty (case joined (none (some ubo)) ((some j) (some (ujoin j ubo)))) (cons cn covered))))))))
 
 (def check-case
-  (lam (sig c scrut arms dflt expected)
-    (case (infer sig c scrut)
+  (lam (sig c amb scrut arms dflt expected)
+    (case (infer sig c amb scrut)
       ((tc-err m) (tc-err m))
       ((tc-ok sty us)
         (case sty
@@ -1306,27 +1319,27 @@
             (case (sig-data sig dname)
               (none (tc-err (r-judged (subj-data dname) (jg-scrut-unknown))))
               ((some decl)
-                (case (case-branches sig c decl targs scrut arms (cst expected none nil))
+                (case (case-branches sig c amb decl targs scrut arms (cst expected none nil))
                   ((cr-err m) (tc-err m))
-                  ((cr-ok st) (finish-case sig c decl dflt us st))))))
+                  ((cr-ok st) (finish-case sig c amb decl dflt us st))))))
           (_ (tc-err (r-judged (subj-none) (jg-scrut-nondata)))))))))
 (def finish-case
-  (lam (sig c decl dflt us st)
+  (lam (sig c amb decl dflt us st)
     (case st ((cst rty joined covered)
       (case dflt
-        ((some d) (case-with-default sig c rty joined us d))
+        ((some d) (case-with-default sig c amb rty joined us d))
         (none (case (all-covered? decl covered)
                 (false (tc-err (r-judged (subj-none) (jg-nonexhaustive))))
                 (true  (case rty
                          (none (tc-err (r-judged (subj-none) (jg-empty-case))))
                          ((some rt) (finish-join rt joined us)))))))))))
 (def case-with-default
-  (lam (sig c rty joined us d)
+  (lam (sig c amb rty joined us d)
     (case rty
-      (none (case (infer sig c d)
+      (none (case (infer sig c amb d)
               ((tc-err m) (tc-err m))
               ((tc-ok rt ud) (finish-join rt (case joined (none (some ud)) ((some j) (some (ujoin j ud)))) us))))
-      ((some rt) (case (check sig c d rt)
+      ((some rt) (case (check sig c amb d rt)
                    ((ck-err m) (tc-err m))
                    ((ck-ok ud) (finish-join rt (case joined (none (some ud)) ((some j) (some (ujoin j ud)))) us)))))))
 (def finish-join
@@ -1394,7 +1407,7 @@
     (_ false))))
 (def check-refine
   (lam (sig c base atoms)
-    (case (infer sig c base)
+    (case (infer sig c seat-none base)
       ((tc-err m) (tc-err m))
       ((tc-ok bty bu)
         (case bty
@@ -1410,7 +1423,7 @@
     (case atoms
       (nil (tc-ok (v-type 0) (uzero (ctx-len c))))
       ((cons a rest) (case a ((r-atom op operand)
-        (case (infer sig c operand)
+        (case (infer sig c seat-none operand)
           ((tc-err m) (tc-err m))
           ((tc-ok oty ou)
             (case (obase-i64? oty)
@@ -1426,11 +1439,11 @@
 (def unann-lit
   (lam (t) (case t ((t-lit-i k) (some k)) ((t-ann tm ty) (unann-lit tm)) (_ none))))
 (def check-against
-  (lam (sig c t base cns)
-    (case (check sig c t base)
+  (lam (sig c amb t base cns)
+    (case (check sig c amb t base)
       ((ck-err m) (ck-err m))
       ((ck-ok u)
-        (case (infer sig c t)
+        (case (infer sig c amb t)
           ((tc-err m) (ck-err m))
           ((tc-ok ity iu)
             (case (refine-entails? ity cns)
