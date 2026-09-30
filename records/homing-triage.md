@@ -114,7 +114,7 @@ Four new arcs are proposed across the 21 `new-arc` rows: `orchestration-engine`
 | E36 | `design` | `SH` | niri IPC event stream | [[arcs/native-window-arc]] | **author-call** | the arc's four requirements name xdg-shell, seat input, text and resize, and a compositor IPC stream is none of them |
 | E37 | `design` | `SH` | PNG writer, test-only | - | **author-call** | no arc states an image-output requirement |
 | E38 | `design` | `SH` | graded cost and coeffect semiring | [[arcs/emitted-speed-arc]] or [[arcs/memory-discipline-arc]] | **author-call** | `docs/arcs/emitted-speed-arc.md:224` against `docs/arcs/memory-discipline-arc.md:67` |
-| E39 | `design` | `SH` | effect algebra and typed rows, alarms and counter-effects | [[arcs/enforcement-arc]] or a goal that is owed | **author-call** | `docs/arcs/enforcement-arc.md:49` holds the tal shadow of the effect row; the surface algebra has no goal |
+| E39 | `design` | `SH` | effect algebra and typed rows, alarms and counter-effects | - (now `enforcement/N25`) | **author-call**, ruled 2026-09-30 | `records/author-calls.md:537`; `docs/arcs/enforcement-arc.md:563` carries the row, the effect row with its row variable and algebra; the handler half is `E26`'s |
 | E41 | `design` | `SH` | region types, retiring runtime offset and bounds checks | [[arcs/memory-discipline-arc]] or [[arcs/enforcement-arc]] | **author-call** | `docs/arcs/enforcement-arc.md:572`'s call on the bounds class was ruled BOTH 2026-09-18, `records/author-calls.md:85`; the region half is untaken and this element is unseated |
 | E42 | `built` | `SH` | runtime supervisor: critical sections, register-root custody, scheduler | [[arcs/bridge-arc]] or [[arcs/ownership-and-trust-arc]] | **author-call** | `docs/arcs/bridge-arc.md:89` assigns it to `bridge/C4` and the roster cell at `:88` carries only `E40`, `E56` |
 | E43 | `design` | `OT` | component broker: AUTH and AUDIT, grant, revoke, audit | [[arcs/ownership-and-trust-arc]] | **clear** | `docs/arcs/ownership-and-trust-arc.md:30`, and `docs/arcs/tool-authority-arc.md:268` declines it |
@@ -222,7 +222,7 @@ Four new arcs are proposed across the 21 `new-arc` rows: `orchestration-engine`
 | E168 | `built` | `SH` | the native test system the corpus lands in | [[arcs/enforcement-arc]] | **clear** | `docs/arcs/enforcement-arc.md:315` |
 | E169 | `design` | `SH` | behavioural coverage of `lower.chiral`, both instruments | [[arcs/enforcement-arc]] | **author-call** | `docs/arcs/enforcement-arc.md:504` records `no arc names it (UNS-45)` and leaves adopt-or-mint to a design stage |
 | E170 | `design` | `SH` | the corpus lands on the floor: the 709-function migration | [[arcs/enforcement-arc]] | **clear** | `docs/arcs/enforcement-arc.md:315` |
-| E171 | `design` | `SH` | the `->`/`=>` membrane enforced at the call | [[arcs/enforcement-arc]] | **clear** | `docs/arcs/enforcement-arc.md:25` |
+| E171 | `design` | `SH` | the `->`/`=>` membrane enforced at the call | - (now `enforcement/N26`) | **clear**, homed 2026-09-30 | `docs/arcs/enforcement-arc.md:564` |
 | E172 | `design` | `SH` | semantic file extensions, and the source tree by altitude | [[arcs/file-types-arc]] | **clear** | `docs/arcs/file-types-arc.md:38` |
 
 ## What the author works from
