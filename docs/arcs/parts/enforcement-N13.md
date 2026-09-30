@@ -178,7 +178,7 @@ language and imports only the prelude; a bridge module translates kernel
 - **Forbids:** the name split of §2 reading 4 as a cheap fix, since the module
   then shares the kernel's namespace.
 
-**Shape R, reuse the kernel's NbE.** Extend `eval-term` (`kernel.chiral:672`)
+**Shape R, reuse the kernel's NbE.** Extend `eval-term` (`kernel.chiral:680`)
 to unfold globals and reduce prims.
 - **Costs:** an edit inside the type-checker and the closure, on the BUILD
   RULE.

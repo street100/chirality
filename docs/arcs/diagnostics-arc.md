@@ -150,8 +150,8 @@ which probed the checker rather than reading it. Both rows above name three arms
 and two of the three are **unreachable**. `jg-tcon-arity`
 (`kernel.chiral:1050`) sits behind `check-tcon`'s length equality guard at
 `:1041`, and `check-tparams` has no other caller. `jg-ctor-arity` (`:1107`) sits
-behind the `=i` length guard that `con-check` (`:1091`) applies five lines into
-its body, and `ctor-field-types` (`:1020`) emits one field type per field, so
+behind the `=i` length guard that `con-check` (`:1104`) applies five lines into
+its body, and `ctor-field-types` (`:1033`) emits one field type per field, so
 `check-con-args` cannot exhaust `fts` first. The
 row's third arm, `jg-ctor-arg-arity` (`:1097`), is live. The **second** live
 arity comparison is `jg-tparam-arity` at `:1042`, which neither row names. Four

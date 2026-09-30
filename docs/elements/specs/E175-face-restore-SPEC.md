@@ -68,8 +68,8 @@ updated: 2026-08-31
      reset; **five of the six are ad-hoc `ansi-bold`** the face registry does not
      know about. A stack in the `r-face` arm never sees them.
   3. **The forcing consumer does not nest either.**
-     `dg-doc` (`lib/typing/diag.chiral:561`) has thirteen `d-tag` sites and they
-     are all **siblings**; `dg-decl-doc` (`:720`), the one function called from
+     `dg-doc` (`lib/typing/diag.chiral:565`) has thirteen `d-tag` sites and they
+     are all **siblings**; `dg-decl-doc` (`:724`), the one function called from
      inside a `d-tag` body, emits no tag. E158 commit 4 hits the sibling case.
 
   The honest statement is that **the emitter is self-inconsistent — the open is

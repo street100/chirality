@@ -139,7 +139,7 @@ shard described has no live referent, recorded 2026-09-04.** `RT.__init__`
 refusing to run when a declared extern lacks a host impl was the Python oracle's,
 and `lib/evidence/interp.chiral:19-21` names the linker as E15's deferred
 connector. What is live is the *load-time* half in the compiler's own front end:
-`load-extern` (`lib/module/loader.chiral:457`) elaborates an extern's declared
+`load-extern` (`lib/module/loader.chiral:472`) elaborates an extern's declared
 type, refuses it unless it is a universe, and installs it into the Sig, and
 `lib/lowering/tal/sys-linkage.chiral` is the seam that routes an effectful extern
 to a hand-tal wrapper. The "every extern has an implementation before anything
@@ -324,7 +324,7 @@ between [[error-and-alarm]] and [[node-architecture]]. It is unbuilt and undecid
 ### Evaluator ≠ NbE (a within-runtime cross-cut worth stating)
 
 Even inside the built shards the word forks: the kernel's **NbE** normalizer
-(`eval-term`, `lib/typing/kernel.chiral:672`) serves *type-checking*; the
+(`eval-term`, `lib/typing/kernel.chiral:680`) serves *type-checking*; the
 **evaluator** (`eval-step`, `lib/evidence/interp.chiral:75`) serves
 *execution*. Two reducers, deliberately separate. Conflating them
 is a smaller cousin of the main overload.
@@ -342,7 +342,7 @@ configuration-relative sum, mostly already built:
 - **the evaluator** — BUILT for the pure fragment (E15,
   `lib/evidence/interp.chiral`);
 - **the linker** — ⚑ the runtime-side link gate has **no live referent** (Shard B);
-  the load-time half is `load-extern` (`lib/module/loader.chiral:457`);
+  the load-time half is `load-extern` (`lib/module/loader.chiral:472`);
 - **the staging connector that births it from a profile** — ⚑ **no live referent**
   (Shard C); `bin/chirality` knows nothing about profiles;
 - **the native execution substrate** (tal floor + Mach emitter + sys-face) —

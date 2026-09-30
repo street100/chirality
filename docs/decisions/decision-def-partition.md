@@ -48,7 +48,7 @@ reasons and one measured one.
 |---|---|---|
 | `peel-def` (`lib/lowering/compile-front.chiral:212-224`) | the front's global set. ⚑ This cell read `before specialize-singletons renames` and is corrected below the table, on both halves: peel runs AFTER the pass and the pass does not rename | **nothing.** four `(none)` arms, three causes, no record on any |
 | `compile-fn` → `le-skip` (`lib/lowering/compile-back.chiral:270-271`) | the peeled `NDef` list, after closconv | `(mk-skrec name (sk-extern er))` |
-| `filter-erasable` and `prune-pass` (`lib/lowering/compile-back.chiral:191`, `:211`) | the emitted `TFn` list | `(sk-extern op)` and `(sk-callee cn)` |
+| `filter-erasable` and `prune-pass` (`lib/lowering/compile-back.chiral:188`, `:208`) | the emitted `TFn` list | `(sk-extern op)` and `(sk-callee cn)` |
 
 **The three range over three different sets, in sequence.** Each consumes the
 survivors of the one before it. A composition of them classifies the last set,
@@ -140,7 +140,7 @@ Producers are named beside each class. Counts are `docs/arcs/parts/enforcement-N
 |---|---|---|
 | `emitted <label>` | `lower-defs`' `le-ok` arm into `opt-tfns` | 22,395 of 22,742 |
 | `specialized-into <names>` | `specialize-singletons` (`compile-front.chiral:20`) | unmeasured. ⚑ This cell read `the pass rewrites rather than drops` and is corrected below the table: the pass creates and deletes |
-| `erased-by-design` | `filter-erasable`'s silent arm, `compile-back.chiral:189` | 0 on `prog/compiler.prog`. M5: `1549 - 1547 = 2`, both cascade, nothing dropped silently |
+| `erased-by-design` | `filter-erasable`'s silent arm, `compile-back.chiral:186` | 0 on `prog/compiler.prog`. M5: `1549 - 1547 = 2`, both cascade, nothing dropped silently |
 | `skipped: body-does-not-lower <site>` | `compile-fn` → `le-skip` → `compile-back.chiral:271` | **182**, in three sites: `lower.chiral:283` higher-order application 162, `:251` lambda stays upper 10, `:417` body is not a lambda chain 10 |
 | `skipped: extern-with-no-wrapper <op>` | `filter-erasable` → `first-nonlowering-op` | **5**: `time-mono` 2, `notify` 2, `sock-connect` 1 |
 | `skipped: callee-cascade <root>` | `prune-pass` → `(sk-callee cn)` | **160**, eight callees, largest `be-chat-stream` 40 |

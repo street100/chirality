@@ -45,8 +45,8 @@ often one IR-to-IR function runs, and no shard's content.
 | `filter-erasable`, the dry-run erase: calls `erase-fn` on every `TFn`, on `xf-err` records `sk-extern op`, on `xf-ok nf` keeps `f` and drops `nf` | `lib/lowering/compile-back.chiral:186-195`; call at `:189`, the drop at `:194-195` | IMPLEMENTED | `lower-defs`' `nil` arm at `:257` |
 | `prune-pass` and `prune-fix`, the callee-missing cascade over `(List TFn)`, keeping an in-order subsequence | `lib/lowering/compile-back.chiral:205-213`, `:215-221` | IMPLEMENTED | `lower-defs` at `:258` |
 | `erase-list`, the second erase: `erase-fn` again on each survivor, returning `br-ok` with `lits` unchanged and `nil` skips | `lib/lowering/compile-back.chiral:127-135`; `BR` at `:126` | IMPLEMENTED | `lower-defs` at `:259` |
-| `lower-defs`' `nil` arm: `filter-erasable` over `(rev-tfn-onto acc nil)`, then `prune-fix`, then `erase-list` | `lib/lowering/compile-back.chiral:257-261` | IMPLEMENTED | `compile-back`'s driver at `:336` |
-| `LE28`'s reversed accumulator, one `rev-tfn-onto` in the `nil` arm, so the list `filter-erasable` receives is in def order | `lib/lowering/compile-back.chiral:144`, `:257`, `:274` | IMPLEMENTED | as above |
+| `lower-defs`' `nil` arm: `filter-erasable` over `(rev-tfn-onto acc nil)`, then `prune-fix`, then `erase-list` | `lib/lowering/compile-back.chiral:257-261` | IMPLEMENTED | `compile-back`'s driver at `:331` |
+| `LE28`'s reversed accumulator, one `rev-tfn-onto` in the `nil` arm, so the list `filter-erasable` receives is in def order | `lib/lowering/compile-back.chiral:135`, `:252`, `:267` | IMPLEMENTED | as above |
 
 `erase-fn` reads its two arguments and nothing else (`erase.chiral:276-280`), so
 a second call on the same `datas` and `TFn` returns what the first returned.

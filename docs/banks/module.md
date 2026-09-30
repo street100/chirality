@@ -99,7 +99,7 @@ principled home and its own build-state.
   in [[module-map]]).
 - **Build-state.** CONFORMS. NbE eval/quote/conv (E3), bidirectional infer/check
   + universes (E4), QTT semiring 0/1/ω (E5). Evidence: `lib/typing/kernel.chiral`
-  (`conv` at `:702`, `subtype` at `:799`), `lib/typing/kernel-core.chiral`,
+  (`conv` at `:710`, `subtype` at `:807`), `lib/typing/kernel-core.chiral`,
   `lib/typing/qtt.chiral`, `lib/surface/terms.chiral`. The judgment core is ENFORCED
   ([[status-ledger]]).
 
@@ -293,7 +293,7 @@ its operational meaning is the kernel's definitional-equality judgment (conv, vi
 NbE, E3). Two modules are the same module iff their types are conv-equal; the
 splitting law's "same type shape ⇒ spurious split" (Shard 5) is decided by the
 *exact same* conv the checker uses to accept a program. Module identity and type
-identity are one mechanism (`conv` at `lib/typing/kernel.chiral:702`; E3,
+identity are one mechanism (`conv` at `lib/typing/kernel.chiral:710`; E3,
 CONFORMS). This is why there is
 no filename-keyed module table in the code (§1): the checker's `Sig` already
 individuates by type.

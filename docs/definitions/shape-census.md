@@ -81,7 +81,7 @@ The rule behind `SC-result-sum` is `EV1`'s wide predicate,
 - **err side:** a head ending `-err`, `-bad` or `-fail`, or the head `bad!`.
 
 The ground is `EV1`'s `:83-84`: `TimeR` (`lib/ports/clock.port:21-23`) spells
-its arms `-r` and `-err`, `ChkR` (`lib/module/loader.chiral:61`) spells them
+its arms `-r` and `-err`, `ChkR` (`lib/module/loader.chiral:62`) spells them
 `ok!` and `bad!`, and whichever predicate the arc meant, those nine sums are
 boundary sums. Whether the author meant the strict rule instead is an open
 question under `records/author-calls.md:52` (`EV3`). A strict ruling changes

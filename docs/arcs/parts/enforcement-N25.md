@@ -55,7 +55,7 @@ Measured 2026-09-30 at `12e2fba` plus the working tree.
 | `subtype` has no `v-pi` arm; an arrow falls through to `conv` | `lib/typing/kernel.chiral:799-811` | IMPLEMENTED | `subsume` |
 | the bit read as "does this type cross" | `seat-crosses`, `ty-crosses`, `lib/typing/kernel.chiral:313-319` | IMPLEMENTED | the fn/proc export split, `lib/module/loader.chiral:474`, `lib/surface/parse.chiral:917`, `lib/typing/kernel.chiral:389`, `:397` |
 | the elaborator's Pi: `eff` an `I64`, set on the innermost binder only | `lib/surface/surface.chiral:55`, `build-pis` at `:101-106` | IMPLEMENTED | the loader |
-| Core to Term and back | `eff->seat`, `lib/module/loader.chiral:19`, `:38`; `dseat->i`, `lib/lowering/upper/closconv-driver.chiral:31`, `:48` | IMPLEMENTED | the compiler |
+| Core to Term and back | `eff->seat`, `lib/module/loader.chiral:20`, `:38`; `dseat->i`, `lib/lowering/upper/closconv-driver.chiral:31`, `:48` | IMPLEMENTED | the compiler |
 | lowering reads the bit: defunctionalization families key on the per-arrow `eff` vector | `pi-effs`, `lib/lowering/upper/closconv.chiral:324-329`; `shape-eq` `:343-351`; `arrow-key-eq` `:381-386`; `mk-pi` `:1157-1164` | IMPLEMENTED | every `$apply` family |
 | the printer | `lib/surface/pretty.chiral:228` | IMPLEMENTED | diagnostics |
 | a row model over closed names: `row-empty`, `row-sub`, `row-join`, `row-pure?`; entries without arguments, and neither variables nor removal | `lib/typing/effects.chiral:10-30` | SEEDED | `lib/typing/row-infer.chiral` and `lib/lowering/upper/eff-lower.chiral`, neither in the blob (`docs/elements/ledger.md:113`) |

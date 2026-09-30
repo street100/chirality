@@ -307,7 +307,7 @@ Read this before saying chirality lacks a display feature.
    `r-face` arm names the `lib/` table at `render.chiral:771`. The resolution
    site is the seam that decides where a theme is homed.
 3. **Reaching K. `display-calculus/A1`, `unminted`.** `doc->rendering` has zero
-   importers and `dg-doc` (`lib/typing/diag.chiral:561`) has no consumer outside
+   importers and `dg-doc` (`lib/typing/diag.chiral:565`) has no consumer outside
    its own file, so no `d-tag` in this tree reaches `lookup-face`. Any coverage
    gate over a role sum nothing produces passes by looking at nothing.
 4. **The display-width table. E177, `Not built`.** Shard M. One table, two

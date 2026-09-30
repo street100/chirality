@@ -139,7 +139,7 @@ requirement type: at least those ports, at least those effects, the demanded
 guarantees." Satisfaction is a **subtyping relation in the existing type system**
 — which is why validity is checkable, not a slogan (`decision-profiles`
 §"Conformance").
-**Home:** the checker's `subtype` relation (`lib/typing/kernel.chiral:799`).
+**Home:** the checker's `subtype` relation (`lib/typing/kernel.chiral:807`).
 Conformance is *not a
 new analysis* — it is three reused checks (preserving connectors, port-routing,
 subtyping). See cross-cut §3.

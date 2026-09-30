@@ -320,7 +320,7 @@ carrier shape landing first.
 ### Shape 4: a `Judg` arm for bounds, with the check elsewhere
 
 - **Form:** one constructor in `(data Judg ())` at `lib/typing/diag.chiral:99`
-  and one arm in `dg-judg-msg` at `:429`. The rule that issues it lives
+  and one arm in `dg-judg-msg` at `:431`. The rule that issues it lives
   wherever a bound can be decided.
 - **Costs:** two lines in a module inside the blob, so one generation cycle at
   `C1 == C2`. `lib/typing/diag.chiral:97-98` says the sum is *"Closed and

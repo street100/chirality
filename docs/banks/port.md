@@ -105,7 +105,7 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   `(porttype Sock)` and `(porttype LSock)` at `lib/ports/sock.port:16-17`,
   `(porttype Fd)` at `lib/ports/fd.port:16`.
 - **Build-state.** CONFORMS (E30–E33). `handle-porttype`
-  (`lib/surface/parse.chiral:688`) → `load-atom` (`lib/module/loader.chiral:487`)
+  (`lib/surface/parse.chiral:688`) → `load-atom` (`lib/module/loader.chiral:502`)
   records an opaque linear atom in the `latoms` registry;
   `lib/ports/ports.chiral:3-8` states the invariant ("the kernel learns nothing about
   it except that it exists and that B-ness lives in the type"). Linearity is

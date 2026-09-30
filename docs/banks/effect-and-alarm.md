@@ -431,7 +431,7 @@ Evidence is tied above; the call is deferred to D1's home decision doc.
 **What the reshape is, once decided** (CONFORMANCE-MAP B/E39, DECISION → then
 REFACTOR-L): conv keeps seat *equality* (`lib/typing/kernel.chiral:715`); row
 *subsumption*
-lands as a new `v-pi` case in `subtype` (`lib/typing/kernel.chiral:799`) with contravariant
+lands as a new `v-pi` case in `subtype` (`lib/typing/kernel.chiral:807`) with contravariant
 domains *(corrected 2026-07-22, E39-SPEC 2nd-order audit — subsumption inside
 symmetric conv is unsound: conv compares Pi domains at a
 contravariant position)*;

@@ -439,7 +439,7 @@ default, and the compiler's refusal stops at the theme.
 
 **`A1` is the precondition for any C1 gate that can fail.** No `d-tag` in this
 tree reaches `lookup-face` today: `protocol/render-doc` has zero importers
-under `lib/` and `prog/` and `dg-doc` (`lib/typing/diag.chiral:561`) has zero
+under `lib/` and `prog/` and `dg-doc` (`lib/typing/diag.chiral:565`) has zero
 consumers outside its own file. Its two importers are both under `tools/`,
 so the reach it has is a gate fixture rather than a program a user runs. A gate that walks a theme's coverage over a `Role` sum nothing produces
 would pass by looking at nothing, the same failure mode

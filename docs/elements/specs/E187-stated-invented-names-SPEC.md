@@ -89,7 +89,7 @@ counted with `grep -rn` over `lib/`, `prog/` and `tools/`:
 | `CState` 3 → 4 | `closconv.chiral:626` | `closconv.chiral:669`, `:672`, `:675`, `:678`, `:961`; **`closconv-driver.chiral:281`** |
 | `CCOut` 2 → 3 | `closconv-driver.chiral:145` | `closconv-driver.chiral:283`, `:286`; `compile-front.chiral:342`; **`prog/e186-capture-fields.prog:287`** |
 | `fr-ok` 4 → 5 | `compile-front.chiral:315-317` | `compile-front.chiral:348`; `compile-all.chiral:22`; **`prog/e185-apply-word.prog:120`**; **`prog/e188-apply-spine.prog:62`** |
-| `back-program` 3 → 4 | `compile-back.chiral:332` | `compile-all.chiral:23` |
+| `back-program` 3 → 4 | `compile-back.chiral:327` | `compile-all.chiral:23` |
 
 The three the example does not name are `prog/e185-apply-word.prog:120` and
 `prog/e188-apply-spine.prog:62`, both Phase 7 roots and both probes whose own
@@ -363,7 +363,7 @@ the step that introduced it.
 ### Step 5 — `back-program` offers the seat `lower-defs` already has
 - **Targets:** `lib/lowering/compile-back.chiral`,
   `lib/lowering/compile-all.chiral`. One commit.
-- **Change:** `back-program` (`compile-back.chiral:332`) becomes
+- **Change:** `back-program` (`compile-back.chiral:327`) becomes
   `(-> (List NDef) (List NData) (List NPrim) (List SkRec) BR)` and passes the
   new parameter as `lower-defs`' last argument in place of the second `nil`.
   `compile-all.chiral:23` passes `dsk`.

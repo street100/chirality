@@ -47,7 +47,7 @@ under `ulimit -s unlimited`.
 | `ck-fns`, a fold that stops at the first refusing TFn | `lib/lowering/tal/check.chiral:299-305` | IMPLEMENTED | `ck-prog` alone |
 | `ck-prog`, `(-> CEnv Prog TckR)`: replaces `cenv0`'s fns field with `prog-fns`, then `ck-fns` | `lib/lowering/tal/check.chiral:306-312` | SEEDED | nothing. `grep -rn ck-prog lib prog` outside `check.chiral` returns comments only (`lib/lowering/upper/lower.chiral:20`, `:115`, `lib/lowering/upper/optimize.chiral:22`, `lib/lowering/upper/closconv-driver.chiral:126`, `prog/e186-capture-fields.prog:28-30`) |
 | fail-fast inside one TFn | `lib/lowering/tal/check.chiral:225-230` | IMPLEMENTED | PRB-73, FD-14 |
-| the shipped pre-erase program: `lower-defs` folds each TFn (`opt-tfns`, `:246-250`), then `filter-erasable` and `prune-fix` at the `nil` arm | `lib/lowering/compile-back.chiral:252-274`, `:255-256` | ENFORCED | `back-program` (`:332-336`) on every compile |
+| the shipped pre-erase program: `lower-defs` folds each TFn (`opt-tfns`, `:246-250`), then `filter-erasable` and `prune-fix` at the `nil` arm | `lib/lowering/compile-back.chiral:252-274`, `:255-256` | ENFORCED | `back-program` (`:327-331`) on every compile |
 | the census root: replicates `lower-defs`' per-def loop under the `def-sigs` `CEnv`, runs `ck-fn` folded and un-folded, prints `census`, `class` and `err` lines, asserts nothing | `prog/optimizer-census.prog:153-163`, `:204-225`; the no-judging rule at `:24-28` | IMPLEMENTED | `tools/test/opt-census.sh`; compiled as a Phase 7 root |
 | the census gate: four rows R1 to R4 on exact pins, mutants M3 to M6 | `tools/test/opt-census.sh:143-149` pins, `:260-305` mutants, tally `:306` | SEEDED | nobody. `registration.sh` prints it `PEND` |
 

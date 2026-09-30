@@ -103,7 +103,7 @@ linear porttype** declared in one of the nine registries under `lib/ports/`:
 atom: the kernel learns nothing about it except that it exists and that … a value
 of it … can only ever be bound with quantity 1" (`lib/ports/ports.chiral:3-8`).
 The declaration path is `handle-porttype` (`lib/surface/parse.chiral:688`) →
-`load-atom` (`lib/module/loader.chiral:487`), which records the name in the
+`load-atom` (`lib/module/loader.chiral:502`), which records the name in the
 linear-atom registry and gives it **no data constructors**. Authority-crossings are
 `extern`s whose types are owned in source and whose host referents bind at link.
 `lib/ports/ports.chiral` is a façade over the nine registries and defines no def
@@ -186,7 +186,7 @@ its own principled home and its own build-state.
   (a smaller pool bound), the `m ≤ n` obligation is a **refinement entailment** (E9)
   over the port's **value-index** (`(porttype Pool (n I64))`,
   `lib/ports/pool.port:13`), **not** nominal subtyping.
-- **Home.** the checker's `subtype` relation (`lib/typing/kernel.chiral:799`)
+- **Home.** the checker's `subtype` relation (`lib/typing/kernel.chiral:807`)
   composed with the refinement fragment (E9, `entails` at
   `lib/typing/refine.chiral:93`) over the value-indexed porttype
   (`lib/ports/pool.port:13, 26-31`).
@@ -438,7 +438,7 @@ revocation primitive.
 
 **"You need capability attenuation / rights-narrowing you can call."**
 → Correction: attenuation *is subtyping over refinement* (Shard C, C3) — the
-mechanism exists (`subtype` at `lib/typing/kernel.chiral:799`, E9 refinement) but
+mechanism exists (`subtype` at `lib/typing/kernel.chiral:807`, E9 refinement) but
 is **not yet wired to grant-narrowing**. This is a *present-but-unapplied EXTEND*, not a missing feature:
 the honest statement is "the subtype relation exists; applying it to narrow `(Pool
 n)`→`(Pool m)` is the unshipped wiring," not "chirality lacks attenuation."

@@ -66,7 +66,7 @@ The route is chosen by **name**, in one order, at `erase-instr-onto`
 | 5 | none | `:173` | `prim not in native subset`, compile fails |
 
 The routines are hand-written `TIFn`s: `native-lib`, 30 of them
-(`lib/lowering/tal/bytes.chiral:813-826`), and `link-lib`, the four `wrap-*`
+(`lib/lowering/tal/bytes.chiral:813-825`), and `link-lib`, the four `wrap-*`
 plus `sys-lib` (`lib/lowering/tal/sys-linkage.chiral:98-99`,
 `lib/lowering/tal/sys.chiral:1308`). A syscall is the one instruction `ti-sys`
 (`lib/lowering/tal/ir.chiral:33`). `emit-elf-m` builds the image as
@@ -135,8 +135,8 @@ property.
 |---|---|---|---|
 | declared-arrow bit | `ty-crosses`, `lib/typing/kernel.chiral:315` | ENFORCED | `E171`'s refusal, `crossings-of` |
 | route by name | `erase-instr-onto`, `lib/lowering/tal/erase.chiral:218` | IMPLEMENTED | every compile |
-| per-function `ti-sys` chokepoint | `ck-tiprog`, `lib/lowering/tal/sys-check.chiral:71` | ENFORCED | `emit-elf-m`, `compile-emit.chiral:296` |
-| object-code wrapper scan | `xw-fns`, `lib/lowering/compile-emit.chiral:253` | ENFORCED | profiled programs only, object functions only, no transitivity |
+| per-function `ti-sys` chokepoint | `ck-tiprog`, `lib/lowering/tal/sys-check.chiral:71` | ENFORCED | `emit-elf-m`, `compile-emit.chiral:353` |
+| object-code wrapper scan | `xw-fns`, `lib/lowering/compile-emit.chiral:254` | ENFORCED | profiled programs only, object functions only, no transitivity |
 | extern census over `prelude.chiral` | `E198`, `docs/elements/catalog.md:650` | DESIGNED | nothing, unbuilt |
 
 **No transitive reach exists.** `ck-tiprog` and `xw-fns` each stop at one

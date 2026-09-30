@@ -73,23 +73,23 @@ Nine names moved: `Reason` 122 to 121, `dg-subject-name` 159 to 161,
 `dg-doc` 519 to 561.
 
 - **Live code this composes with, and none of it is respecced:**
-  - `Reason` at `lib/typing/diag.chiral:121`, E157's evidence-bearing sum, nine
+  - `Reason` at `lib/typing/diag.chiral:123`, E157's evidence-bearing sum, nine
     arms. `r-mismatch` already carries `(expected Term) (actual Term)` and
     `r-usage` already carries `(declared Qty) (observed Qty)`, so the field
     order and the naming this element follows are the file's own.
   - The eight exhaustive `case`s over `Reason`, all in `diag.chiral`, none with
-    a `_`: `dg-reason-tag` (`:145`), `dg-subject` (`:195`), `dg-incumbent`
-    (`:209`), `dg-newcomer` (`:227`), `dg-declared` (`:264`), `dg-observed`
-    (`:273`), `dg-msg` (`:326`), `dg-doc` (`:561`). The comment above `dg-msg`
+    a `_`: `dg-reason-tag` (`:147`), `dg-subject` (`:196`), `dg-incumbent`
+    (`:209`), `dg-newcomer` (`:228`), `dg-declared` (`:265`), `dg-observed`
+    (`:273`), `dg-msg` (`:328`), `dg-doc` (`:565`). The comment above `dg-msg`
     states the intent this element depends on: a new `Reason` constructor must
     break every renderer loudly.
-  - `Subject` at `:80`, twelve arms, with `dg-subject-name` (`:161`) and
-    `dg-subject-tag` (`:178`) already casing all twelve. `subj-data` and
+  - `Subject` at `:80`, twelve arms, with `dg-subject-name` (`:162`) and
+    `dg-subject-tag` (`:179`) already casing all twelve. `subj-data` and
     `subj-ctor` are the two subjects the detection sites already pass.
   - `i64->str`, the prelude extern at `lib/prelude/prelude.chiral:87`, already
     called from `diag.chiral:670`. The new message needs no new dependency.
-  - `check-tcon` (`lib/typing/kernel.chiral:1036`), whose length guard is the
-    line above its refusal, and `con-check` (`:1091`), whose guard sits five
+  - `check-tcon` (`lib/typing/kernel.chiral:1049`), whose length guard is the
+    line above its refusal, and `con-check` (`:1104`), whose guard sits five
     lines into its body. Both hold `(llen Term args)` beside the count it is
     compared against, and both discard the pair.
   - `Doc` and `doc->str` in `lib/prelude/doc.chiral`, E158's layout algebra, and
@@ -151,7 +151,7 @@ tree concurrently.
 
 - **Target:** `lib/typing/diag.chiral`.
 - **Change:**
-  - `Reason` (`:121`) gains a tenth arm below `r-relayed`:
+  - `Reason` (`:123`) gains a tenth arm below `r-relayed`:
     `(r-arity (what Subject) (expected I64) (actual I64))`, with the one-line
     comment the file's style gives every arm.
   - Two new bindings beside the other `dg-*-msg` helpers, each with its
@@ -180,9 +180,9 @@ tree concurrently.
 
 ### Commit 2: the two detection sites, and the two live arms retire
 
-- **Targets:** `lib/typing/kernel.chiral`, with `check-tcon` (`:1036`) and
-  `con-check` (`:1091`) · `lib/typing/diag.chiral`, with `Judg` (`:99`) and
-  `dg-judg-msg` (`:429`).
+- **Targets:** `lib/typing/kernel.chiral`, with `check-tcon` (`:1049`) and
+  `con-check` (`:1104`) · `lib/typing/diag.chiral`, with `Judg` (`:99`) and
+  `dg-judg-msg` (`:431`).
 - **Change:**
   - `check-tcon`'s false branch becomes
     `(tc-err (r-arity (subj-data dn) (llen Term (decl-params decl)) (llen Term args)))`.
@@ -193,7 +193,7 @@ tree concurrently.
     the same reuse.
   - `jg-tparam-arity` (`diag.chiral:107`) and `jg-ctor-arg-arity` (`:109`) are
     both deleted from the `Judg` sum, and both of their arms are deleted from
-    `dg-judg-msg` (`diag.chiral:429`), whose `jg-tparam-arity` arm sits at line
+    `dg-judg-msg` (`diag.chiral:431`), whose `jg-tparam-arity` arm sits at line
     446 and whose `jg-ctor-arg-arity` arm at line 452.
     **`Judg` goes from 38 arms to 36.**
     Repointing both live comparisons leaves both arms unconstructed, and keeping

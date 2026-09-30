@@ -70,7 +70,7 @@ produced, so the field is `(List Str)`.
 
 **M-B. The skip records are keyed by emitted label and the fate function is
 keyed by definition.** `filter-erasable` builds `(mk-skrec (tfn-nm f) ...)` at
-`compile-back.chiral:191` and `prune-pass` does the same at `:211`, and by M-A a
+`compile-back.chiral:188` and `prune-pass` does the same at `:208`, and by M-A a
 `TFn`'s name is sometimes `<def>$<ncase>`. `tools/test/opt-census.sh` R3 already
 pins 31 refusals whose callee is *"the refused TFn's own `<name>$0` outlined
 block"*, so outlined names reach the same lists. The two channels run at
@@ -81,7 +81,7 @@ string standing in for a relation.
 
 **M-C. `erased-by-design`'s named producer does not produce it, and its
 extension is empty for a structural reason.** The decision's table gives the
-producer as *"`filter-erasable`'s silent arm, `compile-back.chiral:189`"*. That
+producer as *"`filter-erasable`'s silent arm, `compile-back.chiral:186`"*. That
 arm fires when `erase-fn` answered `xf-err m` **and** `first-nonlowering-op` found
 no op to name; it discards `m` and drops the function. That is an unattributed
 failure, and it is a skip. The type-level defs the arm was written to describe

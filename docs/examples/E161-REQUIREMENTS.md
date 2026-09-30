@@ -210,7 +210,7 @@ R10 Any filename / layout projection is a CONSUMER of the record — downstream,
 | R2 derived record at def grain | **missing** — E160 holds one bit for a whole module |
 | R3 derived fields not writable | **inverted** — today the author writes the claim |
 | R4 authored field fenced | **partial** — the one bit is checked; `cat` is not fenced |
-| R5 one lookup | **partial, not missing** (corrected) — `ModKind` is already a `Sig` field (`kernel.chiral:122-134`) with a public accessor `sig-kinds` (`:145`). What is absent is a lookup that RETURNS the record: the only one, `sig-kind-taken` (`loader.chiral:383`), returns `Bool` |
+| R5 one lookup | **partial, not missing** (corrected) — `ModKind` is already a `Sig` field (`kernel.chiral:122-134`) with a public accessor `sig-kinds` (`:145`). What is absent is a lookup that RETURNS the record: the only one, `sig-kind-taken` (`loader.chiral:384`), returns `Bool` |
 | R6 reachable by consumers | **partial, not missing** (corrected) — the *record* is reachable; the **crossings** are what get computed in emit, truncated at the first hit, and discarded. Also absent: `extern`/`porttype`/`data` are charged to nothing (`parse.chiral:1169-1171`) |
 | R7 total schema | n/a — no schema yet |
 | R8 no silent staleness | **partial** — holds for the one bit |

@@ -48,15 +48,15 @@ went.
 pure externs alongside. `ports-manifest` (`:296`) intersects the declared
 profiles into one permitted port set.
 
-### The back half, `back-program` (`lib/lowering/compile-back.chiral:332-336`)
+### The back half, `back-program` (`lib/lowering/compile-back.chiral:327-331`)
 
 | # | Pass | Seat | Consumes | Produces | What it does |
 |---|---|---|---|---|---|
 | 6 | `program-lits` | `lib/lowering/compile-back.chiral:124` | `(List NDef)` | `(List Str)` | interns every string literal, first-occurrence order, deduped through an ordered `Map` (`dedup-str`, `:118`) |
 | 7 | `compile-fn` | `lib/lowering/upper/lower.chiral:412` | `LCore` | `TFn` plus outlined extras | typed SSA emission. A monotonic `ssa-fresh` counter (`:161`) gives single assignment. A non-tail `case` is outlined into a synthesized `<name>$<n>` function whose parameters are the enclosing binder env plus the scrutinee (`outline`, `:311`). An erased `q=0` binder gets a defined placeholder (`build-binders`, `:398`) |
 | 8 | `fold`, adopted unjudged | `lib/lowering/compile-back.chiral:247` (`opt-tfns`), transform at `lib/lowering/upper/optimize.chiral:140` | `TFn` | `TFn` | constant folding and propagation over a per-block register environment, comparison folding to a nullary `Bool` constructor, and static case dispatch on a known constructor (`dispatch`, `lib/lowering/upper/optimize.chiral:130`). `opt-tfns` applies `(fold t)` and adopts the residual with no verdict to consult. The `chk-ok` guard that stood here until 2026-09-08 is gone by the author's ruling in `records/lenses/problems.md` PRB-70, which keeps `lowering/tal/check` outside the compiler closure; the header at `lib/lowering/compile-back.chiral:235-245` records that forcing that guard to answer `chk-ok` emitted a byte-identical blob, and routes the census to `prog/optimizer-census.prog` |
-| 9 | `filter-erasable` | `lib/lowering/compile-back.chiral:185` | `(List TFn)` | kept `TFn`s plus `SkRec`s | dry-run erase; a function carrying a prim outside the native subset is dropped with the offending op named |
-| 10 | `prune-fix` | `lib/lowering/compile-back.chiral:214` | `(List TFn)` | kept `TFn`s plus `SkRec`s | fixpoint cascade: a function calling a label no longer present is dropped, and its callers with it |
+| 9 | `filter-erasable` | `lib/lowering/compile-back.chiral:182` | `(List TFn)` | kept `TFn`s plus `SkRec`s | dry-run erase; a function carrying a prim outside the native subset is dropped with the offending op named |
+| 10 | `prune-fix` | `lib/lowering/compile-back.chiral:211` | `(List TFn)` | kept `TFn`s plus `SkRec`s | fixpoint cascade: a function calling a label no longer present is dropped, and its callers with it |
 | 11 | `erase-fn` | `lib/lowering/tal/erase.chiral:276` | `TFn` | `NFn` | drops the `TalTy` annotations, flattens `Block`/`TalTerm` into seq-structured code, resolves a constructor name to its declaration-order tag (`ctor-tag`, `:59`), decides immediate against boxed (`is-enum`, `:75`), parses a prim op name once into the closed `Op` sum (`op-parse`, `:91`), routes every other lowerable prim to a `nb-*` library call (`prim2lib`, `:144`), and rewrites a bound crossing into a call of its E51 wrapper (`erase-instr-onto`, `:218`) |
 
 ### The emit half, `emit-elf-m` (`lib/lowering/compile-emit.chiral:292-323`)
@@ -71,7 +71,7 @@ profiles into one permitted port set.
 | 14 | `emit-program` | `lib/lowering/mach/emit-core.chiral:537` | `(List TIFn)` | `(List Asm)` | target-independent codegen against the `Mach` record. Five selection rewrites live inside it and are tabled below |
 | 15 | `x64-peep` | `lib/lowering/x64/mach.chiral:1321` | `(List Asm)` | `(List Asm)` | byte-level peephole. Pattern A (`peep-hit`, `:1245`) drops a `mov rax,[slot]` that follows a `mov [slot],rax` on the same displacement. Pattern B (`peep-hit-rcx`, `:1285`) turns the rcx reload into a three-byte `mov rcx,rax` |
 | 16 | `assemble` | `lib/lowering/mach/asm-reloc.chiral:161` | `(List Asm)` | `(Pair Bytes offsets)` | label placement then relocation resolution against an ordered `Map` |
-| 17 | `assemble-elf` | `lib/lowering/compile-emit.chiral:142` | code bytes | ELF bytes | prepends the 224-byte entry stub (`entry-stub-v2`, `:59`), which reserves 64 GiB `PROT_NONE`, commits a 256 KiB prefix, stores the four arena cells, and calls the entry |
+| 17 | `assemble-elf` | `lib/lowering/compile-emit.chiral:143` | code bytes | ELF bytes | prepends the 224-byte entry stub (`entry-stub-v2`, `:60`), which reserves 64 GiB `PROT_NONE`, commits a 256 KiB prefix, stores the four arena cells, and calls the entry |
 
 ### The transformations inside `emit-program`
 
@@ -306,7 +306,7 @@ checked against the self-hosted tree.
 | 2 | constant folding and propagation | yes | `fold`, `lib/lowering/upper/optimize.chiral:140`, wired at `lib/lowering/compile-back.chiral:247` |
 | 3 | branch folding on a known constructor | yes | `dispatch`, `lib/lowering/upper/optimize.chiral:130`, reached from `fold-block` at `:119` |
 | 4 | CSE / value numbering | no | `grep -rniI "cse" lib prog --include=*.chiral --include=*.prog` returns the type names `RdcSeg` and `DecSet`, the `tcsets` termios family (`TCSETS`, `tcsetattr`, `nb-sys-tcsets`, `nb-tcsets`) and `act-decsets`, none of them a pass. There is no common-subexpression pass in the tree |
-| 5 | dead code elimination | present, excluded | `dead` exists at `lib/lowering/upper/optimize.chiral:192` and is in the compiler blob. `opt-tfns` (`lib/lowering/compile-back.chiral:247`) applies `fold` alone. The exclusion is by measurement, recorded at `lib/lowering/compile-back.chiral:225-233` |
+| 5 | dead code elimination | present, excluded | `dead` exists at `lib/lowering/upper/optimize.chiral:192` and is in the compiler blob. `opt-tfns` (`lib/lowering/compile-back.chiral:244`) applies `fold` alone. The exclusion is by measurement, recorded at `lib/lowering/compile-back.chiral:225-233` |
 | 6 | operand folding to immediate forms | yes | `emit-instr` plus `cenv-step`, `lib/lowering/mach/emit-core.chiral:146-161` and `:46`; `bini-body`, `lib/lowering/x64/mach.chiral:967` |
 | 7 | power-of-two strength reduction | yes | `pow2-k`, `lib/lowering/x64/mach.chiral:891` |
 | 8 | constant-divisor guard elision | yes | `x-div-imm` (`lib/lowering/x64/mach.chiral:911`) and `x-mod-imm` (`:931`) |

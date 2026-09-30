@@ -55,7 +55,7 @@ this territory.
 - [[banks/capability]] owns "each step holds only the tools it was granted",
   because least privilege here is capability and nothing else. Of the four
   grant operations only Move is enforced by linearity; Attenuate is
-  present-but-unapplied (`subtype` at `lib/typing/kernel.chiral:799`, unwired to
+  present-but-unapplied (`subtype` at `lib/typing/kernel.chiral:807`, unwired to
   grant narrowing); Delegate, Revoke and the broker's grant/revoke/audit (E43)
   are design with no code. [[permission-model]] is its thin note. Neither bank
   is re-derived below.

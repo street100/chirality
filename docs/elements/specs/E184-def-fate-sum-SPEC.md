@@ -391,7 +391,7 @@ compare equal, so the non-empty guard runs before every `cmp`.
   them.
 - **Target:** `lib/lowering/skip-diag.chiral` (the `Fate` and `FateRec`
   declarations, `FateRec` retiring `SkRec`), `lib/lowering/compile-back.chiral:126`
-  (`BR`), `:332` (`back-program`), `lib/lowering/compile-front.chiral:319-321`
+  (`BR`), `:327` (`back-program`), `lib/lowering/compile-front.chiral:319-321`
   (`FR`), `lib/lowering/compile-all.chiral:17` where `CAllR` is declared and
   `:36` where the `elf-ok` arm is, `lib/typing/diag.chiral:135` (`r-skipped`),
   `lib/lowering/upper/closconv-driver.chiral:145` (`CCOut`'s `dsk`).

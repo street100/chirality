@@ -79,7 +79,7 @@ The `-r`/`-err` spelling is eight declarations and is the errno-or-value shape
 `docs/definitions/pattern-boundary-sums.md` names as a live precedent:
 `TimeR` `lib/ports/clock.port:21`, `AccR` `lib/ports/sock.port:28`, `ConnR`
 `:31`, `LisR` `:41`, `SendR` `:44`, `WinsizeR` `lib/protocol/term.chiral:19`,
-`RawR` `:112`, `SpawnR` `:283`. `ChkR` at `lib/module/loader.chiral:61` spells
+`RawR` `:112`, `SpawnR` `:283`. `ChkR` at `lib/module/loader.chiral:62` spells
 its arms `ok!` and `bad!`. Whichever predicate the arc meant, those nine are
 boundary sums.
 

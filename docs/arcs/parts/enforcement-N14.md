@@ -58,10 +58,10 @@ dropped silently", with E184's `erased-by-design` arm named as the fix.
 |---|---|---|---|
 | `ttype`, `(-> UT (Maybe TalTy))`, partial on `u-other`, non-injective on `u-erased` | `lib/lowering/upper/lower.chiral:35-57` | **SEEDED** | nothing |
 | the partition around it: `UT`, `LowBind`, `Lowdef`, `LowRes`, `any-dep?`, `any-eff?`, `any-quant?`, `doms-lower?`, `types-lower?`, `skip-reason`, `eligible?`, `lower-def`, `lower-all` | `lib/lowering/upper/lower.chiral:22-105`, 84 lines of 420 | **SEEDED** | nothing |
-| `compile-fn`, the emission half of the same file | `lib/lowering/upper/lower.chiral:412-420` | IMPLEMENTED | `lower-defs`, `lib/lowering/compile-back.chiral:264` |
+| `compile-fn`, the emission half of the same file | `lib/lowering/upper/lower.chiral:412-420` | IMPLEMENTED | `lower-defs`, `lib/lowering/compile-back.chiral:259` |
 | `term->ntalty`, `(-> Term (Maybe NTalTy))`, the live type translation | `lib/lowering/compile-front.chiral:58-79` | IMPLEMENTED | `peel-def` `:212-224`, `prim->n` `:326-333`, `field-tys->n` `:238-245` |
 | `ntalty->talty`, `(-> NTalTy TalTy)`, **total by its own declaration** | `lib/lowering/compile-back.chiral:24-32` | IMPLEMENTED | `lower-defs` `:261-262` |
-| the exclusion channel: `SkReason`, `SkRec`, `skwhy-tag`, `skwhy-detail`, `format-blame` | `lib/lowering/skip-diag.chiral:15-16`, `:25-38`, `:119` | IMPLEMENTED | `lower-defs` `:271`, `filter-erasable` `:191`, `prune-pass` `:211` |
+| the exclusion channel: `SkReason`, `SkRec`, `skwhy-tag`, `skwhy-detail`, `format-blame` | `lib/lowering/skip-diag.chiral:15-16`, `:25-38`, `:119` | IMPLEMENTED | `lower-defs` `:266`, `filter-erasable` `:188`, `prune-pass` `:208` |
 | the emitted-TFn census, committed and gated | `prog/optimizer-census.prog`, `tools/test/opt-census.sh` | IMPLEMENTED | run by hand, `not-a-phase:` |
 | the peel census | absent | **absent** | nothing |
 
@@ -103,8 +103,8 @@ channels:
 | channel | site | records | classes |
 |---|---|---|---|
 | `le-skip`, the arm this row names | `lib/lowering/compile-back.chiral:270-271` | **182** | `higher-order application` 162 (`lower.chiral:283`), `lambda stays upper` 10 (`:251`), `body is not a lambda chain` 10 (`:417`) |
-| `filter-erasable`, shard H | `lib/lowering/compile-back.chiral:191` | **5** | `time-mono` 2, `notify` 2, `sock-connect` 1 |
-| `prune-pass`, the callee cascade | `lib/lowering/compile-back.chiral:211` | **160** | eight callees, largest `be-chat-stream` 40 |
+| `filter-erasable`, shard H | `lib/lowering/compile-back.chiral:188` | **5** | `time-mono` 2, `notify` 2, `sock-connect` 1 |
+| `prune-pass`, the callee cascade | `lib/lowering/compile-back.chiral:208` | **160** | eight callees, largest `be-chat-stream` 40 |
 
 **Every one of the 182 is a term-level refusal.** `lower.chiral:283` is
 `expr-app`'s catch-all on a spine head that is neither `lc-prim` nor
