@@ -1,0 +1,1734 @@
+=== page 1 ===
+Lazy F unctional State Threads
+John Launc h bury and Simon L P eyton Jones
+Univ ersit y of Glasgo w
+Email/: /{simonpj/,jl /}/@d cs /.gl asg ow/. ac /.uk /. Phone/: /+/4/4/-/4/1/-/3/3/0/- /4/5/0 /0
+Marc h /1/0/, /1/9/9/4
+Abstract
+Some algorithms mak e critical in ternal use of up datable
+state/, ev en though their external sp eci/cation is purely
+functional/. Based on earlier w ork on monads/, w e presen t
+a w a y of securely encapsulating stateful computations
+that manipulate m ultiple/, named/, m utable ob jects/, in the
+con text of a non/-strict/, purely/-functional language/.
+The securit y of the encapsulation is assured b y the t yp e
+system/, using parametricit y /. In triguingly /, this para/-
+metricit y requires the pro vision of a /(single/) constan t with
+a rank/-/2 p olymorphic t yp e/.
+A shorter version of this p ap er app e ars in the Pr o c e e dings
+of the A CM Confer enc e on Pr o gr amming L anguages De/-
+sign and Implementation /(PLDI/)/, Orlando/, June /1/9/9/4/.
+/1 In tro duction
+Purely functional programmi ng languages allo w man y al/-
+gorithms to b e expressed v ery concisely /, but there are a
+few algorithms in whic h in/-place up datable state seems
+to pla y a crucial role/. F or these algorithms/, purely/-
+functional languages/, whic h lac k up datable state/, app ear
+to b e inheren tly ine/cien t /(P onder/, McGeer /& Ng /[/1/9/8/8/]/)/.
+T ak e/, for example/, algorithms based on the use of
+incremen tally/-mo di/ed hash tables/, where lo okups are in/-
+terlea v ed with the insertion of new items/. Similarly /, the
+union///nd algorithm relies for its e/ciency on the set
+represen tations b eing simpli/ed eac h time the structure
+is examined/. Lik ewise/, man y graph algorithms require a
+dynamically c hanging structure in whic h sharing is ex/-
+plicit/, so that c hanges are visible non/-lo cally /.
+There is/, furthermore/, one absolutely una v oidable use of
+state in ev ery functional program/: input//output/. The
+plain fact of the matter is that the whole purp ose of run/-
+ning a program/, functional or otherwise/, is to mak e some
+side e/ect on the w orld /| an up date/-in/-place/, if y ou
+please/. In man y programs these I//O e/ects are rather
+complex/, in v olving in terlea v ed reads from and writes to
+the w orld state/.
+W e use the term /\stateful/" to describ e computations or
+algorithms in whic h the programmer really do es w an t to
+manipulate /(up datable/) state/. What has b een lac king
+un til no w is a clean w a y of describing suc h algorithms
+in a functional language /| esp ecially a non/-strict one /|
+without thro wing a w a y the main virtues of functional lan/-
+guages/: indep endence of order of ev aluation /(the Ch urc h/-
+Rosser prop ert y/)/, referen tial transparency /, non/-strict se/-
+man tics/, and so on/.
+In this pap er w e describ e a w a y to express stateful al/-
+gorithms in non/-strict/, purely/-functional languages/. The
+approac h is a dev elopmen t of our earlier w ork on monadic
+I//O and state encapsulation /(Launc h bury /[/1/9/9/3/]/; P ey/-
+ton Jones /& W adler /[/1/9/9/3/]/)/, but with an imp ortan t tec h/-
+nical inno v ation/: w e use parametric p olymorphism to
+ac hiev e safe encapsulation of state/. It turns out that this
+allo ws m utable ob jects to b e named without losing safet y /,
+and it also allo ws input//output to b e smo othly in tegrated
+with other state mainpulatio n/.
+The other imp ortan t feature of this pap er is that it de/-
+scrib es a complete system/, and one that is implemen ted
+in the Glasgo w Hask ell compiler and freely a v ailable/. The
+system has the follo wing prop erties/:
+/ Complete referen tial transparency is main tained/. A t
+/rst it is not clear what this statemen t means/: ho w
+can a stateful computation b e said to b e referen tially
+transparen t/? T o b e more precise/, a stateful compu/-
+tation is a state tr ansformer /, that is/, a function from
+an initial state to a /nal state/. It is lik e a /\script/"/,
+detailing the actions to b e p erformed on its input
+state/. Lik e an y other function/, it is quite p ossible to
+apply a single stateful computation to more than one
+input state/.
+So/, a state transformer is a pure function/. But/, b e/-
+cause w e guaran tee that the state is used in a single/-
+threaded w a y /, the /nal state can b e constructed b y
+mo difying the input state in/-plac e /. This e/cien t im/-
+plemen tation resp ects the purely/-functional seman/-
+/1
+=== page 2 ===
+tics of the state/-transformer function/, so all the usual
+tec hniques for reasoning ab out functional programs
+con tin ue to w ork/. Similarl y /, stateful programs can
+b e exp osed to the full range of program transforma/-
+tions applied b y a compiler/, with no sp ecial cases or
+side conditions/.
+/ The programmer has complete con trol o v er where in/-
+place up dates are used and where they are not/. F or
+example/, there is no complex analysis to determine
+when an arra y is used in a single/-threaded w a y /. Since
+the viabilit y of the en tire program ma y b e predicated
+on the use of in/-place up dates/, the programmer m ust
+b e con/den t in/, and b e able to reason ab out/, the
+outcome/.
+/ Mutable ob jects can b e name d /. This abilit y sounds
+inno cuous enough/, but once an ob ject can b e named
+its use cannot b e con trolled as readily /. Y et naming
+is imp ortan t/. F or example/, it giv es us the abilit y to
+manipulate m ultiple m utable ob jects sim ultaneously /.
+/ Input//output tak es its place as a sp ecialised form
+of stateful computation/. Indeed/, the t yp e of I//O/-
+p erforming computations is an instance of the /(more
+p olymorphic/) t yp e of stateful computations/. Along
+with I//O comes the abilit y to call imp erativ e pro ce/-
+dures written in other languages/.
+/ It is p ossible to enc apsulate stateful computations so
+that they app ear to the rest of the program as pure
+/(stateless/) functions whic h are guar ante e d b y the t yp e
+system to ha v e no in teractions whatev er with other
+computations/, whether stateful or otherwise /(except
+via the v alues of argumen ts and results/, of course/)/.
+Complete safet y is main tained b y this encapsula/-
+tion/. A program ma y con tain an arbitrary n um b er of
+stateful sub/-computations/, eac h sim ultaneously ac/-
+tiv e/, without concern that a m utable ob ject from one
+migh t b e m utated b y another/.
+/ Stateful computations can ev en b e p erformed lazily
+without losing safet y /. F or example/, supp ose that
+stateful depth/-/rst searc h of a graph returns a list
+of v ertices in depth/-/rst order/. If the consumer of
+this list only ev aluates the /rst few elemen ts of the
+list/, then only enough of the stateful computation is
+executed to pro duce those elemen ts/.
+/2 Ov erview
+This section in tro duces the k ey ideas of our approac h to
+stateful computation/. W e b egin with the programmer/'s/-
+ey e/-view/.
+/2/./1 State transformers
+A v alue of t yp e /(ST s a/) is a computation whic h trans/-
+forms a state indexed b y t yp e s /, and deliv ers a v alue of
+t yp e a /. Y ou can think of it as a b o x/, lik e this/:
+State outState in
+Result
+Notice that this is a purely/-functional accoun t of state/.
+The /\ ST /" stands for /\a state transformer/"/, whic h w e tak e
+to b e synon ymous with /\a stateful computation/"/: the
+computation is seen as transforming one state in to an/-
+other/. /(Of course/, it is our in ten tion that the new state
+will actually b e constructed b y mo difying the old one in
+place/, a matter to whic h w e return in Section /6/./) A state
+transformer is a /rst/-class v alue/: it can b e passed to a
+function/, returned as a result/, stored in a data structure/,
+duplicated freely /, and so on/.
+A state transformer can ha v e other inputs b esides the
+state/; if so/, it will ha v e a functional t yp e/. It can also ha v e
+man y results/, b y returning them in a tuple/. F or example/,
+a state transformer with t w o inputs of t yp e Int /, and t w o
+results of t yp e Int and Bool /, w ould ha v e the t yp e/:
+Int /-/> Int /-/> ST s /(Int/,Bool /)
+Its picture migh t lo ok lik e this/:
+State outState in
+Inputs Results
+The simplest state transformer/, returnST /, simply deliv ers
+a v alue without a/ecting the state at all/:
+returnST /:/: a /-/> ST s a
+The picture for returnST is lik e this/:
+State outState in
+/2/./2 References
+What/, then/, is a /\state/"/? P art of ev ery state is a /nite
+mapping from r efer enc es to v alues/. /(A state ma y also
+ha v e other comp onen ts/, as w e will see in Section /4/./) A
+reference can b e though t of as the name of /(or address of /)
+/2
+=== page 3 ===
+a variable /, an up datable lo cation in the state capable of
+holding a v alue/. The follo wing primitiv e op erations are
+pro vided/:
+newVar /:/: a /-/> ST s /(MutVar s a/)
+readVar /:/: MutVar s a /-/> ST s a
+writeVar /:/: MutVar s a /-/> a /-/> ST s /(/)
+The function newVar tak es an initial v alue/, of t yp e
+a /, sa y /, and deliv ers a state transformer of t yp e
+ST s /(MutVar s a/) /. When this is applied to a state/,
+it allo cates a fresh reference /| that is/, one curren tly not
+used in the state/. It augmen ts the state with a mapping
+from this reference to the supplied v alue/, and returns the
+reference along with the mo di/ed state/.
+The t yp e MutVar s a is the t yp e of references allo cated
+from a store of t yp e s /, con taining a v alue of t yp e a /. Notice
+that/, unlik e SML/'s Ref t yp es/, for example/, MutVar s are
+parameterised o v er the t yp e of the state as w ell as o v er
+the t yp e of the v alue to whic h the reference is mapp ed
+b y the state/. /(W e use the name MutVar for the t yp e of
+references/, rather than Ref /, sp eci/cally to a v oid confusion
+with SML/./)
+Giv en a reference v /, readVar v is a state transformer
+whic h lea v es the state unc hanged/, but uses the state to
+map the reference to its v alue/.
+The function writeVar transforms the state so that it
+maps the giv en reference to a new v alue/. Notice that the
+reference itself do es not change /; it is the state whic h is
+mo di/ed/. writeVar deliv ers a result of the unit t yp e /(/) /,
+a t yp e whic h only has one v alue /(apart from b ottom/)/, also
+written /(/) /. A state transformer of t yp e ST s /(/) is useful
+only for its e/ect on the state/.
+/2/./3 Comp osing state transformers
+State transformers can b e comp osed in sequence/, to form
+a larger state transformer/, using thenST /, whic h has t yp e
+thenST /:/: ST s a /-/> /(a /-/> ST s b/) /-/> ST s b
+The picture for /(s/1 /`thenST/` s/2/) is lik e this
+/1
+/:
+State in
+s1 s2
+State out
+Notice that the t w o computations m ust manipulate state
+indexed b y the same t yp e/, s /. Notice also that thenST is
+inheren tly sequen tial/, b ecause the state consumed b y the
+second computation is that pro duced b y the /rst/. Indeed/,
+w e often refer to a state transformer as a thr e ad /, in v ok/-
+ing the picture of a series of primitiv e stateful op erations
+/1
+Bac kquotes are Hask ell/'s notation for an in/x op erator/.
+/\threaded together/" b y a state passed from one to the
+next/.
+Putting together what w e ha v e so far/, here is a /\pro ce/-
+dure/" whic h sw aps the con ten ts of t w o v ariables/:
+swap /:/: MutVar s a /-/> MutVar s a /-/> ST s /(/)
+swap v w /= readVar v /`thenST/` /(/\a /-/>
+readVar w /`thenST/` /(/\b /-/>
+writeVar v b /`thenST/` /(/\/_ /-/>
+writeVar w a/)/)/)
+The syn tax needs a little explanation/. The form /\ /\a/-/>e /"
+is Hask ell/'s syn tax for a lam b da abstraction/. The b o dy
+of the lam b da abstraction/, e /, extends as far to the righ t
+as p ossible/. So in the co de for swap /, the second argumen t
+of the /rst thenST extends all the w a y from the /\a to the
+end of the function/. That/'s just as y ou w ould exp ect/: the
+second argumen t of a thenST is mean t to b e a function/.
+The /\ /_ /" in the second/-last line is a wild/-card pattern/,
+whic h matc hes an y v alue/. W e use it here b ecause the
+writeVar do es not return a v alue of in terest/.
+The paren theses can b e omitted/, since in/x op erations
+bind less tigh tly than the lam b da abstraction op erator/.
+F urthermore/, w e pro vide a sp ecial form of thenST /, called
+thenST/_ /, with the follo wing t yp e signature/:
+thenST/_ /:/: ST s /(/) /-/> ST s b /-/> ST s b
+Unlik e thenST its second argumen t is not a function/, so
+the lam b da isn/'t required/. So w e can rewite swap as fol/-
+lo ws/:
+swap /:/: MutVar s a /-/> MutVar s a /-/> ST s /(/)
+swap v w /= readVar v /`thenST/` /\a /-/>
+readVar w /`thenST/` /\b /-/>
+writeVar v b /`thenST/_/`
+writeVar w a
+When swap v w is executed in a state thread /(that is/,
+when giv en a state/)/, v is dereferenced/, returning a v alue
+whic h is b ound to a /. Similarl y the v alue of w is b ound
+to b /. New v alues are then written in to the state at these
+lo cations/, these v alues b eing b and a resp ectiv ely /.
+In addition to thenST and returnST /, w e ha v e found it
+useful to in tro duce one other /\plum bing/" com binator/,
+fixST /. It has the t yp e
+fixST /:/: /(a /-/> ST s a/) /-/> ST s a
+and the usual knot/-t ying seman tics/, whic h w e depict th us/:
+State outState in
+s
+This is the only p oin t that relies on laziness/. Ev erything
+/3
+=== page 4 ===
+else in the pap er is directly applicable to strict languages/.
+/2/./4 Encapsulation
+So far w e ha v e b een able to com bine state transformers
+to mak e larger state transformers/, but ho w can w e mak e
+a state transformer part of a larger program whic h do es
+not manipulate state at all/? What w e need is a function/,
+runST /, with a t yp e something lik e the follo wing/:
+runST /:/: ST s a /-/> a
+The idea is that runST tak es a state transformer as its
+argumen t/, conjures up an initial empt y state/, applies the
+state transformer to it/, and returns the result while dis/-
+carding the /nal state/. The initial state is /\empt y/" in
+the sense that no references ha v e b een allo cated in it b y
+newVar /; it is the empt y mapping/.
+But there seems to b e a terrible /a w/: what is to prev en t
+a reference from one thread b eing used in another/? F or
+example/:
+let v /= runST /(newVar True/)
+in
+runST /(readVar v/)
+Here/, the reference allo cated in the /rst runST /'s thread is
+used inside the second runST /. Doing so w ould b e a great
+mistak e/, b ecause reads in one thread are not sequenced
+with resp ect to writes in the other/, and hence the result of
+the program w ould dep end on the ev aluation order used
+to execute it/. It seems at /rst that a run time c hec k migh t
+b e required to ensure that references are only dereferenced
+in the thread whic h allo cated them/. Unfortunately this
+w ould b e exp ensiv e/. Ev en w orse/, our exp erience suggests
+that it is surprisingly tric ky to implemen t suc h a c hec k /|
+the ob vious ideas fail as it then b ecomes p ossible to test
+the identity of a thread so losing referen tial transparency
+/| and w e still do not kno w a straigh tforw ard w a y to do
+so/.
+This problem brings us to the main tec hnical con tribution
+of the pap er/: the di/culties with runST can all b e solv ed
+b y giving it a more sp eci/c t yp e/. The t yp e giv en for
+runST ab o v e is implicitly univ ersally quan ti/ed o v er b oth
+s and a /. If w e put in the quan ti/cation explicitly /, the
+t yp e migh t b e written/:
+runST /:/: /8 s/,a/. /(ST s a /-/> a/)
+No w/, what w e r e al ly w an t to sa y is that runST should
+only b e applied to a state transformer whic h uses newVar
+to create an y references whic h are used in that thread/.
+T o put it another w a y /, the argumen t of runST should
+not mak e an y assumptions ab out what has already b een
+allo cated in the initial state/. That is/, runST should work
+r e gar d less of what initial state it is given /. So the t yp e of
+runST should b e/:
+runST /:/: /8 a/. /( /8 s/. ST s a/) /-/> a
+This is not a Hindley/-Milner t yp e/, b ecause the quan ti/ers
+are not all at the top lev el/; it is an example of rank/-/2
+p olymorphism /(McCrac k en /[/1/9/8/4/]/)/.
+Wh y do es this t yp e prev en t the /\capture/" of references
+from one thread in to another/? Consider our example
+again
+let v /= runST /(newVar True/)
+in
+runST /(readVar v/)
+In the last line a reference v is used in a stateful thread
+/(readVar v/) /, ev en though the latter is supp osedly encap/-
+sulated b y runST /. This is where the t yp e c hec k er comes
+in to its o wn/. During t yp ec hec king/, the t yp e of readVar v
+will dep end on the t yp e of v so/, for example/, the t yp e
+deriv ation will con tain a judgemen t of the form/:
+f /: /: /: /; v /: MutVar s Bool g /` readVar v /: ST s Bool
+No w in order to apply runST w e ha v e to b e able to gen/-
+eralise the t yp e of readVar v with resp ect to s /, but w e
+cannot as s is free in the t yp e en vironmen t/: readVar v
+simply do es not ha v e t yp e /8 s/.ST s Bool /.
+What ab out the other w a y round/? Let/'s c hec k that the
+t yp e of runST prev en ts the /\escap e/" of references from a
+thread/. Consider the de/nition of v ab o v e/:
+v /= runST /(newVar True/)
+Here/, v is a reference that is allo cated within the thread/,
+but then released to the outside w orld/. Again/, con/-
+sider what happ ens during t yp ec hec king/. The expression
+/(newVar True/) has t yp e ST s /(MutVar s Bool/) /, whic h
+will generalise nicely to /8 s/.ST s /(MutVar s Bool/) /.
+Ho w ev er/, this still do es not matc h the t yp e of runST /. T o
+see this/, consider the instance of runST with a instan ti/-
+ated to MutVar s Bool /:
+runST /:/: /( /8 s/'/. ST s/' /(MutVar s Bool/)/)
+/-/> MutVar s Bool
+W e ha v e had to rename the b ound v ariable s in the t yp e of
+runST to a v oid it erroneously capturing the s in the t yp e
+MutVar s Bool /. The argumen t t yp e no w do esn/'t matc h
+v /'s t yp e/. Indeed there is no instance of runST whic h can
+b e applied to v /.
+Just to demonstrate that the t yp e of runST do es allo w
+some nice examples here is one that is /ne/:
+f /:/: MutVar s a /-/> MutVar s a
+f v /= runST /(newVar v /`thenST/` /\w/-/>
+readVar w/)
+/4
+=== page 5 ===
+where v is a reference from some arbitrary state thread/.
+Because v is not accessed/, its state t yp e do es not a/ect the
+lo cal state t yp e of the short thread /(whic h is in fact totally
+p olymorphic in v /)/. Th us it is /ne for an encapsulated
+state thread to manipulate references from other threads
+so long as no attempt is made to dereference them/.
+In short/, b y the exp edien t of giving runST a rank/-/2 p oly/-
+morphic t yp e w e can enforce the safe encapsulation of
+state transformers/. More details on this are giv en in Sec/-
+tion /5/./2/, where w e sho w that runST /'s t yp e can b e ac/-
+commo dated with only a minor enhancemen t to the t yp e
+c hec k er/.
+/3 Arra y references
+So far w e ha v e in tro duced the idea of references /(Sec/-
+tion /2/./2/)/, whic h can b e though t of as a single m utable
+/\b o x/"/. Sometimes/, though w e w an t to up date an arra y
+whic h should b e though t of as man y /\b o xes/"/, eac h in/-
+dep enden tly m utable/. F or that w e pro vide primitiv es to
+allo cate/, read and write elemen ts of arra ys/. They ha v e
+the follo wing t yp es
+/2
+/:
+newArr /:/: Ix i /=/> /(i/,i/) /-/> elt
+/-/> ST s /(MutArr s i elt/)
+readArr /:/: Ix i /=/> MutArr s i elt /-/> i
+/-/> ST s elt
+writeArr /:/: Ix i /=/> MutArr s i elt /-/> i /-/> elt
+/-/> ST s /(/)
+freezeArr /:/: Ix i /=/> MutArr s i elt
+/-/> ST s /(Array i elt/)
+Lik e references/, newArr allo cates a new arra y whose
+b ounds are giv en b y its /rst argumen t/. The second ar/-
+gumen t is a v alue to whic h eac h lo cation is initialised/.
+The state transformer returns a reference to the arra y /,
+whic h w e call an arr ay r efer enc e /. The functions readArr
+and writeArr do what their names suggest/. The result
+is unde/ned if the index is out of b ounds/.
+The in teresting function is freezeArr whic h turns a
+MutArr in to a standard Hask ell arra y /. The latter is an
+imm utabl e v alue/, whic h can certainly b e returned from a
+stateful thread/, and hence lac ks the parameterisation on
+the state s /. Op erationally sp eaking/, freezeArr tak es the
+name of an arra y as its argumen t/, lo oks it up in the state/,
+and returns a cop y of what it /nds/, along with the un/-
+altered state/. The cop y is required in case a subsequen t
+writeArr c hanges the v alue of the arra y in the state/, but
+/2
+The /\ Ix i /=/> /" part of the t yp e is just Hask ell/'s w a y of sa ying
+that the t yp e a m ust b e an index t yp e/; that is/, there m ust b e a
+mapping of a v alue of t yp e a to an o/set in a linear arra y /. In tegers/,
+c haracters and tuples are automatically in the Ix class/, but arra y
+indexing is not restricted to these/. An y t yp e for whic h a mapping
+to Int is pro vided /(via an instance declaration for the class Ix at
+that t yp e/) will do/.
+it is sometimes p ossible to a v oid the o v erhead of making
+the cop y /(see Section /6/./2/./3/)/.
+W e giv e t w o examples of m utable arra ys in action/, but
+lea v e the larger one to the App endix/.
+/3/./1 Hask ell Arra ys
+Using m utable arra ys/, w e shall de/ne the Hask ell /\prim/-
+itiv e/" accumArray /, a high lev el arra y op eration with the
+t yp e
+/3
+/:
+accumArray /:/: Ix i /=/> /(a/-/>b/-/>a/) /-/> a /-/> /(i/,i/)
+/-/> /[/(i/,b/)/] /-/> Array i a
+The result of a call /(accumArray f x bnds ivs/) is an
+arra y whose size is determined b y bnds /, and whose v alues
+are de/ned b y separating all the v alues in the list ivs
+according to their index/, and then p erforming a left/-fold
+op eration/, using f /, on eac h collection/, starting with the
+v alue x /.
+T ypical uses of accumArray migh t b e a histogram/, for
+example/:
+hist /:/: Ix i /=/> /(i/,i/) /-/> /[i/] /-/> Array i Int
+hist bnds is /= accumArr ay /(/+/) /0 bnds
+/[/(i/,/1/)/|i/</- is /, inRange bnds i/]
+whic h coun ts the o ccurrences of eac h elemen t of the list
+is that falls within the range giv en b y the b ounds bnds /.
+Another example is bin sort/:
+binSort /:/: Ix i /=/> /(i/,i/) /-/> /(a/-/>i/)
+/-/> /[a/] /-/> Array i a
+binSort bnds key vs
+/= accumArray /(flip/(/:/)/) /[/] bnds /[/(key v/,v/)/|v/</-v s/]
+where the v alue in vs are placed in bins according to their
+k ey v alue as de/ned b y the function key /(whose results
+are assumed to lie in the range sp eci/ed b y the b ounds
+bnds /)/. Eac h bin /| that is/, eac h elemen t of the arra y
+/| will con tain a list of the v alues with the same k ey
+v alue/. The lists start empt y /, and new elemen ts are added
+using a v ersion of cons in whic h the order of argumen ts is
+rev ersed/. In b oth examples/, the arra y is built b y a single
+pass along the input list/.
+The implemen tation of accumArray is as follo ws/.
+accumArray bnds f z ivs /= runST
+/(newArr bnds z /`thenST/` /\a /-/>
+fill a f ivs /`thenST/_/`
+freezeArr a/)
+fill a f /[/] /= returnST /(/)
+fill a f /(/(i/,v/)/:i vs/)
+/= readArr a i /`thenST/` /\x /-/>
+writeArr a i /(f x v/) /`thenST/_/`
+/3
+T ec hnically the /(i/,b/) should b e Assoc i b
+/5
+=== page 6 ===
+fill a f ivs/)
+On ev aluating a call to accumArray /, a new state thread is
+generated/. Within this thread an arra y is allo cated/, eac h
+elemen t of whic h is initialised to z /. The reference to the
+arra y is named a /. This is passed to the fill pro cedure/,
+together with the accum ulator function f /, and the list of
+index//v alue pairs/.
+When this list is exhausted/, fill simply returns/. If there
+is at least one elemen t in the list/, it will b e a pair /(i/,v/) /.
+The arra y a is accessed at lo cation i /, the v alue obtained
+b eing b ound to x /, and a new v alue/, namely /(f x v/) /, is
+written in to the arra y /, again at lo cation i /. Then fill is
+called recursiv ely on the rest of the list/.
+Once fill has /nished/, the arra y is frozen in to an im/-
+m utable Hask ell arra y whic h is returned from the thread/.
+Using m utable/-arra y op erations has enabled us to de/-
+scrib e a complex arra y /\primitiv e/" in terms of m uc h sim/-
+pler op erations/. Not only do es this mak e the compiler/-
+writer/'s job easier/, but it also allo ws programmers
+to de/ne their o wn v arian ts for/, sa y /, the cases when
+accumArray do es not matc h their application precisely /.
+The example is also in teresting b ecause of its use of encap/-
+sulated state/. The implementation /(or in ternal details/) of
+accumArray is imp erativ e/, but its external b ehaviour is
+purely functional/. Ev en the presence of the state cannot
+b e detected from outside the de/nition of accumArray /.
+/3/./1/./1 Combining St a te Transf ormers
+Because state transformers are /rst class v alues/, w e can
+use the p o w er of the functional language to de/ne new
+com bining forms/. One that w ould b e useful in the exam/-
+ple ab o v e is for sequencing a list of /\pro cedures/"/:
+seqST /:/: /[ST s /(/)/] /-/> ST s /(/)
+seqST /= foldr thenST/_ /(returnST /(/)/)
+Using this the example ab o v e can b e rewritten/:
+accumArray bnds f z ivs /= runST
+/(newArr bnds z /`thenST/` /\a /-/>
+seqST /(map /(update a f/) ivs/) /`thenST/_/`
+freezeArr a/)
+update a f /(i/,v/) /= readArr a i /`thenST/` /\x/-/>
+writeArr a i /(f x v/)
+The lo cal function update tak es an index//v alue pair and
+ev aluates to a state transformer whic h up dates the arra y
+referenced b y a /. Mapping this function do wn the list of
+index//v alue pairs ivs pro duces a list of state transform/-
+ers/, and these are sequenced together b y seqST /.
+/4 Input//output
+No w that w e ha v e the state/-transformer framew ork in
+place/, w e can giv e a new accoun t of input//output/. An
+I//O/-p erforming computation is of t yp e ST RealWorld a /;
+that is/, it is a state transformer transforming a state of
+t yp e RealWorld /, and deliv ering a v alue of t yp e a /. The
+only thing whic h mak es it sp ecial is the t yp e of the state
+it transforms/, an abstract t yp e whose v alues represen t
+the real w orld/. It is con v enien t to use a t yp e synon ym to
+express this sp ecialisation/:
+type IO a /= ST RealWorld a
+Since IO a is an instance of ST s a /, it follo ws that all the
+state/-transformer primitiv es concerning references and
+arra ys w ork equally w ell when mixed with I//O op era/-
+tions/. More than that/, the same /\plum bing/" com bina/-
+tors/, thenST /, returnST and so on/, w ork for I//O as for
+other state transformers/. In addition/, ho w ev er/, w e pro/-
+vide a v ariet y of I//O op erations that w ork only on the IO
+instance of state /(that is/, they are not p olymorphic in the
+state/)/, suc h as/:
+putChar /:/: Char /-/> IO /(/)
+getChar /:/: IO Char
+It is easy to build more sophisticated I//O op erations on
+top of these/. F or example/:
+putString /:/: /[Char/] /-/> IO /(/)
+putString /[/] /= returnST /(/)
+putString /(c/:cs/) /= putChar c /`thenST/_/`
+putString cs
+or/, equiv alen tly /,
+putString cs /= seqST /(map putChar cs/)
+There is no w a y for a caller to tell whether putString
+is /\primitiv e/" or /\programmed/"/. Indeed/, putChar and
+getChar are not primitiv e either/. There is actually only
+one primitiv e I//O op eration/, called ccall /, whic h allo ws
+the Hask ell programmer to call an y C pro cedure/. F or
+example/, putChar is de/ned lik e this/:
+putChar /:/: Char /-/> IO /(/)
+putChar c /= ccall putchar c /`thenST/` /\/_ /-/>
+returnST /(/)
+That is/, the state transformer /(putChar c/) transforms
+the real w orld b y calling the C function putchar /, pass/-
+ing it the c haracter c /. The v alue returned b y the call
+is ignored/, as indicated b y the /\ /_ /" wild card/. Similarly /,
+getChar is implemen ted lik e this/:
+getChar /:/: IO Char
+getChar /= ccall getchar
+ccall is actually implem en ted as a new language con/-
+struct/, rather than as an ordinary function/, b ecause w e
+w an t it to w ork regardless of the n um b er and t yp e of its
+/6
+=== page 7 ===
+argumen ts/. The restrictions placed on its use are/:
+/ All the argumen ts/, and the result/, m ust b e t yp es
+whic h C understands/: Int /, Float /, Double /, Bool /, or
+Array /. There is no automatic con v ersion of more
+complex structured t yp es/, suc h as lists or trees/.
+/ The /rst /\argumen t/" of ccall /, whic h is the name of
+the C function to b e called/, m ust app ear literally /. It
+is really part of the construct/.
+/4/./1 Running IO
+The IO t yp e is a particular instance of state transformers
+so/, in particular/, I//O op erations are not p olymorphic in
+the state/. An imm ediate consequence of this is that IO
+op er ations c annot b e enc apsulate d using runST /. Wh y not/?
+Again/, b ecause of runsST /'s t yp e/. It demands that its
+state transformer argumen t b e univ ersally quan ti/ed o v er
+the state/, but that is exactly what IO is not/!
+F ortunately /, this is exactly what w e w an t/. If IO op er/-
+ations could b e encapsulated then it w ould b e p ossible
+to write apparen tly pure functions/, but whose b eha viour
+dep ended on external factors/, the con ten ts of a /le/, user
+input/, a shared C v ariable etc/. The language w ould no
+longer exhibit referen tial transparency /.
+Ho w ev er/, this do es lea v e us with a problem/: ho w are IO
+op erations executed/? The answ er is to pro vide a top lev el
+iden ti/er/,
+mainIO /:/: IO /(/)
+and to de/ne the meaning of a program in terms of it/.
+When a program is executed/, mainIO is applied to the
+true external w orld state/, and the meaning of the pro/-
+gram is giv en b y the /nal w orld state returned b y the
+program /(including/, of course/, all the incremen tal c hanges
+en route/)/.
+By this means it is p ossible to giv e a full de/nition
+of Hask ell/'s standard input//output b eha viour /(in v olving
+lists of requests and resp onses/) as w ell as m uc h more/. In/-
+deed/, the Glasgo w implemen tatio n of the Hask ell I//O sys/-
+tem is itself no w written en tirely in Hask ell/, using ccall
+to in v ok e Unix I//O primitiv es directly /. The same tec h/-
+niques ha v e b een used to write libraries of routines for
+calling X/, etc/.
+/5 F ormal seman tics
+Ha ving giv en the programmer/'s ey e view/, it is time no w
+to b e more formal/. In this section w e presen t the static
+and dynamic seman tics of a small language supp orting
+state transformers/, and giv e an outline pro of of safet y for
+the encapsulation/.
+Up to no w/, w e ha v e presen ted state transformers in the
+con text of the full/-sized programming language Hask ell/,
+since that is where w e ha v e implemen ted the ideas/. Here/,
+ho w ev er/, it is con v enien t to restrict ourselv es to a smaller
+language whic h includes only the essen tials/.
+/5/./1 A Language
+W e fo cus on lam b da calculus extended with the state
+transformer op erations/. The syn tax of the language is
+giv en b y/:
+e /:/:/= x j k j e
+/1
+e
+/2
+j /x/:e j
+let x /= e
+/1
+in e
+/2
+j runST e j
+ccall x e
+/1
+/ / / e
+n
+k /:/:/= /: /: /: j thenST j returnST j fixST j
+newVar j readVar j writeVar j
+newArr j readArr j writeArr j
+freezeArr
+/5/./2 T yp es
+Most of the t yp e rules are the usual Hindley/-Milner rules/.
+The most in teresting addition is the t yping judgemen t for
+runST /. T reating it as a language construct a v oids the
+need to go b ey ond Hindley/-Milner t yp es/. So rather than
+actually giv e runST the t yp e
+runST /:/: /8 a/./( /8 s/.ST s a/) /-/> a
+as suggested in the in tro duction/, w e ensure that its t yping
+judgmen t has the same e/ect/. So b ecause it is consisten t
+with the rank/-/2 t yp e/, our previous in tuition still applies/.
+As usual/, w e talk b oth of typ es and typ e schemes /(that is/,
+t yp es p ossibly with univ ersal quan ti/ers on the outside/)/.
+W e use T for t yp es/, S for t yp e sc hemes/, and K for t yp e
+constan ts suc h as I nt and B ool /. In addition w e use C
+to range o v er the subset of K that corresp ond to the /\C/-
+t yp es/" describ ed in Section /4/.
+T /:/:/= t j K j T
+/1
+/! T
+/2
+j ST T
+/1
+T
+/2
+j
+MutVar T
+/1
+T
+/2
+j MutArr T
+/1
+T
+/2
+S /:/:/= T j /8 t/:S
+Note that the MutArr t yp e constructor has only t w o ar/-
+gumen ts here/. The missing one is the index t yp e/. F or
+the purp oses of the seman tics w e shall assume that ar/-
+ra ys are alw a ys indexed b y naturals/, starting at /0/. The
+t yp e rules are giv en in Figure /1/. /BnZr ranges o v er t yp e en/-
+vironmen ts /(that is/, partial functions from references to
+t yp es/)/, and w e write F V /( T /) for the free v ariables of t yp e
+T and lik ewise for t yp e en vironmen ts/.
+/7
+=== page 8 ===
+AP P
+/BnZr /` e
+/1
+/: T
+/1
+/! T
+/2
+/BnZr /` e
+/2
+/: T
+/1
+/BnZr /` /( e
+/1
+e
+/2
+/) /: T
+/2
+LAM
+/BnZr /; x /: T
+/1
+/` e /: T
+/2
+/BnZr /` /x/:e /: T
+/1
+/! T
+/2
+LE T
+/BnZr /` e
+/1
+/: S /BnZr /; x /: S /` e
+/2
+/: T
+/BnZr /` /( let x /= e
+/1
+in e
+/2
+/) /: T
+V AR /BnZr /; x /: S /` x /: S
+S P E C
+/BnZr /` e /: /8 t/:S
+/BnZr /` e /: S /[ T /=t /]
+t /6/2 F V /( T /)
+GE N
+/BnZr /` e /: S
+/BnZr /` e /: /8 t/:S
+t /6/2 F V /(/BnZr/)
+C C ALL
+/BnZr /` e
+/1
+/: C
+/1
+/ / / /BnZr /` e
+n
+/: C
+n
+/BnZr /` /( ccall x e
+/1
+/: /: /: e
+n
+/) /: C
+RU N
+/BnZr /` e /: /8 t/: ST t T
+/BnZr /` /( runST e /) /: T
+t /6/2 F V /( T /)
+Figure /1/: T yp e rules
+/5/./3 Denotational Seman tics
+The denotational seman tics of state op erations is easy
+to add to standard seman tics for lazy functional lan/-
+gauges/. Figure /2 giv es a standard seman tics for a non/-
+strict lam b da calculus/, except that w e extend it with state
+transformers/.
+The v aluation function E /[ /[ /] /] tak es an expr ession and an
+envir onment and returns a value /. W e use Env for the do/-
+main of en vironmen ts/, and V al for the domain of v alues/,
+de/ned as follo ws/:
+Env /=
+Q
+/
+/( v ar
+/
+/! D
+/
+/)
+V al /=
+S
+/
+D
+/
+The en vironmen t maps a v ariable of t yp e / to a v alue in
+the domain D
+/
+/, and the domain of v alues is the union of
+all the D
+/
+/, where / ranges o v er monot yp es/.
+F rom the p oin t of view of the language/, the t yp e con/-
+structors ST /, MutVar and MutArr are opaque/. T o giv e
+them meaning/, ho w ev er/, the seman tics m ust pro vide them
+with some structure/.
+D
+ST s a
+/= S tate s /! /( D
+a
+/ S tate s /)
+D
+MutVar s a
+/= N
+/?
+D
+MutArr s a
+/= /( N / N /)
+/?
+S tate s /= /(/( N /, /! V al /) / D
+s
+/)
+/?
+The state is a /nite partial function from lo cations /(rep/-
+resen ted b y natural n um b ers/) to v alues/, together with
+a comp onen t whic h dep ends on the t yp e of the state/.
+The only t yp e of v alues here whic h will concern us is
+RealWorld /, the t yp e that s tak es in IO computations/.
+More on this later/. W e also add a b ottom elemen t to rep/-
+resen t an unde/ned state/, and distinguish b et w een this
+unde/ned state and states whic h are w ell/-de/ned partial
+functions/, but whic h map ev ery thing to /? /. The unde/-
+/ned state arises naturally as the state whic h results from
+an in/nite lo op of state transformers/, for example/.
+The meaning of a state transformer is a function whic h/,
+giv en a state/, pro duces a pair of results/: a v alue and a new
+state/. The least de/ned state transformer is the function
+whic h/, giv en an y state/, returns the pair con taining an
+unde/ned v alue and an unde/ned state /(i/.e/. the b ottom
+of the pro duct domain/)/.
+E /[ /[ E xpr /] /] /: Env /! V al
+E /[ /[ k /] /] / /= B /[ /[ k /] /]
+E /[ /[ x /] /] / /= / x
+E /[ /[ e
+/1
+e
+/2
+/] /] /= /( E /[ /[ e
+/1
+/] /] / /) /( E /[ /[ e
+/2
+/] /] / /)
+E /[ /[ /\ x /-/> e /] /] / /= /v /: /( E /[ /[ e /] /] /( / / f x /7/! v g /)
+E /[ /[ runST e /] /] /= r un /( E /[ /[ e /] /] / /)
+E /[ /[ e
+/1
+/`thenST/` e
+/2
+/] /] /= bind /( E /[ /[ e
+/1
+/] /] / /) /( E /[ /[ e
+/2
+/] /] / /)
+E /[ /[ returnST e /] /] /= unit /( E /[ /[ e /] /] / /)
+E /[ /[ fixST e /] /] /= l oop /( E /[ /[ e /] /] / /)
+r un m /= /
+/1
+/( m /( /; /; /? /)/)
+/( bind m k /) / /= k x /
+/0
+where /( x/; /
+/0
+/) /= m /
+/( unit v /) / /= /( v /; / /)
+/( l oop f /) / /= f x /
+where x /= f ix /( /y /:/
+/1
+/( f y / /)/)
+Figure /2/: Seman tics of State Com binators
+References are denoted simply b y natural n um b ers/, ex/-
+cept that it is p ossible to ha v e an unde/ned reference
+also/, denoted b y /? /. The n um b er represen ts a /\lo cation/"
+in the state/. Arra ys are lo cated b y a pair of naturals rep/-
+resen ting the lo cation of elemen t /0/, and the size of the
+arra y /, but again it is p ossible to ha v e a totally unde/ned
+arra y reference/.
+T urning to the details of Figures /2 to /5/, w e note a n um b er
+/8
+=== page 9 ===
+E /[ /[ newVar e
+/1
+/] /] /= new V ar v
+/1
+E /[ /[ readVar e
+/1
+/] /] /=
+/
+/? /; if v
+/1
+/= /?
+r eadV ar v
+/1
+otherwise
+where v
+i
+/= E /[ /[ e
+i
+/] /] /
+E /[ /[ writeVar e
+/1
+e
+/2
+/] /] /=
+/
+/? /; if v
+/1
+/= /?
+w r iteV ar v
+/1
+v
+/2
+otherwise
+/( new V ar v /) /? /= /( /? /; /? /)
+/( new V ar v /) /( / /; w /) /= /( p/; /( / /[ p /7/! v /] /; w /)/) where p /6/2 dom /( / /)
+/( r eadV ar p /) /? /= /( /? /; /? /)
+/( r eadV ar p /) /( / /; w /) /=
+/
+/( /? /; /? /) /; if p /6/2 dom /( / /)
+/( / p/; /( / /; w /)/) /; otherwise
+where v
+i
+/= E /[ /[ e
+i
+/] /] /
+/( w r iteV ar p v /) /? /= /( /? /; /? /)
+/( w r iteV ar p v /) /( / /; w /) /=
+/
+/( /? /; /? /) /; if p /6/2 dom /( / /)
+/(/(/) /; / /[ p /7/! v /]/) /; otherwise
+Figure /3/: Seman tics of v ariables
+E /[ /[ newArr e
+/1
+e
+/2
+/] /] /=
+/
+/? /; if v
+/1
+/= /?
+new Ar r v
+/1
+v
+/2
+otherwise
+E /[ /[ readArr e
+/1
+e
+/2
+/] /] /=
+/
+/? /; if v
+/1
+/= /? or v
+/2
+/= /?
+r eadAr r v
+/1
+v
+/2
+otherwise
+where v
+i
+/= E /[ /[ e
+i
+/] /] /
+E /[ /[ writeArr e
+/1
+e
+/2
+e
+/3
+/] /] /=
+/
+/? /; if v
+/1
+/= /? or v
+/2
+/= /?
+w r iteAr r v
+/1
+v
+/2
+v
+/3
+otherwise
+E /[ /[ freezeArr e
+/1
+/] /] /=
+/
+/? /; if v
+/1
+/= /?
+f r eez eAr r v
+/1
+otherwise
+/( new Ar r n v /) /? /= /( /? /; /? /)
+/( new Ar r n v /) /( / /; w /) /= /(/( p/; n /) /; /( / /[ p /7/! v /; /: /: /: /; /( p /+ n /BnZr /1/) /7/! v /] /; w /)/)
+w her e /8 q /: f p /: /: /: /( p /+ n /BnZr /1/) g /:q /6/2 dom /( / /)
+/( r eadAr r /( p/; n /) i /) /? /= /( /? /; /? /)
+/( r eadAr r /( p/; n /) i /) /( / /; w /) /=
+/
+/( /? /; /? /) /; if i /6/2 f /0 /: /: /: /( n /BnZr /1/) g or p /+ i /6/2 dom /( / /)
+/( / /( p /+ i /) /; /( / /; w /)/) /; otherwise
+/( w r iteAr r /( p/; n /) i v /) /? /= /( /? /; /? /)
+/( w r iteAr r /( p/; n /) i v /) /( / /; w /) /=
+/
+/( /? /; /? /) /; if i /6/2 f /0 /: /: /: /( n /BnZr /1/) g or p /+ i /6/2 dom /( / /)
+/(/(/) /; /( / /[ p /+ i /7/! v /] /; w /)/) /; otherwise
+/( f r eez eAr r /( p/; n /)/) /? /= /( /? /; /? /)
+/( f r eez eAr r /( p/; n /)/) /( / /; w /) /=
+/
+/( /? /; /? /) /; if /9 q /: f p /: /: /: /( p /+ n /BnZr /1/) g /:q /6/2 dom/
+/( f i /7/! / /( p /+ i /) g
+n
+i /=/0
+/; /( / /; w /)/) /; otherwise
+Figure /4/: Seman tics of Arra ys
+/9
+=== page 10 ===
+of asp ects/. Some of the op erations are strict/. F or exam/-
+ple/, readVar /, and writeVar are strict in their references/,
+but none of the op erations are strict in the v alues stored/.
+Again/, newVar /, readVar /, and writeVar are strict in the
+state/, but thenST and returnST are not/. W e shall return
+to this p oin t in a momen t/.
+Arra y references are treated similarly /, except that they
+come in t w o parts/: the base reference and an o/set /(the
+arra y index/)/. W e assume indexing ranges from /0 to the
+size of the arra y min us /1/. Again/, readArr and writeArr
+are strict in b oth the arra y reference and in the index/.
+They also return unde/ned if the index is out of b ounds/.
+Finally /, they and newArr are strict in the state/. newArr
+is also strict in the arra y size/.
+The seman tics mak es the nature of arra ys crystal clear/.
+They are comp osed of man y separate lo cations in the
+state/, eac h indep enden tly up datable/, eac h up date cost/-
+ing no more than a v ariable up date w ould cost/.
+E /[ /[ ccall f n e
+/1
+/: /: /: e
+n
+/] /]
+/=
+/
+/? /; if /9 i/:v
+i
+/= /?
+doI O f n /[ v
+/1
+/; /: /: /: /; v
+n
+/] otherwise
+where v
+i
+/= E /[ /[ e
+i
+/] /] /
+doI O /: N ame /! S eq V al /!
+S tate Real W or l d /! /( V al / S tate Real W or d /)
+doI O f n ar g s /? /= /( /? /; /? /)
+doI O f n ar g s /( / /; r w /) /= /( v /; /( / /; r w
+/0
+/)/)
+where /( v /; r w
+/0
+/) /= I O f n ar g s r w
+I O /: N ame /! S eq V al /!
+Real W or l d /! /( V al / Real W or l d /)
+Figure /5/: Seman tics of IO op erations
+The seman tics of IO op erations is giv en with resp ect to
+an unsp eci/ed function I O whic h is a state transformer
+on the RealWorld /.
+The primitiv e op erations/, suc h as newVar /, readVar /, and
+so on/, are necessarily strict in the state/. After all/, they
+eac h dep end on the v alue of the state/. In con trast/, the
+seman tics do not mak e thenST or runST strict in the state/,
+since they do not need its v alue/.
+What di/erence migh t this mak e/? Consider the in ter/-
+preter for a language with IO op erations and state giv en
+in Figure /6/. The v alues of v ariables are stored in a m u/-
+table arra y /, and a v ariable is used to store the input /(a
+lazy list/)/. The result of ob eying the commands is a list
+of the output v alues/. The output should app ear as it is
+generated/: whenev er a Write is ob ey ed/, the returnST
+should b e able to mak e the /rst elemen t of its output list
+a v ailable to the outside w orld b efor e ob eying the rest of
+the commands/.
+/5/./4 Safet y
+Ho w can w e b e sure that the ab o v e t yp e system ensures
+that eac h state thread is indep enden t of all others/? A full
+pro of lies w ell outside the scop e of this pap er/, but w e will
+pro vide an outline of the ideas/, together with a /(sligh tly
+informal/) statemen t of the main result/.
+Our ultimate in ten tion is to implemen t all the distinct
+state threads using the single/, global/, mac hine state/, but
+to do so without a/ecting the v alues returned b y state
+computations/. That is/, w e w an t to b e able to map eac h
+thread on to the global state/, and to ensure that the indi/-
+vidual state threads cannot comm unicate with eac h other
+except through purely functional v alues/. Similarly /, w e
+w an t to guaran tee that w e can arbitrarily in terlea v e the
+ev aluation of separate state threads/, still without a/ect/-
+ing the result of the computation b ecause/, in practice/, the
+amoun t of computation whic h tak es place in eac h thread
+will dep end on the demand for its /nal v alue/. W e cer/-
+tainly do not w an t the v alue of the result to dep end on
+the pattern of demand/.
+Consider then a single state thread/. In the seman tics it
+is applied to the empt y state/, and this state is extended
+b y applications of newVar /(and newArr of course/)/. There
+are no other activ e lo cations/, and the state undergo es no
+transformations other than those sp eci/ed b y these reads
+and writes/.
+In con trast/, if w e w ere to imagine using a single global
+state for al l the threads/, then man y more lo cations w ould
+b e activ e and/, b ecause of p ossible in terlea vings of op/-
+erations from other threads/, the underlying state migh t
+c hange while passing from one primitiv e op eration to the
+next/. The big question is/: ho w can w e guaran tee that
+these c hanges do not a/ect the result of the state thread/?
+W e view the state from the p ersp ectiv e of a single thread/,
+runST m /, and mo del the c hanges made b y other threads as
+non/-deterministic c hanges to the state/. So/, /rst/, w e ha v e
+to map the state of this particular thread in to a global
+state con taining material from man y separate threads/.
+W e mo del this mapping b y an injection /(one/-to/-one map/-
+ping/) / /: N /! N whic h maps a reference from the lo cal
+state of m to a reference in a global state/. The range of
+/ is that part of the global address space whic h supp orts
+the execution of m /.
+W e will sa y that a global state /
+/1
+mo dels the lo cal state of
+the seman tics/, /
+m
+/, if /
+m
+/= /
+/1
+/ / /. That is/, if /
+m
+is de/ned
+/1/0
+=== page 11 ===
+at some lo cation v to ha v e a v alue x /, then /
+/1
+is de/ned
+at lo cation / x also ha ving v alue x /. In addition/, ho w ev er/,
+/
+/1
+ma y b e de/ned at lots of other lo cations outside the
+range of / /.
+W e can also relate t w o global states using / /: t w o global
+states are related b y / if they b oth mo del the same lo cal
+state/. That is/,
+b
+/ /: /
+/0
+/$ /
+/1
+is a relation de/ned b y /
+/0
+/ / /=
+/
+/1
+/ / /. So/, t w o global states are related b y
+b
+/ if they agree
+in all the p ositions in the range of / /, but they can ha v e
+an y old junk in all other lo cations/.
+No w/, when w e actually ev aluate runST m /, w e will allo cate
+lo cations only in the range of / /. Of course/, / only exists as
+a mathematical abstraction/. The allo cation mec hanism
+will merely c ho ose a free lo cation/: / acts as a description
+of ho w the allo cation mec hanism will ha v e b eha v ed/.
+Eac h separate thread will allo cate references in non/-
+o v erlapping areas /(otherwise the lo cations w ould not b e
+a v ailable/)/. So from the p ersp ectiv e of a single thread/,
+the p ossible c hanges to the references b elonging to other
+threads can b e describ ed b y allo wing the state to b e any
+state whic h happ ens to mo del the true lo cal state b y / /.
+No w w e can almost state the main correctness theorem/.
+T o do so/, w e write m for the meaning of a state trans/-
+former m as giv en b y the seman tics/, and m
+/
+as the mean/-
+ing of m assuming states are referenced via the co ding
+function / /. That is/, the same seman tics/, except that bind
+and new V ar are replaced with bind
+/
+and new V ar
+/
+/( bind
+/
+m k /) / /= k x /
+/0/0
+where /( x/; /
+/0
+/) /= m /
+/
+/0
+b
+/ /
+/0/0
+/( new V ar
+/
+v /) /( / /; w /) /= /( p/; /( / /[ p /7/! v /] /; w /)/)
+where p /6/2 dom /( / /) /^ p /2 r an /( / /)
+The only di/erences are that new V ar is only allo w ed to
+allo cate lo cations in the range of / /, and that bind can
+alter its in termediate state so long as the status of the
+lo cations in the range of / are preserv ed/.
+Theorem/. If m /: /8 s/:S T s T /(where s /6/2 F V /( T /)/) then
+for an y injection / /: N /! N /, and an y / /: N /, /! V al suc h
+that / / / /= /; /, w e ha v e /
+/1
+/( m /( /; /; w /)/) /= /
+/1
+/( m
+/
+/( / /; w /)/)/,
+for all real w orlds w /.
+The pro of uses parametric p olymorphism in the st yle of
+Mitc hell /& Mey er /[/1/9/8/5/]/.
+The theorem sa ys that w e can c ho ose an y initial state/, so
+long as nothing is de/ned in the range of / /, and the /nal
+result is the same as when the seman tics explicitly used
+purely lo cal state/. F urthermore/, the state can c hange in
+eac h use of thenST /(mo delled b y bind /) so long as nothing
+in the range of / is touc hed and/, again/, the /nal result is
+unc hanged/.
+The corollary to this is that no state thread can read a ref/-
+erence allo cated b y another thread /(otherwise the result
+of runST m would dep end on the c hoice of initial state/,
+or on ho w the other parts of the state c hanged within
+an application of bind /)/. Similarl y /, no state thread can
+write to a reference b elonging to another thread b ecause
+the result of w r iteV ar dep ends on whether the lo cation
+is allo cated or not/, but again/, the result of runST m is
+indep enden t of suc h matters/.
+In conclusion/, therefore/, eac h thread is indep enden t of
+other threads/, ev en when implem en ted in a single global
+store/.
+/6 Implem en tation
+The whole p oin t of expressing stateful computations in
+the framew ork that w e ha v e describ ed is that op erations
+whic h mo dify the state can up date the state in plac e /.
+The implemen tation is therefore crucial to the whole en/-
+terprise/, rather than b eing a p eripheral issue/.
+W e ha v e in mind the follo wing implemen tation frame/-
+w ork/:
+/ The state of eac h encapsulated state thread is rep/-
+resen ted b y a collection of ob jects in heap/-allo cated
+storage/.
+/ A r efer enc e is represen ted b y the address of an ob ject
+in heap/-allo cated store/.
+/ A r e ad op er ation returns the curren t con ten ts of the
+ob ject whose reference is giv en/.
+/ A write op er ation o v erwrites the con ten ts of the sp ec/-
+i/ed ob ject or/, in the case of m utable arra ys/, part of
+the con ten ts/.
+/ The I//O thread is a little di/eren t b ecause/, as dis/-
+cussed in Section /5/./3/, its state also includes the actual
+state of the real w orld/. I//O op erations are carried out
+directly on the real w orld /(up dating it in place/, as it
+w ere/)/.
+As the previous section outlined/, the correctness of this
+implemen tati on relies totally on the t yp e system/. Suc h
+a reliance is quite familiar/: for example/, the implemen/-
+tation of addition mak es no attempt to c hec k that its
+argumen ts are indeed in tegers/, b ecause the t yp e system
+ensures it/. In the same w a y /, the implemen tatio n of state
+transformers mak es no attempt to ensure/, for example/,
+that references are only used in the same state thread in
+/1/1
+=== page 12 ===
+whic h they w ere created/; the t yp e system ensures that
+this is so/.
+/6/./1 Up date in place
+The most critical correctness issue concerns the up date/-
+in/-place b eha viour of write op erations/. Wh y is up date/-in/-
+place safe/? It is safe b ecause all the com binators /( thenST /,
+returnST /, fixST /) use the state only in a single/-threaded
+manner /(Sc hmidt /[/1/9/8/5/]/)/; that is/, they eac h use the in/-
+coming state exactly once/, and none duplicates it /(Fig/-
+ure /2/)/. F urthermore/, all the primitiv e op erations on the
+state are strict in it/. A write op eration can mo dify the
+state in place/, b ecause /(a/) it has the only cop y of the
+incoming state/, and /(b/) since it is strict in the incoming
+state/, there can b e no as/-y et/-unev aluated read op erations
+p ending on that state/.
+Can the programmer someho w duplicate the state/? No/:
+since the ST t yp e is opaque/, the only w a y the programmer
+can manipulate the state is via the com binators thenST /,
+returnST and fixST /. On the other hand/, the program/-
+mer certainly do es ha v e access to named references in to
+the state/. Ho w ev er/, it is p erfectly OK for these to b e du/-
+plicated/, stored in data structures and so on/. V ariables
+are immutable /; it is only the state to whic h they refer that
+is altered b y a write op eration/.
+W e /nd these argumen ts con vincing/, but they are cer/-
+tainly not formal/. A formal pro of w ould necessarily in/-
+v olv e some op erational seman tics/, and a pro of that no
+ev aluation order could c hange the b eha viour of the pro/-
+gram/. W e ha v e not y et undertak en suc h a pro of/.
+/6/./2 E/ciency consideration s
+It w ould b e p ossible to implem en t state transformers b y
+pro viding the com binators /( thenST /, returnST /, etc/) and
+primitiv e op erations /( readVar /, writeVar etc/) as library
+functions/. But this w ould imp ose a v ery hea vy o v erhead
+on eac h op eration and /(w orse still/) on comp osition/. F or
+example/, a use of thenST w ould en tail the construction of
+t w o function/-v alued argumen ts/, follo w ed b y a pro cedure
+call to thenST /. This compares v ery p o orly with simple
+juxtap osition of co de/, whic h is ho w sequen tial comp osi/-
+tion is implemen ted in con v en tional languages/!
+A b etter w a y w ould b e to treat state/-transformer op er/-
+ations sp ecially in the co de generator/. But that risks
+complicating an already complex part of the compiler/.
+Instead w e implemen t state transformers in a w a y whic h
+is b oth direct and e/cien t/: w e simply giv e Hask ell de//-
+nitions for the com binators/.
+type ST s a /= State s /-/> /(a/, State s/)
+returnST x s /= /(x/,s/)
+thenST m k s /= k x s/' where /(x/,s/'/) /= m s
+fixST k s /= /(r/,s/'/) where /(r/,s/'/) /= k r s
+runST m /= r where /(r/,s/) /= m currentSta te
+Rather than pro vide ST as a built/-in t yp e/, opaque to
+the compiler/, w e giv e its represen tation with an explicit
+Hask ell t yp e de/nition/. /(The represen tation of ST is not/,
+of course/, exp osed to the programmer/, lest he or she write
+functions whic h duplicate or discard the state/./) It is then
+easy to giv e Hask ell de/nitions for the com binators/, whic h
+mirror precisely the seman tics giv en for them in Figure /2
+/4
+/.
+The implemen tation of runST is in triguing/. Since its ar/-
+gumen t/, m /, w orks regardless of what state is passed to it/,
+w e simply pass a v alue represen ting the curren t state of
+the heap/. As w e will see shortly /(Section /6/./2/./2/)/, this v alue
+is nev er actually lo ok ed at/, so a constan t v alue will do/.
+The co de generator m ust/, of course/, remain resp onsible
+for pro ducing the appropriate co de for eac h primitiv e op/-
+eration/, suc h as readVar /, ccall /, and so on/. In our im/-
+plemen tation w e actually pro vide a Hask ell /\wrapp er/" for
+eac h primitiv e whic h mak es explicit the ev aluation of their
+argumen ts/, using so/-called /\un b o xed v alues/"/. Both the
+motiv ation for and the implemen tatio n of our approac h
+to un b o xed v alues is detailed in P eyton Jones /& Launc h/-
+bury /[/1/9/9/1/]/, and w e do not rehearse it here/.
+/6/./2/./1 Transf orma tion
+The b eaut y of this approac h is that all the com binators
+can then b e in/-lined at their call sites/, th us largely remo v/-
+ing the /\plum bing/" costs/. F or example/, the expression
+m/1 /`thenST/` /\v/1 /-/>
+m/2 /`thenST/` /\v/2 /-/>
+returnST e
+b ecomes/, after in/-lining thenST and returnST /,
+/\s /-/> let /(v/1/,s/1/) /= m/1 s
+/(v/2/,s/2/) /= m/2 s/1
+in /(e/,s/3/)
+F urthermore/, the resulting co de is no w exp osed to the
+full range of analyses and program transformations im/-
+plemen ted b y the compiler/. F or example/, if the compiler
+can sp ot that the ab o v e co de will b e used in a con text
+whic h is strict in either comp onen t of the result tuple/, it
+will b e transformed to
+/\s /-/> case m/1 s of
+/(v/1/,s/2/) /-/> case m/2 s/1 of
+/(v/2/,s/2/) /-/> /(e/,s/2/)
+In the let v ersion/, heap/-allo cated th unks are created for
+/4
+Indeed/, w e ha v e to admit that the implemen tat ion came /rst/!
+/1/2
+=== page 13 ===
+m/1 s and m/2 s/1 /; the case v ersion a v oids this cost/. These
+sorts of optimisations could not b e p erformed if the ST
+t yp e and its com binators w ere opaque to the compiler/.
+/6/./2/./2 P assing the st a te ar ound
+The implemen tation of the ST t yp e/, giv en ab o v e/, passes
+around an explicit state/. Y et/, w e said earlier that state/-
+manipulating op erations are implem en ted b y p erforming
+side e/ects on the common/, global heap/. What/, then/,
+is the role of the explicit state v alues whic h are passed
+around b y the ab o v e co de/? It pla ys t w o imp ortan t roles/.
+Firstly /, the compiler /\shak es the co de around/" quite con/-
+siderably/: is it p ossible that it migh t someho w end up
+c hanging the order in whic h the primitiv e op erations are
+p erformed/? No/, it is not/. The input state of eac h primi/-
+tiv e op eration is pro duced b y the preceding op eration/, so
+the ordering b et w een them is main tained b y simple data
+dep endencies of the explicit state/, whic h are certainly pre/-
+serv ed b y ev ery correct program transformation/.
+Secondly /, the explicit state allo ws us to express to the
+compiler the strictness of the primitiv e op erations in the
+state/. The State t yp e is de/ned lik e this/:
+data State s /= MkState /(State/# s/)
+That is/, a state is represen ted b y a single/-constructor al/-
+gebraic data t yp e/, whose only con ten ts is a v alue of t yp e
+State/# s /, the /(/nally/!/) primitiv e t yp e of states/. The
+lifting implied b y the MkState constructor corresp onds
+exactly to the lifting in the seman tics/. Using this de//-
+nition of State w e can no w de/ne newVar /, for example/,
+lik e this/:
+newVar init /(MkState s/#/)
+/= case newVar/# init s/# of
+/(v/,t/#/) /-/> /(v/, MkState t/#/)
+This de/nition mak es absolutely explicit the ev aluation
+of the strictness of newVar in its state argumen t/, /nally
+calling the truly primitiv e newVar/# to p erform the allo/-
+cation/.
+W e think of a primitiv e state /| that is/, a v alue of t yp e
+State/# s /, for some t yp e s /| as a /\tok en/" whic h stands
+for the state of the heap and /(in the case of the I//O
+thread/) the real w orld/. The implemen tation nev er ac/-
+tually insp ects a primitiv e state v alue/, but it is faith/-
+fully passed to/, and returned from ev ery primitiv e state/-
+transformer op eration/. By the time the program reac hes
+the co de generator/, the role of these state v alues is o v er/,
+and the co de generator arranges to generate no co de at
+all to mo v e around v alues of t yp e State/# /(assuming an
+underlying ram arc hitecture of course/)/.
+/6/./2/./3 Arra ys
+The implemen tati on of arra ys is straigh tforw ard/. The
+only complication lies with freezeArray /, whic h tak es a
+m utable arra y and returns a frozen/, imm utable cop y /. Of/-
+ten/, though/, w e w an t to construct an arra y incremen tally /,
+and then freeze it/, p erforming no further m utation on the
+m utable arra y /. In this case it seems rather a w aste to
+cop y the en tire arra y /, only to discard the m utable v ersion
+imm ediately thereafter/.
+The righ t solution is to do a go o d enough job in the
+compiler to sp ot this sp ecial case/. What w e actually do
+at the momen t is to pro vide a highly dangerous op era/-
+tion dangerousFreezeA rray /, whose t yp e is the same as
+freezeArray /, but whic h w orks without cop ying the m u/-
+table arra y /. F rankly this is a hac k/, but since w e only
+exp ect to use it in one or t w o critical pieces of the stan/-
+dard library /, w e couldn/'t w ork up enough steam to do the
+job prop erly just to handle these few o ccasions/. W e do
+not pro vide general access to dangerousFreezeA rray /.
+/6/./2/./4 More efficient I//O
+The I//O state transformer is a little sp ecial/, b ecause of
+the follo wing observ ation/: the /nal state of the I//O thr e ad
+wil l c ertainly b e demande d /. Wh y/? Because the whole
+p oin t in running the program in the /rst place is to cause
+some side e/ect on the real w orld/!
+W e can exploit this prop ert y to gain a little extra e//-
+ciency /. Since the /nal state of the I//O thread will b e
+demanded/, so will ev ery in termediate thread/. So w e can
+safely use a strict/, and hence more e/cien t/, v ersion of
+thenST /:
+thenIO /:/: IO a /-/> /(a/-/>IO b/) /-/> IO b
+thenIO m k s /= case m s of
+/(r/,s/'/) /-/> k r s/'
+By using case instead of the let whic h app ears in
+thenST /, w e a v oid the construction of a heap/-allo cated
+th unk for m s /.
+/7 Other useful com binators
+W e ha v e found it useful to expand the range of com bina/-
+tors and primitiv es b ey ond the minima l set presen ted so
+far/. This section presen ts the ones w e ha v e found most
+useful/.
+/7/./1 Equalit y
+The references w e ha v e corresp ond v ery closely to /\p oin t/-
+ers to v ariables/"/. One useful additional op eration on ref/-
+erences is to determine whether t w o references are aliases
+/1/3
+=== page 14 ===
+for the same v ariable /(so w r ite s to the one will a/ect r ead s
+from the other/)/. It turns out to b e quite straigh tforw ard
+to add an additional constan t/,
+eqMutVar /:/: MutVar s a /-/> MutVar s a /-/> Bool
+eqMutArr /:/: Ix i /=/>
+MutArr s i a /-/> MutArr s i a /-/> Bool
+Notice that the result do es not dep end on the state/|it
+is simply a b o olean/. Notice also that w e only pro vide a
+test on references whic h exist in the same state thread/.
+References from di/eren t state threads cannot b e aliases
+for one another/.
+/7/./2 In terlea v ed and parallel op erations
+The state/-transformer comp osition com binator de/ned so
+far/, thenST /, is strictly sequen tial/: the state is passed from
+the /rst state transformer on to the second/. But some/-
+times that is not what is w an ted/. Consider/, for exam/-
+ple/, the op eration of reading a /le/. W e ma y not w an t
+to sp ecify the precise relativ e ordering of the individual
+c haracter/-b y/-c haracter reads from the /le and other I//O
+op erations/. Rather/, w e ma y w an t the /le to b e read lazily /,
+as its con ten ts is demanded/.
+W e can pro vide this abilit y with a new com binator/,
+interleaveST /:
+interleave ST /:/: ST s a /-/> ST s a
+Unlik e
+ev ery other state transformer so far/, interleaveST ac/-
+tually duplicates the state/! The /\plum bing diagram/" for
+/(interleaveST s/) is lik e this/:
+State outState in
+Result
+s
+More precisely /, interleaveST splits the state in to t w o
+parts/, whic h should b e disjoin t/. In the lazy/-/le/-read ex/-
+ample/, the state of the /le is passed in to one branc h/, and
+the rest of the state of the w orld is passed in to the other/.
+Since these states are disjoin t/, an arbitrary in terlea ving
+of op erations in eac h branc h of the fork is legitimate/.
+T o mak e all this concrete/, here is an implem en tation of
+lazy /le read/:
+readFile /:/: String /-/> IO /[Char/]
+readFile filename
+/= openFile filename /`thenST/` /\f /-/>
+readCts f
+readCts /:/: FileDescr ip tor /-/> IO /[Char/]
+readCts f /= interleave ST
+/(readCh f /`thenST/` /\c /-/>
+if c /=/= eofChar
+then returnST /[/]
+else readCts f /`thenST/` /\cs /-/>
+returnST /(c/:cs/)/)
+A parallel v ersion of interleaveST /, whic h starts up a
+concurren t task to p erform the fork ed I//O thread/, seems
+as though it w ould b e useful in building resp onsiv e graph/-
+ical user in terfaces/. The idea is that forkIO w ould b e
+used to create a new widget/, or windo w/, whic h w ould b e
+capable of indep enden t I//O through its part of the screen/.
+The only unsatisfactory feature of all this is that w e see
+absolutely no w a y to guaran tee that the side e/ects p er/-
+formed in the t w o branc hes of the fork are indeed inde/-
+p enden t/. That has to b e left as a pro of obligation for the
+programmer/; the only consolation is that at least the lo/-
+cation of these pro of obligations is explicit/. W e fear that
+there ma y b e no absolutely secure system whic h is also
+expressiv e enough to describ e the programs whic h real
+programmers w an t to write/.
+/8 Related w ork
+Sev eral other languages from the functional stable pro vide
+some kind of state/.
+F or example/, Standard ML pro vides r efer enc e typ es /,
+whic h ma y b e up dated /(P aulson /[/1/9/9/1/]/)/. The resulting
+system has serious shortcomings/, though/. The meaning
+of programs whic h use references dep ends on a complete
+sp eci/cation of the order of ev aluation of the program/.
+Since SML is strict this is an acceptable price to pa y /,
+but it w ould b ecome un w ork able in a non/-strict language
+where the exact order of ev aluation is hard to /gure out/.
+What is w orse/, ho w ev er/, is that referen tial transparency
+is lost/. Because an arbitrary function ma y rely on state
+accesses/, its result need not dep end purely on the v al/-
+ues of its argumen ts/. This has additional implications
+for p olymorphism/, leading to a w eak ened form in order
+to main tain t yp e safet y /(T ofte /[/1/9/9/0/]/)/. W e ha v e none of
+these problems here/.
+The data/o w language Id pro vides I/-structures and M/-
+structures as m utable datat yp es /(Nikhil /[/1/9/8/8/]/)/. Within
+a stateful program referen tial transparency is lost/. F or I/-
+structures/, the result is indep enden t of ev aluation order/,
+pro vided that all sub/-expressions are ev en tually ev aluated
+/(in case they side/-e/ect an I/-structure/)/. F or M/-structures/,
+the result of a program can dep end on ev aluation order/.
+Compared with I/-structures and M/-structures/, our ap/-
+proac h p ermits lazy ev aluation /(where v alues are ev al/-
+/1/4
+=== page 15 ===
+uated on demand/, and ma y nev er b e ev aluated if they
+are not required/)/, and supp orts a m uc h stronger notion
+of encapsulation/. The big adv an tage of I/-structures and
+M/-structures is that they are b etter suited to parallel pro/-
+grammi ng than is our metho d/.
+The Clean language tak es a di/eren t approac h /(Barend/-
+sen /& Smetsers /[/1/9/9/3/]/)/. The Clean t yp e system supp orts
+a form of linear t yp es/, called /\unique t yp es/"/. A v alue
+whose t yp e is unique can safely b e up dated in place/, b e/-
+cause the t yp e system ensures that the up dating op er/-
+ation has the sole reference to the v alue/. The con trast
+with our w ork is in teresting/. W e separate references from
+the state to whic h they refer/, and do not p ermit explicit
+manipulation of the state/. Clean iden ti/es the t w o/, and
+in consequence requires state to b e manipulated explic/-
+itly /. W e allo w references to b e duplicated/, stored in data
+structures and so on/, while Clean do es not/. Clean requires
+a new t yp e system to b e explained to the programmer/,
+while our system do es not/. On the other hand/, the separa/-
+tion b et w een references and state is sometimes tiresome/.
+F or example/, while b oth systems can express the idea of
+a m utable list/, Clean do es so more neatly b ecause there
+is less explicit de/-referencing/. The tradeo/ b et w een im/-
+plicit and explicit state in purely/-functional languages is
+far from clear/.
+There are signi/can t similarities with Gi/ord and Lu/-
+cassen/'s e/e ct system whic h uses t yp es to record side
+e/ects p erformed b y a program /(Gi/ord /& Lucassen
+/[/1/9/8/6/]/)/. Ho w ev er/, the e/ects system is designed to de/-
+limit the e/ect of side e/ects whic h ma y o ccur as a result
+of ev aluation/. Th us the seman tic setting is still one whic h
+relies on a predictable order of ev aluation/.
+Our w ork also has strong similarities with Odersky /, Ra/-
+bin and Hudak/'s /
+v ar
+/(Odersky /, Rabin /& Hudak /[/1/9/9/3/]/)/,
+whic h itself w as in/uenced b y the Imp erativ e Lam b da
+Calculus /(ILC/) of Sw arup/, Reddy /& Ireland /[/1/9/9/1/]/. ILC
+imp osed a rigid strati/cation of applicativ e/, state reading/,
+and imp erativ e op erations/. The t yp e of runST mak es this
+strati/cation unnecessary/: state op erations can b e encap/-
+sulated and app ear purely functional/. This w as also true
+of /
+v ar
+but there it w as ac hiev ed only through run/-time
+c hec king whic h/, as a direct consequence/, precludes the
+st yle of lazy state giv en here/.
+In t w o earlier pap ers/, w e describ e an approac h to these is/-
+sues based on monads /, in the con text of non/-strict/, purely/-
+functional languages/. The /rst/, P eyton Jones /& W adler
+/[/1/9/9/3/]/, fo cusses mainly on input//output/, while the sec/-
+ond/, Launc h bury /[/1/9/9/3/]/, deals with stateful computation
+within a program/. The approac h tak en b y these pap ers
+has t w o ma jor shortcomings/:
+/ State and input//output existed in separate frame/-
+w orks/. The same general approac h can handle b oth
+but/, for example/, di/eren t com binators w ere required
+to comp ose stateful computations from those re/-
+quired for I//O/-p erforming computation/.
+/ State could only safely b e handled if it w as anony/-
+mous /. Consequen tly /, it w as di/cult to write pro/-
+grams whic h manipulate more than one piece of state
+at once/. Hence/, programs b ecame rather /\brittle/"/:
+an apparen tly inno cuous c hange /(adding an extra up/-
+datable arra y/) b ecame di/cult or imp ossible/.
+/ Separate state threads required exp ensiv e run/-time
+c hec ks to k eep them apart/. Without this/, there w as
+the p ossibilit y that a reference migh t b e created in
+one stateful thread/, and used async hronously in an/-
+other/, whic h w ould destro y the Ch urc h/-Rosser prop/-
+ert y /.
+Ac kno wledgemen ts
+The idea of adding an extra t yp e v ariable to state threads
+arose in discussion with John Hughes/, and w as presen ted
+brie/y at the /1/9/9/3 Cop enhagen w orkshop on State in Pro/-
+grammi ng Languages/, though at that time w e suggested
+using an existen tial quan ti/cation in the t yp e of runST /. In
+addition/, all these ideas ha v e b ene/ted from discussions
+amongst the F unctional Programming Group at Glasgo w/.
+References
+E Barendsen /& JEW Smetsers /[Dec /1/9/9/3/]/, /\Con v en tional
+and uniqueness t yping in graph rewrite systems/,/"
+in Pro c /1/3th Conference on the F oundations of
+Soft w are T ec hnology and Theoretical Computer
+Science /, Springer V erlag LNCS/.
+DK Gi/ord /& JM Lucassen /[Aug /1/9/8/6/]/, /\In tegrating func/-
+tional and imp erativ e programming /,/" in A CM
+Conference on Lisp and F unctional Program/-
+ming/, MIT /, A CM/, /2/8/{/3/8/.
+J Launc h bury /[June /1/9/9/3/]/, /\Lazy imp erativ e program/-
+ming/,/" in Pro c A CM Sigplan W orkshop on State
+in Programming Languages/, Cop enhagen /(a v ail/-
+able as Y ALEU//DCS//RR/-/9/6/8/, Y ale Univ ersit y/) /,
+pp/4/6/{/5/6/.
+NJ McCrac k en /[June /1/9/8/4/]/, /\The t yp ec hec king of pro/-
+grams with implicit t yp e structure/,/" in Seman/-
+tics of data t yp es /, Springer V erlag LNCS /1/7/3/,
+/3/0/1/{/3/1/5/.
+/1/5
+=== page 16 ===
+JC Mitc hell /& AR Mey er /[/1/9/8/5/]/, /\Second/-order logical re/-
+lations/,/" in Logics of Programs /, R P arikh/, ed/./,
+Springer V erlag LNCS /1/9/3/.
+Rishiyur Nikhil /[Marc h /1/9/8/8/]/, /\Id Reference Man ual/,/"
+Lab for Computer Sci/, MIT/.
+M Odersky /, D Rabin /& P Hudak /[Jan /1/9/9/3/]/, /\Call b y
+name/, assignmen t/, and the lam b da calculus/,/" in
+/2/0th A CM Symp osium on Principles of Program/-
+ming Languages/, Charleston /, A CM/, /4/3/{/5/6/.
+LC P aulson /[/1/9/9/1/]/, ML for the w orking programmer /,
+Cam bridge Univ ersit y Press/.
+SL P eyton Jones /& J Launc h bury /[Sept /1/9/9/1/]/, /\Un b o xed
+v alues as /rst class citizens/,/" in F unctional Pro/-
+gramming Languages and Computer Arc hitec/-
+ture/, Boston /, Hughes/, ed/./, LNCS /5/2/3/, Springer
+V erlag/, /6/3/6/{/6/6/6/.
+SL P eyton Jones /& PL W adler /[Jan /1/9/9/3/]/, /\Imp erativ e
+functional programming /,/" in /2/0th A CM Symp o/-
+sium on Principles of Programming Languages/,
+Charleston /, A CM/, /7/1/{/8/4/.
+CG P onder/, PC McGeer /& A P/-C Ng /[June /1/9/8/8/]/,
+/\Are applicativ e languages ine/cien t/?/,/" SIG/-
+PLAN Notices /2/3/, /1/3/5/{/1/3/9/.
+D A Sc hmidt /[Apr /1/9/8/5/]/, /\Detecting global v ariables in de/-
+notational sp eci/cations/,/" TOPLAS /7/, /2/9/9/{/3/1/0/.
+V Sw arup/, US Reddy /& E Ireland /[Sept /1/9/9/1/]/, /\Assign/-
+men ts for applicativ e languages/,/" in F unctional
+Programming Languages and Computer Arc hi/-
+tecture/, Boston /, Hughes/, ed/./, LNCS /5/2/3/, Springer
+V erlag/, /1/9/2/{/2/1/4/.
+M T ofte /[No v /1/9/9/0/]/, /\T yp e inference for p olymorphic ref/-
+erences/,/" Information and Computation /8/9/.
+App endix
+Figure /6 giv es a larger example of arra y references in
+use/. It de/nes an in terpreter for a simple imp erativ e lan/-
+guage/, whose input is the program together with a list
+of input v alues/, and whose output is the list of v alues
+written b y the program/. The in terpreter naturally in/-
+v olv es a v alue represen ting the state of the store/. The
+idea is/, of course/, that the store should b e implemen ted
+as an in/-place/-up dated arra y /, and that is precisely what
+is ac hiev ed
+/5
+/.
+/5
+This program also exhibits an a wkw ard shortcoming of Hask ell/'s
+This example has long b een a classic test case for systems
+whic h infer single/-threadedness /(Sc hmidt /[/1/9/8/5/]/)/. The
+only unsatisfactory feature of the solution is that eval has
+to b e written as a fully/-/edged state transformer/, while
+one migh t p erhaps lik e to tak e adv an tage of its /\read/-
+only/" nature/.
+t yp e signatures/, whic h it shares with ev ery other widely/-used func/-
+tional language w e kno w/. The t yp e signatures for obey and eval
+are giv en in commen ts only /, b ecause Hask ell understands them as
+implicitly univ ersally quan ti/ed o v er s /. But of course they are
+monomorp hic in s /! Alas/.
+/1/6
+=== page 17 ===
+data Com /= Assign Var Exp /| Read Var /| Write Exp /| While Exp /[Com/]
+type Var /= Char
+data Exp /= /./././.
+interpret /:/: /[Com/] /-/> /[Int/] /-/> /[Int/]
+interpret cs input /= runST /(newArr /(/'A/'/,/'Z/'/) /0 /`thenST/` /\store /-/>
+newVar input /`thenST/` /\inp/-/>
+command cs store inp/)
+command /:/: /[Com/] /-/> MutArray s Int /-/> MutVar s /[Int/] /-/> ST s /[Int/]
+command cs store inp /= obey cs
+where
+/-/- obey /:/: /[Com/] /-/> ST s /[Int/]
+obey /[/] /= returnST /[/]
+obey /(Assign v e/:cs/) /= eval e /`thenST/` /\val/-/>
+writeArr store v val /`thenST/_/`
+obey cs
+obey /(Read v/:cs/) /= readVar inp /`thenST/` /\/(x/:xs/) /-/>
+writeArr store v x /`thenST/_/`
+writeVar inp xs /`thenST/_/`
+obey cs
+obey /(Write e/:cs/) /= eval e /`thenST/` /\out/-/>
+obey cs /`thenST/` /\outs/-/>
+returnST /(out/:outs/)
+obey /(While e bs/:cs/) /= eval e /`thenST/` /\val/-/>
+if val/=/=/0 then
+obey cs
+else
+obey /(bs /+/+ While e bs /: cs/) inp
+/-/- eval /:/: Exp /-/> ST s Int
+eval e /= /./././.
+Figure /6/: An in terpreter with lazy stream output
+/1/7

@@ -1,0 +1,1664 @@
+=== page 1 ===
+64
+A Logical Relation for Monadic Encapsulation of State
+Proving contextual equivalences in the presence of runST
+AMIN TIMANY, imec-Distrinet, KU Leuven, Belgium
+LÉO STEFANESCO∗, IRIF, Université Paris Diderot & CNRS, France
+MORTEN KROGH-JESPERSEN, Aarhus University, Denmark
+LARS BIRKEDAL, Aarhus University, Denmark
+We present a logical relations model of a higher-order functional programming language with impredicative
+polymorphism, recursive types, and a Haskell-style ST monad type with runST. We use our logical relations
+model to show that runST provides proper encapsulation of state, by showing that effectful computations
+encapsulated by runST are heap independent. Furthermore, we show that contextual refinements and equiva-
+lences that are expected to hold for pure computations do indeed hold in the presence of runST. This is the
+first time such relational results have been proven for a language with monadic encapsulation of state. We
+have formalized all the technical development and results in Coq.
+CCS Concepts: • Theory of computation → Programming logic; Separation logic; Functional con-
+structs; Type structures; Logic and verification; Invariants;
+Additional Key Words and Phrases: ST Monad, Logical Relations, Functional Programming Languages, Theory
+of Programming Languages, Program Logics, Iris
+ACM Reference Format:
+Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal. 2018. A Logical Relation for Monadic
+Encapsulation of State: Proving contextual equivalences in the presence of runST. Proc. ACM Program. Lang.
+2, POPL, Article 64 (January 2018), 28 pages. https://doi.org/10.1145/3158152
+1 INTRODUCTION
+Haskell is often considered apure functional programming language because effectful computations
+are encapsulated using monads. To preserve purity, values usually cannot escape from those monads.
+One notable exception is the ST monad, introduced by Launchbury and Peyton Jones [1994]. The
+ST monad comes equipped with a function runST :(∀β, STβ τ)→ τ that allows a value to escape
+from the monad: runST runs a stateful computation of the monadic type STβ τand then returns
+the resulting value of typeτ . In the original paper [Launchbury and Peyton Jones 1994], the authors
+argued informally that the ST monad is “safe”, in the sense that stateful computations are properly
+encapsulated and therefore the purity of the functional language is preserved.
+∗Most of this work was done while this author was at ENS Lyon
+Authors’ addresses: Amin Timany, Computer Science, imec-Distrinet, KU Leuven, Celestijnenlaan 200A, Heverlee, 3001,
+Belgium, amin.timany@cs.kuleuven.be; Léo Stefanesco, IRIF, Université Paris Diderot & CNRS, 8 Place Aurélie Nemours,
+75013, Paris, France, leo.lveb@gmail.com; Morten Krogh-Jespersen, Computer Science, Aarhus University, Denmark,
+mkj@cs.au.dk; Lars Birkedal, Computer Science, Aarhus University, Denmark, birkedal@cs.au.dk.
+Permission to make digital or hard copies of part or all of this work for personal or classroom use is granted without fee
+provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and
+the full citation on the first page. Copyrights for third-party components of this work must be honored. For all other uses,
+contact the owner/author(s).
+© 2018 Copyright held by the owner/author(s).
+2475-1421/2018/1-ART64
+https://doi.org/10.1145/3158152
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 2 ===
+64:2 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+In this paper we present a logical relations model of STLang, a call-by-value higher-order
+functional programming language with impredicative polymorphism, recursive types, and a Haskell-
+style ST monad type with runST. In contrast to earlier work, the operational semantics of STLang
+uses a single global mutable heap , capturing how the language would be implemented in reality. We
+use our logical relations model to show for the first time thatrunST provides proper encapsulation of
+state. Concretely, we state a number of contextual refinements and equivalences that are expected
+to hold for pure computations and we then use our logical relations model to prove that they
+indeed hold for STLang, i.e., in the presence of stateful computations encapsulated using runST.
+Moreover, we show a State-Independence theorem that intuitively expresses that, for any well-typed
+expression e of type τ , the evaluation of e in a heap h is independent of the choice of h, i.e., e
+cannot read from or write to locations inh but may allocate new locations (via encapsulated stateful
+computations). Note that this is the strong result one really wishes to have since it is proved for a
+standard operational semantics using a single global mutable heap allowing for updates in-place, not
+an abstract semantics partitioning memory into disjoint regions as some earlier work [Launchbury
+and Peyton Jones 1995; Moggi and Sabry 2001].
+In STLang, values of any type can be stored in the heap, and thus it is an example of a language
+with so-called higher-order store. It is well-known that it is challenging to construct logical relations
+for languages with higher-order store. We define our logical relations model in Iris, a state-of-
+the-art higher-order separation logic [Jung et al . 2016, 2015; Krebbers et al . 2017a]. Iris’s base
+logic [Krebbers et al. 2017a] comes equipped with certain modalities which we use to simplify the
+construction of the logical relation. Logical relations for other type systems have recently been
+defined in Iris [Krebbers et al. 2017b; Krogh-Jespersen et al. 2017], but to make our logical relations
+model powerful enough to prove the contextual equivalences for purity, we use a new approach to
+defining logical relations in Iris, which involves several new technical innovations, described in §3
+and §5.
+Another reason for using Iris is that the newly developed powerful proof mode for Iris [Krebbers
+et al. 2017b] makes it possible to conduct interactive proofs in the Iris logic in Coq, much in the
+same way as one normally reasons in the Coq logic itself. Indeed, we have used the Iris proof mode
+to formalize all the technical results in this paper in Iris in Coq.
+In the remainder of this Introduction, we briefly recap the Haskell ST monad and recall why
+runST intuitively encapsulates state. We emphasize that STLang, unlike Haskell, is call-by-value;
+we show Haskell code to make the examples easier to understand. Finally, we give an overview of
+the technical development and our new results.
+1.1 A Recap of the Haskell ST Monad
+The ST monad, as described in [Launchbury and Peyton Jones 1994] and implemented in the
+standard Haskell library, is actually a family STβ of monads, whereβ ranges over types, which
+satisfy the following interface. The first two functions
+return :: α → ST β α
+( > >=) :: ST β α → (α → ST β α ') → ST β α '
+are the standard Kleisli arrow interface of monads in Haskell; >>= is pronounced “bind”. Recall
+that in Haskell, free type variables (α,α′, andβ above) are implicitly universally quantified.1
+The next three functions
+newSTRef :: α → ST β ( STRef β α )
+readSTRef :: STRef β α → ST β α
+writeSTRef :: STRef β α → α → ST β ()
+1In STLang, we use capital letters, e.g. X , for type variables and use ρ for the index type in ST ρ τ and STRef ρ τ .
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 3 ===
+A Logical Relation for Monadic Encapsulation of State 64:3
+fibST :: Integer → Integer
+fibST n =
+let fibST ' 0 x _ = readSTRef x
+fibST ' n x y = do
+x ' <- readSTRef x
+y ' <- readSTRef y
+writeSTRef x y '
+writeSTRef y (x '+ y')
+fibST ' (n -1) x y
+in
+if n < 2 then n else
+runST $ do
+x <- newSTRef 0
+y <- newSTRef 1
+fibST ' n x y
+let fibST : Z -> Z =
+let rec fibST ' n x y =
+if n = 0 then ! x
+else bind ! x in λ x ' ->
+bind ! y in λ y ' ->
+bind x := y ' in λ () ->
+bind y := (x '+ y') in λ () ->
+fibST ' (n -1) x y
+in
+if n < 2 then n else
+runST {
+bind ( ref 0) in λ x ->
+bind ( ref 1) in λ y ->
+fibST ' n x y }
+Fig. 1. Computing Fibonacci numbers using the ST monad in Haskell (left) and in STLang (right). Haskell code
+adapted from https://wiki.haskell.org/Monad/ST. do is syntactic sugar for wrapping bind around a sequence
+of expressions.
+are used to create, read from and write into references, respectively. Notice that the reference type
+STRefβτ , contains the type of the contents of the reference cells,τ , but also another type parameter,
+β, which, intuitively, indicates which (logical) region of the heap this reference belongs to. The
+interesting part of the interface is the interaction of this type parameter with the following function
+runST :: ( ∀ β . ST β α ) → α
+The runST function runs effectful computations and extracts the result from the ST monad. Notice
+the impredicative quantification of the type variable of runST.
+Finally, equality on references is decidable:
+(==) :: STRef β α → STRef β α → bool
+Notice that equality is an ordinary function, since it returns a boolean value directly, not a value of
+type STβ bool.
+Figure 1 shows how to compute the n-th term of the Fibonacci sequence in Haskell using the ST
+monad and, for comparison, in our model language STLang. Haskell programmers will notice that
+the STLang program on the right is essentially the same as the one on the left after the do-notation
+has been expanded. The inner function fibST’ can be typed as follows:
+fibST ' :: Integer → STRef β Integer → STRef β Integer → ST β Integer
+Hence, the argument of runST has type (∀ β . STRef β Integer) and thus fibST indeed has return type
+Integer.
+1.2 Encapsulation of State Using runST: What is the Challenge?
+The operational semantics of the newSTRef, readSTRef, writeSTRef operations is intended to
+be the same as for ML-style references. In particular, an implementation should be able to use a
+global heap and in-place update for the stateful operations. The ingenious idea of Launchbury and
+Peyton Jones [1994] is that the parametric polymorphism in the type for runST should still ensure
+that stateful computations are properly encapsulated and thus that ordinary functions remain pure.
+The intuition behind this intended property is that the first type variable parameter ofST, denoted
+β above, actually denotes a region of the heap, and that we can imagine that the heap consists of a
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 4 ===
+64:4 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+collection of disjoint regions, named by types. A computation e of type STβ τcan then read, write,
+and allocate in the region namedβ, and then produce a value of typeτ .
+Moreover, if e has type ∀β . STβ τ, withβ not free inτ , the intuition is that runST e can allocate
+a fresh region, which e may use and then, since β is not free in τ , the resulting value of type τ
+cannot involve references in the regionβ. It is therefore safe to discard the regionβ and return the
+value of typeτ . Since stateful computations intuitively are encapsulated in this way, this should
+also entail that the rest of the “pure” language indeed remains pure. For example, it should still be
+the case that for an expression e of typeτ , running e twice should be the same as running it once.
+More precisely, we would expect the following contextual equivalence to hold for any expression e
+of typeτ :
+let x = e in(x, x) ≈ ctx (e, e) (∗)
+Note that, of course, this contextual equivalence would not hold in the presence of unrestricted
+side effects as in ML: if e is the expression y := !y + 1 , which increments the reference y, then the
+reference would be incremented by 1 on the left hand-side of (∗) and by 2 on the right.
+Similar kinds of contextual equivalences and refinements that we expect should hold for a pure
+language should also continue to hold. Moreover, we also expect that the State-Independence
+theorem described above should hold.
+Notice that this intuitive explanation is just a conceptual model — the real implementation of the
+language uses a standard global heap with in-place update and the challenge is to prove that the type
+system still enforces this intended proper encapsulation of effects .
+In this paper, we provide a solution to this challenge: we define a higher-order functional
+programming language, called STLang, with impredicative polymorphism, recursive types, and a
+Haskell-style ST monad type with runST. The operational semantics uses a global mutable heap
+for stateful operations. We develop a logical relations model which we use to prove contextual
+refinements and equivalences that one expects should hold for a pure language in the presence of
+stateful computations encapsulated using runST.
+Earlier work has focused on simpler variations of this challenge; specifically, it has focused
+on type safety, and none of the earlier formal models can be used to show expected contextual
+equivalences for the pure part of the language relative to an operational semantics with a single
+global mutable heap. In particular, the semantics and parametricity results of Launchbury and
+Peyton Jones [1995] is denotational and does not use a global mutable heap with in-place update,
+and they state [Launchbury and Peyton Jones 1995, Section 9.1] that proving that the remaining
+part of the language remains pure for an implementation with in-place update “would necessarily
+involve some operational semantics. ” We discuss other related work in §7.
+1.3 Overview of Results and the Technical Development
+In §2 we present the operational semantics and the type system for our language STLang. In this
+paper, we focus on the encapsulation properties of a Haskell-style monadic type system for stateful
+computations. The choice of evaluation order is an orthogonal issue and, for simplicity (to avoid
+having to formalize a lazy operational semantics), we use call-by-value left-to-right evaluation
+order. Typing judgments take the standard form Ξ| Γ⊢ e :τ , where Ξ is an environment of type
+variables, Γ an environment associating types to variables, e is an expression, andτ is a type. For
+well-typed expressions e and e′ we define contextual refinement, denoted Ξ| Γ⊨ e⪯ctx e′ :τ . As
+usual, e and e′ are contextually equivalent, denoted Ξ| Γ⊨ e≈ctx e′ :τ , if e contextually refines e′
+and vice versa. With this in place, we can explain which contextual refinements and equivalences
+we prove for STLang. The soundness of these refinements and equivalences means, of course, that
+one can use them when reasoning about program equivalences.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 5 ===
+A Logical Relation for Monadic Encapsulation of State 64:5
+The contextual refinements and equivalences that we prove for pure computations are given in
+Figure 2. To simplify the notation, we have omitted environments Ξ and Γ in the refinements and
+equivalences in the Figure. Moreover, we do not include assumptions on typing of subexpressions
+in the Figure; precise formal results are stated in §4.
+Refinement (Neutrality) expresses that a computation of unit type either diverges or produces
+the unit value. The contextual equivalence in (Commutativity) says that the order of evaluation
+e ⪯ctx () : 1 (Neutrality)
+let x = e2 in(e1, x) ≈ctx (e1, e2) : τ1×τ2 (Commutativity)
+let x = e in(x, x) ≈ctx (e, e) : τ×τ (Idempotency)
+lety = e1 in rec f(x) = e2 ⪯ctx rec f(x) = lety = e1 in e2 : τ1→τ2 (Rec hoisting)
+lety = e1 in Λ e2 ⪯ctx Λ(lety = e1 in e2) : ∀X .τ (Λ hoisting)
+e ⪯ctx rec f(x) =(e x) : τ1→τ2 (η expansion for rec)
+e ⪯ctx Λ(e _) : ∀X .τ (η expansion for Λ)
+(rec f(x) = e1) e2 ⪯ctx e1[e2,(rec f(x) = e1)/x, f] : τ (β reduction for rec)
+(Λ e) _≈ctx e :τ[τ′/X] (β reduction for Λ)
+Fig. 2. Contextual Refinements and Equivalences for Pure Computations
+for pure computations does not matter: the computation on the left first evaluates e2 and then
+e1, on the right we first evaluate e1 and then e2. The contextual equivalence in (Idempotency)
+expresses the idempotency of pure computations: it does not matter whether we evaluate an
+expression once, as done on the left, or twice, as done on the right. The contextual refinements
+in (Rec hoisting) and (Λ hoisting) formulate the soundness of λ-hoisting for ordinary recur-
+sive functions and for type functions. The contextual refinements (η expansion for rec) and
+(η expansion for Λ) expressη-rules for ordinary recursive functions and for type functions. The
+contextual refinements (β reduction for rec) and (β reduction for Λ) express the soundness
+ofβ-rules for ordinary recursive functions and for type functions.
+In addition, we prove the expected contextual equivalences for monadic computations, shown in
+Figure 3.
+bind e in(λ x . return x)≈ ctx e : STρτ (Left Identity)
+e2 e1⪯ctx bind(return e1) in e2 : STρτ (Right Identity)
+bind(bind e1 in e2) in e3⪯ctx bind e1 in(λ x . bind(e2 x) in e3) : STρτ ′ (Associativity)
+Fig. 3. Contextual Equivalences for Stateful Computations
+The results in Figure 2 are the kind of results one would expect for pure computations in a call-
+by-value language; the challenge is, of course, to show that they hold in the full STLang language,
+that is, also when subexpressions may involve arbitrary (possibly nested) stateful computations
+encapsulated using runST. That is the purpose of our logical relation, which we present in §3. We
+further use our logical relation to show the following State-Independence theorem:
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 6 ===
+64:6 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+Theorem 1.1 (State Independence).
+·| x : STRefρτ ′⊢ e :τ∧( ∃h1, ℓ, h2,v.⟨h1, e[ℓ/x]⟩→∗⟨h2,v⟩) =⇒
+∀h′
+1, ℓ′. ∃h′
+2,v′.
+
+h′
+1, e[ℓ′/x]
+
+→∗ 
+h′
+2,v′
+∧ h′
+1⊆ h′
+2.
+This theorem expresses that, if the execution of a well-typed expression e, when x is substituted
+by some location, in some heap h1 terminates, then running e, when x is substituted by any location,
+in any heap h′
+1 will also terminate in some heap h′
+2 which is an extension of h′
+1, i.e., the execution
+cannot have modified h′
+1 but it can have allocated new state, via encapsulated stateful computations.
+Note that this implies that e never reads from or writes to x.
+Summary of contributions. To sum up, the main contributions of this paper are as follows:
+• We present a logical relation for a programming language STLang featuring a parallel to
+Haskell’s ST monad with a construct, runST, to encapsulate stateful computations. We use
+our logical relation to prove thatrunST provides proper encapsulation of state, by showing (1)
+that contextual refinements and equivalences that are expected to hold for pure computations
+do indeed hold in the presence of stateful computations encapsulated via runST and (2) that
+the State-Independence theorem holds. This is the first time that these results have been
+established for a programming language with an operational semantics that uses a single
+global higher-order heap with in-place destructive updates.
+• We define our logical relation in Iris, a state-of-the-art higher-order separation logic designed
+for program verification, using a new approach involving novel predicates defined in Iris,
+which we explain in §5.
+• We have formalized the whole technical development, including all proofs of the equations
+above and the State-Independence theorem, in the Iris implementation in Coq.
+The paper is organized as follows. We begin by formally definingSTLang, its semantics and typing
+rules in §2. There, we also formally state our definition of contextual refinement and contextual
+equivalence. In §3, we present our logical relation after briefly introducing the parts of Iris needed
+for a conceptual understanding of the logical relation. We devote §4 to the precise statement and
+proof sketches of the refinements in Figure 2 and Figure 3. In §5, we recall some further concepts
+of Iris and explain how they are used to give a complete technical definition of the logical relation.
+Readers only interested in the ideas behind the logical relation can skip this section. We describe
+our formalization of the technical development in the Iris implementation in Coq in §6. We discuss
+related work in §7 and conclude in §8.
+2 THE STLang LANGUAGE
+In this section, we present STLang, a higher-order functional programming language with impred-
+icative polymorphism, recursive types, higher-order store and a ST-like type.
+Syntax. The syntax of STLang is mostly standard and presented in Figure 4. Note that there are
+no types in the terms; following [Ahmed 2006] we write Λ e for type abstraction and e _ for type
+application / instantiation. For the stateful part of the language, we use return and bind for the
+return and bind operations of the ST monad, and ref(e) creates a new reference, !e reads from
+one and e← e writes into one. Finally, runST runs effectful computations. Note that we treat the
+stateful operations as constructs in the language rather than as special constants.
+Typing. Typing judgments are of the form Ξ| Γ⊢ e :τ , where Ξ is a set of type variables, and
+Γ is a finite partial function from variables to types. An excerpt of the typing rules are shown in
+Figure 5.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 7 ===
+A Logical Relation for Monadic Encapsulation of State 64:7
+⊚ ::= + | − | ∗ |= | <
+e ::= x|()| true| false| n| ℓ|( e, e)| inji e| rec f(x) = e| Λ e| fold e| unfold e| e e
+| e _|πi e| match e with inji x⇒ ei end| if e then e else e| e⊚ e
+| ref(e)| ! e| e← e| e == e| bind e in e| return e| runST{e}
+v ::=()| true| false| n| ℓ|(v,v)| injiv
+| rec f(x) = e| Λ e| foldv| ref(v)| !v|v←v| bindv inv| returnv
+τ ::= X| ρ| 1| B| Z|τ×τ|τ +τ|τ→τ| ∀X .τ| µX .τ| ref(τ)| STρτ
+Fig. 4. The syntax of STLang.
+Ξ| Γ⊢ e :τ
+Tvar
+Ξ| Γ, x :τ⊢ x :τ
+Trec
+Ξ| Γ, x :τ1, f :τ1→τ2⊢ e :τ2
+Ξ| Γ⊢ rec f(x) = e :τ1→τ2
+Tabs
+Ξ, X| Γ⊢ e :τ
+Ξ| Γ⊢ Λ e : ∀X .τ
+Tfold
+Ξ| Γ⊢ e :τ[µX .τ/X]
+Ξ| Γ⊢ fold e : µX .τ
+Tinst
+Ξ| Γ⊢ e : ∀X .τ Ξ⊢τ′
+Ξ| Γ⊢ e _ :τ[τ′/X]
+Tnew
+Ξ| Γ⊢ e :τ Ξ⊢ρ
+Ξ| Γ⊢ ref(e) : STρ(STRefρτ)
+Tderef
+Ξ| Γ⊢ e : STRefρτ
+Ξ| Γ⊢ ! e : STρτ
+Tgets
+Ξ| Γ⊢ e : STRefρτ Ξ| Γ⊢ e′ :τ
+Ξ| Γ⊢ e← e′ : STρ 1
+Trefeq
+Ξ| Γ⊢ e : STRefρτ Ξ| Γ⊢ e′ : STRefρτ
+Ξ| Γ⊢ e == e′ : B
+Treturn
+Ξ| Γ⊢ e :τ Ξ⊢ρ
+Ξ| Γ⊢ return e : STρτ
+Tbind
+Ξ| Γ⊢ e : STρτ Ξ| Γ⊢ e′ :τ→( STρτ ′)
+Ξ| Γ⊢ bind e in e′ : STρτ ′
+Trunst
+Ξ, X| Γ⊢ e : ST X τ Ξ⊢τ
+Ξ| Γ⊢ runST{e} :τ
+Fig. 5. An excerpt of the typing rules for STLang.
+Operational semantics. We present a small-step call-by-value operational semantics for STLang,
+using a transition system⟨h, e⟩→⟨h′, e′⟩ whose nodes are configurations consisting of a heap h
+and an expression e. A heap h∈ Loc ⇀fin Val is a finite partial function that associates values to
+locations, which we suppose are positive integers (Loc ≜ Z+)2.
+The semantics, shown in Figure 6, is presented in the Felleisen-Hieb style [Felleisen and Hieb
+1992], using evaluation contexts K: the reduction relation→ is the closure by evaluation context of
+the head reduction relation→h. Notice that even the “pure” reductions steps, such asβ-reduction,
+mention the heap. The more subtle part of the operational semantics is how the ST monad is
+handled, indeed, we only want the stateful computations to run when they are wrapped inside
+2This choice is due to the fact that Iris library in Coq provides extensive support for the type of positive integers.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 8 ===
+64:8 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+Reduction: ⟨h, e⟩→⟨h′, e′⟩ and head step: ⟨h, e⟩→h⟨h′, e′⟩
+Evaluation contexts:
+K ::=[]|( K, e)|( v, K)| inji K| fold K| unfold K| K e|v K| K _| K⊚ e|v⊚ K
+|πi K| match K with inji x⇒ ei end| if K then e else e| ref(K)| ! K| K← e
+|v← K| K == e|v == K| bind K in e| bindv in K| return K| runST{K}
+⟨h, e⟩→h⟨h′, e′⟩
+⟨h, K[e]⟩→⟨h′, K[e′]⟩ ⟨h, unfold(foldv)⟩→h⟨h,v⟩ ⟨ h,(Λ e) _⟩→h⟨h, e⟩
+⟨h,(rec f(x) = e)v⟩→h⟨h, e[v, rec f(x) = e/x, f]⟩ ℓ = ℓ′
+⟨h, ℓ == ℓ′⟩→h⟨h, true⟩
+⟨h, match injiv with inji x⇒ ei end⟩→h⟨h, ei[v/x]⟩ ℓ , ℓ′
+⟨h, ℓ == ℓ′⟩→h⟨h, false⟩
+⟨h,v⟩ {⟨h′, e⟩
+⟨h, runST{v}⟩→h⟨h′, runST{e}⟩ ⟨h, runST{returnv}⟩→h⟨h,v⟩
+Effectful reduction: ⟨h,v⟩ {⟨h′, e⟩ and effectful head step: ⟨h,v⟩ {h⟨h′, e⟩
+Effectful evaluation contexts: K ::=[]| bind K inv
+⟨h,v⟩ {h⟨h′, e⟩
+⟨h, K[v]⟩ {⟨h′, K[e]⟩ ⟨h, bind(returnv) inv′⟩ {h⟨h,v′v⟩
+Alloc
+ℓ < dom(h)
+⟨h, ref(v)⟩ {h⟨h⊎{ℓ7→v} , return ℓ⟩ ⟨h⊎{ℓ7→v} , ! ℓ⟩ {h⟨h⊎{ℓ7→v} , returnv⟩
+⟨h⊎{ℓ7→v′} , ℓ←v⟩ {h⟨h⊎{ℓ7→v} , return()⟩
+If ⇀ is a relation, we note ⇀n its iterated self-composition and ⇀∗ its reflexive and transitive
+closure.
+Fig. 6. An excerpt of the dynamics of STLang, a call-by-value, small-step operational semantics.
+runST. This is why we define an auxiliary reduction relation, ⟨h, e⟩ { ⟨h′, e′⟩. This auxiliary
+relation is also defined using a head reduction and evaluation contexts K, which are distinct from
+the evaluation contexts for the main reduction relation. This auxiliary relation in “embedded” in
+the main one by the rule
+⟨h,v⟩ {⟨h′, e⟩
+⟨h, runST{v}⟩→h⟨h′, runST{e}⟩
+Notice that { always reduces from a value: this is because values of type ST can be seen as “frozen”
+computations, until they appear inside a runST. The expression e on the right hand-side of the rule
+above can be a reducible expression, which is reduced by using K = runST{[]} as a context for the
+main reduction rule→.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 9 ===
+A Logical Relation for Monadic Encapsulation of State 64:9
+This operational semantics is new, therefore we include an example of how a simple program
+reduces. The program initializes a reference r to 3, then writes 7 into r and finally reads r.
+⟨∅, runST{bind ref(3) in(λ r . bind(r← 7) in(λ _. bind ! r in(λ x . return x)))}⟩
+The contents of therunST is a value, so we can use the rule above, and the contextK = bind[] in···
+to reduce⟨∅, ref(3)⟩ {h⟨[l7→ 3], return l⟩ (for some arbitrary l) and get:
+⟨[l7→ 3], runST{bind(return l) in(λ r . bind(r← 7) in(λ _. bind ! r in(λ x . return x)))}⟩
+The contents of runST is still a value, and this time we use the empty context K =[] and the rule
+for the bind of a return,⟨[l7→ 3], bind(return l) in(λ r .···) ⟩ {h⟨[l7→ 3],(λ r .···) l⟩ to get:
+⟨[l7→ 3], runST{(λ r . bind(r← 7) in(λ _. bind ! r in(λ x . return x))) l}⟩
+This time we use the context K = runST{[]} and the rule forβ-reduction to get:
+⟨[l7→ 3], runST{bind(l← 7) in(λ _. bind ! l in(λ x . return x))}⟩
+The situation is now the same as for the first two reduction steps and we reduce further to:
+⟨[l7→ 7], runST{bind(return()) in(λ _. bind ! l in(λ x . return x))}⟩
+and then, in two steps (rule for bind and return, thenβ-reduction):
+⟨[l7→ 7], runST{bind ! l in(λ x . return x)}⟩
+Finally we get:
+⟨[l7→ 7], runST{return 7}⟩
+and, from the rule for runST and return v :
+⟨[l7→ 7], 7⟩.
+Having defined the operational semantics and the typing rules we can now define contextual
+refinement and equivalence. In this definition we write C :(Ξ| Γ;τ)⇝(·|· ; 1) to express that C is
+a well-typed closing context (the remaining rules for this relation are completely standard).
+Definition 2.1 (Contextual refinement and equivalence). We define contextual refinement⪯ctx and
+contextual equivalence≈ctx as follows.
+Ξ| Γ⊨ e⪯ctx e′ :τ ≜ Ξ| Γ⊢ e :τ ∧ Ξ| Γ⊢ e′ :τ∧
+∀h, h′, C. C :(Ξ| Γ;τ)⇝(·|· ; 1) ∧ (h, C[e])↓ =⇒ (h′, C[e′])↓
+Ξ| Γ⊨ e≈ctx e′ :τ ≜ Ξ| Γ⊨ e⪯ctx e′ :τ ∧ Ξ| Γ⊨ e′⪯ctx e :τ .
+where(h, e)↓ ≜ ∃h′,v.(h, e)→∗(h′,v)
+3 LOGICAL RELATION
+It is well-known that it is challenging to construct logical relations for languages with higher-order
+store because of the so-called type-world circularity [Ahmed 2004; Ahmed et al. 2002; Birkedal et al.
+2011]. Other recent work has shown how this challenge can be addressed by using the original
+Iris logic to define logical relations for languages with higher-order store [Krebbers et al. 2017b;
+Krogh-Jespersen et al. 2017]. In fact, a key point is that Iris has enough logical features to give a
+direct inductive interpretation of the programming language types into Iris predicates.
+The binary relations in [Krebbers et al. 2017b; Krogh-Jespersen et al. 2017] were defined using
+Iris’s built-in notion of Hoare triple and weakest precondition. This approach is, however, too
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 10 ===
+64:10 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+abstract for our purposes: to prove the contextual refinements and equivalences for pure com-
+putations mentioned in the Introduction, we need to have more fine-grained control over how
+computations are related.
+In this section we start by giving a gentle introduction to the base logic of Iris. Hereafter, we use
+the Iris base logic to define two new logical connectives called future modality and If-Convergent.
+We use these, instead of the weakest precondition used in [Krebbers et al. 2017b; Krogh-Jespersen
+et al. 2017], when defining our binary logical relation.
+We focus on properties that are necessary for understanding the key ideas of the definition of
+the logical relation; more technical details, including definitions and lemmas required for proving
+properties of the logical relation, are deferred until §5.
+3.1 An Iris Primer
+Iris was originally presented as a framework for higher-order (concurrent) separation logic, with
+built-in notions of physical state (in our case heaps), ghost-state (monoids) invariants and weakest
+preconditions, useful for Hoare-style reasoning about higher-order concurrent imperative pro-
+grams [Jung et al . 2015]. Subsequently, Iris was extended with a notion of higher-order ghost
+state [Jung et al. 2016], i.e., the ability to store arbitrary higher-order separation-logic predicates in
+ghost variables. Recently, a simpler Iris base logic was defined, and it was shown how that base
+logic suffices for defining the earlier built-in concepts of invariants, weakest preconditions, and
+higher-order ghost state [Krebbers et al. 2017a].
+In Iris one can quantify over the Iris typesκ:
+κ ::= 1|κ×κ|κ→κ| Expr| Val| Z| B|κ
+fin
+−⇀κ|finset(κ)| Monoid| Names| iProp| . . .
+Here Expr and Val are the types of syntactic expressions and values of STLang, Z is the type of
+integers, B is the type of booleans, κ ⇀fin κ is the type of partial functions with finite support,
+finset(κ) is the type of finite sets, Monoid is the type of monoids, Names is the type of ghost names,
+and iProp is the type of Iris propositions. A basic grammar for Iris propositions P is:
+P ::=⊤|⊥| P∗ P| P−∗P| P∧ P| P⇒ P| P∨ P| ∀x :κ.Φ| ∃x :κ.Φ
+| ▷ P| µr .P|□ P||⇛P
+The grammar includes the usual connectives of higher-order separation logic (⊤,⊥,∧,∨,⇒,∗,
+−∗, ∀ and ∃). In this grammarΦ is an Iris predicate, i.e., a term of typeκ→ iProp (for appropriate
+κ). The intuition is that the propositions denote sets of resources and, as usual in separation logic,
+P∗ P′ holds for those resources which can be split into two disjoint parts, with one satisfyingP and
+the other satisfying P′. Likewise, the proposition P−∗P′ describes those resources which satisfy
+that, if we combine it with a disjoint resource satisfied by P we get a resource satisfied by P′. In
+addition to these standard connectives there are some other interesting connectives, which we now
+explain.
+The ▷ is a modality, pronounced “later”. It is used to guard recursively defined propositions:µr .P
+is a well-defined guarded-recursive predicate only if r appears under a ▷ in P. The ▷ modality is
+an abstraction of step-indexing [Appel and McAllester 2001; Appel et al. 2007; Dreyer et al. 2011].
+In terms of step-indexing ▷ P holds if P holds a step later; hence the name. In Iris it can be used
+to define weakest preconditions and to guard impredicative invariants to avoid self-referential
+paradoxes [Krebbers et al. 2017a]. Here we simply use it to take a guarded fixed point when we
+give the interpretation of recursive types, similarly to what was done in [Dreyer et al. 2011]. For
+any proposition P, we have that P⊢ ▷ P. The later modality commutes with all of the connectives
+of higher-order separation logic, including quantifiers.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 11 ===
+A Logical Relation for Monadic Encapsulation of State 64:11
+Another modality of the Iris logic is the “persistence” modality (□). This modality is used in
+Iris to capture a sublogic of knowledge (as opposed to resources) that obeys standard rules for
+intuitionistic higher-order logic. We say that P is persistent if P⊢□ P. Intuitively,□ P holds if P
+holds without asserting any exclusive ownership. Hence□ P is a duplicable assertion, i.e., we have
+(□ P)∗(□ P)⊣⊢ □ P, where⊣⊢ is the logical equivalence of formulas. Hence persistent propositions
+are therefore duplicable. The persistence modality is idempotent,□ P⊢□□ P, and also satisfies
+□ P⊢ P. It (and by extension persistence) also commutes with all of the connectives of higher-order
+separation logic, including quantifiers.
+The final modality we present in this section is the “update” modality 3 (|⇛). Intuitively, the
+proposition|⇛P holds for resources that can be updated (through allocation, deallocation, or
+alteration) to resources that satisfyP, without violating the environment’s knowledge or ownership
+of resources. We write P ≡∗ Q as a shorthand for P−∗|⇛Q. The update modality is idempotent,
+|⇛(|⇛P)⊣⊢|⇛P.
+3.2 Future Modality and If-Convergent
+In this subsection we define two new constructs in Iris, which we will use to define the logical
+relation. The first construct, the future modality, will allow us to reason about what will happen in
+a “future world”. The second construct, the If-Convergent predicate, will be used instead of weakest
+preconditions to reason about properties of computations.
+Future Modality. We define the future modality|≫{·}≡▷ as follows:
+|≫{n}≡▷P≜(|⇛ ▷)n|⇛P
+where(|⇛ ▷)n is n times repetition of|⇛ ▷. Intuitively,|≫{n}≡▷P expresses thatn steps into the future,
+we can update our resources to satisfy P. We write P≫{n}≡∗Q as a shorthand for P−∗|≫{n}≡▷Q.
+If-Convergent (IC). We define the If-Convergent (IC) predicate in Iris as follows:
+ICγ e{|v. Q|}≜ ∀h1, h2,v, n.⟨h1, e⟩→n⟨h2,v⟩∗ heapγ(h1)≫{n}≡∗ heapγ(h2)∗ Qv
+In general the number of steps, n, can also appear in Q but here we only present this slightly
+simpler version. The ICγ e{|v. Q|} predicate expresses that, for any heap h1, if(e, h1) can reduce
+to(v, h2) in n steps, and if we have ownership over h1, then, n steps into the future, we will have
+ownership over the heap h2, and the postcondition Q will hold.
+A crucial feature of the IC predicate is that it allows us to use a ghost state nameγ to keep track
+of the contents of the heap during the execution of e. This allows us to abstract away from the
+concrete heaps when reasoning about IC predicates4. Note that the IC predicate does not require
+that it is safe to execute the expression e: in particular, if e gets stuck (or diverges) in all heaps, then
+ICγ e{|v. Q|} holds trivially.
+The predicate heapγ(h1) is a ghost state predicate stating ownership of a logical heap identified
+by the ghost state nameγ (one can think of this as the usual ownership of a heap in separation
+logic). Ownership of a logical heap cell l is written as ℓ7→γ v, and says that the heap identified by
+γ stores the valuev at location ℓ. We show the precise definition ofheapγh(h) and ℓ7→γ v in §5;
+3In [Krebbers et al. 2017a] this modality is called the fancy update modality. Technically, this modality comes equipped
+with certain “masks” but we do not discuss those here.
+4This is related to the way the definition of weakest preconditions in Iris hides state [Krebbers et al. 2017a].
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 12 ===
+64:12 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+here we just highlight the properties that these abstract predicates enjoy:
+heapγ(h)∗ ℓ7→γ v⇒ h(l) =v (1)
+heapγ(h)∧ l < dom(h) ≡∗ heapγ(h[l7→v])∗ ℓ7→γ v (2)
+heapγ(h)∗ ℓ7→γ v ≡∗ heapγ(h[l7→v′])∗ ℓ7→γ v′ (3)
+ℓ7→γ v∗ ℓ7→γ v′ ⇒⊥ (4)
+Property (1) says that if we have ownership of a heaph and a location l pointing tov, both with the
+same ghost nameγ , then we know that h(l) =v. Property (2) expresses that we can allocate a new
+location l in h, if l is not already in the domain of h. Finally, Property (3) says that we can update
+the value at location l, if we have both heapγ(h) and ℓ7→γ v. Property (4) expresses exclusivity of
+the ownership of locations.
+Akin to the way Hoare triples are defined in Iris using the weakest precondition, we define a
+new notion called IC triple as follows:
+{|P|}e{|v. Q|}γ≜□(P−∗ICγ e{|v. Q|})
+The IC triple says, that given resources described by P, if e reduces in a heap identified byγ , then
+the post-condition Q will hold. Notice that the IC triple is a persistent predicate and is not allowed
+to own any exclusive resources.
+3.3 Definition of the Logical Relation
+We now have enough logical machinery to describe the logical relation (pedantically, it is a family
+of logical relations) shown in Figure 7. The logical relation is a binary relation, which allows us to
+relate pairs of expressions and pairs of values to each other. We will show that if two expressions
+are related in the logical relation, then the left hand side expression contextually approximates
+the right hand side expression. Therefore, we sometimes refer to the the left hand side as the
+implementation and the right hand side as the specification.
+The value relation JΞ⊢ τ K∆ is an Iris relation of type(Val× Val)→ iProp and, intuitively, it
+relates STLang values of typeτ . The value relation is defined by induction on the typeτ . Here, Ξ is
+an environment of type variables, and ∆ is a semantic environment for these type variables, as is
+usual for languages with parametric polymorphism [Reynolds 1983].
+Ifτ is a ground type like 1, B or Z, two values are related at typeτ if and only if they are equal
+(and compatible with the type). For instance, ifτ is Z, then JΞ⊢ ZK∆(v,v′)≜v =v′∈ Z.
+For a product type of the formτ×τ′, two valuesv andv′ are related if and only if they both are
+pairs, and the corresponding components are related at their respective types:
+JΞ⊢τ×τ′K∆(v,v′)≜ ∃w1, w2, w′
+1, w′
+2.v =(w1, w2)∧ v′ =(w′
+1, w′
+2)∧
+JΞ⊢τ K∆(w1, w′
+1)∧ JΞ⊢τ′K∆(w2, w′
+2)
+Note that the formula on the right hand side of≜ is simply a formula in (the first order fragment
+of) Iris. The case of sum types is handled in a very similar fashion.
+Two valuesv andv′ are related at a function typeτ→τ′ if, given any two related values w and
+w′ at typeτ , the applicationsv w andv′ w′ are related at typeτ′. Notice that those latter two terms
+are expressions, not values; thus they have to be related under the expression relationE JΞ⊢τ′K∆ ,
+which we will define later. Using Iris, the case for function types is defined as follows:
+JΞ⊢τ→τ′K∆(v,v′)≜□
+
+∀(w, w′). JΞ⊢τ K∆(w, w′)⇒E JΞ⊢τ K∆(v w,v′ w′)
+
+.
+The□ modality is used to ensure that JΞ⊢τ→τ′K∆(v,v′) is persistent and hence duplicable. In
+fact, we will make sure that all predicatesJΞ⊢τ K∆(v,v′) are persistent. The intuition behind this is
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 13 ===
+A Logical Relation for Monadic Encapsulation of State 64:13
+Value relations:
+JΞ⊢ X K∆≜(∆(X)).1
+JΞ⊢ 1K∆(v,v′)≜v =v′ =()
+JΞ⊢ BK∆(v,v′)≜v =v′∈{true, false}
+JΞ⊢ ZK∆(v,v′)≜v =v′∈ Z
+JΞ⊢τ×τ′K∆(v,v′)≜ ∃w1, w2, w′
+1, w′
+2.v =(w1, w2)∧ v′ =(w′
+1, w′
+2)∧
+JΞ⊢τ K∆(w1, w′
+1)∧ JΞ⊢τ′K∆(w2, w′
+2)
+JΞ⊢τ +τ′K∆(v,v′)≜(∃w, w′.v = inj1 w∧v′ = inj1 w′∧ JΞ⊢τ K∆(w, w′))∨
+(∃w, w′.v = inj2 w∧v′ = inj2 w′∧ JΞ⊢τ′K∆(w, w′))
+JΞ⊢τ→τ′K∆(v,v′)≜□
+
+∀(w, w′). JΞ⊢τ K∆(w, w′)⇒E JΞ⊢τ K∆(v w,v′ w′)
+
+JΞ⊢ ∀X .τ K∆(v,v′)≜□
+
+∀f , r∈R . persistent(f)⇒E JΞ, X⊢τ K∆,X7→(f ,r)(v _,v′ _)
+
+JΞ⊢ µX .τ K∆(v,v′)≜ µ f . ∃w, w′.v = fold w∧v′ = fold w′∧
+▷JΞ, X⊢τ K∆,X7→(f ,toRgn(∆, µX . τ))(w, w′)
+JΞ⊢ STRefρτ K∆(v,v′)≜ ∃ℓ, ℓ′, r .v = ℓ∧v′ = ℓ′∧ isRgn(toRgn(∆,ρ), r)∗ bij(r , ℓ, ℓ′)∗
+rel(r , ℓ, ℓ′, JΞ⊢τ K∆)
+JΞ⊢ STρτ K∆(v,v′)≜ ∀γh,γ′
+h, h′
+1.
+nheapγ′
+h
+(h′
+1)∗ regions∗ region(toRgn(∆,ρ),γh,γ′
+h)
+
+o
+runST{v}
+nw.(h′
+1, runST{v′})⇓
+γ′
+h
+JΞ⊢τ K∆(w,·)∗region(toRgn(∆,ρ),γh,γ′
+h)
+
+o
+γh
+Expression relation:
+EΦ(e, e′)≜ ∀γh,γ′
+h, h′
+1.
+nheapγ′
+h
+(h′
+1)∗ regions
+
+o
+e
+nw.(h′
+1, e′)⇓
+γ′
+h
+Φ(w,·)
+
+o
+γh
+Environment relation:
+GJΞ⊢· K∆(ﬁv,ﬁv′)≜⊤
+GJΞ⊢ Γ, x :τ K∆(wﬁv, w′ﬁv′)≜ JΞ⊢τ K∆(w, w′)∗G JΞ⊢ ΓK∆(ﬁv,ﬁv′)
+Logical relatedness:
+Ξ| Γ⊨ e⪯log e′ :τ≜ ∀∆,ﬁv,ﬁv′.GJΞ⊢ ΓK∆(ﬁv,ﬁv′)⇒E JΞ⊢τ K∆(e[ﬁv/ﬁx], e′[ﬁv′/ﬁx])
+toRgn(∆,τ)≜
+∆(X).2 ifτ = X is a type variable
+1 otherwise
+Fig. 7. Binary logical relation
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 14 ===
+64:14 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+that the types of STLang just express duplicable knowledge (the type system is not a substructural
+type system involving resources).
+Let us now discuss the case of polymorphic types. We use the semantic environment ∆, which
+maps type variables to pairs consisting of an Iris relation on values (the semantic value relation
+interpreting the type variable) and a region name (we use positive integers, Z+, to identify regions):
+∆ : Tvar→((( Val× Val)→ iProp)× Z+)
+Thus, we simply define JΞ⊢ X K∆≜ ∆(X).1.
+For type abstraction, two valuesv andv′ are related at ∀X .τ whenv _ andv′ _ are related atτ ,
+where the environments (Ξ and ∆) have been extended with X , and any persistent binary value
+relation f . (Recall that v _ is the syntax for type application).
+JΞ⊢ ∀X .τ K∆(v,v′)≜□
+
+∀f . persistent(f)⇒E JΞ, X⊢τ K∆,X7→f(v _,v′ _)
+
+The last case, before we get to the types associated to theST monad, is the case of recursive types:
+two values are related at typeµX .τ if they are of the form fold w and fold w′ and, moreover, w
+and w′ are related atτ , where the type variable X is added to the environments, and mapped in ∆
+to(JΞ⊢ µX .τ K∆, toRgn(∆,µX .τ)) (ignore toRgn(∆,µX .τ) for now):
+JΞ⊢ µX .τ K∆(v,v′)≜ µ f .
+
+∃w, w′.v = fold w∧v′ = fold w′∧
+▷JΞ, X⊢τ K∆,X7→(f ,toRgn(∆, µX . τ))(w, w′)
+
+Notice that we use a guarded recursive predicate in Iris, which is well-defined because the occurrence
+of f is guarded by the later modality ▷.
+Before describing the cases for STRef ρ τ and ST ρ τ we touch upon the expression relation,
+which is defined independently of the value relation and has the following type:
+E· :((Val× Val)→ iProp)→( Expr× Expr)→ iProp
+Intuitively, the expression relationEΦ(e, e′) holds for two expressions e and e′ if e (the implemen-
+tation) refines, or approximates, e′ (the specification). That is, reduction steps taken by e can be
+simulated by zero or more steps in e′. We use IC triples to define the expression relation. The IC
+triples are unary and are used to express a property of the implementation expression e. We use
+the following Iris assertion in the postcondition of the IC triple to talk about the reductions in the
+specification expression e′:
+(h′
+1, e′)⇓ γ
+Φ ≜ ∃h′
+2,v′.
+
+h′
+1, e′
+→∗
+d
+
+h′
+2,v′
+∗ heapγ(h′
+2)∗ Φ(v′)
+This assertion says that there exists a deterministic reduction from(h′
+1, e′) to(h′
+2,v′), that the
+resulting heap h′
+2 is owned and the value satisfiesΦ. The deterministic reduction relations,→d and
+{d, are defined by the same inference rules as→ and {, except that the only non-deterministic
+rule, Alloc, is replaced by a deterministic one:
+det-Alloc
+ℓ = min(Loc\ dom(h))
+⟨h, ref(v)⟩ {h⟨h⊎{ℓ7→v} , return ℓ⟩
+The requirement that the reduction on the specification side is deterministic is used crucially in the
+proofs of the purity properties in §4. We emphasize that even with this requirement, we can still
+prove that logical relatedness implies contextual refinement (without requiring that STLang use
+deterministic reductions), essentially since we only require determinism on the specification side.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 15 ===
+A Logical Relation for Monadic Encapsulation of State 64:15
+Thus, in more detail, the expression relationEΦ(e, e′) says that, when given full ownership
+of a heap h′
+1 for the specification side ( heapγ′(h′
+1)), if e reduces to a value w when given some
+heap h (quantified in IC), then a deterministic reduction on the specification side exists, and the
+resulting values are related. Notice that the heaps used for the implementation and specification
+side reductions are universally quantified, because we quantify over the ghost namesγh, andγ′
+h,
+and that we do not require any explicit relationship between them. The persistent Iris assertion
+regions is responsible for keeping track of all allocated regions; it will be explained later.
+For the value interpretation of STRef ρ τ and ST ρ τ, the key idea is to tie each type ρ in an
+ST monad type (ρ in STρτ ) to a semantic region name r∈ Z+. The association can be looked up
+using the function toRgn. Intuitively, a region r contains a collection of pairs of locations (one
+for the implementation side and one for the specification side) in one-to-one correspondence,
+together with a semantic predicateϕ for each pair of locations in the region. The idea is that an
+implementation-side heap h and a specification-side heap h′ satisfies a region r if, for any pair
+of locations(ℓ, ℓ′) in r, we have valuesv andv′, such that h(ℓ) =v and h′(ℓ′) =v′ andϕ(v,v′).
+All this information is contained in the predicate region(r ,γh,γ′
+h), whereγh andγ′
+h are the ghost
+names for the implementation and specification heap, respectively.
+We have to maintain a one-to-one correspondence between locations because the operational
+semantics allows for comparison of locations. Given the one-to-one correspondence, we know that
+two locations on the implementation side are equal if and only if their two related counterparts on
+the specification side are.
+We write isRgn(r ,ρ) to say that r is the semantic region tied toρ. We keep track of all regions
+by the regions assertion, which allows us to allocate new regions, as so:
+regions ≡∗ ∃r . region(r ,γh,γ′
+h) (5)
+Notice that (5) gives back a fresh semantic region r. The region(r ,γh,γ′
+h) predicate allows for local
+reasoning about relatedness of two locations in a region r. We use a predicate bij(r , ℓ, ℓ′), which in
+conjunction with region captures that ℓ and ℓ′ are related by the one-to-one correspondence in r.
+Similarly, we use a predicate rel(r , ℓ, ℓ′,ϕ) in conjunction with region for local reasoning about the
+fact that values at locations ℓ and ℓ′ in region r are related by predicateϕ.
+With this in mind, the definition of the value relation forSTRefρτ is that there exists a semantic
+region r and locations ℓ and ℓ′ in a bijection, bij(r , ℓ, ℓ′), such that values pointed to by these
+locations are related by the relation corresponding to the typeτ , asserted by rel(r , ℓ, ℓ′, JΞ⊢τ K∆).
+Finally,(v,v′) are related by JΞ⊢ STρ τK∆ if, for any h1 and h′
+1 related in r (region(r ,γh,γ′
+h))
+along with some h2 and w such that⟨h1, runST{v}⟩→∗⟨h2, w⟩, then there is a heaph′
+2 and a value
+w′ such that we afterwards have
+
+h′
+1, runST{v′}
+
+→∗
+d
+
+h′
+2, w′
+and region(r ,γh,γ′
+h) still holds.
+The intuitive meaning of the word afterwards refers to an application of the future modality (in
+the IC triple). Note that it is important that the semantic region r still holds after runST{v} and
+runST{v′} have been evaluated. This captures that encapsulated computations cannot modify the
+values of existing locations, but may allocate new locations (in new regions).
+We have now completed the explanation of the value and expression relation for closed values
+and expressions. As usual for logical relations, we then relate open terms by closing them by related
+substitutions, as specified according the environment relationG, and finally relate them in the
+expression relation for closed terms, see the definition of Ξ| Γ⊨ e⪯log e′ :τ in Figure 7.
+3.4 Properties of the Logical Relation
+To show the fundamental theorem and the soundness of the logical relation wrt. contextual approx-
+imation, we prove compatibility lemmas for all typing rules. Instead of working with the explicit
+definition of the IC triple, we make use of the following properties of IC:
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 16 ===
+64:16 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+Lemma 3.1 (Properties of IC).
+(1) ICγ e{|v. Q|}∗( ∀w.(Q w)−∗ ICγ K[w]{|v. Q′v|})⊢ ICγ K[e]{|v. Q′|}
+(2)|⇛(Q w)⊢ ICγ w{|v. Q|}
+(3)(∀v.(Pv)≡∗(Qv))∗ ICγ e{|v. P|}⊢ ICγ e{|v. Q|}
+(4)|⇛ICγ e{|v. Q|}⊢ ICγ e{|v. Q|}
+(5) ICγ e{|v.|⇛Q|}⊢ ICγ e{|v. Q|}
+(6)(∀h.⟨h, e⟩→⟨h, e′⟩)∗ ▷ ICγ e′{|v. Q|}⊢ ICγ e{|v. Q|}
+(7) ▷(∀ℓ. ℓ7→γ v≡∗ Q ℓ)⊢ ICγ runST{ref(v)}{| w. Q|}
+(8) ▷ ℓ7→γ v∗ ▷(ℓ7→γ v≡∗ Qv)⊢ ICγ runST{! ℓ}{| w. Q|}
+(9) ▷ ℓ7→γ v′∗ ▷(ℓ7→γ v≡∗ Q())⊢ ICγ runST{ℓ←v}{| w. Q|}
+(10) ICγ runST{e}{|v. Q|}∗
+
+∀w.(Q w)−∗
+ICγ runST{K[return w]}{|v. Q′ w|}
+
+⊢ ICγ runST{K[e]}{|v. Q′|}
+Items (1) and (2) above show that IC is a monad in the same way that weakest precondition is a
+monad, known as the Dijkstra monad. Item (3) allows one to strengthen the post-condition. Items
+(4) and (5) says that we can dispense with the update modality|⇛ for IC since the update modality
+is idempotent and IC is based on the update modality. Item (6) says that if a pure reduction from e
+to e′ exists and later the postcondition Q will hold when reducing e′, then Q will also hold when
+reducing e. Items (7),(8) and (9) are properties that allow to allocate, read and modify the heap, all
+expressing, that the post-condition Q will hold, if the resources needed are given and Q holds for
+the updated resources. Finally, (10) captures the “bind” property for the RunST monad.
+All the compatibility lemmas have been proved in the Coq formalization; here we just sketch the
+proof of the compatibility lemma for runST :
+Lemma 3.2 (Compatibility for runST). Suppose Ξ, X| Γ⊨ e⪯log e′ : ST X τ and Ξ⊢τ . Then
+Ξ| Γ⊨ runST{e}⪯log runST{e′} :τ
+Proof Sketch. We prove that for any f and r that JΞ, X ⊢ ST X τ K∆,X7→(f ,r)(v,v′) implies
+E JΞ⊢ τ K∆(runST{v} , runST{v′}). The lemma follows from the assumption that e and e′ are
+suitably related. Assume we have regions, ghost names for the implementation and specification
+side,γh andγ′
+h, and heapγ′
+h
+(h′
+1) for some h′
+1. We are to show:
+ICγh runST{v}
+nw. ∃h′
+2, w′.
+
+h′
+1, runST{v′}
+
+→∗
+d
+
+h′
+2, w′
+∗ heapγ′
+h
+(h′
+2)∗ JΞ⊢τ K∆(w, w′)
+
+o
+Using (5) with regions we know there exists a fresh semantic region r and that the predicate
+region(r ,γh,γ′
+h) holds for r. We then instantiate our assumption by the unit relationJΞ⊢ 1K∆ and r
+to get JΞ, X⊢ ST X τ K∆,X7→(JΞ⊢1K∆,r)(v,v′).
+By the definition of the value relation for the type ST X τ , we get that if we give a starting
+specification heap heapγ′
+h
+(h′
+1) and region(r ,γh,γ′
+h), then we have runST{v} reduces to a value w,
+and there exist a reduction on the specification side producing w′ such that w and w′ are related
+by JΞ, X⊢τ K∆,X7→(JΞ⊢1K, ρ). Moreover, we also get the ownership of the resulting specification heap
+heapγh(h′
+2).
+By Lemma 3.1 (3), it suffices to show: |⇛∃h′
+2, w′.
+
+h′
+1, runST{v′}
+
+→∗
+d
+
+h′
+2, w′
+∗ heapγ′
+h
+(h′
+2)∗
+JΞ⊢ τ K∆(w, w′). The only thing that we do not immediately have from our assumption is JΞ⊢
+τ K∆(w, w′), we only have that w and w′ are related in a larger environment. However since X
+does not appear free in τ (which follows from Ξ⊢ τ ) it follows by induction on τ that JΞ, X⊢
+τ K∆,X7→(JΞ⊢1K, r)(w, w′)⊣⊢ JΞ⊢τ K∆(w, w′) which concludes the proof. □
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 17 ===
+A Logical Relation for Monadic Encapsulation of State 64:17
+Notice that in the above proof we start out with two completely unrelated heaps for the spec-
+ification and the implementation side since these are universally quantified inside the IC triple.
+We then establish a trivial relation between them by creating a new empty region. We extend and
+maintain this relation during the simulation of the stateful expressions on both sides. This is in
+essence the reason why our expression relations need not assume (or guarantee at the end) any
+relation between the heaps on the implementation and specification sides.
+Using the compatibility lemmas, we can prove the following two theorems.
+Theorem 3.3 (Fundamental theorem). Ξ| Γ⊢ e :τ⇒ Ξ| Γ⊨ e⪯log e :τ
+Theorem 3.4 (Soundness of logical relation).
+Ξ| Γ⊢ e :τ∧ Ξ| Γ⊢ e′ :τ∧ Ξ| Γ⊨ e⪯log e′ :τ⇒ Ξ| Γ⊨ e⪯ctx e′ :τ
+4 PROVING CONTEXTUAL REFINEMENTS AND EQUIV ALENCES
+In this section we show how to prove the contextual refinements and equivalences mentioned in
+the Introduction. For the sake of illustration we present the proofs of Neutrality and one side of
+the Commutativity theorems in moderate detail — the proofs of these two cases demonstrate the
+key techniques that are also used to show the remaining contextual refinements and equivalences
+from the Introduction. For the remaining theorems, we only sketch their proofs at a higher level of
+abstraction. Readers who are eager to see all proofs in all their details are thus referred to our Coq
+formalization.
+Theorem 4.1 (Neutrality). If Ξ| Γ⊢ e : 1 then Ξ| Γ⊨ e⪯ctx() : 1
+Proof Sketch. By the fundamental theorem we have Ξ| Γ⊨ e⪯log e : 1. We show that this
+implies Ξ| Γ⊨ e⪯log() : 1. The final result follows from the soundness theorem.
+By unfolding the IC predicate, we get the assumption that ⟨h1, e⟩→∗ ⟨h2,v⟩, including the
+ownership of heapγh(h1) and heapγ′
+h
+(h′
+1), and have to prove that5 
+h′
+1,()
+
+reduces deterministically
+to a value w (and some heap) and that(v, w) are in the value relation for the unit type. We proceed
+by allocating a copy of h′
+1, obtaining heapγ(h′
+1) for some freshγ . We use this together with our
+assumptions, notably Ξ| Γ⊨ e ⪯log e : 1, to get that
+
+h′
+1, e
+
+→∗
+d
+
+h′
+2,v′
+for some v′ and h′
+2
+such that(v,v′) are related in the value relation for the unit type, i.e., v = v′ =(), heapγh(h2)
+and heapγ(h′
+2). Notice that we have, crucially, retained the ownership of heapγ′
+h
+(h′
+1) and have only
+updated the freshly allocated copy of h′
+1 with the fresh nameγ . We are allowed to do this because
+the relatedness of expressions, as in Ξ| Γ⊨ e⪯log e : 1, universally quantifies over ghost names
+for the specification and implementation side heaps. We conclude the proof by noting that since()
+is a value, we have, trivially,
+
+h′
+1,()
+
+→∗
+d
+
+h′
+1,()
+
+and that(v,()) are related at the unit type. □
+Theorem 4.2 (Commutativity). If Ξ| Γ⊢ e1 :τ1 and Ξ| Γ⊢ e2 :τ2 then
+Ξ| Γ⊨ let x = e2 in(e1, x) ≈ctx(e1, e2) : τ1×τ2
+Proof Sketch. We only showΞ| Γ⊨ let x = e2 in(e1, x) ⪯log(e1, e2) : τ1×τ2, the other direc-
+tion is similar. Unfolding the IC predicate we get the assumption that⟨h1, let x = e2 in(e1, x)⟩→∗
+⟨h2,v⟩ for some h2 andv, the ownership of heapγh(h1) and heapγ′
+h
+(h′
+1) and we have to prove that
+h′
+1,(e1, e2)
+
+→∗
+d
+
+h′
+2,v′
+for some h′
+2 andv′, and that(v,v′) are in the value relation for τ×τ′.
+From the first assumption, we can conclude that⟨h1, e2⟩→∗⟨h3,v2⟩,⟨h3, e1⟩→∗⟨h2,v1⟩ and that
+v =(v1,v2).
+We proceed by allocating a fresh copy ofh3 (the heap in the middle of execution of the implemen-
+tation side) with the fresh nameγ , heapγ(h3) and also a fresh heapγ′(h′
+1) (the heap at the beginning
+5We ignore the future modality for the sake of simplicity.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 18 ===
+64:18 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+of execution of the specification side). Notice that these are heaps (on either side) immediately
+before executing e1. We use these freshly allocated heaps together with Ξ| Γ⊨ e1⪯log e1 : τ1
+(which follows from the fundamental theorem) to conclude6 
+h′
+1, e1
+
+→∗
+d
+
+h′
+3,v′
+1
+
+for somev′
+1 and
+h′
+3.
+Now we have the information about the starting heap for execution ofe2 on the specification side.
+Thus, we are ready to simulate the execution of e2 on both sides. Note that the order of simulations
+is dictated by the order on the implementation side as we have to prove that the implementation
+side is simulated by the specification side.
+To simulatee2 we proceed by allocating a fresh copy ofh′
+3 (the heap immediately before executing
+e2 on the specification side) with a fresh nameγ′′, heapγ′′(h′
+3). We use this, together withheapγh(h1)
+(which we originally got by unfolding the IC predicate) and Ξ| Γ⊨ e2⪯log e2 :τ2 (which we know
+from the fundamental theorem). We can do this as we know⟨h1, e2⟩→∗⟨h3,v2⟩. This allows us to
+conclude that
+
+h′
+3, e2
+
+→∗
+d
+
+h′
+2,v′
+2
+
+for some h′
+2 andv′
+2, the ownership of heapγ′′(h′
+2) and heapγh(h3)
+together with the fact that(v2,v′
+2) are related at typeτ2.
+Now we are ready to simulate e1 on both sides. We use Ξ| Γ ⊨ e1 ⪯log e1 : τ1 (which we
+know from the fundamental theorem) together withheapγh(h3) (from simulating e2) and heapγ′
+h
+(h′
+1)
+(which we had as an assumption from the definition relatedness). We can do this because we know
+that⟨h3, e1⟩→∗⟨h2,v1⟩. This allows us to conclude that
+
+h′
+1, e1
+
+→∗
+d
+
+h′′
+3 ,v′′
+1
+
+for some h′′
+3 andv′′
+1 ,
+the ownership of heapγ′
+h
+(h′′
+3) and heapγh(h2) together with the fact that(v1,v′′
+1) are related at type
+τ1. It follows from the determinism of reduction on the specification side that h′
+3 = h′′
+3 andv′
+1 =v′′
+1 .
+The only thing we need to conclude the proof is the ownership of heapγ′
+h
+(h2) (the heap at the
+end of execution of the specification side) whereas we own heapγ′
+h
+(h′′
+3) which is the heap of the
+specification side after execution of e1 and before execution of e2. However, using some resource
+reasoning (which depends on details explained in §5), we can conclude that h′′
+3 ⊆ h2. This in turn
+allows us to update our heap resource to get heapγ′
+h
+(h2), which concludes the proof. □
+The proof sketches of the two theorems above show that the true expressiveness of our logical
+relation comes from the fact that the expression relation quantifies over the names of resources
+used for the heaps on the specification and implementation sides. This allows us to allocate fresh
+instances of ghost resources corresponding to the heaps (for any of the two sides) and simulate
+the desired part of the program. This is the reason why we can prove such strong equations as
+Commutativity, Idempotency, Hoisting, etc. The proof of Commutativity above also elucidates the
+use of deterministic reduction for the specification side.
+Theorem 4.3 (Idempotency). If Ξ| Γ⊢ e :τ then Ξ| Γ⊨ let x = e in(x, x) ≈ctx(e, e) : τ×τ
+Proof Sketch. We show the contextual equivalence, by proving logical relatedness in both
+directions. For the left-to-right direction, we allocate a fresh heap and simply simulate twice on the
+specification side using the same reduction on the implementation side. For the other direction, we
+simulate the same reduction on the specification side twice for the two different reductions on the
+implementation side. For the latter we conclude, by determinism of reduction on the specification
+side, that the two reductions coincide. □
+Theorem 4.4 (Rec Hoisting). If Ξ| Γ⊢ e1 :τ and Ξ| Γ,y :τ , x :τ1, f :τ1→τ2⊢ e2 :τ2 then
+Ξ| Γ⊨ lety = e1 in rec f(x) = e2⪯ctx rec f(x) = lety = e1 in e2 : τ1→τ2
+Proof Sketch. The proof of this theorem is quite tricky, in particular because the the number of
+operational steps do not match up for the function bodies on the implementation and specification
+6For simplicity, we are ignoring some manipulations involving the future modality.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 19 ===
+A Logical Relation for Monadic Encapsulation of State 64:19
+sides. We do not delve into those issues here, but concentrate instead on the high-level structure of
+the proof.
+We prove three different contextual refinements, such that their composition gives us the desired
+contextual refinement in the theorem. These three contextual refinements are:
+(a) lety = e1 in rec f(x) = e2⪯ctx lety = e1 in rec f(x) = let z = e1 in e2 :τ1→τ2
+(b) lety = e1 in rec f(x) = let z = e1 in e2⪯ctx let z = e1 in rec f(x) = lety = e1 in e2 :
+τ1→τ2
+(c) let z = e1 in rec f(x) = lety = e1 in e2⪯ctx rec f(x) = lety = e1 in e2 :τ1→τ2 where z
+is a fresh variable.
+We prove (a) by proving the corresponding logical relatedness. Sincee1 reduces to a value we
+know that it will reduce deterministically to some value under any heap on the specification side.
+We prove (c) also by the corresponding logical relatedness which is rather trivial to prove.
+To prove (b) we show the corresponding logical relatedness for a slightly stronger logical relation;
+⪯N N
+log . The NN-logical relation is defined entirely similarly to the primary logical relation above
+except that the specification side is required to deterministically reduce to a value in the same
+number of steps as the implementation side. Notice that the proofs of the fundamental theorem and
+soundness for NN-logical relation are very similar to those of the primary logical relation.
+Formally, for (b) we show
+lety = e1 in rec f(x) = let z = e1 in e2
+⪯N N
+log let z = e1 in rec f(x) = lety = e1 in e2 :τ′→τ′′
+This logical relatedness is in fact rather easy to show if we know that all reductions of e1 (on either
+side) take the same number of steps. This is precisely why we use the NN-logical relation: By the
+fundamental theorem of the NN-logical relation we know that e1⪯N N
+log e1 :τ′→τ′′ and hence
+we can conclude that both outer reductions (on either side) take the same number of steps, say n.
+Similarly we know that both reductions of e1 inside the functions also take the same number of
+steps, say m. Hence, by allocating appropriate heaps, we can show that the outer reduction of e1
+on the implementation side takes the same number steps as that of the reduction of the inner one
+on the specification side. This shows, by determinism of reduction on the specification side, that
+n = m, which allows us to conclude the proof. □
+Theorem 4.5 (η expansion for Rec). If Ξ| Γ⊢ e :τ1→τ2 then Ξ| Γ⊨ e⪯ctx rec f(x) = e x :
+τ1→τ2
+Proof Sketch. We prove this theorem by proving the following three contextual refinements.
+(a) Ξ| Γ⊨ e⪯ctx lety = e in rec f(x) =(y x) :τ→τ′
+(b) Ξ| Γ⊨ lety = e in rec f(x) =(y x)⪯ ctx rec f(x) = lety = e in(y x) :τ→τ′
+(c) Ξ| Γ⊨ rec f(x) = lety = e in(y x)⪯ ctx rec f(x) =(e x) :τ→τ′
+Refinements (a) and (c) follow rather easily from their corresponding logical relatedness while
+case (b) is an instance of rec Hoisting above. For (c) notice that f does not appear free in e. □
+Theorem 4.6 (β reduction forλ). If Ξ| Γ, x :τ1⊢ e1 :τ2 and Ξ| Γ⊢ e2 :τ1 then
+(λ x . e1) e2 ⪯ctx e1[e2/x] : τ
+Proof Sketch. By induction on the typing derivation of e1; for each case we use appropriate
+contextual refinements proven by (using the induction hypothesis if necessary) some of the contex-
+tual refinement theorems stated above and some instances of logical relatedness. We only present a
+couple cases here.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 20 ===
+64:20 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+Case e1 = inji e. The induction hypothesis tells us that Ξ| Γ⊨(λ x . e) e2⪯ctx e[e2/x] :τi and
+we have to show that Ξ| Γ⊨(λ x . inji e) e2⪯ctx(inji e)[e2/x] :τ1 +τ2. Notice that it is easy to
+prove (using the fundamental theorem) that Ξ| Γ⊨(λ x . inji e) e2⪯log inji((λ x . e) e2) :τ1 +τ2
+The final result follows by the induction hypothesis, transitivity of contextual refinement and the
+fact that contextual refinement is a congruence relation.
+Case e1 = rec f(y) = e. The induction hypothesis tells us that Ξ| Γ,y : τ1, f : τ1→ τ2⊨
+(λ x . e) e2 ⪯ctx e[e2/x] : τ2 and we have to show that Ξ| Γ ⊨ (λ x .(rec f(y) = e)) e2 ⪯ctx
+(rec f(y) = e)[e2/x] :τ1→τ2 or equivalently (by simply massaging the terms) Ξ| Γ⊨ let x =
+e2 in(rec f(y) = e) ⪯ctx (rec f(y) = e[e2/x]) : τ1 → τ2. By rec Hoisting and transitivity of
+contextual refinement, it suffices to show Ξ| Γ⊨(rec f(y) = let x = e2 in e)⪯ ctx(rec f(y) =
+e[e2/x]) :τ1→τ2 which easily follows from the induction hypothesis and the fact that contextual
+refinement is a congruence relation. □
+We omit the theorems of hoisting and η-expansion for polymorphic terms as they are fairly
+similar in statement and proof to their counterparts for recursive functions. We also omit β-
+reduction for polymorphic terms and recursive functions. The former follows directly from the
+corresponding logical relatedness and the latter follows fromβ-reduction forλ’s and rec-unfolding:
+if Ξ| Γ, x :τ1, f :τ1→τ2⊢ e :τ2, then
+Ξ| Γ⊨ rec f(x) = e ⪯ctx λ x . e′[(rec f(x) = e′)/f] :τ1→τ2,
+which is a consequence of the corresponding logical relatedness.
+Theorem 4.7 (Eqations for stateful computations). See Figure 3.
+Proof. Left identity follows by proving both logical relatednesses. Right identity is proven as
+follows using equational reasoning:
+e2 e1⪯ctx let x = e2 in lety = e1 in bind(returny) in letz = xy in(λ _. z)
+⪯ctx let x = e2 in lety = e1 in bind(returny) in(λ_. let z = xy in z)
+⪯ctx let x = e2 in lety = e1 in bind(returny) in x
+⪯ctx lety = e1 in let x = e2 in bind(returny) in x
+⪯ctx bind(return e1) in e2 : STρτ
+Here the second equation is by rec Hoisting and the fourth by a variant of commutativity. The rest
+follow by proving the corresponding logical relatedness. Associativity is proven as follows using
+equational reasoning:
+bind(bind e1 in e2) in e3
+⪯ctx lety = e1 in bindy in letz =(e2, e3) in(λ x . bind(π1 z) x inπ2 z)
+⪯ctx lety = e1 in bindy in(λ x . let z =(e2, e3) in bind(π1 z) x inπ2 z)
+⪯ctx lety = e1 in bindy in(λ x . let z1 = e2 in letz2 = e3 in letz3 =(z1 x) in bindz3 in z2)
+⪯ctx lety = e1 in bindy in(λ x . let z1 = e2 in letz3 =(z1 x) in letz2 = e3 in bindz3 in z2)
+⪯ctx bind e1 in(λ x . bind(e2 x) in e3) : STρτ
+Here the second equation is by rec Hoisting and the fourth by a variant of commutativity. The rest
+follow by proving the corresponding logical relatedness. □
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 21 ===
+A Logical Relation for Monadic Encapsulation of State 64:21
+5 IRIS DEFINITIONS OF PREDICATES USED IN THE LOGICAL RELATION
+In this section we detail how the abstract predicates (regions, region(r ,γh,γ′
+h), isRgn(α, r), heapγh(h)
+and ℓ7→γ v) used in the definition of the logical relation are precisely defined in the Iris logic. To
+this end, we first introduce three more concepts from the Iris logic: invariants, saved predicates
+and ghost-state.
+5.1 Invariants, Saved Predicates and Ghost State
+We extend the grammar for Iris propositions P, presented in §3 with syntax for invariants, saved
+predicates and ghost-resources:
+P ::=···| P |γ Z⇒Φ|✓(a)| a :M
+γ
+Invariants in Iris, P , are typically used to enforce that a proposition P holds for some shared
+state. In this paper we use a certain kind of invariants for which we can use the following rules for
+allocating and opening invariants7:
+Inv-alloc
+P
+|⇛ P
+Inv-open
+P≡∗ P∗ Q
+P ≡∗ Q
+Notice that these are not the general rules for allocating and opening invariants in Iris. In general,
+the rule Inv-open should involve a ▷ to ensure soundness of the logic. However, the above rules do
+hold for the invariants we use in this paper.8 Invariants are persistent, P ⊣⊢ P ∗ P .
+For storing of Iris propositions we use a mechanism called saved predicates, γ Z⇒ Φ. This
+is simply a convenient way of assigning a name γ to a predicate Φ. There are only three rules
+governing the use of saved propositions. We can allocate them (rule SavedPred-Alloc), they are
+persistent (rule SavedPred-Persistent) and the association of names to predicates is functional
+(rule SavedPred-Eqiv).
+SavedPred-Alloc
+|⇛E ∃γ .γ Z⇒Φ
+SavedPred-Persistent
+γ Z⇒Φ⊣⊢γ Z⇒Φ∗γ Z⇒Φ
+SavedPred-Eqiv
+γ Z⇒Φ∗γ Z⇒ Ψ
+▷Φ(a)⊢ ▷ Ψ(a)
+The later modality is used in rule SavedPred-Eqiv as a guard to avoid self referential para-
+doxes [Krebbers et al. 2017a], which is not so surprising, after all, since saved propositions essen-
+tially allow us to store a predicate (something of typeκ→ iProp) inside a proposition (something
+of type iProp).
+Resources in Iris are described using a kind of partial commutative monoids, and the user of
+the logic can introduce new monoids. For instance, in the case of finite partial maps, the partiality
+comes from the fact that disjoint union of finite maps is partial. Undefinedness is treated by means
+of a validity predicate✓ :M→ iProp, which expresses which elements of the monoidM are
+valid/defined.
+We write a :M
+γ
+to assert that a monoid instance namedγ , of typeM has contents a. Often,
+we disregard the type if it is obvious from the context. We think of this assertion as a ghost variable
+γ with contents a.
+Ghost-Alloc
+✓a⊢|⇛∃γ . a
+γ Own-V alid
+a
+γ
+⊢✓(a)
+Sharing
+a
+γ
+∗ b
+γ
+⊣⊢ a· b
+γ
+7Technically,⇛ has masks⇛E whereE keeps track of already opened invariants, preventing the same invariant being
+opened twice in a nested fashion, which would be unsound. In this paper we omit the masks for the sake of simplicity.
+8The rules hold for invariants P where P is timeless. For details see [Krebbers et al. 2017a].
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 22 ===
+64:22 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+Auth-Included
+• a·◦ b⊢ b⊆ a
+Fpfn-valid
+✓(a)⊣⊢ ∀x∈ dom(a).✓(a(x))
+Agreement-V alid
+✓(ag(a)· ag(b))⊣⊢ a = b
+Exclusive
+✓\( ex(a)· b)
+Frag-distributes
+◦ a·◦ b =◦( a· b)
+Full-Exclusive
+✓\(• a·• b)
+Auth-Alloc-Finset
+h∩ a =∅
+• h
+γ
+≡∗•( h⊎ a)·◦ a
+γ
+Auth-Alloc-Fpfn
+dom(h)∩ dom(a) =∅
+• h
+γ
+≡∗•( h⊎ a)·◦ a
+γ
+Agree
+ag(a)· ag(a) = ag(a)
+Fpfn-operation-success
+(a· b)(x) =
+ 
+
+a(x) if x∈ dom(a)∧ x < dom(b)
+a(x)· b(x) if x∈ dom(a)∩ dom(b)
+b(x) if x∈ dom(b)∧ x < dom(a)
+Auth-Update-Fpfn
+•( h⊎( ℓ7→ ex(v1)))·◦ ℓ7→ ex(v1)
+γ
+≡∗•( h⊎( ℓ7→ ex(v2)))·◦ ℓ7→ ex(v2)
+γ
+Fig. 8. Rules for selected monoid resources in Iris
+Some Useful Monoids. In this paragraph, we describe a few monoids which are particularly useful
+and which we will use in the following. We do not give the full definitions of the monoids (those
+can be found in [Krebbers et al. 2017a]), but focus instead on the properties which the elements of
+the monoids satisfy, shown in Figure 8. These rules stated are only for monoids that we use in this
+work and not in Iris in its generality. For instance, in the rule Auth-Included,⊆ is a set relation
+and is defined for finite set and finite partial function monoids and not in general.
+The figure depicts the rules necessary for allocating and updating finite set monoids, finset(A),
+and finite partial function monoids, A ⇀fin M. In these monoids, the monoid operation x·y is
+disjoint union. The notation a7→ b : A ⇀fin B≜{(a, b)} is a singleton finite partial function.
+The constructs• and◦ are constructors of the so-called authoritative monoid Auth(M). We
+read• a as full a and◦ a as fragment a. We use the authoritative monoid to distribute ownership of
+fragments of a resource. The intuition is that• a is the authoritative knowledge of the full resource,
+think of it as being kept track of in a central location. This central location is the full part of the
+resource (see rule Auth-Included). The fragments,◦ a, can be shared (rule Frag-distributes)
+while the full part (the central location) should always remain unique (rule Full-Exclusive).
+In addition to authoritative monoids, we also use the agreement monoid Ag(M) and exclusive
+monoid Ex(M). As the name suggests, the operation of the agreement monoid guarantees that
+ag(a)· ag(b) is invalid whenever a , b (and otherwise it is idempotent; see rules Agree and
+Agreement-Valid). From the rule Agree it follows that the ownership of elements of Ag(M) is
+persistent.
+ag(a)
+γ
+⊣⊢ ag(a)· ag(a)
+γ
+⊣⊢ ag(a)
+γ
+∗ ag(a)
+γ
+The operation of the exclusive monoid never results in a valid element (rule Exclusive), enforcing
+that there can only be one instance of it owned. We can now give meaning to the heap-specific
+predicates used in the earlier sections, by presenting the canonical example of a Heap monoid:
+Heap≜ Auth(Loc
+fin
+−⇀(Ex(Val))) heapγ(h)≜ • h
+γ
+ℓ7→γ v≜ ◦[ l7→ ex(v)]
+γ
+Notice here that Heap is build from nesting Ex in the finite partial functions monoid, which again
+is nested in the Auth monoid. Therefore, to allocate and update and in the Heap monoid, we can
+use Auth-Alloc-Fpfn and Auth-Update-Fpfn respectively.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 23 ===
+A Logical Relation for Monadic Encapsulation of State 64:23
+5.2 Encoding of Regions by Ghost Resources
+In order to concretely represent bijections and relatedness between locations, we use a pair of
+monoids, one for the bijection (one-to-one correspondence) and one for the semantic interpretation,
+i.e., a name to a saved predicate:
+Rel≜ Auth((Loc× Loc)
+fin
+−⇀(Ag(Names))) Bij≜ Auth(P(Loc× Loc))
+Both are defined as authorative monoids which allow for having a global and a local part. To tie
+the two monoids together with a semantic region r (the name r is simply a positive integer) we use
+a third monoid:
+Region≜ Auth(Z+ fin
+−⇀(Ag(Names× Names)))
+We fix a global ghost name γreg for an instance of this last monoid. For Region, ownership of
+◦ r7→ ag(γbij,γrel)
+γreg
+indicates that the semantic region r is represented by two ghost variables
+namedγbij andγrel, for Bij and Rel respectively. Notice that this ownership of◦ r7→ ag(γbij,γrel)
+γreg
+is duplicable and also, due to the properties of the agreement monoid, we have that the semantic
+region tied to r is uniquely defined. Formally,
+◦ r7→ ag(γbij,γrel)
+γreg
+∗◦ r7→ ag(γ′
+bij,γ′
+rel)
+γreg
+⊢γbij =γ′
+bij∧γrel =γ′
+rel (6)
+We can now present the region(r ,γh,γ′
+h) predicate in detail:
+region(r ,γh,γ′
+h)≜ ∃R,γbij,γrel. ◦ r7→ ag(γbij,γrel) : Region
+γreg
+∗• R : Rel
+γrel
+∗
+∗
+(ℓ, ℓ′)7→ag(γpred)∈ R
+
+∃Φ :(Val× Val)→ iProp),v,v′. ℓ7→γh v∗
+ℓ′7→γ′
+h
+v′∗γpred Z⇒Φ∗ ▷Φ(v,v′)
+
+The predicate asserts that the semantic region r is associated with two ghost names,γbij andγrel,
+by ◦ r7→ ag(γbij,γrel)
+γreg
+, and full authoritative ownership of R, which is a mapping of pairs of
+locations to ghost names. Further, for each element(ℓ, ℓ′)7→ ag(γpred)∈ R we have ownership of
+the points-to predicates ℓ7→γh v and ℓ′7→γ′
+h
+v′ and the knowledge about a saved predicate Φ,
+named byγpred, that holds later forv andv′.
+The regions predicate keeps track of all the allocated regions by having the full authoritative
+part • M : Reg
+γreg
+:
+regions≜
+∃M. • M : Region
+γreg
+∗
+∗
+r7→ag(γbij,γrel)∈ M
+'›
+«
+∃д :finset(Loc× Loc), R :(Loc× Loc)
+fin
+−⇀(Ag(Names)).
+•д
+γbij
+∗ bijection(д)∗ ◦ R
+γrel
+∗д = dom(R)
+“ﬁ
+‹
+For each element r7→ ag(γbij,γrel) in M, regions have full authoritative ownership of a bijection
+д and fragment ownership of R, which maps each pairs of locations to a ghost name for saved
+predicates. Here,д and the domain of R is forced to be equal, ensuring that all pairs that are related
+in the bijection are also related in the region. Notice that since the regions predicate is an invariant,
+it is also persistent.
+Notice here as well that individual regions are tied to the regions predicate, regions, by hav-
+ing the fragment ownership of ◦ r7→ ag(γbij,γrel) : Region
+γreg
+since the authoritative element
+• M : Region
+γreg
+is owned by regions. Similarly, the regions predicate is tied to all regions by
+asserting ownership of the fragment ◦ R
+γrel
+. This illustrates how ghost resources are important to
+enforce relations in and out of invariants.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 24 ===
+64:24 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+We can now give meaning to the abstract predicates used in the definition of STRefρτ 9:
+isRgn(α, r)≜ ∃γbij,γrel,γpred.α = r∗◦ r7→ ag(γbij,γrel)
+γreg
+bij(r , ℓ, ℓ′)≜ ∃γbij,γrel. ◦ r7→ ag(γbij,γrel)
+γreg
+∗◦( ℓ, ℓ′)
+γbij
+rel(r , ℓ, ℓ′,Φ)≜ ∃γbij,γrel,γpred. ◦ r7→ ag(γbij,γrel)
+γreg
+∗◦[( ℓ, ℓ′)7→ ag(γpred)]
+γbij
+∗γpred Z⇒Φ
+Each of the predicates owns the ghost resource suggested by its name. For instance, Property (5)
+from §3 can now be shown:
+regions ≡∗ ∃r . region(r ,γh,γ′
+h)
+First, we open the invariant usingInv-open to obtain• M : Region
+γreg
+. By Ghost-Alloc we obtain
+•∅·◦∅ : Rel
+γrel
+and •д
+γbij
+, for fresh ghost namesγrel andγbij. Now, by Auth-Alloc-Fpfn we can
+extend M with r7→ ag(γbij,γrel), to obtain ◦ r7→ ag(γbij,γrel)
+γreg
+, for some r not in dom(M), since
+M is finite. region(r ,γh,γ′
+h) now holds trivially, since there are no locations allocated in •∅
+γrel
+.
+Similarly, bijection(∅) and dom(∅) =∅ hold trivially, so we have reestablished the body of the
+invariant.
+6 FORMALIZATION IN COQ
+We have formalized our technical development and proofs in the Iris implementation in Coq [Kreb-
+bers et al. 2017a,b]. The Iris implementation in Coq [Krebbers et al. 2017a] includes a model of Iris
+and proof of soundness of the Iris logic itself. The Iris Proof Mode (IPM) [Krebbers et al. 2017b]
+allows users to carry out proofs inside Iris in much the same way as in Coq itself by providing
+facilities for working with the substructural contexts and modalities of Iris. We have used Iris
+and IPM to formalize the future modality, the IC predicates, our logical relation and to prove the
+state-independence theorem and all the refinements presented in this paper.
+The Trusted Computing Base. Even though our logical relation has been defined inside the Iris
+logic, the soundness theorem of Iris [Krebbers et al. 2017a] allows us to prove the soundness of our
+logical relation:
+Theorem binary _ _ soundnessΓ e e ' τ : typed Γ e τ → typed Γ e' τ →
+(∀ Σ `{ICG _ _ STΣ} `{LogRelG Σ}, Γ⊨ e≤log≤ e' : τ )→ Γ⊨ e≤ctx≤ e' : τ .
+This statement says that whenever Ξ| Γ⊢ e : τ and Ξ| Γ⊢ e′ : τ and we can prove in the Iris
+logic (notice the quantification of Iris parameters, Σ `{ICG_ _ST Σ} `{LogRelG Σ})10 that e and e′ are
+logically related, then e contextually refines e′. Notice that Ξ does not appear in the Coq code as
+we are using de Bruijn indices to represent type variables and hence need no type level context.
+The definition of contextual refinement and well-typedness are in turn normal Coq statements,
+independent of Iris.
+All lemmas and theorems in this paper are type checked by Coq without any assumptions or
+axioms apart from the use of functional extensionality which is used for the de Bruijn indices. It is
+used by the Autosubst library.
+9The predicate ◦ r7→ ag(γbij, γrel)
+γreg appears in all the abstract predicates to obtain γbij and γrel. This is to keep the initial
+description of the predicates simple. The redundancy does not exist in the actual implementation.
+10Σ is the set of Iris resources and the other two parameters express that resources necessary for IC and our logical relations
+are present in Σ
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 25 ===
+A Logical Relation for Monadic Encapsulation of State 64:25
+Extending Iris and IPM and instantiating them with STLang. The implementations of Iris and IPM
+in Coq are almost entirely independent of the choice of programming language. In practice, the
+only definitions that are parameterized by a language are the definitions of weakest-precondition
+and Hoare triples. To use these with a particular programming language, one needs to instantiate a
+data structure in Coq that represents the language. Basically, one is required to instantiate this data
+structure with the language’s set of states (heaps in our case), expressions, values and reduction
+relation, together with proofs that they behave as expected (e.g., values do not reduce any further).
+In this work we use IC predicates and IC triples instead of the weakest precondition and Hoare
+triples used in earlier work. Therefore, we have also parameterized IC predicates and IC triples by
+a data structure representing the programming language. We instantiate these with STLang.
+The formalization of Iris in Coq is a shallow embedding. That is, the model of the Iris logic is
+formalized in Coq, and terms of the type iProp (propositions of Iris) are defined as well-behaved
+predicates over the elements of that model. The advantage of shallow embeddings is that one can
+easily introduce new connectives and modalities to the logic by defining another function with
+iProp as co-domain. For instance, our IC predicate is defined as follows in Coq.
+Definition ic _ _ def {Λ Σ } `{ICState Λ, ICG Λ Σ } γ E e Φ : iProp Σ :=
+(∀ σ1 σ2 v n, ( ⌜nsteps pstep n (e, σ1) (of _ _ val v,σ2)⌝ ∗ ownP _ _ fullγ σ 1)
+−∗ |≫{E}=[n]=> Φ v n ∗ ownP _ _ fullγ σ 2)%I.
+Here,⌜·⌝ embeds Coq propositions into Iris and ownP_ _fullγ σ is the full ownership of the physical
+state of the language (parameter Λ), equivalent to our heapγ(σ). The %I at the end instructs Coq to
+parse connectives (e.g., the universal quantification) as Iris connectives and not those of Coq.
+As discussed in [Krebbers et al. 2017b], IPM tactics, like theiMod tactic for elimination of modalities,
+simply apply lemmas with side conditions that are discharged with the help of Coq’s type class
+inference mechanism. Extending IPM with support for the future modality and IC predicates
+essentially boils down to instantiating some of these type classes appropriately.
+Representing binders. We use de Bruijn indices to represent variables both at the term level and
+the type level; in particular, we use the Autosubst library [Schäfer et al. 2015]. It provides excellent
+support for manipulating and simplifying terms with de Bruijn indices in Coq. The simplification
+procedure, however, seems to be non-linear in the size of the term. This is the main reason for the
+slowness of Coq’s processing of our proofs.11
+7 RELATED WORK
+The most closely related work is the original seminal work of Launchbury and Peyton Jones [1994],
+which we discussed and related to in the Introduction. In this section we discuss other related work.
+Moggi and Sabry [2001] showed type soundness of calculi with runST-like constructs, both for a
+call-by-value language (as we consider here) and for a lazy language. The type soundness results
+were shown with respect to operational semantics in which memory is divided into regions: a
+runST-encapsulated computation always start out in an empty heap and the final heap of such a
+computation is thrown away. Thus their type soundness result does capture some aspects of encap-
+sulation. However, the models in loc. cit. are not relational and therefore not suitable for proving
+relational statements such as our theorems above. The authors write: “Indeed substantially more
+work is needed to establish soundness of equational reasoning with respect to our dynamic semantics
+(even for something as unsurprising as β-equivalence)” [Moggi and Sabry 2001].
+In contrast to Moggi and Sabry [2001], who also considered type soundness for a call-by-need
+language, we only develop our model for a call-by-value language. For call-by-need one would
+11About 17 minutes on a laptop using “make -j4” to compile our Coq formalization of about 12,500 lines.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 26 ===
+64:26 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+need to keep track of the dependencies between effectful operations in the operational semantics
+and only evaluate them if they contribute to the end result. These dependencies would also have to
+be reflected in the logical relations model. It is not clear how difficult that would be and we believe
+it deserves further investigation.
+It was pointed out already in [Launchbury and Peyton Jones 1994] that there seems to be a
+connection between encapsulation using runST and effect masking in type-and-effect systems à la
+Gifford and Lucassen [1986]. This connection was formalized by Semmelroth and Sabry [1999],
+who showed how a language with a simplified type-and-effect system with effect masking can be
+translated into a language with runST. Moreover, they showed type soundness on their language
+with runST with respect to an operational semantics. In contrast to our work, they did not investigate
+relational properties such as contextual refinement or equivalence.
+Benton et al. have investigated contextual refinement and equivalence for type-and-effect systems
+in a series of papers [Benton and Buchlovsky 2007; Benton et al. 2007, 2009, 2006] and their work
+was extended by Thamsborg and Birkedal [2011] to a language with higher-order store, dynamic
+allocation and effect masking. These papers considered soundness of some of the contextual
+refinements and equivalences for pure computations that we have also considered in this paper, but,
+of course, with very different assumptions, since the type systems in loc. cit. were type-and-effect
+systems. Thus, as an alternative to the approach taken in this paper, one could also imagine trying
+to prove contextual equivalences in the presence of runST by translating the type system into the
+language with type-and-effects used in [Thamsborg and Birkedal 2011] and then appeal to the
+equivalences proved there. We doubt, however, that such an alternative approach would be easier
+or better in any way. The logical relation that we define in this paper uses an abstraction of regions
+and relates regions to the concrete global heap used in the operational semantics. At a very high
+level, this is similar to the way regions are used as an abstraction in the models for type-and-effect
+systems, e.g., in [Thamsborg and Birkedal 2011]. However, since the models are for different type
+systems, they are, of course, very different in detail. One notable advance of the current work over
+the models for type-and-effect systems, e.g., the concrete step-indexed model used in [Thamsborg
+and Birkedal 2011], is that our use of Iris allows us to give more abstract proofs of the fundamental
+lemma for contextual refinements than a more low-level concrete step-indexed model would.
+Recently Iris has been used in other works to define logical relations for different type systems
+than the one we consider here [Krebbers et al. 2017b; Krogh-Jespersen et al. 2017]. The definitions of
+logical relations in those works have used Iris’s weakest preconditions wp e{v. P} to reason about
+computations. Here, instead, we use our if-convergence predicate, ICγ e{|v. P|}. One of the key
+technical differences between the weakest precondition predicate and the if convergence predicate
+is that the latter keeps explicit track of the ghost variableγ used for heap. This allows us to reason
+about different (hypothetical) runs of the same expression, a property we exploit in the proofs of
+contextual refinements in §4.
+8 CONCLUSION AND FUTURE WORK
+We have presented a logical relations model of STLang, a higher-order functional programming
+language with impredicative polymorphism, recursive types, and a Haskell-style ST monad type
+with runST. To the best of our knowledge, this is the first model which can be used to show that
+runST provides proper encapsulation of state, in the sense that a number of contextual refinements
+and equivalences that are expected to hold for pure computations do indeed hold in the presence of
+stateful computations encapsulated using runST. We defined our logical relation in Iris, a state-of-
+the-art program logic. This greatly simplified the construction of the logical relation, e.g., because we
+could use Iris’s features to deal with the well-known type-world circularity. Moreover, it provided
+us with a powerful logic to reason in the model. Our logical relation and our proofs of contextual
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 27 ===
+A Logical Relation for Monadic Encapsulation of State 64:27
+refinements used several new technical ideas: in the logical relation, e.g., the linking of the region
+abstraction to concrete heaps and the use of determinacy of evaluation on the specification side;
+and, in the proof of contextual refinements, e.g., the use of a helper-logical relation for reasoning
+about equivalence of programs using the same number of steps on the implementation side and the
+specification side. Finally, we have used and extended the Iris implementation in Coq to formalize
+our technical development and proofs in Coq.
+Future work. Future work includes developing a model for a call-by-need variant of STLang. In
+the original paper [Launchbury and Peyton Jones 1994], Launchbury and Peyton Jones argue that
+it would be useful to have a combinator for parallel composition of stateful programs, as opposed
+to the sequential composition provided by the monadic bind combinator. One possible direction for
+future work is to investigate the addition of concurrency primitives in the presence of encapsulation
+of state. It is not immediately clear what the necessary adaptations are for keeping the functional
+language pure. It would be interesting to investigate whether a variation of the parallelization
+theorem studied for type-and-effect systems in [Krogh-Jespersen et al. 2017] would hold for such a
+language.
+ACKNOWLEDGMENTS
+The last author would like to thank Georg Neis for early discussions about the topic of this paper.
+We would like to thank the anonymous referees for their invaluable constructive comments. This
+research was supported in part by the ModuRes Sapere Aude Advanced Grant from The Danish
+Council for Independent Research for the Natural Sciences (FNU), by the EUTypes funding ECOST-
+STSM-CA15123-150816-080859 and by the Flemish Research Fund grants G.0058.13 (until June
+2017) and G.0962.17N (since July 2017).
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
+=== page 28 ===
+64:28 Amin Timany, Léo Stefanesco, Morten Krogh-Jespersen, and Lars Birkedal
+REFERENCES
+Amal Ahmed. 2004. Semantics of Types for Mutable State . Ph.D. Dissertation. Princeton University.
+Amal Ahmed. 2006. Step-Indexed Syntactic Logical Relations for Recursive and Quantified Types. In ESOP.
+Amal J. Ahmed, Andrew W. Appel, and Roberto Virga. 2002. A Stratified Semantics of General References Embeddable in
+Higher-Order Logic. In Proceedings of 17th Annual IEEE Symposium Logic in Computer Science . IEEE Computer Society
+Press, 75–86.
+Andrew Appel and David McAllester. 2001. An Indexed Model of Recursive Types for Foundational Proof-Carrying Code.
+TOPLAS 23, 5 (2001), 657–683.
+Andrew Appel, Paul-André Melliès, Christopher Richards, and Jérôme Vouillon. 2007. A Very Modal Model of a Modern,
+Major, General Type System. In POPL.
+Nick Benton and Peter Buchlovsky. 2007. Semantics of an effect analysis for exceptions. In TLDI.
+Nick Benton, Andrew Kennedy, Lennart Beringer, and Martin Hofmann. 2007. Relational semantics for effect-based program
+transformations with dynamic allocation. In PPDP.
+Nick Benton, Andrew Kennedy, Lennart Beringer, and Martin Hofmann. 2009. Relational semantics for effect-based program
+transformations: higher-order store. In PPDP.
+Nick Benton, Andrew Kennedy, Martin Hofmann, and Lennart Beringer. 2006. Reading, writing and relations. In PLAS.
+Springer.
+Lars Birkedal, Bernhard Reus, Jan Schwinghammer, Kristian Støvring, Jacob Thamsborg, and Hongseok Yang. 2011. Step-
+Indexed Kripke Models over Recursive Worlds. In POPL.
+D. Dreyer, A. Ahmed, and L. Birkedal. 2011. Logical Step-Indexed Logical Relations. LMCS 7, 2:16 (2011).
+Matthias Felleisen and Robert Hieb. 1992. The revised report on the syntactic theories of sequential control and state. TCS
+103, 2 (1992), 235–271.
+D. K. Gifford and J. M. Lucassen. 1986. Integrating functional and imperative programming. In LISP.
+Ralf Jung, Robbert Krebbers, Lars Birkedal, and Derek Dreyer. 2016. Higher-order ghost state. In ICFP. 256–269.
+Ralf Jung, David Swasey, Filip Sieczkowski, Kasper Svendsen, Aaron Turon, Lars Birkedal, and Derek Dreyer. 2015. Iris:
+Monoids and Invariants as an Orthogonal Basis for Concurrent Reasoning. In POPL. 637–650.
+Robbert Krebbers, Ralf Jung, AleÅą Bizjak, Jacques-Henri Jourdan, Derek Dreyer, and Lars Birkedal. 2017a. The essence of
+higher-order concurrent separation logic. In European Symposium on Programming (ESOP) .
+Robbert Krebbers, Amin Timany, and Lars Birkedal. 2017b. Interactive Proofs in Higher-Order Concurrent Separation Logic.
+In POPL.
+Morten Krogh-Jespersen, Kasper Svendsen, and Lars Birkedal. 2017. A relational model of types-and-effects in higher-order
+concurrent separation logic. In POPL.
+John Launchbury and Simon L. Peyton Jones. 1994. Lazy Functional State Threads. In Proceedings of the ACM SIGPLAN
+1994 Conference on Programming Language Design and Implementation (PLDI ’94) . ACM, New York, NY, USA, 24–35.
+John Launchbury and Simon L. Peyton Jones. 1995. State in haskell. Lisp and symbolic computation 8, 4 (1995), 293–341.
+E. Moggi and Amr Sabry. 2001. Monadic Encapsulation of Effects: A Revised Approach (Extended Version). J. Funct.
+Program. 11, 6 (Nov. 2001), 591–627.
+John C. Reynolds. 1983. Types, Abstraction, and Parametric Polymorphism. Information Processing (1983).
+Steven Schäfer, Tobias Tebbi, and Gert Smolka. 2015. Autosubst: Reasoning with de Bruijn Terms and Parallel Substitutions.
+In ITP (LNCS), Vol. 9236. 359–374.
+Miley Semmelroth and Amr Sabry. 1999. Monadic Encapsulation in ML. In Proceedings of the Fourth ACM SIGPLAN
+International Conference on Functional Programming (ICFP ’99) . ACM, New York, NY, USA, 8–17.
+Jacob Thamsborg and Lars Birkedal. 2011. A Kripke logical relation for effect-based program transformations. In ICFP.
+Proceedings of the ACM on Programming Languages, Vol. 2, No. POPL, Article 64. Publication date: January 2018.
