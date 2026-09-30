@@ -1,0 +1,4030 @@
+Revisiting Higher-Order Diﬀerential-Linear
+Attacks from an Algebraic Perspective
+(Full Version)
+Kai Hu, Thomas Peyrin, Quan Quan Tan and Trevor Yap
+School of Physical and Mathematical Sciences, Nanyang Technological University,
+Singapore
+kai.hu.sdu@gmail.com, {thomas.peyrin, trevor.yap}@ntu.edu.sg,
+quanquan001@e.ntu.edu.sg
+Abstract. The Higher-order Diﬀerential-Linear (HDL) attack was in-
+troduced by Biham et al.at FSE 2005, where a linear approximation was
+appended to a Higher-order Diﬀerential (HD) transition. It is a natural
+generalization of the Diﬀerential-Linear (DL) attack. Due to some practi-
+cal restrictions, however, HDL cryptanalysis has unfortunately attracted
+much less attention compared to its DL counterpart since its proposal.
+In this paper, we revisit HD/HDL cryptanalysis from an algebraic per-
+spective and provide two novel tools for detecting possible HD/HDL
+distinguishers, including: (a) Higher-order Algebraic Transitional Form
+(HATF) for probabilistic HD/HDL attacks; (b) Diﬀerential Supporting
+Function (DSF) for deterministic HD attacks. In general, the HATF can
+estimate the biases of ℓth-order HDL approximations with complexity
+O(2ℓ+d2ℓ
+) where d is the algebraic degree of the function studied. If the
+function is quadratic, the complexity can be further reduced to O(23.8ℓ).
+HATF is therefore very useful in HDL cryptanalysis for ciphers with
+quadratic round functions, such as Ascon and Xoodyak. DSF provides
+a convenient way to ﬁnd good linearizations on the input of a permuta-
+tion, which facilitates the search for HD distinguishers.
+Unsurprisingly, HD/HDL attacks have the potential to be more eﬀective
+than their simpler diﬀerential/DL counterparts. Using HATF, we found
+many HDL approximations for round-reduced Ascon and Xoodyak ini-
+tializations, with signiﬁcantly larger biases than DL ones. For instance,
+there are deterministic 2nd-order/4th-order HDL approximations for As-
+con/Xoodyak initializations, respectively (which is believed to be im-
+possible in the simple DL case). We derived highly biased HDL approxi-
+mations for 5-round Ascon up to 8th order, which improves the complex-
+ity of the distinguishing attack on 5-round Ascon from 216 to 212 calls.
+We also proposed HDL approximations for 6-round Ascon and 5-round
+Xoodyak (under the single-key model), which couldn’t be reached with
+simple DL so far. For key recovery, HDL attacks are also more eﬃcient
+than DL attacks, thanks to the larger biases of HDL approximations. Ad-
+ditionally, HATF works well for DL (1 st-order HDL) attacks and some
+well-known DL biases of Ascon and Xoodyak that could only be ob-
+tained experimentally before can now be predicted theoretically.
+With DSF, we propose a new distinguishing attack on 8-round Ascon
+permutation, with a complexity of 248. Also, we provide a new zero-sum
+distinguisher for the full 12-round Ascon permutation with 2 55 time/-
+data complexity. We highlight that our cryptanalyses do not threaten
+the security of Ascon or Xoodyak.
+Keywords: Higher-Order Diﬀerential, Higher-Order Diﬀerential-Linear,
+Ascon, Xoodyak
+1 Introduction
+1.1 Diﬀerential-Linear Cryptanalysis
+Diﬀerential and linear cryptanalysis have been the fundamental methods for eval-
+uating the security of a cipher [8,29]. Nowadays, all new schemes are requested
+to claim resistance against these two attacks. However, resistance against the
+plain diﬀerential and linear cryptanalysis does not necessarily lead to resistance
+against their variants. For example, despite its security proof against diﬀerential
+attacks, the cipherCoconut98 [35] is vulnerable to boomerang and Diﬀerential-
+Linear (DL) cryptanalysis [36,6] which are two variants of the diﬀerential and
+linear attacks, leveraging a combined strategy.
+Diﬀerential-linear cryptanalysis was proposed by Langford and Hellman in
+1994 [25]. For a cipher E, let C = E(P) and C′ = E(P′). Given a diﬀerence-
+mask pair (∆I,λO), the bias q′of a DL approximation can be derived from the
+following equation
+Pr[λO ·(C⊕C′) = 0 |P ⊕P′= ∆I] = 1
+2 + q′.
+Similar to the case of linear cryptanalysis, if the bias |q′|is signiﬁcantly larger
+than 0, we can distinguish the cipher from a random permutation.
+There are mainly two types of methods to estimate q′ in the literature. In
+the classical DL cryptanalysis [25,6], a cipher E is decomposed into two sub-
+ciphers as E = E1 ◦E0, where a diﬀerential ∆I
+p
+− →∆O for E0 and a linear
+approximation λI
+q
+− →λO for E1 are considered. The DL bias q′can be estimated
+by q′= (−1)∆O·λI2pq2 under some independence assumptions.
+As pointed out in [6], experiments are required to verify the estimated bias
+when possible because the underlying assumptions may fail. There are two main
+reﬁned methods of classical DL attacks. One is from Blondeau et al. [9], where
+an accurate formula for q′is given under the sole assumption that E0 and E1 are
+independent. The other, proposed by Bar-On et al. [2] at EUROCRYPT 2019, is
+called the Diﬀerential-Linear Connectivity Table (DLCT) which overcomes the
+independence problem between E0 and E1. The drawback of the ﬁrst method
+is that it is computationally impossible to apply the formula for practical use-
+cases, while the second method only works when a large-enough DLCT can be
+built eﬃciently.
+2
+A new method to estimateq′from an algebraic perspective has been proposed
+by Liu et al. [27] at CRYPTO 2021. If we deﬁne a Boolean function according
+to λO as fλO : Fn
+2 →F2,fλO(u) = λO ·u and let f = fλO ◦E, the bias of
+λO ·(C⊕C′) is equivalent to the bias of the following Boolean function
+D∆If(P) = f(P) ⊕f(P ⊕∆I). (1)
+Then, they introduced another function with an auxiliary variable x∈F2 as
+f∆I(P,x) = f(P ⊕x∆I), (2)
+where x∆I ∈Fn
+2 means that x is multiplied with each coordinate of ∆I, i.e.,
+x∆I = (x∆I[0],...,x∆ I[n−1]). Given a Boolean function g(a0,a1,...,a n−1)
+with nvariables and for a certain variable ai (aj for j ̸= iare viewed as param-
+eters), we can write g as g = g′′ai ⊕g′ with g′ and g′′ being independent of ai
+and where the partial derivative of g with respect to ai is the polynomial g′′,
+denoted by Daig. Liu et al. gave the following observation linking Equations 1
+and 2 (Equation 3, as proposed in [27], was initially presented based on intu-
+ition, with the underlying rationale not explicitly discussed. A comprehensive
+explanation and detailed insight into the reasoning behind this formula will be
+provided in Section 3),
+f′′= Dxf∆I = D∆If, (3)
+where Dxf∆I is the partial derivative of f∆I with respect to x. That is to say,
+considering Equations 1,2,3, in order to evaluate the bias ofλO·(C⊕C′), we only
+need to evaluate the bias of the Boolean function Dxf∆I. This estimation from
+an algebraic perspective does not require any assumption in theory. However,
+it is extremely diﬃcult to derive Dxf∆I or evaluate its bias. To overcome this
+obstacle, Liu et al. introduced the so-called Algebraic Transitional Forms (ATF)1
+technique to construct a transitional expression of Dxf∆I. Then, the bias is
+estimated from this transitional expression.
+1.2 Higher-Order Diﬀerential(-Linear) Cryptanalysis
+Inspired by the boomerang and DL cryptanalysis, other combined attacks were
+studied by Biham, Dunkelman, and Keller [7]. These combined attacks include
+the diﬀerential-bilinear, Higher-order Diﬀerential-Linear (HDL), boomerang-linear
+attack, etc.
+The Higher-order Diﬀerential (HD) was for the ﬁrst time introduced by Lai
+in 1994 [38] and later studied by Knudsen [23]. It is a natural generalization of
+the diﬀerential attack that takes advantage of having access to more plaintexts.
+Given an ℓth-order diﬀerence ∆I = (∆0,∆1,...,∆ ℓ−1) where ∆0,∆1,...,∆ ℓ−1
+1 In [27], there is another terminology DATF when ATF is used to construct transi-
+tional expressions for f∆. In this paper, we directly use ATF for all kinds of Boolean
+functions no matter whether we target f or f∆.
+3
+are linearly independent, the ℓth derivative of a (partial) cipher E with respect
+to ∆I studies the probability
+p= Pr
+
+ ⨁
+x∈X⊕L(∆I)
+E(x) = ∆O
+
+,
+where L(∆I) is the linear span of ( ∆0,∆1,...,∆ ℓ−1), the ℓ dimensional aﬃne
+space X⊕L(∆) is called the input set with respect to ∆, and ∆O is called the
+output diﬀerence.
+As the name higher-order diﬀerential-linear suggests, HDL cryptanalysis [7]
+studies the bias concerning an ℓth-order input diﬀerence ∆I and an output
+mask λO. The bias ε of an HDL approximation is derived from the following
+formulation:
+Pr
+
+λO ·
+
+ ⨁
+x∈X⊕L(∆I)
+E(x)
+
+= 0
+
+= 1
+2 + ε.
+Akin to the ﬁrst kind of method to evaluate the bias in DL cryptanalysis, Biham
+et al. [7] gave an analysis based on viewing E as two sub-ciphers E = E1 ◦E0.
+Suppose that we know anℓth derivative with probabilitypfor E0 and that E1 has
+a linear approximation with bias equal to q, then the overall bias εis estimated
+as ε = 22ℓ−1pq2ℓ
+. However, currently there is no eﬀective method to trace the
+propagation of an HD or calculate its probability yet. Thus, Biham et al. had to
+restrain themselves to the integral property for E0, which leads to p = 1. The
+integral property usually requires a large ℓ to attack an interesting number of
+rounds, but if |q|̸= 1
+2 , εwill become extremely close to zero. As a result, we can
+only get an interesting HDL distinguisher when there is a linear approximation
+with bias ±1
+2 for E1. In practice, some ciphers such as IDEA [24] allow weak-
+key linear approximations with bias 1
+2 , which makes them vulnerable to HDL
+attacks [7,5].
+1.3 Motivation and Contributions
+Considering that DL attacks are eﬃcient for many important primitives, such as
+Ascon [18] (recent winner of the NIST lightweight competition) andXoodyak[15],
+we are naturally interested in whether the HDL attack could achieve even better
+performance. However, as we mentioned, we did not have any tool to study the
+probabilistic HD distinguishers and they were far less practical than their DL
+counterparts. How to handle the probabilistic HD/HDL cryptanalysis remains
+an open problem.
+Recently, an algebraic perspective on DL attacks [27] opened up a new road
+to study the diﬀerential/DL attacks and achieved better precision for some im-
+portant ciphers such as Ascon [18]. However, we note that their method is based
+on some intuitive observations and is limited to the ﬁrst-order case. In this paper,
+we generalize and reﬁne this algebraic method to higher-order cases.
+Our contributions. In this paper, we revisit the HD/HDL cryptanalysis of
+a Boolean function from an algebraic perspective, which provides novel meth-
+4
+Table 1: Approximation Biases of the DL and HDL approximations for Ascon,
+Xoodyak and Xoodoo. The column of Expr. shows the experimental biases.
+Primitive Round Order Bias Method Reference
+Expr. Theory
+Ascon Init.
+4 1 st 2−2
+2−20 Classical [17]
+2−5 DLCT [2]
+2−2.365 ATF [27]
+2−2.09 HATF Section 5.1
+2nd 2−1 2−1 HATF Section 5.1
+5
+1st 2−9 – Experimental [17]
+2−10 HATF Section 5.1
+2nd 2−6.60 2−7.05 HATF Section 5.1
+8th 2−3.35 2−4.73 HATF Section 5.1
+6 3 rd 2−22† 2−25.97† HATF Section 5.1
+Xoodyak Init. 4
+1st
+2−9.7 – Experimental [19]
+2−9.67 HATF Section 6.1
+−2−5.36‡ – Experimental [19]
+−2−6.0 HATF Section 6.1
+2nd 2−5.72 2−5.72 HATF Section 6.1
+4th 2−1 2−1 HATF Section 6.1
+5 2 nd – 2−45 HATF Section 6.1
+Xoodoo 4 - 2 −1 2−1 Rot. DL [28]
+4th 2−1 2−1 HATF Section 6.1
+5 3 rd 2−8.79 2−8.96 HATF Section 6.1
+†This bias holds when 24 conditions are satisﬁed.
+‡In [19], this 4-round DL distinguisher was extended to 5 rounds in a natural way,
+with an additional cost of 2 −4.
+ods to study HD and HDL cryptanalysis. Two tools for HD/HDL cryptanalysis
+are proposed based on this new perspective, one is the Higher-order Algebraic
+Transitional Form (HATF), which is used to detect probabilistic HDL approxi-
+mations. The other is the Diﬀerential Supporting Function (DSF), which is useful
+to ﬁnd deterministic HD distinguishers.
+Higher-order Algebraic Transitional Form (HATF).By transforming the
+input set of a Boolean function f from an ℓ dimensional aﬃne space to an ℓ
+dimensional linear space, we can transform a general HD attack to a standard
+integral/cube attack. The HD/HDL approximations are then the biases of the
+coeﬃcient of the maxterm in f with the transformed inputs. Since almost all
+modern ciphers are built in a composite way, we can obtain the HD/HDL ex-
+5
+pressions in the form of a composite vectorial Boolean function, which is easier
+to study.
+HATF is a way to estimate the biases of HDL approximations of ciphers
+(concretely, they are the expected biases among all input variabels). It is a two-
+step process: (a) constructing the composite formula of an HD/HDL expression
+for a cipher; (b) calculating the biases of state bits iteratively. The complexity
+of HATF is O(2ℓ+d2ℓ
+) in general cases where ℓ is the HD/HDL order and d is
+the algebraic degree of the round function. However, for ciphers with quadratic
+round functions, the complexity is O(23.8ℓ). Thus, HATF is a very useful tool
+to study the HDL approximations of some permutation-based ciphers such as
+Ascon and Xoodyak.
+Using HATF, we detected many highly biased HDL approximations for round-
+reduced Ascon, Xoodyak and Xoodoo. For example, we propose determin-
+istic HDL approximations for both Ascon and Xoodyak on 4 rounds. For
+5-round Ascon, we give HDL approximations up to the 8 th order. Based on
+these, we have improved the distinguishing attacks for 4- and 5-round Ascon
+and Xoodyak (see Table 2).
+We can improve the precision of HATF with a so-called partitioning technique
+as compared to all previous detection tools for DL (ﬁrst-order HDL) attacks.
+For instance, HATF estimates the bias of the well-studied 4-round Ascon’s DL
+approximation as 2−2.09 (the experimental results is 2 −2), which is better than
+previous tools such as the DLCT [2] (2−5) or the ATF [27] (2−2.36). Also, for the
+ﬁrst time we give the theoretical bias for the 5-roundAscon’s DL approximation:
+the bias is estimated as 2 −10 while the experimental value is 2 −9, no previous
+tool could predict this bias. For Xoodyak, HATF also gives precise theoretical
+predictions for two DL approximations found by experiments [19]. These results
+are shown in Table 1.
+In addition, by injecting some conditions into HATF, we obtained the best
+key-recovery attack on 5-round Ascon with time/data complexity of 222, which
+is 16 times faster than the DL attacks [27] and 4 times faster than the condi-
+tional cube attacks [26]. For 4-round Xoodyak, the HDL attack is 4 times more
+eﬃcient than the DL attack [19]. A summary of these key-recovery attacks is
+given in Table 2.
+Finally, we make clear that HATF cannot give any lower or upper bound for
+HDL approximation biases in theory. However, empirically, it is quite precise to
+predict biased bits, as we show in our experiments. In cases where the reported
+bias is high, we note that it was always the case that the experimental bias
+was also observed as high (we have not seen any counterexample for this). We
+provide data and discuss the precision of HATF in Section K of Supplementary
+Material based on HDL cryptanalysis of Ascon.
+Diﬀerential Supporting Function (DSF). Instead of using the degree evalu-
+ation of a cipher to derive deterministic HD distinguishers, we can evaluate the
+algebraic degree of its DSF. As we will see, the DSF is parameterized by the input
+value and the (higher-order) diﬀerence. Thus, a proper choice of the parameters
+could signiﬁcantly reduce its algebraic degree, leading to a greater chance of
+6
+Table 2: Summary of DL-like attacks on the Ascon and Xoodyak initializa-
+tions. Cond. is short for conditional.
+Type Rnd Data( log) Time ( log) Method Reference
+Ascon Initialization
+Distinguisher
+4 5 5 DL [17]
+2 2 2 nd HDL Section 5.1
+5 18 18 DL [17]
+12 12 8 th HDL Section 5.1
+Key-Recovery
+5
+36 36 DL [17]
+31.44 31.44 DL [32]
+26 26 Cond. DL [27]
+24 24 Cond. Cube [26]
+22 22 Cond. HDL Section 5.2
+Best 7 77 103 Cond. Cube [26]
+7 64 123 Cube [30]
+Xoodyak Initialization
+Key-Recovery
+4 23 23 DL [19]
+21 21 Cond. HDL Section 6.2
+5 22 22 DL † [19]
+70 70 Cond. HDL Section 6.2
+Best 6 43.8 43.8 Cond. Cube [40]
+†This attack is under the related-key model because they obtained the 5-round DL
+approximation by extending a 4-round one. Our attack is a single-key one, which
+means we have to choose the input diﬀerences from the beginning of 5 rounds.
+detecting a deterministic HD distinguisher for the DSF. After that, we can con-
+veniently transform it into an HD distinguisher for the original cipher. With this
+technique, we improve the best-known distinguishing attacks on round-reduced
+Ascon permutation [18]. A 46th-order HD will lead to a zero output diﬀerence
+(in 64 bits) for 8 rounds, i.e., 246 plaintexts are enough to distinguish an 8-round
+Ascon permutation from a random permutation (the previous best-known dis-
+tinguisher requires 2 130 computations [33]). With a similar method applied to
+the inverse Ascon permutation, we constructed a zero-sum distinguisher for a
+full 12-round Ascon permutation requiring only 255 calls while the previous best
+zero-sum distinguisher costs 2130 calls. These distinguishers are demonstrated in
+Table 3.
+7
+Table 3: Summary of zero-sum attacks onAscon permutation. We veriﬁed them
+up to 7 rounds by experiments.
+Type Rnd Data( log) Time ( log) Method Reference
+From Start 8 130 130 Integral [33]
+48 48 HD Section 7
+Best 11 315 315 Integral [33]
+Inside out 12 130 130 Zero-Sum ‡ [33]
+55 55 Zero-Sum Section J
+‡Their zero-sum distinguisher can be further extended to a zero-sum parti-
+tion distinguisher, while ours cannot.
+We emphasize that these results do not threaten the security of the Ascon
+and Xoodyak AEAD schemes.
+Source Code. We implemented the HATF algorithms in C++ and DSF in
+Python, the source codes are provided in the git repository https://github.
+com/hukaisdu/HDL.git.
+Outline. In Section 2, we brieﬂy recall the main concepts of the HD and an
+algebraic perspective on the diﬀerential attack, and other useful background
+knowledge used in this paper. In Section 3, we provide an algebraic perspective on
+the HD/HDL. The HATF technique is introduced in Section 4. In the following
+sections, we describe the HDL attacks on Ascon and Xoodyak. In Section 7
+and Section J of Supplementary Material, we give the theory and results of DSF.
+In Section 8 and Section K, we have some discussions on the precision of HATF
+and conclude this paper.
+2 Preliminaries
+2.1 Notations
+We use italic lower-case letters such as x to represent elements in Fn
+2 ,n ≥1.
+The jth bit of x is denoted by x[j], 0 ≤j < n, where x[0] is the most sig-
+niﬁcant (the leftmost) bit. The vectors of ℓ elements in Fn
+2 are denoted by
+x = ( x0,x1,...,x ℓ−1) ∈ (Fn
+2 )ℓ, the ith element of x is denoted by xi (the
+jth bit of xi is then denoted by xi[j]). Given x ∈ F2 and ∆ ∈ Fn
+2 , x∆ =
+(∆[0]x,∆[1]x,...,∆ [n−1]x)2. For a,b ∈Fn
+2 , a||b∈F2n
+2 represents the concate-
+nation of a and b, a·b stands for the product as a·b= ⨁
+0≤i<na[i]b[i].
+In this paper, x= (x0,x1,...,x n−1) ∈Fn
+2 is usually used as symbolic vari-
+ables. Given u ∈Fn
+2 , xu is a monomial of x as xu = ∏
+ixu[i]
+i . For a vectorial
+Boolean function E : Fn
+2 →Fn
+2 , we use the E[0],E[1],...,E [n−1] to represent
+the Boolean functions of its bits.
+2 Example 1 in Section 3 is helpful for a better understanding to this notation of x∆.
+8
+2.2 Boolean Function
+An n-variable Boolean function is a mapping from Fn
+2 to F2, which can be
+uniquely written as its Algebraic Normal Form (ANF) as a multivariate poly-
+nomial over F2 as (note the input x∈Fn
+2 of this Boolean function is written as
+x∈(F2)n to stress that the input can be seen as n bit variables)
+f(x) = f(x0,x1,...,x n−1) =
+⨁
+u∈Fn
+2
+auxu =
+⨁
+u∈Fn
+2
+au
+n−1∏
+i=0
+xu[i]
+i ,au ∈F2.
+The algebraic degree of f, denoted by deg( f) is deﬁned as max au̸=0{wt(u)}
+for all u ∈Fn
+2 in the above formula. The monomial x0x1 ···xn−1 is called the
+maxterm of f, denoted by π(x). The coeﬃcient of a monomial xu of f is denoted
+by Coe (f,xu). Each output bit of a cryptographic primitive can be written as
+a Boolean function of its public variables (such as plaintexts, initial values (IV),
+or nonces) and secret variables such as the key bits.
+The bias and correlation are two ways of measuring the unbalancedness of an
+n-variable Boolean function f. The bias εis deﬁned as ε= 1
+2n|{f(x) = 0}|−1
+2 =
+Pr[f = 0] −1
+2 while the correlation c= 1
+2n
+∑
+x∈Fn
+2
+(−1)f(x). Actually, c= 2ε. In
+this paper, we will only use the bias ε to measure the unbalancedness.
+2.3 Algebraic Perspective on DL
+In [27], Liu et al. introduced a new algebraic method for the diﬀerential and DL
+cryptanalysis as we have already mentioned in Section 1. Recalling Equation 1,
+the bias of a DL approximation is related to the diﬀerential bias of the Boolean
+function f = fλO ◦E. Thus, to study the DL attack it is enough to focus on
+the diﬀerential property of a sole Boolean function. As explained in Section 1,
+Liu et al. proposed Equation 3 ( f′′= Dxf∆I = D∆If) based on some intuitive
+observations, but no formal proof nor clear motivation was given in their arti-
+cle. In the next section, we will make it clearer when introducing our algebraic
+perspective on the ℓth-order HD.
+Basic idea of Algebraic Transitional Forms. Equation 3 tells us that if we
+can (a) calculate the ANF of Dxf∆, (b) evaluate the bias of Dxf∆, then we can
+directly know the bias of the output diﬀerence. Unfortunately, both tasks are
+computationally infeasible for modern cryptographic primitives. To overcome
+these two obstacles, Liu et al. introduced the ATF of the exact ANF of f∆. ATF
+of a Boolean function f is a composite representation of f, denoted by A. From
+A(f∆), we obtain a simpler expression of Dxf∆, say DxA(f∆), whose bias will
+be regarded as an estimation of the real bias.
+The core of ATF technique is to substitute some parts of a Boolean function
+with new variables to simplify its form. Finally,DxA(f∆) will be a simple formula
+of intermediate variables (some are variables introduced for substitution). The
+bias of DxA(f∆) is relatively easier to calculate.
+In [27], Liu et al. proposed two methods to estimate the bias of DxA(f∆).
+Both methods are based on the following Lemma,
+9
+Lemma 1 ([27]). Given a Boolean function f : Fn
+2 →Fn
+2 and n input bits
+x0,x1,...,x n−1 with biases ε0,ε1,...,ε n−1 respectively. Under the assumption
+that all inputs are independent, the bias of f is
+Bias(f) =
+∑
+x0,x1,...,xn−1
+s.t.f(x0,...,xn−1)=0
+n−1∏
+i=0
+(1
+2 + (−1)xiεi
+)
+−1
+2. (4)
+Equation 4 is derived from such an idea: the event of f = 0 happens means
+any of the input that makes f = 0 happens. The bias of xi is εi, so it happens
+with probability of 1
+2 +εi when xi = 0 or 1
+2 −εi when xi = 1. Equation 4 follows.
+When using Equation 4, we need to ﬁnd out all inputs that make f = 0. Thus
+the complexity to calculate the bias of f is about O(2n).
+In the basic method, Liu et al. assume that all inputs of DxA(f∆) are uni-
+formly random (i.e., the biases of all inputs are exactly 0), the bias of DxA(f∆)
+is computed according to Lemma 1. The improved method is similar to the ba-
+sic one, but the bias of the intermediate variables will be calculated in advance.
+Thus, the precision can be improved.
+3 HD/HDL Cryptanalysis from an Algebraic Perspective
+In this section, we give the theory about theℓth derivative of a Boolean functionf
+from an algebraic perspective. This is a general case of the algebraic perspective
+on DL proposed in [27]. It is well known that the cube/integral attacks are
+special cases of HD attacks with all ℓlinearly-independent diﬀerences being unit
+vectors. The expression of the HD derivative of f in this case is the coeﬃcient of
+the so-called cube term [16]. The theory in this section answers such a question:
+given any ℓ linear-independent diﬀerences, what is the expression of the HD
+derivative of f?
+Given a Boolean function f : Fn
+2 →F2 and an ℓth-order input diﬀerence
+∆= (∆0,∆1,...,∆ ℓ−1) ∈(Fn
+2 )ℓ, the input set is X⊕L(∆) for a certain input
+X ∈Fn
+2 . The ℓth derivative of f is calculated as
+D∆f(X) =
+⨁
+a∈X⊕L(∆)
+f(a).
+Note that Aℓ = X ⊕L(∆) is an ℓ-dimensional aﬃne space, so we can link Aℓ
+to any another ℓ-dimensional aﬃne space ( Aℓ)′by a bijective mapping Mthat
+sends (Aℓ)′to Aℓ. Not surprisingly, we tend to choose the simplest ℓ-dimensional
+aﬃne space, i.e., the ℓ-dimensional linear space Fℓ
+2. One choice of Mcan be
+M: Fℓ
+2 →Aℓ
+(x0,x1,...,x ℓ−1) ↦→X⊕x0∆0 ⊕x1∆1 ⊕···⊕ xℓ−1∆ℓ−1 ≜ X⊕x∆
+(5)
+10
+We deﬁne a new function f∆ from f with the transformed input set as 3:
+f∆ : Fℓ
+2 →F2, x↦→f(X⊕x∆).
+If we let Dxf∆ represent the coeﬃcient of the maxterm in f∆, i.e., Dxf∆ =
+Coe (f(X⊕x∆),π(x)) (recall that the maxterm is π(x) = ∏ℓ−1
+i=0 xi), we can
+give the following formal proposition,
+Proposition 1 (Algebraic-Perspective on HD/HDL). Given f : Fn
+2 →F2
+and an ℓth-order diﬀerence ∆∈(Fn
+2 )ℓ, D∆f = Dxf∆.
+Proof. With Mas given in Equation 5, for any X we have
+D∆f(X) =
+⨁
+a∈X⊕L(∆)
+f(a) =
+⨁
+x∈Fℓ
+2
+f(M(x)) =
+⨁
+x∈Fℓ
+2
+f(X⊕x∆).
+From the perspective of the M¨ obius transform, the sum over all x∈Fℓ
+2 is the
+coeﬃcient of π(x), i.e.,
+⨁
+x∈Fℓ
+2
+f(X⊕x∆) = Coe (f(X⊕x∆),π(x)) = Dxf∆.
+⊓ ⊔
+Example 1. Let f : F3
+2 →F2 be f(a0,a1,a2) = a0a1a2 ⊕a0a1 ⊕a0a2 ⊕a1a2,
+∆ = ( ∆0,∆1) where ∆0 = (1 ,0,1) and ∆1 = (1 ,1,1), we consider the 2 nd
+derivative of f at a point X = (X0,X1,X2) ∈(F2)3. According to Equation 5,
+M(x0,x1) = X⊕x0∆0 ⊕x1∆1 = (X0 ⊕x0 ⊕x1,X1 ⊕x1,X2 ⊕x0 ⊕x1). The
+composition of f and Mis then
+f ◦M(x0,x1) = f(X0 ⊕x0 ⊕x1,X1 ⊕x1,X2 ⊕x0 ⊕x1)
+= x0x1(X0 ⊕X2 ⊕1) ⊕x0X0X1 ⊕x0X0 ⊕x0X1X2 ⊕x0X1
+⊕x0X2 ⊕x0 ⊕x1X0X1 ⊕x1X0X2 ⊕x1X0 ⊕x1X1X2
+⊕x1X1 ⊕x1X2 ⊕X0X1X2 ⊕X0X1 ⊕X0X2 ⊕X1X2
+.
+We can see that D∆f(X) = Coe (f ◦M(x0,x1),x0x1) = X0 ⊕X2 ⊕1.
+4 Estimating HDL Approximation Biases Using HATF
+On the basis of Section 3, we propose a technique to measure the bias of a prob-
+abilistic HDL approximation. The basic idea is inspired by the ATF technique
+introduced by Liu et al. for the DL cryptanalysis [27]: we construct a compos-
+ite representation of the HDL approximation, then estimate the bias according
+to the composite representation. In Section 4.1, we construct the HATF for a
+cipher E, which is a composite representation of the ℓth derivative of E. In Sec-
+tion 4.2, we estimate the bias of the ℓth-order HDL based on HATF under some
+reasonable assumptions. In Section 4.4, the partitioning technique is introduced
+to further improve the precision of the HATF method.
+3 Note that f∆ is a Boolean function of x= (x0,x1,...,x ℓ−1), X and ∆are regarded
+as parameters.
+11
+4.1 Construction of the HATF
+According to Proposition 1, if for a Boolean function f, we have the ability to
+calculate the bias of Dxf∆ = Coe (f(X⊕x∆),π(x)), then we will also have the
+bias of D∆f. However, Dxf∆ is too complicated to derive, let alone calculate
+its bias. Considering that almost all modern ciphers are constructed as a com-
+position of small functions whose ANFs are available, we can represent Dxf∆
+in a composite way. Based on the composite representation, it becomes possible
+to estimate its bias under some assumptions.
+Suppose that an R-round cipher E : Fn
+2 →Fn
+2 is represented as the following
+composition,
+E = ER−1 ◦ER−2 ◦···◦ E0, E r : Fn
+2 →Fn
+2 , (6)
+then, according to Proposition 1, to calculate the ℓth-order diﬀerential of E with
+the input diﬀerence ∆= (∆0,∆1,...,∆ ℓ−1), we can calculate DxE(X⊕x∆) .
+Here E is a vectorial Boolean function as E = ( E[0],E[1],...,E [n−1]), so
+DxE(X⊕x∆) = (DxE[0] (X⊕x∆) ,...,D xE[n−1] (X⊕x∆)).
+In the following, we will write X⊕x∆in a more general form. Let ei be the
+unit vector with only the ith bit being 1 and 0 be the vector with all elements
+being zero, then
+αu =
+
+
+
+X, if u= 0
+∆i, if u= ei
+0, otherwise
+,
+then X⊕x∆= X⊕x0∆0⊕x1∆1⊕···⊕xℓ−1∆ℓ−1 can be written in an equivalent
+form as
+X⊕x∆=
+⨁
+u∈Fℓ
+2
+αuxu, α u ∈Fn
+2 .
+x= (x0,x1,...,x ℓ−1) are ℓsymbolic variables in this representation. Hence, the
+input and output of Er are both polynomials of xas follows,
+⨁
+u∈Fℓ
+2
+α(r+1)
+u xu = Er
+
+⨁
+u∈Fℓ
+2
+α(r)
+u xu
+
+, α (r+1)
+u ,α(r)
+u ∈Fn
+2 .
+Since α(r+1)
+u is a vectorial Boolean function with all α(r)
+u as input, we derive a
+new vectorial Boolean function from Er:
+Eℓ
+r : (Fn
+2 )2ℓ
+→(Fn
+2 )2ℓ
+,
+(
+α(r)
+u ,u ∈Fℓ
+2
+)
+↦→
+(
+α(r+1)
+u ,u ∈Fℓ
+2
+)
+,
+where
+α(r+1)
+u = fu
+(
+α(r)
+u ,u ∈Fn
+2
+)
+= Coe
+
+Er
+
+⨁
+u∈Fn
+2
+α(r)
+u xu
+
+,xu
+
+.
+12
+Input
+α(0)
+00
+α(0)
+01
+α(0)
+10
+α(0)
+11
+α(0)
+00 ⊕ α(0)
+01 x0 ⊕ α(0)
+10 x1
+Round 1
+α(1)
+00
+α(1)
+01
+α(1)
+10
+α(1)
+11
+α(1)
+00 ⊕ α(1)
+01 x0 ⊕ α(1)
+10 x1 ⊕ α(1)
+11 x0x1
+Round 2
+α(1)
+00
+α(1)
+01
+α(1)
+10
+α(1)
+11
+α(2)
+00 ⊕ α(2)
+01 x0 ⊕ α(2)
+10 x1 ⊕ α(2)
+11 x0x1
+Round R
+α(R)
+00
+α(R)
+01
+α(R)
+10
+α(R)
+11
+α(R)
+00 ⊕ α(R)
+10 x0 ⊕ α(R)
+01 x1 ⊕ α(R)
+11 x0x1
+Fig. 1: An illustration of Eℓ when ℓ= 2 (2nd HATF). The input is X⊕x0∆0 ⊕
+x1∆1 = α(0)
+00 ⊕α(0)
+01 x0⊕α(0)
+10 x1. The outputs of theith round of Eℓ are the constant
+monomial and coeﬃcients of x0,x1,x0x1. Finally, the R-round HDL bias is just
+the bias of α(R)
+11 .
+Algorithm 1 Construction of the HATF Eℓ from a cipher E
+Input: 1. the ANFs of components of E = ER−1 ◦···◦ E0,
+2. the order ℓ,
+3. the block size n,
+4. an ℓth-order diﬀerence (∆0,...,∆ ℓ−1),
+5. an input value X
+Output: the ℓth-order HATF Eℓ = Eℓ
+R−1 ◦···◦E ℓ
+0
+1: Let α(0)
+0 = X, α(0)
+ei = ∆i, ∆(0)
+u = 0 for all wt(u) ≥2
+2: for 0 ≤r<R do
+3: for 0 ≤i<n do
+4: Calculate f = Er[i]
+(⨁
+u∈Fn
+2
+α(r)
+u xu
+)
+5: for 0 ≤u< 2ℓ do
+6: Calculate α(r+1)
+u [i] = Coe (f,xu)
+7: end for
+8: end for
+9: end for
+10: return α(r)
+u for all 1 ≤r≤R and u∈Fn
+2 , which are actually Eℓ
+Connecting all Eℓ
+r,0 ≤r < R, we derive from E a composite function Eℓ (an
+example is illustrated in Figure 1):
+Eℓ = Eℓ
+R−1 ◦Eℓ
+R−2 ◦···◦E ℓ
+0, Eℓ
+r : (Fn
+2 )2ℓ
+→(Fn
+2 )2ℓ
+. (7)
+Deﬁnition 1 ( ℓth Higher-order Algebraic Transitional Form (ℓth HATF)).
+The composite function in Equation 7 above is called the ℓth Higher-order Alge-
+braic Transitional Form (ℓth HATF) of E. If the order information is clear from
+the context, we will omit the superscript ℓ for convenience.
+Algorithm 1 shows the detailed process of constructing a HATF. The time
+complexity of Algorithm 1 is dominated by line 4,i.e., calculating Er[i]
+(⨁
+u∈Fn
+2
+αuxu
+)
+.
+13
+If deg(Er) = d, then the complexity of calculating Er[i] is dominated by the cal-
+culation of all the d-degree monomials in Er[i]. For each d-degree monomial,
+we need to multiply d bits of ⨁
+u∈Fn
+2
+αuxu. The complexity of computing a d-
+degree monomial is about 2 dℓ multiplications and 2 dℓ additions. Suppose there
+are td-degree monomials in Er[i], the time complexity of computing all d-degree
+monomials is about C1 = 2·t·2dℓ. Then the complexity of computing anR-round
+cipher is approximately Ch = 2 ·R·n·t·2dℓ multiplications or additions. For
+a speciﬁc cipher, the round R, block size n, algebraic degree d and the number
+of d-degree monomials are all constants, thus the complexity of constructing the
+HATF is O(2dℓ).
+The main part of memory complexity is to storeα(r)
+u [i] for every round (line 6
+in Algorithm 1). In each α(r)
+u [i], there are at most 2 ℓ terms, so the memory cost
+is bounded by O(22ℓ).
+Next, we introduce a useful property of HATF as Proposition 2.
+Proposition 2. Let Eℓ in Equation 7 be the HATF of E in Equation 6. For
+each 0 ≤r<R , the algebraic degree of Eℓ
+r is equal to the algebraic degree of Er.
+Proof. Let deg(Er) = d and consider the output of Eℓ
+r. Since
+α(r+1)
+u = Coe
+
+Er
+
+⨁
+u∈Fn
+2
+α(r)
+u xu
+
+,xu
+
+,
+each bit of α(r+1)
+u xu is obtained by multiplying at most ddiﬀerent bits of ⨁
+u∈Fℓ
+2
+α(r)
+u xu.
+Therefore, the algebraic degree ofα(r+1)
+u is at most d. Finally, when u= 0, α(r+1)
+0
+is just the output of Er(α(r)
+0 ), so deg(Eℓ
+r) = deg(Er). ⊓ ⊔
+4.2 Estimation of the HDL Bias based on HATF
+Suppose we have obtained theℓth HATF of a cipherE = ER−1◦···◦E0 according
+to Algorithm 1. The biases of the ℓth-order HD/HDL approximations of all the
+output bits of E are biases of α(R)
+1 (where 1 is the ℓ-bit vector with all elements
+being 1). From the HATF ofE, we know the composite form ofα(R)
+1 is as follows,
+(
+α(0)
+u ,u ∈Fn
+2
+) E0
+−→
+(
+α(1)
+u ,u ∈Fn
+2
+) E1
+−→···
+ER−2
+−−−→
+(
+α(R−1)
+u ,u ∈Fn
+2
+) ER−1
+−−−→α(R)
+1 .
+Besides, the bias of a(0)
+u ,u ∈Fn
+2 is available since they are the input values by
+adversaries (under a chosen-plaintext attack)4.
+Under the assumption that all the bits of α(r)
+u ,u ∈Fn
+2 are independent, the
+bias of α(r+1)
+u ,u ∈Fn
+2 can be estimated according to Lemma 1. Therefore, we
+can calculate the bias of α(R)
+1 from α(0)
+u ,u ∈Fn
+2 iteratively.
+4 In all attacks of this paper, we simply use uniform α(0)
+u , i.e., the input values do not
+have biases.
+14
+Algorithm 2 Estimate the bias of α(R)
+1
+Input: 1. the HATF Eℓ = Eℓ
+R−1 ◦···◦E ℓ
+0,
+2. the bias of α(0)
+u [i] for all 0 ≤i<n and u∈Fn
+2
+Output: the ℓth-order HATF Eℓ = Eℓ
+R−1 ◦···◦E ℓ
+0
+1: for 1 ≤r<R do
+2: for 0 ≤i<n do
+3: for 0 ≤u< 2ℓ do
+4: /* For general cases */
+5: Compute the bias of α(r)
+u [i] using Lemma 1
+6: /* For quadratic cases */
+7: Find M so that α(r)
+u [i] = g◦M−1 (Lemma 2)
+8: Compute the bias of M−1
+(
+α(r)
+u ,u ∈Fn
+2
+)
+(Piling-up lemma [29])
+9: Compute the bias of α(r)
+u [i] with g◦M−1 (Lemma 3)
+10: end for
+11: end for
+12: end for
+13: return the bias of α(R)
+1 [i] for 0 ≤i<n
+The detailed process is shown in Algorithm 2 with blue words. According to
+Lemma 1, the time complexity of computing the bias of a Boolean function is
+exponentially related to the number of variables. For a ﬁxed round r and index
+i, α(r+1)
+1 [i] has the most number of variables as compared to α(r+1)
+u ,u ̸= 1. If
+the algebraic degree of α(r+1)
+1 [i] is d, then the number of variables in it is at
+most d×2ℓ, and the numbers of variables in other α(r)
+u [i],u ̸= 1 are signiﬁcantly
+smaller. Therefore the time complexity of line 5 in Algorithm 2 is about 2 d×2ℓ
+.
+The whole complexity is then approximately R·n·2ℓ ·2d×2ℓ
+, which can be
+bounded by O(2ℓ+d×2ℓ
+). The memory complexity is negligible.
+Reducing the Complexity for Quadratic Boolean Functions. Since the
+complexity of estimating the bias from HATF is O(2ℓ+d×2ℓ
+), even a small order
+will result in high complexity. In the following, we show that for ciphers whose
+round functions are quadratic, the complexity can be reduced from O(2ℓ+d×2ℓ
+)
+to O(23.8ℓ).
+Note that a Boolean function is quadratic if its algebraic degree is 2. A
+disjoint quadratic Boolean function is deﬁned as follows,
+Deﬁnition 2 (Disjoint quadratic Boolean function). A quadratic Boolean
+function is disjoint if all its quadratic monomials do not share any common
+variables.
+Any quadratic Boolean functions can be decomposed into a disjoint form [21,
+P438]. In [31], Shi et al. applied this method to cryptanalysis of Morus. We omit
+the detailed algorithm here and only give a small example to show its core idea.
+15
+Example 2. Let f = x0x1 ⊕x0x2 ⊕x1x2. It is not disjoint, but we can convert
+it to a disjoint Boolean function with the following steps:
+1. f = x0x1 ⊕x0x2 ⊕x1x2 = x0(x1 ⊕x2) ⊕x1x2, we ﬁrst let x′
+1 = x1 ⊕x2 to
+obtain g= x0x′
+1 + (x′
+1 ⊕x2)x2 = x0x′
+1 ⊕x′
+1x2 ⊕x2.
+2. g = x′
+1(x0 ⊕x2) + x2, we then let x′
+0 = x0 ⊕x2 and obtain g = x′
+1x′
+0 ⊕x2,
+then g is a disjoint quadratic Boolean function.
+During the process, we do linear variable substitutions with x′
+1 = x1 ⊕x2 and
+x′
+0 = x0 ⊕x2. For sake of convenience, we let x′
+2 = x2, so g = f(M[x0,x1,x2]t)
+where M =
+
+
+1 0 1
+0 1 1
+0 0 1
+
+. Equivalently, f = g◦M−1.
+We write this method as a lemma for a convenient citation.
+Lemma 2 ([21]). A quadratic Boolean function f : Fn
+2 →Fn
+2 can be converted
+into a disjoint Boolean function g: Fn
+2 →Fn
+2 with g= f◦M where M ∈Fn×n
+2 is
+an invertible matrix. The time complexity is O(n3.8) and the memory complexity
+is Ω(n2).
+The bias of a disjoint quadratic Boolean function can be computed with ease,
+as shown in Lemma 3.
+Lemma 3. Let g: Fn
+2 →F2 be a disjoint quadratic Boolean function as
+g= g0 ⊕g1 ⊕···⊕ gT−1
+where all gi,0 ≤i < Tdo not share common variables, and the biases of all
+input variables of g are available. Then we can compute the bias of each gi using
+Lemma 1 with small complexities. Finally, the bias of g can be computed with
+the piling-up lemma with biases of all gi.
+According to Proposition 2, when a cipher uses quadratic round functions,
+the round functions of its HATF is also quadratic. For calculating the bias of
+α(r+1)
+u [i] (line 5 of Algorithm 2) from α(r)
+u , we ﬁrst ﬁnd an invertible matrix
+M such that g = α(r+1)
+u [i] ◦M is disjoint according to Lemma 2. Equivalently,
+α(r+1)
+u [i] = g ◦M−1(α(r)
+u ,u ∈Fn
+2 ).5 Based on the biases of α(r)
+u , the bias of
+M−1
+(
+α(r)
+u ,u ∈Fn
+2
+)
+can be calculated using the piling-up lemma. Applying the
+disjoint Boolean function g to the output of M−1
+(
+α(r)
+u ,u ∈Fn
+2
+)
+, the bias of
+α(r+1)
+u [i] can be obtained according to Lemma 3.
+The process is also given in Algorithm 2, but with red words. The complexity
+is dominated by line 7, i.e., converting α(r+1)
+u [i] to a disjoint quadratic form.
+Since the number of variables in α(r+1)
+u [i] is at most 2 ×2ℓ (we are working on
+5 Note that not all bits in α(r)
+u , u∈Fn
+2 are input of g◦M−1. We write it in this way
+for convenience.
+16
+quadratic functions), the time complexity of line 7 is O(23.8ℓ), and the memory
+complexity is Ω(22ℓ).
+Considering both Algorithms 1 and 2, the time complexity of computing the
+biases of the ℓth HDL approximations is O(2ℓ+d×2ℓ
+) in general case, and O(23.8ℓ)
+for ciphers with quadratic round functions. The memory complexity is Ω(22ℓ).
+4.3 Discussion on the Assumption of Independence and Precision
+HATF works on the assumption that all bits of α(r)
+u ,0 ≤r < R,u∈Fn
+2 are
+independent. If we directly use Algorithm 1 to construct the HATF, many related
+α(r+1)
+u [i] will be regarded as independent variables (line 6 of Algorithm 1), which
+makes our assumption less valid. Thus, we need to avoid such cases as much as
+possible. Methods that we use to avoid these related variables are introduced as
+follows, both of which are concerned about line 6 only
+1. When deg( α(r+1)
+u [i]) ≤1, we do not introduce a new variable α(r+1)
+u [i] to
+substitute Coe (f,xu), because variables in linear expressions are easier to
+be related with other variables. In this case, the following computation will
+depend on Coe (f,xu) directly rather than α(r+1)
+u [i].
+2. We use a dictionary Q to store each variable substitution as
+Q[Coe (f,xu)] = α(r+1)
+u [i],
+then if Coe (f,xu) or Coe (f,xu) ⊕1 has been in Q, we do not need to
+introduce new variables, α(r+1)
+u [i] or α(r+1)
+u [i] ⊕1 can be reused.
+By these two methods, we can avoid most simple related-bit cases. Other
+kinds of relations are relatively more complicated and are not considered in this
+paper. We hope that those bits with complicated relationships can be approxi-
+mately treated as independent bits.
+In terms of the time/memory complexities, the ﬁrst method increases the
+number of variables linearly but does not aﬀect its order of magnitude; the sec-
+ond method saves the number of new variables, so it actually reduces the com-
+plexity of Algorithm 2. Hence, the time/memory complexities of HATF remain
+unchanged up to the O/Ω notations.
+According to our experiments, HATF provides good precision in predicting
+biased HDL approximations for some ciphers. Taking HDL cryptanalysis of the
+Ascon initialization as an example, we give the curves of theoretical and ex-
+perimental results of the HDL approximations for 4- and 5-round Ascon in
+Section K of Supplementary Material. It can be seen that HATF is truly useful
+in predicting highly biased bits.
+4.4 Improving the Precision with Partitioning Technique
+As the order and rounds increase, the HATF systems become more and more
+complicated. The precision of HATF for complicated Boolean functions accord-
+ing to Lemma 1 or Lemma 3 drops accordingly. To mitigate the imprecision, we
+17
+partition the whole input space (in the HDL distinguishers, the input includes
+both the public and secret variables) into several smaller equal-size subsets.
+Given a cipher E, suppose we have partitioned the whole input S into κdisjoint
+subsets as S = S0 + S1 + ··· + Sκ−1 (we use “+” to stress that Si are disjoint)
+where Si,0 ≤i<κ have the same size. The bias of Coe (E,π(x)) is the average
+value among the S. Note that Coe (E,π(x)) is a Boolean function of values in S
+(recall Section 4.1). Let |Si|= w for 0 ≤i<κ and |S|= κw, we have
+Bias (Coe (E,π(x))) = #{Coe (E,π(x)) (s) = 0 : s∈S}
+κw −1
+2
+=
+∑κ−1
+i=0 #{Coe (ESi,π(x)) (s′) = 0 : s′∈Si}
+κw −1
+2
+= 1
+κ
+κ−1∑
+i=0
+#{Coe (ESi,π(x)) (s′) = 0 : s′∈Si}
+w −1
+2
+= 1
+κ
+κ−1∑
+i=0
+(#{Coe (ESi,π(x)) (s′) = 0 : s′∈Si}
+w −1
+2
+)
+= 1
+κ
+κ−1∑
+i=0
+(Bias (Coe (ESi,π(x)))) ,
+(8)
+where ESi is the HATF of E with the subset Si as the input. As a result, for each
+of these subsets, we ﬁrst apply our HATF technique to evaluate the bias for each
+Si, then calculate the average bias among all these Si. The partition simpliﬁes
+the ANFs of Eℓ, so for each subset, the precision can be improved. The methods
+of partitioning the input are chosen in diﬀerent ways for diﬀerent ciphers, which
+will be described in our applications.
+4.5 Conditional HDL Cryptanalysis by Injecting Conditions
+In [27], to improve the biases of DL approximations, Liu et al. imposed some
+conditions to the ﬁrst R0 rounds in the ATF. The basic principle is to zero the
+diﬀerences in the ﬁrst R0 rounds as much as possible. In our HDL attacks based
+on HATF, we can also use this method to obtain a set of conditions to improve
+the HDL biases.
+In the construction of the ﬁrstR0-round HATF, we put the ﬁrst non-constant
+α(r)
+u ,r ≤r0,u ̸= 0 into a set I as ideal generators. Next, we reduce all the α(r)
+u
+over the ideal generated from I, denoted by “mod I”. If a certain α(r)
+u cannot
+be reduced to a constant, we will add this α(r)
+u into I and use the updated I
+to reduce the remaining non-constant α(r)
+u . Finally, all α(r)
+u ,u ̸= 0,r ≤r0 are
+usually reduced to constants, and a system of equations S = {f = 0 |f ∈I}
+is obtained. When the conditions in I are satisﬁed, the HDL distinguisher will
+have a signiﬁcantly higher bias. By checking these conditions, we can recover the
+secret keys. These conditions are also used for partitioning the input space. The
+algorithm for injecting these conditions is provided in Algorithm 3 in Section C
+of Supplementary Material.
+18
+5 Applications to Ascon Initialization
+Ascon, designed by Dobraunig, Eichlseder, Mendel, and Schl¨ aﬀer, is a family of
+AEAD and hash algorithms [18]. It has been selected as the winner in the NIST
+Lightweight Cryptography competition. Due to page limits, the description of the
+Ascon AEAD and its permutation is provided in Section B of Supplementary
+Material, we also recommend that readers refer to [18] for the whole speciﬁcation.
+Notations used for describing the Ascon initialization. For the Ascon
+initialization, the 320-bit output state after r rounds is denoted by
+S(r) = S(r)[0]∥S(r)[1]∥S(r)[2]∥S(r)[3]∥S(r)[4],
+where S(r)[i] is the ith word (the ith row) of S(r); S(0) is the input of the whole
+permutation. The jth bit of S(r)[i] is denoted by S(r)[i][j] where 0 ≤i< 5,0 ≤
+j <64. S(r)[0][0] is the leftmost bit of the ﬁrst row of the state matrix S(r). Let
+pC,pS,pL represent the operations of addition of constants , substitution layer ,
+linear diﬀusion layer, respectively. Then S(r) = (pL◦pS◦pC)r(S(0)). The adver-
+sary can only access the ﬁrst word of the output state for Ascon-128, and the
+ﬁrst two words for Ascon-128a (our cryptanalysis focuses on Ascon-128, so it
+is also applicable to Ascon-128a). Since the linear layer is applied to each row,
+we do not consider the linear layer of the last round.
+Since pS is quadratic, the time complexity for anℓth-order HDL cryptanalysis
+of Ascon is O(23.8ℓ). To apply the HATF technique, we need to decompose the
+R-round Ascon initialization into several small parts. In this paper, we take the
+same method to cut the Ascon functions as [27]6. Firstly, we divide the Sbox of
+Ascon into two parts, pSL and pSN. The ﬁrst part of the Sbox, pSL, is a linear
+operation
+x0 = x0 ⊕x4; x4 = x4 ⊕x3; x2 = x2 ⊕x1;
+where (x0,x1,x2,x3,x4) is the input of pSL. The round function of the Ascon
+permutation is then divided into two parts, pA = pSL ◦pPC and pB = pL ◦pSN.
+In Algorithm 1, we let E(0) = pA, and E(r) = pA ◦pB for 1 ≤r < R, and
+E(R) = pSN. Thus R-round Ascon is represented as
+E = pSN ◦(pA ◦pB)R−1 ◦pA
+The 128-bit key and 128-bit nonce are set to 256 binary variables, the IV is set
+to the constant speciﬁed in [18].
+When applying the ℓth-order HDL distinguishing attack on the Ascon ini-
+tialization, we choose ∆j,0 ≤j < ℓas the ℓ linearly-independent diﬀerences,
+where ∆j is active in the two nonce bits of the same Sbox, i.e., S(0)[3][ij] and
+S(0)[4][ij] (0 ≤ij < 64). (We also tested other kinds of diﬀerences, but this
+setting brings the best results.) Then the input diﬀerence can be denoted by
+an ℓ-tuple, denoted by ∆(i0,i1,...,i ℓ−1). To simplify the ANFs, we by default
+6 Our experiments show such cutting can lead to slightly better results compared to
+the cutting method according to the rounds, in the case of HATF.
+19
+always set S(0)[3][ij] = S(0)[4][ij] = 0. For R-round outputs, we consider the
+single-bit bias of the ﬁrst word, i.e., S(R)[0][i],0 ≤i <64. We choose such in-
+put diﬀerences because the input of Ascon comes into Sboxes directly and our
+choices of input can simplify the ANFs.
+5.1 HDL Distinguishers for Ascon
+Application 1: Revisiting the ﬁrst-order DL distinguishers for 4- and
+5-round Ascon. Our ﬁrst application is to revisit two DL distinguishers on
+the 4- and 5-round initialization of Ascon. These two DL distinguishers were
+ﬁrst found by the designers in [17] with experiments. The input diﬀerence was
+set as ∆(0). Although the classical DL attack theory predicted that the 4-round
+distinguisher has a bias of 2 −20, experiments showed that its real bias is about
+2−2 which is signiﬁcantly higher. Later, at EUROCRYPT 2019, Bar-Onet al. [2]
+revisited this distinguisher and used the Diﬀerential-Linear Connectivity Table
+(DLCT) technique to give a higher theoretical estimation of 2 −5. Recently, at
+CRYPTO 2021, Liuet al. used the ATF to improve the theoretical bias to 2−2.36,
+which is the most precise value before this paper. However, none of the three
+methods can ﬁnd any 5-round DL distinguisher.
+Our HATF technique is a higher-order extension of the ATF technique, so it
+is also applicable to the ﬁrst-order DL attack. With the partitioning technique,
+we achieved better estimation. Setting the input diﬀerence as ∆(0), the two key
+bits in the same Sbox, i.e., S(0)[1][0] and S(0)[2][0], are chosen to partition the
+input space. Let S(0)[1][0]||S(0)[2][0] be 00, 01, 10 and 10, we partition the input
+subspace to 4 equal-size subspaces. The bias of S(4)[0][54] is then
+Bias(S(4)[0][54]) =
+
+
+
+2−2.678, when (S(0)[1][0],S(0)[2][0]) = 00
+2−2.678, when (S(0)[1][0],S(0)[2][0]) = 01
+2−1.678, when (S(0)[1][0],S(0)[2][0]) = 10
+2−1.678, when (S(0)[1][0],S(0)[2][0]) = 11
+According to the partitioning technique and Equation 8,
+Bias(S(4)[0][54]) = 2−2(2−2.678 + 2−2.678 + 2−1.678 + 2−1.678) ≈2−2.09.
+This theoretical bias is again closer to the experimental bias 2 −2.
+For 5-round Ascon, the known DL distinguisher is also with the input dif-
+ference ∆(0), the bias of S(5)[0][47] is about 2 −9.7 With the above partition,
+the bias from the HATF is always 0, hence we need to partition the space into
+smaller ones to detect the bias. According to Section 4.5, we can derive a set of
+7 conditions that aﬀect the bias signiﬁcantly. The 7 conditions and their usage
+are provided in Section D of Supplementary Material. Since the 7 conditions
+7 Under the default setting that S(0)[3][0] = S(0)[4][0], see [17] for more information
+about this DL distinguisher.
+20
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+Theoretical
+Experimental
+(a) 2nd-order HDL for 4-R Ascon
+0 20 40 60
+0
+5·10−2
+0.1
+Index ofS(5)[0]
+Bias
+Theoretical
+Experimental
+(b) 8th-order HDL for 5-R Ascon
+Fig. 2: Theoretical and experimental biases for 4-round and 5-round Ascon
+are all balanced Boolean functions, by assigning all possible values to them (ev-
+ery Boolean function then has two statuses: true or false), we can partition
+the whole space into 128 subspaces 8. Computing HATF for every individual
+subspace, we obtain the average bias of approximately 2 −10. This is the ﬁrst
+theoretical method that can predict this 5-round DL bias.
+Application 2: 2 nd-order HDL distinguisher for 4-round Ascon. Our
+second application is the 2 nd-order DL distinguisher for 4-round Ascon initial-
+ization. We exhaustively search through all possible ∆(0,i),1 ≤i <64 as our
+2nd-order diﬀerences, all such diﬀerences lead to highly biased 4-round output
+bits. Especially, when ( i,j) = (0 ,60), the bias of S(4)[0][50] is 1
+2 , i.e., this is a
+deterministic 2nd-order DL bias. With 226 randomly chosen samples, this deter-
+ministic distinguisher is fully veriﬁed. We plot the theoretical and experimental
+biases of the 64 bits of S(4)[0] as shown in Figure 2a, and the concrete data is
+provided in Table 6 in Section E of Supplementary Material. The theoretical bi-
+ases are very close to the experimental ones. According to these 2 nd-order HDL
+biases, one sample, i.e., 22 chosen nonces is enough to distinguish the 4-round
+initialization.
+Application 3: 2nd-order HDL distinguisher for 5-round Ascon. In our
+2nd-order HDL distinguishing attack on the 5-round Ascon initialization, we
+also exhausted all possible∆(0,i),1 ≤i< 64 diﬀerences and checked every single
+bit output of S(5)[0], the most signiﬁcant bias is S(5)[0][50] when ( i,j) = (0,3)
+which is predicted to be 2 −7.05 by HATF. We use 226 samples to check this bias
+and ﬁnd that it should be 2 −6.60 approximately, which is slightly larger but still
+considerably close to our prediction.
+8 We also encourage readers to read our code to further understand how we use these
+conditions: https://github.com/hukaisdu/HDL/blob/main/HATF/ascon.cpp.
+21
+Application 4: 8th-order HDL distinguisher for 5-round Ascon. Gener-
+ally speaking, as the order increases, the biases become more and more signiﬁ-
+cant according to HATF. Here we give the results of the 8 th-order HDL distin-
+guishing attack on the 5-round Ascon initialization. We randomly select 8 in-
+dexes (i0,i1,...,i 7) = (0,8,9,13,14,26,43,60) as the 8th-order input diﬀerences
+∆(0,8,9,13,14,26,43,60). The 16 key bits in the same Sboxes with the input dif-
+ferences are used to partition the input space into 216 subspaces. Applying HATF
+to each of the subspaces, and calculating the average bias, we ﬁnd all single bits
+are highly biased. For example, HATF predicts that Bias(S(5)[0][50]) = 2−4.73.
+With 222 samples, experiments show that this bias is about 2 −3.35. The average
+bias over the 64 output bits is predicted as 2 −6.34, and the experimental result
+is 2 −4.11. The theoretical and experimental biases of all 64 bits of S(5)[0] are
+shown in Figure 2b, the concrete biases are provided in Table 7 in Section E of
+Supplementary Material.
+We use this 8th-order HDL approximation to mount the best distinguishing
+attack on 5-round Ascon. Suppose that we encrypt N samples, we can observe
+64N output bits in total. Regarding each bit of S(5)[0] as a Bernoulli experiment
+with expectation of 1
+2 + 2−4.11, The number of occurrences of 0 conforms to the
+binomial distribution B(64N, 1
+2 +2−4.11), which can be approximated by a normal
+distribution N(35.71N,15.79N) for a convenient analysis. In a random case, the
+number of occurrences of 0 conforms to another binomial distributionB(64N, 1
+2 ),
+which can be approximated by N(32N,16N). The method to distinguish two
+normal distributions has been well-known in cryptanalysis, which is summarized
+in Section A of Supplementary Material. Setting that the probabilities for Type-
+I and Type-II errors to be α0 = α1 = 0.05, i.e., we require 95% success rate,
+according to the second equation of Equation 10,
+35.71N −32N = Φ−1(0.95) ·
+√
+16N + Φ−1(0.95) ·
+√
+15.79N,
+thus N ≈ 33.65, i.e., we need to check about 801 output bits. According to
+the ﬁrst equation of Equation 10, the threshold is τ = 35 .71N −Φ−1(0.95) ·√
+15.79N ≈424. The time complexity is about 2 11.65.
+We can mount a distinguishing attack as follows,
+1. Encrypt a total of 13 samples, for the previous 12 samples, we count the
+number of occurrences of 0 in all 64 bits of S(5)[0]; for the 13 th sample, we
+only count the number of occurrences of 0 in S(5)[0][j],0 ≤j <33. As a
+whole, we count 801 bits. Denote the number of occurrences of 0 by T,
+2. If T ≥423, the target is the 5-round Ascon initialization; otherwise, the
+target is a random function.
+We did 1000 experiments, and about 900 experiments were successful. The reason
+for the gap between the theoretical and experimental success rates might be that
+the independent assumptions are not always true.
+In Section K of Supplementary Material, we provide the ﬁgures of the theo-
+retical and experimental results of all 2 nd-order HDL approximations for 4- and
+22
+5-round Ascon with ∆(0,i),1 ≤i <64, as well as the ﬁgures from 3 rd to 8th-
+order HDL approximations for 5-round Ascon. Based on these data, we have a
+detailed discussion on the precision of HATF and the impact of the partitioning
+technique. We hope that they can help readers gain better comprehension of the
+precision of HATF from these ﬁgures.
+5.2 Conditional HDL Attack for Ascon
+Application 5: 2nd-order HDL key-recovery attack on 5-round Ascon.
+Thanks to the higher bias of the HDL approximations, generally speaking, we
+can mount key-recovery attacks more eﬃciently than DL attacks. In this paper,
+we use several 2 nd-order HDL approximations to recover the secret keys from
+5-round Ascon, which is the most eﬃcient attack for 5-round Ascon thus far.
+The idea of this key-recovery attack is similar to the conditional DL attacks
+introduced in [27]. When applying the HATF, we inject the conditions for the
+ﬁrst two rounds according to Section 4.5. By exhausting all possible 2 nd-order
+diﬀerences ∆(i,j), all of them lead to at least one highly biased bit. The two
+most signiﬁcant ones are listed as follows (readers can use our code to generate
+all of them),
+1. When ∆(i,j) = ∆(i′,i′+9),0 ≤i′<64, under 14 conditions,Bias(S(5)[0][27+
+i′]) = 0.375,
+2. When ∆(i,j) = ∆(i′,i′+24),0 ≤i′<64, under 16 conditions,Bias(S(5)[0][51+
+i′]) = 0.313.
+Experiments with 2 26 samples have fully veriﬁed these biased bits. With these
+two 2nd-order approximations, we can do the key-recovery attack with about
+222 computations. Since this attack is similar to the key-recovery attack on
+Xoodyak, we provide all the details in Section F of Supplementary Material.
+Application 6: 3 rd-order HDL approximation for 6-round Ascon. At
+the end of this section, we present a conditional 3 rd-order HDL approximation
+for 6-round Ascon initialization. In [27], Liu et al. showed that there are no
+conditional DL approximations for 6-round Ascon initialization. As the order
+increases, it is not surprising that there are truly some HDL approximations
+for 6 (or even more) rounds. However, from the 5-round to the 6-round, the
+complexity required to ﬁnd a highly biased approximation become signiﬁcantly
+larger. In our conditional 3rd-order HDL approximation, we inject 24 conditions
+into the ﬁrst two rounds of the HATF. The conditions are provided in Section G
+of Supplementary Material. The input diﬀerence is ∆(0,30,61), the bias occurs
+in S(6)[0][34] and is predicted as 2 −25.97. It is diﬃcult to verify this bias with
+experiments directly. However, since S(6)[0][34] is the output bit of the Sbox
+in the 6 th round, we can verify the bias of bits in S(5). According to the linear
+approximation table (LAT) ofAscon’s Sbox, there is a mask propagation0x3 →
+0x10 with a bias of −2−2. Thus, S(5)[3][34] ⊕S(5)[4][34] (the two bits are inputs
+of the Sbox related to S(6)[0][34]) may have a high bias. We use 2 30 samples to
+23
+test it, the bias of S(5)[3][34] ⊕S(5)[4][34] is about 2 −14. Considering the piling-
+up lemma [29] and we have 8 approximations, the bias of S(6)[0][34] should be
+around 2−22. It means that the 6-round conditional 3 rd HDL approximation is
+true.
+6 Applications to Xoodyak Initialization and Xoodoo
+Xoodyak is a cryptographic primitive for hashing, authenticated encryption,
+and MAC computation, and is one of the ten ﬁnalists of the NIST LWC com-
+petition [15]. Xoodyak uses Xoodoo as its underlying cryptographic permu-
+tation, which is a family of 384-bit to 384-bit permutations [14]. The 384-bit
+state of Xoodoo is arranged into a 4 ×3 ×32 cube and a state bit is denoted
+by S[x][y][z]. When x and z are ﬁxed, the three bits of S[x][·][z] are called a
+column; when y is ﬁxed, the 128 bits of S[·][y][·] are called a plane. The input
+and output states of the rth round are denoted by S(r−1) and S(r), respectively.
+The initial state is then denoted by S(0). One round of Xoodoo consists of ﬁve
+operations as ρeast ◦χ◦ι◦ρwest ◦θ.
+θ: S[x][y][z] = S[x][y][z] ⊕
+⨁
+y
+S[x−1][y][z−5] ⊕
+⨁
+y
+S[x−1][y][z−14]
+ρwest : S[x][1][z] = S[x−1][1][z],S[x][2][z] = S[x][2][z−11]
+ι: S[0][0] = S[0][0] ⊕RCi
+χ: S[x][y][z] = S[x][y][z] ⊕((S[x][y+ 1][z] ⊕1) ·S[x][y+ 2][z])
+ρeast : S[x][1][z] = S[x][1][z−1],S[x][2][z] = S[x−2][2][z−8]
+RCi in the ιoperation is the i-round constant, which can be found in [14]. Note
+that χ is a quadratic function. Xoodyak AEAD supports three methods to
+handle the nonces. This paper focuses on the third method’s initialization. In
+this mode, the 128-bit state of S(0)[x][0][z],0 ≤x< 4,0 ≤z <32 are initialized
+by an 128-bit key, denoted by ki where i= z+ 32x, and the remaining 256 bits
+of S(0)[x][y][z],0 ≤x< 4,1 ≤y <3,0 ≤z <32 by a 256-bit nonce, denoted by
+ui where i = z+ 32(x+ 4(y−1)). Then, Xoodoo is applied to the initialized
+state, and the ﬁrst 192 bits are visible and XORed to the ﬁrst block of the
+plaintext. The following HDL approximations for Xoodyak and Xoodoo are
+found mainly by trying all low-weight diﬀerence-mask pairs.
+6.1 HDL Distinguishers for Xoodyak and Xoodoo
+Application 1: Revisiting the DL Distinguishers for 4-round Xoodyak.
+In [19], Dunkelman and Weizman gave the ﬁrst DL attacks on 4-roundXoodyak
+under the single-key model and on 5-round Xoodyak under the related-key
+model. The two distinguishers used in the attacks are detected by experiments.
+HATF with the partitioning technique can easily give the theoretical biases for
+the two distinguishers.
+24
+For the 4 rounds, the input diﬀerence is in ( u0,u128) (i.e., S(0)[0][1][0] and
+S(0)[0][2][0]), and the output bit of S(4)[0][1][15] has a bias of about 2 −9.7. Ap-
+plying our HATF technique to the 4-round Xoodyak, we ﬁrst obtain a set of 4
+conditions that are injected into the ﬁrst round to zero all the diﬀerences after
+the ﬁrst round according to Section 4.5. These 4 conditions are listed as follows,
+u102 = k11 ⊕k102 ⊕k125 ⊕u125 ⊕u230 ⊕u253
+u70 = k70 ⊕k93 ⊕u93 ⊕u107 ⊕u198 ⊕u221 ⊕1
+u7 = k7 ⊕k16 ⊕u16 ⊕u135 ⊕u144 ⊕u181
+u18 = k18 ⊕k27 ⊕k32 ⊕u27 ⊕u146 ⊕u155 ⊕1
+Since these 4 conditions are all linear and independent, they can partition the
+whole input space into 16 subspaces by assigning all possible values to them.
+After applying the ﬁrst-order HATF technique, the bias of S(4)[0][1][15] is
+Bias(S(4)[0][1][15]) = 2−9.67,
+which is very close to the experimental results.
+In the related-key DL attack on the 5-round Xoodyak, Dunkelman and
+Weizman used another 4-round DL distinguisher where the input diﬀerence is in
+(k0,u128) (i.e., S(0)[0][0][0] and S(0)[0][2][0]) and the output bias of S(4)[0][0][0]
+is about −2−5.36 [19]. Again, this distinguisher was obtained by experiments. To
+apply HATF to it, we also obtain 4 equations by injecting conditions into the
+ﬁrst round,
+u103 = k103 ⊕k112 ⊕u112 ⊕u149 ⊕u231 ⊕u240 ⊕1
+u70 = k70 ⊕k93 ⊕u93 ⊕u107 ⊕u198 ⊕u221 ⊕1
+u102 = k11 ⊕k102 ⊕k125 ⊕u125 ⊕u230 ⊕u253
+u82 = k82 ⊕k91 ⊕u91 ⊕u96 ⊕u210 ⊕u219
+Another time, we obtain 16 subspaces. After applying the ﬁrst-order HATF
+technique to each subspace, the bias of S(4)[0][0][0] is
+Bias(S(4)[0][0][0]) = −2−6,
+which is very close to the experimental results.
+Application 2: 2nd-order HDL distinguisher for 4-round Xoodyak. In
+our 2nd-order distinguisher, we choose the two diﬀerences as ∆0 that is active in
+(u0,u128), ∆1 that is active in (u47,u175). After 4-round Xoodyakinitialization,
+our HATF technique shows that the bias ofS(4)[0][0][12] is about 0.019 ≈2−5.72.
+Experiments with 2 26 randomly-selected samples show the real bias is also ap-
+proximately 2−5.72.
+Application 3: 4th-order HDL distinguisher for 4-round Xoodyak. Un-
+like Ascon, the nonlinear function of Xoodoo (χ) is after the linear oper-
+ation. Hence if we select low-weight input diﬀerences before θ, the input dif-
+ferences into χ are complicated. Thus, we also tried selecting low-weight dif-
+ferences before χ, then we can compute the actual diﬀerences back through
+25
+(θ◦ρwest◦ι)−1. In our 4th-order distinguisher, we choose four diﬀerences such as
+(Let S be the input state): ∆0 is active in ( S[0][0][0],S[0][2][0]), ∆1 is active in
+(S[2][0][7],S[2][2][7]), ∆2 is active in (S[2][0][15],S[2][2][15]), and ∆3 is active in
+(S[3][0][27],S[3][2][27]). After 3.5 rounds of Xoodyak initialization (ρeast◦χof
+the ﬁrst round and the remaining three full rounds), our HATF technique shows
+that the bias ofS(4)[0][1][1] is 2−1. Thus, when the input diﬀerence of the 4-round
+Xoodyakis then (θ◦ρwest◦ι)−1(∆0,∆1,∆2,∆3), the bias of S(4)[0][1][1] is 2−1.
+Note that ( θ◦ρwest ◦ι)−1(∆0,∆1,∆2,∆3) will be active in all three planes, so
+this HDL distinguisher is under the related-key model.
+Application 4: 2nd-order HDL distinguisher for 5-roundXoodyak. It be-
+comes very diﬃcult to detect useful HDL approximations for 5-round Xoodyak
+under the single-key model, we exhaust all possible 2 nd-order diﬀerences that
+are active in ( u0,u128) and ( uj,uj+128). If we do not inject any conditions, the
+biases of all output bits from HATF are all 0. Hence, we ﬁrst inject 8 conditions
+according to Section 4.5. When the input diﬀerence is active in ( u0,u128) and
+(u34,u162), the highest bias occurs in S(5)[0][0][20] which is 2−37. We then tried
+all 256 possibilities of the 8 conditions and found the average bias to be 2 −45.
+Application 5: 2nd- and 3rd-order HDL distinguishers for 4- and 5-
+round Xoodoo. Besides Xoodyak, Xoodoo also plays an important role in
+other schemes such as Xoofff [14]. Thus, it is also interesting to see if there are
+some HDL distinguishers for Xoodoo. Since Xoodoo is a public permutation,
+we do not need to consider the linear layers before the ﬁrst nonlinear operations
+in the ﬁrst round. Let S be the input state of the ﬁrst χ. First, we let the 288
+bits in S[x],1 ≤x <4 be zero. Next, for the remaining 96 bits in S[0], we set
+S[0][0][z] = S[0][2][z] and S[0][1][z] = 0 for 0 ≤z <32. For the ℓth-order HDL
+attack, we choose the input diﬀerences ∆(i0,i1,...,i ℓ−1) that have 2ℓactive bits
+of S[0][0][ij] and S[0][2][ij].
+For 4-round Xoodoo, we choose the input diﬀerence as ∆(0,20), the bias of
+S[0][0][0] after 4 rounds would be 1
+2 . For 5-round Xoodoo, we choose the input
+diﬀerence as ∆(0,13,14), and the bias of S[1][1][28] is 2−8.96. We experimentally
+veriﬁed these two approximations, and found the 4-round distinguisher is truly
+deterministic and the 5-round 3rd-order HDL approximation has a bias of about
+2−8.79 which is very close to our prediction. The big gap of biases between
+Xoodyakand Xoodoo implies the Xoodyakgains some strength against HDL
+attacks by arranging χ after θ and ρwest.
+6.2 HDL Key-Recovery Attacks for Xoodyak
+Application 6: 2nd-order HDL key-recovery attack on 4-roundXoodyak.
+In our 2nd-order key-recovery attack, we choose the two diﬀerences as∆0 is active
+in (u0,u128), ∆1 is active in (u72,u200). We inject 8 conditions in the ﬁrst round
+to cancel the diﬀerences. After 4-round Xoodyakinitialization, our HATF tech-
+nique shows that the bias of S(4)[0][0][14] is about 0.141 when all the conditions
+are satisﬁed. Experiments with 2 26 randomly-selected samples show that the
+26
+real bias is also 0 .141 (up to 3 digits precision). The 8 conditions are listed as
+follows,
+x7 = k7 ⊕k16 ⊕x16 ⊕x135 ⊕x144 ⊕x181,x70 = k70 ⊕k93 ⊕x93 ⊕x107 ⊕x198 ⊕x221 ⊕1
+x5 = k5 ⊕k14 ⊕x14 ⊕x51 ⊕x133 ⊕x142 ⊕1,x67 = k67 ⊕k90 ⊕k104 ⊕x90 ⊕x195 ⊕x218 ⊕1
+x18 = k18 ⊕k27 ⊕k32 ⊕x27 ⊕x146 ⊕x155 ⊕1,x102 = k11 ⊕k102 ⊕k125 ⊕x125 ⊕x230 ⊕x253
+x37 = k37 ⊕k46 ⊕k83 ⊕x46 ⊕x165 ⊕x174,x88 = k79 ⊕k88 ⊕x79 ⊕x207 ⊕x216 ⊕x253
+If not all the 8 conditions hold, the bias of S(4)[0][0][14] is at most 0.07. Thus,
+doing statistical tests can ﬁnd the correct assignment of the 8 variables on the
+left side, and then 8 bits of key information. Firstly, we ﬁxed all the nonce vari-
+ables on the right side as 0, then we try all possible 28 values of the nonce bits on
+the left. The values making S(4)[0][0][14] most biased is the values of the key ex-
+pressions in each condition. According to Section A of Supplementary Material,
+the complexity is about 29. Thus, the time/data complexity for recovering 8 bits
+of key information in the above conditions is about 2 8+9 = 217. We experimen-
+tally tested this attack, and among 100 experiments, we can recover the correct
+key 96 times. Due to the rotational-variance property of Xoodoo, recovering
+all 128-bit keys needs about 221 computations. This is about 4 times faster than
+the DL attacks in [19].
+Application 7: Theoretical 3rd-order HDL key-recovery attack on 5-
+round Xoodyak under the single-key model. In [19], a related-key DL
+attack on 5-round Ascon was given by Dunkelman and Weizman. The authors
+built this related-key DL approximation from a 4-round one (the second DL
+approximation in Application 1 of this section). Until now, the conditional cube
+attack is still the only attack that can reach 5 rounds under the single-key
+model [40]. In this section, we give a 3rd-order HDL attack on 5-round Xoodyak
+under the single-key model.
+We choose the 3 rd-order diﬀerence as ( ∆0,∆1,∆2) where ∆0 is active in
+(u0,u128), ∆1 is active in (u9,u137), and ∆2 is active in (u36,u164). We inject 12
+conditions into the ﬁrst round, then after 5 full rounds, the bias of S(5)[0][0][29]
+is predicted as 2−30.72. The 12 conditions are all linear and provided in Section H
+of Supplementary Material. We assume that if not all 12 conditions are true, the
+bias of S(5)[0][29] is close to 0. Thus, a statistical test with approximately 2 64
+samples is enough to distinguish them according to Section A of Supplementary
+Material. Then we can use a similar strategy as the 4-round attack to recover 12
+bits of key information. The complexity is about 12 ×264 ≈268. We can repeat
+this process for 5 other positions by rotation to recover 60 more bits of key
+information, the remaining keys can be searched by force. The whole time/data
+complex of recovering all key bits is about 2 70.2.
+7 HD Cryptanalysis Based on DSF Degree Estimation
+According to Section 3, f ◦M plays an important role in (higher-order) diﬀer-
+ential cryptanalysis, thus we call it diﬀerential supporting function and give it a
+formal deﬁnition.
+27
+Deﬁnition 3 (Diﬀerential Supporting Function ( DSF)). Given a Boolean
+function f : Fn
+2 →F2 and an ℓth-order diﬀerence ∆ = ( ∆0,∆1,...,∆ ℓ−1) ∈
+(Fn
+2 )ℓ, the composite Boolean function
+DSFℓ
+f,X,∆(x) = f ◦M(x) = f(X⊕x∆),x= (x0,x1,...,x ℓ−1)
+is called the ℓth-order diﬀerential supporting function (DSF) of f with respect to
+(X,∆). When the order ℓis clear from context, we will ignore it in the notation,
+i.e., DSFf,X,∆(x).
+The DSF provides a convenient way to ﬁnd good aﬃne space for the input
+that reduces the algebraic degree of the target cipher. In this paper, we take the
+Ascon permutation as an example to show the usage of the DSF. Until now, all
+attacks on the Ascon permutation with complexity less than or equal 2 64 can
+only reach 7 rounds. The only integral distinguishers given by Todo [33] require
+more than 2130 calls to attack 8 and more rounds, already higher than Ascon’s
+claimed security level (2128 calls). By analyzing the degree evolution of the DSF,
+we present a new HD distinguisher for 8 rounds requiring only 2 46 complexity.
+Basic Idea. Note that in the Deﬁnition 3, xare variables while X and ∆are
+parameters (here the term “parameters” means X and ∆should be ﬁxed as a
+constant). Hence, diﬀerent X and ∆will lead to diﬀerent DSF. So it is possible
+to ﬁnd some proper ( X,∆) that reduce the algebraic degree of the DSF. More
+speciﬁcally, deg(DSF f,X,∆) may be reduced to some values smaller than the
+order ℓ. In this case, we derive an integral property for DSF f,X,∆. Applying
+the inverse of M, we immediately derive an ℓth-order diﬀerence yielding the
+following property, i.e.,
+D∆f(X) =
+⨁
+x∈Fℓ
+2
+DSFf,X,∆(x) = 0.
+To estimate the degree upper bound of a DSF, we cut a Boolean function
+into two phases as follows,
+DSFf,X,∆(x) = f(X⊕x∆) = f1 ◦f0(X⊕x∆).
+We let f0 be simple so that we can compute out its exact ANFs as well as
+the exact degrees of the output of f0(X⊕x∆). Next, we update the obtained
+degrees by f1 to obtain the degree upper bounds of the whole DSF f,X,∆.
+In terms of the r-round Ascon permutation, we choose its ﬁrst r0 = 2 .5
+rounds as f0 for it achieves a balance between eﬃciency and precision 9. The
+remaining (r−2.5)-round permutation is seen as f1, the degree update of f1
+can be done by methods such as the division properties [33,34] or any other
+suitable methods. In this paper, we use the method of the degree matrix to
+update the algebraic degree of f1:
+9 A larger r0 will make the estimation of deg(DSFf,X,∆) more precise but more time-
+consuming to compute the ANFs, while a smaller r0 may undermine the precision.
+28
+Deﬁnition 4 (Degree Matrix of S(r)). The algebraic degrees or their upper
+bounds of the bits in the state S(r) are called a degree matrix of S(r), denoted by
+DM(S(r)) =
+(
+deg(S(r)[i][j]),0 ≤i< 5,0 ≤j <64
+)
+.
+Given the degree matrix of S(r), we can quickly calculate the degree matrix
+of S(r+1) considering the ANFs of the pS and pL according to Propositions 3
+and 4 given in Section I of Supplementary Material. Our experiments show that
+the degree matrix method is not worse than the division property to calculate
+the upper bound on the algebraic degree of DSF f,X,∆ for the case of Ascon
+permutation10. The only challenge now is to ﬁnd a desirable combination of
+(X,∆).
+Heuristic Method of Choosing (X,∆). To ﬁnd a proper (X,∆), a naive idea
+is to exhaust all possible values of ( X,∆), but the search space is clearly too
+large. For Ascon, we use the same notations as we do in Section 5. Considering
+the ﬁrst operation of the Ascon permutation without pC (we can safely ignore
+the ﬁrst pC operation since we target the permutation) is pS which consists of 64
+parallel small Sboxes. If we consider independent ℓ′th-order diﬀerences for each
+Sbox S, in total we are considering an (ℓ= 64ℓ′)th-order diﬀerences for the whole
+permutation. Our experiments show ℓ′ = 1 will achieve the best performance.
+This is not surprising, since ℓ′= 1 means that we put one variable in each Sbox
+to linearize all Sboxes, similar ideas were already mentioned in some previous
+works such as [10]. With ℓ′= 1, our 64th-order input diﬀerence is then denoted
+by ∆= (∆0,∆1,...,∆ 63). Thus, we write pS(X⊕x∆) as follows:
+pS(X⊕x∆) = S(X0 ⊕x0∆′
+0)||S(X1 ⊕x1∆′
+1)||···||S (X63 ⊕x63∆′
+63),
+where X = X0||X1||···|| X63 and ∆i = 0||···|| ∆′
+i||···|| 0 for 0 ≤i< 64.
+To further reduce the search space, we restrict the 64 Xi’s and 64 ∆′
+i’s to
+be equal respectively, i.e., (Xi,∆′
+i) = ( ¯X, ¯∆) for 0 ≤i< 64. Therefore, we only
+need to consider 2 5 possibilities for ¯X and 31 possibilities for ¯∆ (excluding the
+trivial case ¯∆= 0). The total search space is reduced to 32 ×31 = 992 diﬀerent
+cases.
+For each ( ¯X, ¯∆) ∈F5
+2 ×F5
+2\{0}, we calculate the ANFs of f0(X⊕x∆), then
+derive the degree matrix of its output. After that we use Propositions 3 and 4
+to update the degree matrix to calculate the degree matrix of S(r) (for r ≥4)
+which is the degree upper bound of the corresponding DSF. If the degree of a
+certain DSF is smaller than 64, we ﬁnd useful 64th HD distinguishers for r-round
+Ascon permutation. The process is illustrated by Algorithm 5 in Section I of
+Supplementary Material.
+We found dozens of useful HD distinguishers with orders lower than 64 for
+up to 8 rounds. Among them, there are 8 optimal combinations of ( ¯X, ¯∆) that
+10 Note that the degree matrix method only happens to be as good as the division
+property in this speciﬁc case. We choose the degree matrix method simply because
+it can be more easily integrated into our algorithm. In general case, the division
+property has overwhelming advantages in accuracy and versatility.
+29
+Table 4: Upper bounds on the algebraic degree of the DSF of the Ascon per-
+mutation with ( X,∆) in Equation 9. We experimentally veriﬁed all algebraic
+degrees up to 7 rounds.
+Round r Upper bounds on the algebraic degree
+S(r)[0] S(r)[1] S(r)[2] S(r)[3] S(r)[4]
+4 3 3 2 2 3
+5 6 5 5 6 6
+6 11 11 12 12 11
+7 23 24 23 23 22
+8 47 47 45 46 47
+make the algebraic degree of the third word of S(8) be only 45. They are
+( ¯X, ¯∆) ∈
+{
+(0x6,0x13),(0xa,0x13),(0xc,0x17),(0xf,0x18),
+(0x15,0x13),(0x17,0x18),(0x19,0x13),(0x1b,0x17)
+}
+. (9)
+In Table 4, we list all the upper bounds on degrees of the DSF up to 8-round
+Ascon permutation with respect to ( X,∆) in Equation 9. As is seen, for 7
+rounds, the degree upper bound of S(7) is only 24, so 225 chosen texts are enough
+to enforce the zero output diﬀerence. For the 8-round output, the algebraic degree
+is at most 47. Therefore if we choose 2 48 plaintexts in any 48-dimensional aﬃne
+space deﬁned by values in Equation 9, the summation of all ciphertexts will be
+zero. Given a random permutation, the probability that the summation of such
+248 ciphertexts will be zero is 2 −320. Thus, 248 chosen plaintexts are enough to
+distinguish the 8-round Ascon permutation from a random permutation.
+Applying a similar method to the inverse of Ascon permutation, we can ob-
+tain a zero-sum distinguisher for full-round Ascon permutation with 255 time/-
+data complexities. Due to the page limit, we provide this part in Section J of
+Supplementary Material. Although this zero-sum distinguisher is not a zero-sum
+partition distinguisher, it achieves a signiﬁcantly low complexity. We stress that
+these two distinguishers work for the Ascon permutation rather than the keyed
+mode, so it does not threaten the security of Ascon-AEAD or Ascon-Hash.
+8 Conclusion and Discussion
+In this paper, we revisited the HD/HDL cryptanalysis from an algebraic perspec-
+tive. HATF and DSF are two tools for probabilistic and deterministic HDL/HD
+cryptanalysis, respectively. Improved results for Ascon and Xoodyak, as well
+as Xoodoo are obtained from the two tools. We believe that the HDL crypt-
+analysis has more potential than expected, and deserves more attention.
+In terms of HATF, it is the ﬁrst theoretical tool for nondeterministic HDL
+cryptanalysis. It can predict the biases of an ℓth-order HDL approximations with
+a time complexity of O(2ℓ+d2ℓ) for ciphers with d-degree round functions. For
+ciphers with quadratic round functions, the time complexity can be reduced to
+30
+O(23.8ℓ). Thus, HATF is very useful for HDL cryptanalysis of permutation-based
+ciphers such as Ascon and Xoodyak. The precision of HATF is supported
+by experiments (see Section K of the Supplementary Material). When HATF
+predicts a biased bit, it is of a great probability that it is biased as far as our
+experiments show. Finally, we make it clear again that HATF does not guarantee
+any lower or upper bounds on the bias of a HDL approximation. Whenever
+possible, the theoretical results should be veriﬁed with experiments.
+For DSF, it provides an intuitive method for detecting HD distinguishers
+for permutations. With proper choices of ( X,∆), the algebraic degree of a DSF
+might drop drastically. Therefore, we have a greater opportunity to ﬁnd better
+HD distinguishers rather than to analyze the original Boolean function.
+We have shown that a proper partitioning of the input space can improve the
+precision of HATF, how to ﬁnd better or even optimal partitioning methods?
+Can we use the HDL cryptanalysis to propose best key-recovery attacks on some
+ciphers in terms of rounds? For DSF, our method to choose ( X,∆) is intuitive
+and actually considers only a small percentage of candidates, can we ﬁnd better
+(X,∆) leading to better HD distinguishers for Ascon permutation? These are
+interesting questions worth exploring that we leave as future work.
+Acknowledgments. We are grateful to the anonymous referees for their com-
+ments that improved the quality of this article. Kai Hu thanks Yang Wang
+for the fruitful discussion. The authors are supported by the France-Singapore
+NRF-ANR research grant NRF2020-NRF-ANR072 and the Singapore NRF In-
+vestigatorship research grant NRF-NRFI08-2022-0013.
+References
+1. Jean-Philippe Aumasson and Willi Meier. Zero-sum distinguishers for reduced
+keccak-f and for the core functions of luﬀa and hamsi. rump session of Crypto-
+graphic Hardware and Embedded Systems-CHES, 2009:67, 2009.
+2. A. Bar-On, O. Dunkelman, N. Keller, and A. Weizman. DLCT: A New Tool for
+Diﬀerential-Linear Cryptanalysis. In EUROCRYPT 2019.
+3. Jules Baudrin, Anne Canteaut, and L´ eo Perrin. Practical cube-attack against
+nonce-misused ascon. In NIST Lightweight Cryptography Workshop, 2022.
+4. Guido Bertoni, Joan Daemen, Micha¨ el Peeters, Gilles Van Assche, Ronny Van
+Keer, and Benoˆ ıt Viguier. Kangarootwelve: Fast hashing based on keccak-p. In
+Bart Preneel and Frederik Vercauteren, editors,Applied Cryptography and Network
+Security - 16th International Conference, ACNS 2018, Leuven, Belgium, July 2-
+4, 2018, Proceedings, volume 10892 of Lecture Notes in Computer Science, pages
+400–418. Springer, 2018.
+5. E. Biham, O. Dunkelman, and N. Keller. A New Attack on 6-Round IDEA. In
+FSE 2007.
+6. E. Biham, O. Dunkelman, and N. Keller. Enhancing Diﬀerential-Linear Crypt-
+analysis. In ASIACRYPT 2002.
+7. E. Biham, O. Dunkelman, and N. Keller. New Combined Attacks on Block Ciphers.
+In FSE 2005.
+31
+8. E. Biham and A. Shamir. Diﬀerential Cryptanalysis of DES-like Cryptosystems.
+In CRYPTO 1990.
+9. C. Blondeau, G. Leander, and K. Nyberg. Diﬀerential-Linear Cryptanalysis Re-
+visited. J. Cryptol., 30(3):859–888, 2017.
+10. X. Bonnetain, G. Leurent, M. Naya-Plasencia, and A. Schrottenloher. Quantum
+linearization attacks. In ASIACRYPT 2021.
+11. Christina Boura and Anne Canteaut. A zero-sum property for the keccak-f permu-
+tation with 18 rounds. In IEEE International Symposium on Information Theory,
+ISIT 2010, June 13-18, 2010, Austin, Texas, USA, Proceedings, pages 2488–2492.
+IEEE, 2010.
+12. Donghoon Chang, Deukjo Hong, and Jinkeon Kang. Conditional cube attacks on
+ascon-128 and ascon-80pq in a nonce-misuse setting. IACR Cryptol. ePrint Arch.,
+page 544, 2022.
+13. Donghoon Chang, Jinkeon Kang, Meltem S¨ onmez Turan, et al. A new conditional
+cube attack on reduced-round ascon-128a in a nonce-misuse setting. NIST LWC
+Workshop, May 2022.
+14. J. Daemen, S. Hoﬀert, G. Assche, and R. Keer. The design of Xoodoo and Xooﬀf.
+IACR ToSC, 2018(4).
+15. J. Daemen, S. Hoﬀert, M. Peeters, G. Assche, and R. Keer. Xoodyak, a lightweight
+cryptographic scheme. IACR ToSC, 2020(S1).
+16. I. Dinur and A. Shamir. Cube Attacks on Tweakable Black Box Polynomials. In
+EUROCRYPT 2009.
+17. C. Dobraunig, M. Eichlseder, F. Mendel, and M. Schl¨ aﬀer. Cryptanalysis of Ascon.
+In CT-RSA 2015.
+18. C. Dobraunig, M. Eichlseder, F. Mendel, and M. Schl¨ aﬀer. Ascon v1.2: Lightweight
+Authenticated Encryption and Hashing. J. Cryptol., 34(3):33, 2021.
+19. O. Dunkelman and A. Weizman. Diﬀerential-Linear Cryptanalysis on Xoodyak.
+In NIST Lightweight Cryptography Workshop, 2022.
+20. David G´ erault, Thomas Peyrin, and Quan Quan Tan. Exploring Diﬀerential-
+Based Distinguishers and Forgeries for ASCON. IACR Trans. Symmetric Cryptol.,
+2021(3):102–136, 2021.
+21. M. Florence Jessie and S. Neil James Alexander. The Theory of Error-Correcting
+Codes, volume 16. Elsevier, 1977.
+22. Keccak Team. Note on zero-sum distinguishers of Keccak-f,
+https://keccak.team/ﬁles/NoteZeroSum.pdf.
+23. L. Knudsen. Truncated and Higher Order Diﬀerentials. In FSE 1994.
+24. X. Lai and J. Massey. A Proposal for a New Block Encryption Standard. In
+EUROCRYPT 1990.
+25. S. Langford and M. Hellman. Diﬀerential-Linear Cryptanalysis. In CRYPTO 1994.
+26. Z. Li, X. Dong, and X. Wang. Conditional Cube Attack on Round-Reduced AS-
+CON. IACR ToSC, 2017(1).
+27. M. Liu, X. Lu, and D. Lin. Diﬀerential-Linear Cryptanalysis from an Algebraic
+Perspective. In CRYPTO 2021.
+28. Y Liu, S Sun, and C Li. Rotational Cryptanalysis from a Diﬀerential-Linear
+Perspective - Practical Distinguishers for Round-Reduced FRIET, Xoodoo, and
+Alzette. In EUROCRYPT 2021.
+29. M. Matsui. Linear Cryptanalysis Method for DES Cipher. In EUROCRYPT 1993.
+30. R. Rohit, K. Hu, S. Sarkar, and S. Sun. Misuse-Free Key-Recovery and Distin-
+guishing Attacks on 7-Round Ascon. IACR ToSC, 2021(1).
+31. D. Shi, S. Sun, Y. Sasaki, C. Li, and L. Hu. Correlation of Quadratic Boolean
+Functions: Cryptanalysis of All Versions of Full MORUS. In CRYPTO 2019.
+32
+32. C. Tezcan. Analysis of Ascon, DryGASCON, and Shamash Permutations. IACR
+Cryptol. ePrint Arch., 2020/1458.
+33. Y. Todo. Structural Evaluation by Generalized Integral Property. In EURO-
+CRYPT 2015.
+34. Y. Todo and M. Morii. Bit-Based Division Property and Application to Simon
+Family. In FSE 2016.
+35. S. Vaudenay. Provable Security for Block Ciphers by Decorrelation. In STACS 98.
+36. D. Wagner. The Boomerang Attack. In FSE 1999.
+37. Qingju Wang, Lorenzo Grassi, and Christian Rechberger. Zero-sum partitions of
+PHOTON permutations. In Nigel P. Smart, editor,Topics in Cryptology - CT-RSA
+2018 - The Cryptographers’ Track at the RSA Conference 2018, San Francisco, CA,
+USA, April 16-20, 2018, Proceedings, volume 10808 of Lecture Notes in Computer
+Science, pages 279–299. Springer, 2018.
+38. L. Xuejia. Higher Order Derivatives and Diﬀerential Cryptanalysis. In Communi-
+cations and cryptography, pages 227–233. 1994.
+39. Hailun Yan, Xuejia Lai, Lei Wang, Yu Yu, and Yiran Xing. New zero-sum dis-
+tinguishers on full 24-round keccak-f using the division property. IET Inf. Secur.,
+13(5):469–478, 2019.
+40. H. Zhou, Z. Li, X. Dong, K. Jia, and W. Meier. Practical Key-Recovery Attacks
+On Round-Reduced Ketje Jr, Xoodoo-AE And Xoodyak. Comput. J., 63(8):1231–
+1246, 2020.
+33
+Supplementary Material
+34
+N(µ0, σ2
+0) N(µ1, σ2
+1)
+Φ−1(1 − α0)σ0
+Φ−1(1 − α1)σ1
+µ0 τ µ1
+α0α1
+Fig. 3: The relationship among u0,u1,τ,α 0 and α1
+A Distinguishing Two Normal Distributions
+Suppose that we have known a statistics T obeys either N(µ0,σ2
+0) or N(µ1,σ2
+1)
+and w.l.o.g. µ0 <µ1, we want to judge which oneT really follows. The method is
+to ﬁnd a threshold µ0 <τ <µ1 such that when T <τ we judge T ∼N(µ0,σ2
+0),
+otherwise T ∼N(µ1,σ2
+1), enduring the risks of two types of errors:
+1. α0: the probability that T ∼N(µ0,σ2
+0) but we judge it as T ∼N(µ1,σ2
+1);
+2. α1: the probability that T ∼N(µ1,σ2
+1) but we judge it as T ∼N(µ0,σ2
+0);
+The relationship between µ0,µ1,τ,α 0 and α1 is illustrated in Figure 3. Let Φ
+be the cumulative distribution functions of the standard normal distribution.
+According to Figure 3 we have
+{
+τ = µ0 + Φ−1(1 −α0)σ0 = µ1 −Φ−1(1 −α1)σ1
+µ1 −µ0 = Φ−1(1 −α0)σ0 + Φ−1(1 −α1)σ1
+(10)
+In practice, the normal distribution is usually derived from the binomial distri-
+bution, so µ0,µ1,σ0,σ1 are related to the number of tests. According to Equa-
+tion 10, it is easy to calculate the proper number of tests satisfying the desiring
+α0,α1.
+35
+B Brief Speciﬁcation of ASCON
+Ascon, designed by Dobraunig, Eichlseder, Mendel, and Schl¨ aﬀer, is a family of
+AEAD and hash algorithms. At a high level, the Ascon AEAD takes as input
+a nonce N, a secret key K, an associated data Aand a plaintext or message M,
+and produces a ciphertext C and a tag T. The authenticity of the associated
+data and message can be veriﬁed against the tag T. Table 5 lists the variants of
+Ascon AEAD along with the recommended parameter sets.
+Table 5: Ascon variants and their recommended parameters
+Name State size Rate r Size of Rounds
+Key Nonce Tag pa pb
+Ascon-128 320 64 128 128 128 12 6
+Ascon-128a 320 128 128 128 128 12 8
+Ascon adopts a MonkeyDuplex mode with a stronger keyed initialization
+and keyed ﬁnalization phases as illustrated in Figure 4. The underlying permu-
+tations pa and pb are iterative designs, whose round function p is based on the
+substitution permutation network design paradigm and consists of three simple
+steps pC, pS, and pL. We now describe the round function p and each step in
+detail.
+The round function p= pL◦pS◦pC operates on a 320-bit state arranged into
+ﬁve 64-bit words. The input state to the round function at rth round is denoted
+by S(r) = S(r)[0]∥S(r)[1]∥S(r)[2]∥S(r)[3]∥S(r)[4], the jth bit of S(r)[i] is denoted
+by S(r)[i][j] where 0 ≤i <5,0 ≤j <64. We use S(r.5) to represent the state
+after pS of the rth round, r≥0.
+IV∥K0∥K1∥N0∥N1
+320
+pa
+⊕
+0∗∥K
+c
+⊕
+r
+A1
+pb
+⊕
+As
+c
+pb
+⊕
+0∗∥1
+c
+⊕
+r
+P1 C1
+pb
+c
+⊕
+Pt−1 Ct−1
+pb
+⊕
+Pt Ct
+r
+⊕
+K∥0∗
+c
+pa
+⊕
+K
+k
+T
+Initialization Associated Data Plaintext Finalization
+Fig. 4: The encryption algorithm of Ascon
+Addition of constants (pC). An 8-bit constant is XORed to the bit positions
+56,··· ,63 of the 64-bit word S(r)[2] at each round.
+36
+Substitution layer (pS). Update each slice of the 320-bit state by applying the
+5-bit Sbox S: F5
+2 →F5
+2 deﬁned by the following algebraic normal forms:
+
+
+
+y0 = x4x1 + x3 + x2x1 + x2 + x1x0 + x1 + x0
+y1 = x4 + x3x2 + x3x1 + x3 + x2x1 + x2 + x1 + x0
+y2 = x4x3 + x4 + x2 + x1 + 1
+y3 = x4x0 + x4 + x3x0 + x3 + x2 + x1 + x0
+y4 = x4x1 + x4 + x3 + x1x0 + x1
+(11)
+The ANF of the inverse of the Sbox is as follows,
+
+
+
+y0 = x4x3x2 + x4x3x1 + x4x3x0 + x3x2x0 + x3x2 + x3 + x2 + x1x0 + x1 + 1
+y1 = x4x2x0 + x4 + x3x2 + x2x0 + x1 + x0
+y2 = x4x3x1 + x4x3 + x4x2x1 + x4x2x0 + x4x2 + x4 + x3x2 + x3x1x0
++x3x1 + x2x1x0 + x2x1 + x2x0 + x2 + x1 + x0 + 1
+y3 = x4x2x1 + x4x2x0 + x4x2 + x4x1 + x4 + x3 + x2x1 + x2x0 + x1
+y4 = x4x3x2 + x4x2x1 + x4x2x0 + x4x2 + x3x2x0 + x3x2 + x3 + x2x1 + x2x0 + x1x0
+(12)
+Linear diﬀusion layer (pL). Apply a linear transformationΣi to each 64-bit word
+Sr.5[i] with 0 ≤i< 5, where Σi is deﬁned as
+
+
+
+y0 ←Σ0(x0) = x0 + (x0 ≫ 19) + (x0 ≫ 28)
+y1 ←Σ1(x1) = x1 + (x1 ≫ 61) + (x1 ≫ 39)
+y2 ←Σ2(x2) = x2 + (x2 ≫ 1) + (x2 ≫ 6)
+y3 ←Σ3(x3) = x3 + (x3 ≫ 10) + (x3 ≫ 17)
+y4 ←Σ4(x4) = x4 + (x4 ≫ 7) + (x4 ≫ 41)
+(13)
+In this paper, when we attack r rounds of the Ascon permutation, we can
+operate all 320 input bits S0 and observe all 320 output bits of S(r) or S(r.5).
+When we attackrrounds of the Ascon initialization, we can operate onlyS(0)[3]
+and S(0)[4] and observe Sr[0].
+37
+C Algorithm for Injecting Conditions into HATF
+Algorithm 3 Injecting conditions into the ﬁrst R0 rounds of the HATF of Eℓ
+from a cipher E
+Input: 1. the ANFs of components of E = ER−1 ◦··· E0,
+2. the order ℓ,
+3. the block size n,
+4. an ℓth-order diﬀerence (∆0,...,∆ ℓ−1),
+5. an input value X
+6. the round R0
+Output: a set of conditions I
+1: Let α(0)
+0 = X, α(0)
+ei = ∆i, ∆(0)
+u = 0 for all wt(u) ≥2
+2: I ←∅
+3: for 0 ≤r≤R0 do
+4: Calculate Er
+(⨁
+u∈Fn
+2
+α(r)
+u xu
+)
+5: for 0 ≤i<n do
+6: for 0 ≤u< 2ℓ do
+7: if Coe
+(
+Er
+(⨁
+u∈Fn
+2
+α(r)
+u xu
+)
+,xu
+)
+/∈{0,1}then
+8: I ←Coe
+(
+Er
+(⨁
+u∈Fn
+2
+α(r)
+u xu
+)
+,xu
+)
+9: for 0 ≤i<n do ⊿ Reduce all the coeﬃcients
+10: Er
+(⨁
+u∈Fn
+2
+α(r)
+u xu
+)
+= Er
+(⨁
+u∈Fn
+2
+α(r)
+u xu
+)
+xu mod I
+11: end for
+12: end if
+13: end for
+14: end for
+15: end for
+16: return I
+38
+D 7 Conditions Used for Partitioning in the DL
+Distinguisher for 5-round Ascon. Ascon Initialization
+k64 = 0
+k0 = 0
+u86 = u19k19 ⊕u19k83 ⊕u19 ⊕u22k22 ⊕u22k86 ⊕u22 ⊕u44k44 ⊕u44k108 ⊕u44
+⊕u83 ⊕u108 ⊕k19k83 ⊕k19 ⊕k22k86 ⊕k22 ⊕k44k108 ⊕k44 ⊕k83 ⊕k86
+⊕k108
+u23 = u47 ⊕u54 ⊕u57 ⊕u87k23 ⊕u87 ⊕u111 ⊕u118 ⊕u121k57 ⊕u121 ⊕k23
+⊕k47 ⊕k54 ⊕k57 ⊕k111 ⊕k118
+u95 = u28k28 ⊕u28k92 ⊕u28 ⊕u31k31 ⊕u31k95 ⊕u31 ⊕u53k53 ⊕u53k117 ⊕u53
+⊕u92 ⊕u117 ⊕k28k92 ⊕k28 ⊕k31k95 ⊕k31 ⊕k53k117 ⊕k53 ⊕k92 ⊕k95
+⊕k117
+u67 = u3k3 ⊕u3k67 ⊕u3 ⊕u25k25 ⊕u25k89 ⊕u25 ⊕u89 ⊕k3k67 ⊕k3 ⊕k25k89
+⊕k25 ⊕k67 ⊕k89 ⊕1
+u2 = u12 ⊕u42 ⊕u66 ⊕u76k12 ⊕u76 ⊕u83k19 ⊕u106k42 ⊕u106 ⊕k2 ⊕k9 ⊕k12
+⊕k42 ⊕k66 ⊕k73 ⊕k83
+Usage of these conditions. When using these conditions to partition the
+input, we need to assign the variables in the left side of each above equation by
+the values/formulas in the right side. For example, when we assign k64 = 0 or
+k64 = 1, we will partition the whole input into 2 equal-size subsets. In addition,
+when we assign
+u86 = u19k19 ⊕u19k83 ⊕u19 ⊕u22k22 ⊕u22k86 ⊕u22 ⊕u44k44 ⊕u44k108 ⊕u44
+⊕u83 ⊕u108 ⊕k19k83 ⊕k19 ⊕k22k86 ⊕k22 ⊕k44k108 ⊕k44 ⊕k83 ⊕k86
+⊕k108
+or
+u86 = u19k19 ⊕u19k83 ⊕u19 ⊕u22k22 ⊕u22k86 ⊕u22 ⊕u44k44 ⊕u44k108 ⊕u44
+⊕u83 ⊕u108 ⊕k19k83 ⊕k19 ⊕k22k86 ⊕k22 ⊕k44k108 ⊕k44 ⊕k83 ⊕k86
+⊕k108 ⊕1
+we can also partition the whole input set into two equal-size parts.
+Therefore, to partition the whole input set into 2 7 subsets with equal sizes
+(note that these 7 equations are all balanced and they are not related because
+they all have at least one free variable), we assign the seven values on the left
+side by the values/formulas on the right side or their negatives.
+39
+E Tables of Biases in Second-Order and 8 th-Order HDL
+Distinguishers for Ascon
+Table 6: Theoretical and experimental biases of 4-round Ascon initialization
+with the input diﬀerence ∆(0,60). Note since our experiments are done with 226
+samples, only those experimental biases that are signiﬁcantly greater than 2 −13
+are reliable.
+Bit 0 1 2 3 4 5 6 7 8 9
+Theory 2 −5.45 2−3.48 2−3.48 2−7.49 2−2.22 2−2.42 2−4.87 2−3.97 2−1.19 2−2.68
+Expr. 2 −5.60 2−3.39 2−3.71 2−5.73 2−2.19 2−2.42 2−4.03 2−3.63 2−1.19 2−2.68
+Bit 10 11 12 13 14 15 16 17 18 19
+Theory 2 −5.27 2−2.99 2−3.19 2−5.90 2−2.30 2−3.68 2−3.46 2−2.66 2−2.07 2−3.71
+Expr. 2 −4.17 2−2.86 2−2.68 2−5.34 2−2.14 2−3.61 2−3.22 2−2.45 2−2.07 2−3.71
+Bit 20 21 22 23 24 25 26 27 28 29
+Theory 2 −2.52 2−2.57 2−3.81 2−1.68 2−4.08 2−3.50 2−1.42 2−1.30 2−3.71 2−2.02
+Expr. 2 −2.44 2−2.43 2−3.57 2−1.54 2−3.36 2−3.07 2−1.42 2−1.30 2−3.72 2−2.02
+Bit 30 31 32 33 34 35 36 37 38 39
+Theory 2 −1.09 2−3.09 2−3.19 2−2.51 2−2.30 2−6.00 2−4.95 2−3.62 2−3.69 2−3.00
+Expr. 2 −1.09 2−3.09 2−3.19 2−2.45 2−2.30 2−6.67 2−5.91 2−2.91 2−3.25 2−3.00
+Bit 40 41 42 43 44 45 46 47 48 49
+Theory 2 −3.54 2−5.38 2−6.61 2−2.71 2−3.09 2−3.31 2−1.42 2−2.70 2−1.61 2−2.93
+Expr. 2 −4.00 2−4.76 2−4.84 2−2.62 2−2.98 2−2.60 2−1.42 2−2.29 2−1.61 2−2.29
+Bit 50 51 52 53 54 55 56 57 58 59
+Theory 2 −1.00 2−2.36 2−2.79 2−4.00 2−2.40 2−3.92 2−2.90 2−4.68 2−5.14 2−1.61
+Expr. 2 −1.00 2−2.34 2−2.45 2−4.00 2−2.19 2−3.54 2−2.61 2−4.68 2−6.20 2−1.56
+Bit 60 61 62 63
+Theory 2 −4.81 2−4.48 2−3.96 2−2.95
+Expr. 2 −3.54 2−4.48 2−4.42 2−2.59
+40
+Table 7: Theoretical and experimental biases of 5-round Ascon initialization
+with the input diﬀerence ∆(0,8,9,13,14,26,43,60). Note since our experiments
+are done with 2 26 samples, only those experimental biases that are signiﬁcantly
+greater than 2−13 are reliable.
+Bit 0 1 2 3 4 5 6 7 8 9
+Theory 2 −6.68 2−7.17 2−7.05 2−5.57 2−7.10 2−6.13 2−6.67 2−7.42 2−6.06 2−4.88
+Expr. 2 −4.19 2−4.34 2−4.34 2−3.74 2−4.81 2−3.64 2−4.11 2−4.42 2−3.94 2−3.36
+Bit 10 11 12 13 14 15 16 17 18 19
+Theory 2 −9.12 2−7.74 2−5.50 2−7.95 2−8.44 2−7.14 2−5.32 2−8.87 2−7.32 2−7.48
+Expr. 2 −5.09 2−4.52 2−3.51 2−4.25 2−4.90 2−4.24 2−3.47 2−5.05 2−4.48 2−4.27
+Bit 20 21 22 23 24 25 26 27 28 29
+Theory 2 −6.39 2−6.82 2−6.69 2−5.17 2−11.49 2−7.17 2−8.69 2−6.00 2−6.30 2−5.26
+Expr. 2 −3.78 2−4.30 2−4.16 2−3.45 2−5.51 2−4.80 2−5.12 2−3.32 2−4.45 2−3.97
+Bit 30 31 32 33 34 35 36 37 38 39
+Theory 2 −7.94 2−6.78 2−6.67 2−5.35 2−6.29 2−10.32 2−5.50 2−4.52 2−4.75 2−6.88
+Expr. 2 −4.45 2−4.69 2−4.32 2−3.64 2−4.10 2−5.09 2−3.53 2−2.92 2−3.47 2−4.25
+Bit 40 41 42 43 44 45 46 47 48 49
+Theory 2 −7.18 2−5.47 2−6.98 2−7.78 2−7.87 2−5.39 2−6.74 2−7.83 2−7.53 2−7.34
+Expr. 2 −4.29 2−3.51 2−4.00 2−4.55 2−4.56 2−3.75 2−4.34 2−4.34 2−4.70 2−4.57
+Bit 50 51 52 53 54 55 56 57 58 59
+Theory 2 −4.73 2−6.52 2−9.17 2−9.35 2−8.56 2−5.53 2−7.90 2−8.69 2−5.25 2−4.69
+Expr. 2 −3.35 2−4.21 2−5.44 2−5.28 2−5.29 2−3.77 2−4.42 2−4.77 2−3.45 2−3.14
+Bit 60 61 62 63
+Theory 2 −8.80 2−9.87 2−5.90 2−5.90
+Expr. 2 −4.30 2−5.34 2−3.90 2−3.94
+41
+F Details of HDL Key-Recovery attack on the 5-Round
+Ascon Initialization
+Although Ascon initialization is not strictly rotation-invariant due to the con-
+stant additions and IV, the biases truly follow some rotation-invariant properties
+according to our experiments. Thus, in the following we only discuss the ∆(0,9)
+case as an example. It can be easily adapted to other cases.
+Key-recovery process. From the condition injection, we obtain 14 conditions,
+3 among them are found a bit redundant so we remove them without aﬀecting
+the bias signiﬁcantly. The 11 conditions are given as follows,
+k0 = 0 (14)
+k64 = 0 (15)
+k9 = 0 (16)
+k73 = 0 (17)
+u86 = u19k19 ⊕u19k83 ⊕u19 ⊕u22k22 ⊕u22k86 ⊕u22 ⊕u44k44 ⊕u44k108 ⊕u44
+⊕u83 ⊕u108 ⊕k19k83 ⊕k19 ⊕k22k86 ⊕k22 ⊕k44k108 ⊕k44 ⊕k83 ⊕k86
+⊕k108 (18)
+u23 = u47 ⊕u54 ⊕u57 ⊕u87k23 ⊕u87 ⊕u111 ⊕u118 ⊕u121k57 ⊕u121 ⊕k23
+⊕k47 ⊕k54 ⊕k57 ⊕k111 ⊕k118 (19)
+u98 = u12k12 ⊕u12k76 ⊕u12 ⊕u34k34 ⊕u34k98 ⊕u34 ⊕u76 ⊕k12k76 ⊕k12
+⊕k34k98 ⊕k34 ⊕k76 ⊕k98 ⊕1 (20)
+u42 = u2 ⊕u12 ⊕u66 ⊕u76k12 ⊕u76 ⊕u83k19 ⊕u106k42 ⊕u106 ⊕k2 ⊕k12 ⊕k42
+⊕k66 ⊕k83 (21)
+u95 = u28k28 ⊕u28k92 ⊕u28 ⊕u31k31 ⊕u31k95 ⊕u31 ⊕u53k53 ⊕u53k117 ⊕u53
+⊕u92 ⊕u117 ⊕k28k92 ⊕k28 ⊕k31k95 ⊕k31 ⊕k53k117 ⊕k53 ⊕k92 ⊕k95
+⊕k117 (22)
+u11 = u18 ⊕u21 ⊕u51 ⊕u75 ⊕u82 ⊕u85k21 ⊕u85 ⊕u92k28 ⊕u115k51 ⊕u115
+⊕k11 ⊕k18 ⊕k51 ⊕k75 ⊕k82 ⊕k92 ⊕1 (23)
+u32 = u2 ⊕u56 ⊕u63 ⊕u66k2 ⊕u66 ⊕u96k32 ⊕u96 ⊕u120 ⊕u127 ⊕k2 ⊕k32
+⊕k56 ⊕k63 ⊕k120 ⊕k127 ⊕1 (24)
+When all these 11 conditions hold, the bias is about 0 .373. When the Condi-
+tion 22 or Condition 24 doesn’t hold, the bias is about 0 .287. In other cases,
+the biases are signiﬁcantly smaller. Especially, if any of Conditions 14–17 does
+not hold, the bias is close to zero. Based on these conditions and biases, the
+key-recovery attack is performed as follows,
+1. Note that we do not have means to control Conditions 14–17, so that we have
+to check if k0 = k64 = k9 = k73 = 0 in the ﬁrst step. For Conditions 18–24,
+42
+we ﬁrst ﬁx all the nonce variables in the right parts as 0, i.e., variables in
+Vr =
+
+
+
+u120,u19,u127,u118,u121,u12,u56,u87,u85,u76,u44,u82,u22,u54,
+u34,u57,u117,u31,u92,u53,u51,u18,u111,u66,u47,u2,u21,u83,
+u106,u28,u96,u108,u115,u75,u63
+
+
+
+will be ﬁxed as 0. Next we traverse all possible assignments for the left
+variables, i.e., variables in
+Vl =
+{u86,u23,u98,u42,u95,u11,u32
+}
+.
+There must be one assignment of Vl making Conditions 18–24 hold. If Con-
+ditions 14–17 also hold ( k0 = k9 = k64 = k73 = 0), we will see a high bias
+in S(5)[0][27], i.e., 0 .373. Otherwise, for all assignments of Vl, the bias of
+S(5)[0][27] will be close to 0.
+To detect this bias, we do a statistical test. Suppose that we use N samples
+and denote the times of S(5)[0][27] = 0 by T.
+When k0 = k64 = k9 = k73 = 0, for at least one assignment of Vl,
+T ∼N0(N ×0.373,N ×0.373 ×(1 −0.373)).
+If k0 = k64 = k9 = k73 = 0 is not true, for all assignments,
+T ∼N1(N ×0.5,N ×0.25).
+We use the theory of Section A of Supplementary Material to distinguish the
+two normal distributions N0 and N1. Let α0,α1 be the probability of the
+Type-1 and Type-2 errors, respectively. We set the Type-2 error asα1 = 0.05
+(with 95% probability, the right assignment can be identiﬁed). To make sure
+that all wrong assignments are identiﬁed with probability 95%, α0 needs to
+satisfy 1 −(1 −α0)128 = 0.05, thus α0 ≈2−11.285. According to Equation 10,
+we need N = 25.15 samples, the threshold is τ = 28. In other words, for each
+of the 2 7 assignments, we encrypt 2 5.15 samples. If there is one assignment
+such that the number of S(5)[0][27] = 0 is larger than 28, we determine
+k0 = k64 = k9 = k73 = 0. Otherwise, k0 = k64 = k9 = k73 = 0 is not true.
+2. If k0 = k64 = k9 = k73 = 0 is not true, we cannot proceed with key-
+recovery attack. We have to check other input diﬀerences ∆(i,i + 9) until
+we ﬁnd one satisfying ki = ki+64 = ki+9 = ki+73 = 0. Due to the rotation-
+invariant property of Ascon (in terms of HDL attacks), we can try at most
+64 possible ∆(i,i + 9) for 0 ≤i< 64. Since the probability of ki = ki+64 =
+ki+9 = ki+73 = 0 is 2 −4, so on average, we will detect 4 input diﬀerences
+that satisfy our requirements. Our experiments with 226 randomly-generated
+keys show that with about 54% probability, there will be 4 input diﬀerences
+satisfying ki = ki+64 = ki+9 = ki+73 = 0 (we can improve this probability
+by using more HDL approximations later). In the following, we assume k0 =
+k64 = k9 = k73 = 0 to discuss the key recovery attack.
+43
+3. When we have known k0 = k64 = k9 = k73 = 0, we need to ﬁnd out the
+exact one right assignment making Conditions 18–24 hold. We again do the
+statistical test as above step. In Step 2, only those assignments of Vl that
+surpass the threshold will be examined in this step. If not all conditions are
+satisﬁed, the bias of S(5)[0][27] is at most 0.287. Thus, for a wrong assign-
+ment, T ∼N2(N ×0.287,N ×0.287 ×(1 −0.287)). To distinguish N0 and
+N2, we need 28.96 samples with the threshold being 423.
+Once we obtain the right assignment of Vl, we simultaneously obtain 11 bits
+of key information (including k0 = k64 = k9 = k73 = 0).
+4. Furthermore, we can obtain more key information. Note that among the 35
+variables in Vr, 18 variables are multiplied with certain key bits in Condi-
+tions 18–24 (these variables have been labeled by red). By ﬂipping each of
+the 18 variables (recall they are set as 0 in the ﬁrst step) and observing
+whether the bias is still 0 .373, we can obtain 18 more key equations. For
+example, in the Step 2, we have known proper u86 satisfying Condition 18
+with all nonce bits in the right side being 0, i.e.,
+u86 = k19k83 ⊕k19 ⊕k22k86 ⊕k22 ⊕k44k108 ⊕k44 ⊕k83 ⊕k86 ⊕k108
+Next, we ﬂip u19 from 0 to 1, then the equation becomes to
+u86 = u19k19 ⊕u19k83 ⊕u19⊕k19k83⊕k19⊕k22k86⊕k22⊕k44k108⊕k44⊕k83⊕k86⊕k108
+If k19 ⊕k83 ⊕1 = 0, u19 will not aﬀect Condition 18, so the bias is still high.
+However, if k19 ⊕k83 ⊕1 = 1, u19 = 1 will break the conditions, then the
+bias is reduced signiﬁcantly.
+Finally, we can recover 29 bits of key information in total. The whole process
+is given in Algorithm 4. The complexities occur in the statistical tests in the
+Step 1, 3, 4. In Step 1, we need to encrypt 64×27 ×25.15 ≈218.15 samples. In
+Step 3, we need to test fewer assignments of Vl that passed the ﬁlters of Step
+2. The complexity of this step is signiﬁcantly smaller. In Step 4, we need to
+encrypt 18 ×28.96 ≈213.13 samples. Since each sample contains 4 nonces,
+the whole complexity is about 2 18.15+2 = 220.15. We have implemented this
+attack, for 1000 random keys, we can recover the correct 29 bits of key in
+more than 950 experiments, which meets our expectations.
+5. Given 4 opportunities satisfying ki = ki+64 = ki+9 = ki+73 = 0, we expect to
+recover 29×4 = 116 bits of key information at most. However, the probability
+that we have 4 opportunities is only 54%, and it is possible that some key
+expressions are related. So we need to use more HDL approximations to
+make sure we can recover all the keys. As we mentioned, when ∆(i,j) =
+∆(i′,i′+ 24),0 <i′<64, Bias(S(5)[0][51]) = 0.313 under 16 conditions. We
+can apply the similar process as ∆(i′,i′+ 9). Firstly, we select 12 conditions
+from the 16 including the 4 conditions of ki = ki+24 = ki+64 = ki+88 = 0
+that still keep the bias as 0.313. When not all the 12 conditions are satisﬁed,
+the bias is at most 0.236. When ki = ki+24 = ki+64 = ki+88 = 0 is not true,
+the bias is close to zero. The 12 conditions are listed as follows,
+k0 = 0
+44
+Algorithm 4 Recover 29 bits of key information for 5-round Ascon
+Input: Ascon initialization oracle
+Output: 29 bits of key information
+1: Assign 0 to all variables in Vr
+2: for 0 ≤i< 63 do
+3: Allocate C = ∅
+4: for Each of the 27 assignments of Vl, denoted by v do
+5: Encrypt 2 5.15 samples with the input diﬀerence ∆(i,i + 9)
+6: if There is more than 28 times that the output diﬀerence of S(5)[0][27] is
+zero then
+7: C ←vr
+8: end if
+9: end for
+10: if C is not ∅ then
+11: Test each of assignment in C with 28.96 samples, ﬁnd the one that makes
+S(5)[0][27] is zero for more than 423 times. Denote this assignment as v⋆
+12: for Each variable labeled by red in Vr do
+13: Flip this variable from 0 to 1, see if the bias of S(5)[0][27] is still 2 8.96
+with v⋆. Derive the corresponding key expressions
+14: end for
+15: end if
+16: end for
+17: return 29 key expressions derived
+k64 = 0
+k24 = 0
+k88 = 0
+u77 = u13k13 ⊕u13k77 ⊕u13 ⊕u52k52 ⊕u52k116 ⊕u52 ⊕u55k55 ⊕u55k119
+⊕u55 ⊕u116 ⊕u119 ⊕k13k77 ⊕k13 ⊕k52k116 ⊕k52 ⊕k55k119 ⊕k55
+⊕k77 ⊕k116 ⊕k119 ⊕1;
+u108 = u19k19 ⊕u19k83 ⊕u19 ⊕u22k22 ⊕u22k86 ⊕u22 ⊕u44k44 ⊕u44k108
+⊕u44 ⊕u83 ⊕u86 ⊕k19k83 ⊕k19 ⊕k22k86 ⊕k22 ⊕k44k108 ⊕k44
+⊕k83 ⊕k86 ⊕k108;
+u118 = u23 ⊕u47 ⊕u54 ⊕u57 ⊕u87k23 ⊕u87 ⊕u111 ⊕u121k57 ⊕u121 ⊕k23
+⊕k47 ⊕k54 ⊕k57 ⊕k111 ⊕k118;
+u117 = u28k28 ⊕u28k92 ⊕u28 ⊕u31k31 ⊕u31k95 ⊕u31 ⊕u53k53 ⊕u53k117
+⊕u53 ⊕u92 ⊕u95 ⊕k28k92 ⊕k28 ⊕k31k95 ⊕k31 ⊕k53k117 ⊕k53
+⊕k92 ⊕k95 ⊕k117;
+u89 = u3k3 ⊕u3k67 ⊕u3 ⊕u25k25 ⊕u25k89 ⊕u25 ⊕u67 ⊕k3k67 ⊕k3
+⊕k25k89 ⊕k25 ⊕k67 ⊕k89 ⊕1;
+u78 = u7 ⊕u14 ⊕u17 ⊕u47 ⊕u71 ⊕u81k17 ⊕u81 ⊕u111k47 ⊕u111 ⊕k7
+⊕k14 ⊕k17 ⊕k47 ⊕k71 ⊕k78 ⊕1;
+45
+u82 = u11 ⊕u18 ⊕u21 ⊕u51 ⊕u75 ⊕u85k21 ⊕u85 ⊕u92k28 ⊕u115k51
+⊕u115 ⊕k11 ⊕k18 ⊕k51 ⊕k75 ⊕k82 ⊕k92 ⊕1;
+u99 = u11 ⊕u35 ⊕u42 ⊕u45 ⊕u75k11 ⊕u75 ⊕u106 ⊕u109k45 ⊕u109
+⊕u116k52 ⊕k11 ⊕k35 ⊕k42 ⊕k45 ⊕k99 ⊕k106 ⊕k116 ⊕1;
+Thus, in Step 1, to detect the possible positions satisfying ki = ki+24 =
+ki+64 = ki+88 = 0 requires the statistical test with 2 5.90 samples. So the
+complexity of Step 1 is about 64×25.90×28 = 219.90 samples. The complexity
+of Step 3 is signiﬁcantly smaller. In Step 4, since there are 21 nonce variables
+that are multiplied with keys, the complexity is about 21 ×28.30 ≈212.69
+samples. Thus, the whole complexity is about 2 19.90 samples, which is 221.90
+nonces. we can obtain in total 33 bits of key information. Together with the
+case of ∆(0,9), we can expect to obtain enough key expressions, then all
+keys can be recovered. The whole complexity is estimated as about 2 22.28.
+G Conditions used in Conditional HDL Approximation
+on 6-Round Ascon
+k64 = 0
+k94 = 0
+k0 = 0
+k30 = 0
+k125 = 0
+k61 = 0
+u86 = u22k22 ⊕u22k86 ⊕u22 ⊕k22k86 ⊕k22 ⊕k86 ⊕1
+u80 = u16k16 ⊕u16k80 ⊕u16 ⊕u19k19 ⊕u19k83 ⊕u19 ⊕u41k41 ⊕u41k105 ⊕u41
+⊕u83 ⊕u105 ⊕k16k80 ⊕k16 ⊕k19k83 ⊕k19 ⊕k41k105 ⊕k41 ⊕k80 ⊕k83
+⊕k105 ⊕1
+u122 = u19k19 ⊕u19k83 ⊕u19 ⊕u58k58 ⊕u58k122 ⊕u83 ⊕k19k83 ⊕k19 ⊕k58k122
+⊕k83 ⊕k122 ⊕1
+u108 = u19k19 ⊕u19k83 ⊕u19 ⊕u22k22 ⊕u22k86 ⊕u22 ⊕u44k44 ⊕u44k108 ⊕u44
+⊕u83 ⊕u86 ⊕k19k83 ⊕k19 ⊕k22k86 ⊕k22 ⊕k44k108 ⊕k44 ⊕k83 ⊕k86
+⊕k108 ⊕1
+u47 = u23 ⊕u54 ⊕u57 ⊕u87k23 ⊕u87 ⊕u111 ⊕u118 ⊕u121k57 ⊕u121 ⊕k23
+⊕k47 ⊕k54 ⊕k57 ⊕k111 ⊕k118
+u17 = u41 ⊕u48 ⊕u51 ⊕u81k17 ⊕u81 ⊕u105 ⊕u112 ⊕u115k51 ⊕u115 ⊕u122k58
+⊕k17 ⊕k41 ⊕k48 ⊕k51 ⊕k105 ⊕k112 ⊕k122
+u2 = u12 ⊕u42 ⊕u66 ⊕u76k12 ⊕u76 ⊕u83k19 ⊕u106k42 ⊕u106 ⊕k2 ⊕k9
+⊕k12 ⊕k42 ⊕k66 ⊕k73 ⊕k83
+46
+u97 = u33k33 ⊕u33k97 ⊕u33 ⊕u55k55 ⊕u55k119 ⊕u55 ⊕u119 ⊕k33k97 ⊕k33
+⊕k55k119 ⊕k55 ⊕k97 ⊕k119 ⊕1
+u32 = u8 ⊕u39 ⊕u42 ⊕u72k8 ⊕u72 ⊕u96 ⊕u103 ⊕u106k42 ⊕u106 ⊕u113k49
+⊕k8 ⊕k32 ⊕k39 ⊕k42 ⊕k96 ⊕k103 ⊕k113 ⊕1
+u20 = u44 ⊕u51 ⊕u54 ⊕u84k20 ⊕u84 ⊕u108 ⊕u115 ⊕u118k54 ⊕u118 ⊕k44
+⊕k51 ⊕k54 ⊕k108 ⊕k115 ⊕1
+u15 = u8 ⊕u18 ⊕u48 ⊕u72 ⊕u79 ⊕u82k18 ⊕u82 ⊕u89k25 ⊕u112k48 ⊕u112
+⊕k8 ⊕k15 ⊕k18 ⊕k48 ⊕k72 ⊕k79 ⊕k89 ⊕1
+u74 = u10k10 ⊕u10k74 ⊕u10 ⊕u49k49 ⊕u49k113 ⊕u49 ⊕u52k52 ⊕u52k116 ⊕u52
+⊕u113 ⊕u116 ⊕k10k74 ⊕k10 ⊕k49k113 ⊕k49 ⊕k52k116 ⊕k52 ⊕k74
+⊕k113 ⊕k116
+u67 = u3k3 ⊕u3k67 ⊕u3 ⊕u25k25 ⊕u25k89 ⊕u25 ⊕u89 ⊕k3k67 ⊕k3 ⊕k25k89
+⊕k25 ⊕k67 ⊕k89 ⊕1
+u11 = u18 ⊕u21 ⊕u51 ⊕u75 ⊕u82 ⊕u85k21 ⊕u85 ⊕u92k28 ⊕u115k51 ⊕u115
+⊕k11 ⊕k18 ⊕k51 ⊕k75 ⊕k82 ⊕k92 ⊕1
+u114 = u25k25 ⊕u25k89 ⊕u25 ⊕u28k28 ⊕u28k92 ⊕u28 ⊕u50k50 ⊕u50k114 ⊕u50
+⊕u89 ⊕u92 ⊕k25k89 ⊕k25 ⊕k28k92 ⊕k28 ⊕k50k114 ⊕k50 ⊕k89 ⊕k92
+⊕k114
+u95 = u28k28 ⊕u28k92 ⊕u28 ⊕u31k31 ⊕u31k95 ⊕u31 ⊕u53k53 ⊕u53k117 ⊕u53
+⊕u92 ⊕u117 ⊕k28k92 ⊕k28 ⊕k31k95 ⊕k31 ⊕k53k117 ⊕k53 ⊕k92 ⊕k95
+⊕k117
+u6 = u9 ⊕u39 ⊕u63 ⊕u70 ⊕u73k9 ⊕u73 ⊕u80k16 ⊕u103k39 ⊕u103 ⊕u127
+⊕k6 ⊕k39 ⊕k63 ⊕k70 ⊕k80 ⊕k127 ⊕1
+u13 = u23 ⊕u53 ⊕u77 ⊕u87k23 ⊕u87 ⊕u117k53 ⊕u117 ⊕k13 ⊕k20 ⊕k23 ⊕k53
+⊕k77 ⊕k84 ⊕1
+H Conditions used in Condition HDL Approximation on
+5-Round Xoodyak
+u93 = k79 ⊕k93 ⊕u79 ⊕u107 ⊕u116 ⊕u207 ⊕u221
+u70 = k93 ⊕k70 ⊕u93 ⊕u107 ⊕u198 ⊕u221 ⊕1
+u7 = k16 ⊕k7 ⊕u16 ⊕u135 ⊕u144 ⊕u181
+u4 = k27 ⊕k41 ⊕k4 ⊕u27 ⊕u132 ⊕u155 ⊕1
+u54 = k63 ⊕k68 ⊕k54 ⊕u63 ⊕u182 ⊕u191 ⊕1
+u97 = k106 ⊕u15 ⊕k97 ⊕u106 ⊕u225 ⊕u234 ⊕1
+u43 = k52 ⊕k43 ⊕u52 ⊕u171 ⊕u180 ⊕u217
+47
+u25 = k25 ⊕k16 ⊕u16 ⊕u144 ⊕u153 ⊕u190
+u111 = k20 ⊕k102 ⊕k111 ⊕u102 ⊕u230 ⊕u239
+u18 = k18 ⊕k27 ⊕k32 ⊕u27 ⊕u146 ⊕u155 ⊕1
+u125 = k11 ⊕k102 ⊕k125 ⊕u102 ⊕u230 ⊕u253
+u1 = k1 ⊕k10 ⊕k47 ⊕u10 ⊕u129 ⊕u138
+48
+I Updating Degree Matrix Transition of the Ascon
+Permutation
+Proposition 3 (Degree Matrix Transition over pS ). With the knowledge
+of DM(S) = ( di,j,0 ≤i< 5,0 ≤j <64), we have DM(pS(S)) = ( d′
+i,j,0 ≤i <
+5,0 ≤j <64), where d′
+i,j,0 ≤i< 5,0 ≤j <64 are computed as
+d′
+0,j = max(d4,j + d1,j,d3,j,d2,j + d1,j,d2,j,d0,j + d1,j,d1,j,d0,j)
+d′
+1,j = max(d4,j,d3,j + d2,j,d3,j + d1,j,d3,j,d2,j + d1,j,d2,j,d1,j,d0,j)
+d′
+2,j = max(d4,j + d3,j,d4,j,d2,j,d1,j,0)
+d′
+3,j = max(d4,j + d0,j,d4,j,d3,j + d0,j,d3,j,d2,j,d1,j,d0,j)
+d′
+4,j = max(d4,j + d1,j,d4,j,d3,j,d1,j + d0,j,d1,j)
+,0 ≤j <64
+Proposition 4 (Degree Matrix Transition over pL). With the knowledge
+of DM(S) = ( d′
+i,j,0 ≤i< 5,0 ≤j <64), we have DM(pL(S)) = ( d′′
+i,j,0 ≤i <
+5,0 ≤j <64), where d′′
+i,j,0 ≤i< 5,0 ≤j <64 are computed as
+d′′
+0,j = max(d′
+0,j+0,d′
+0,j−19 mod 64,d′
+0,j−28 mod 64)
+d′′
+1,j = max(d′
+1,j+0,d′
+1,j−61 mod 64,d′
+1,j−39 mod 64)
+d′′
+2,j = max(d′
+2,j+0,d′
+2,j−1 mod 64,d′
+2,j−6 mod 64)
+d′′
+3,j = max(d′
+3,j+0,d′
+3,j−10 mod 64,d′
+3,j−17 mod 64)
+d′′
+4,j = max(d′
+4,j+0,d′
+4,j−7 mod 64,d′
+4,j−41 mod 64)
+,0 ≤j <64
+Proof (for Propositions 3 and 4). It is clear that if y = x0 ⊕x1, deg( y) ≤
+max(deg(x0),deg(x1)); if y= x0x1, deg(y) ≤deg(x0) + deg(x1). Then from the
+ANFs of pS (Equation 11) and pL (Equation 13), we directly derive the formulas
+in Proposition 3 and Proposition 4.
+J Zero-Sum Distinguishers for Full Ascon Permutation
+The zero-sum distinguisher was ﬁrst proposed to study the non-ideal property
+of the Keccak-f permutation [1,11,39], which was also used to distinguish the
+(12-round) Ascon permutation by its designers [17]. It studies the following
+question. Given a permutation P : Fn
+2 →Fn
+2 , can we create a set of inputs, I,
+such that ⨁
+x∈I x = ⨁
+x∈I P(x) = 0? Currently, the best result of the zero-
+sum distinguisher for the 12-round Ascon permutation costs 2 130 calls [18]. In
+this subsection, we show how to use our HD distinguisher to build a zero-sum
+distinguisher for a 12-round Ascon permutation with only 2 55 calls.
+Note that the idea of the degree matrix transition method introduced in Sec-
+tion 7 is also applicable to the inverse operations of the Ascon permutation. We
+deduce the transitional rules for the inverse operations of the Ascon permuta-
+tion. Thereby we can give two corollaries of Propositions 3 and 4. According to
+the ANFs of the inverse Sbox of Ascon in Equation 12, we deduce the following
+corollary,
+49
+Algorithm 5 Detect HD Distinguishers (up to 64 th-order) for the Ascon per-
+mutation
+Input: r-round Ascon permutation, r≥4
+Output: ( ¯X, ¯∆) leading to HD distinguishers (up to 64 th-order) for r-round Ascon
+permutation, the order of the HD
+1: degree = 64
+2: for ¯X from 0 to 31 do
+3: for ¯∆ from 1 to 31 do
+4: for i from 0 to 63 do
+5: for j from 0 to 4 do
+6: S0[j][i] = X[j] ⊕xi∆[j]
+7: end for
+8: end for
+9: Compute the exact ANF of S2.5 and compute DM(S2.5)
+10: Compute the degree matrix of Sr from S2.5 using Propositions 3 and 4
+11: if min(DM(Sr)) ¡ degree then
+12: degree = min(DM( Sr)) ⊿ To ﬁnd the best distinguisher
+13: end if
+14: end for
+15: end for
+16: return ( ¯X, ¯∆,DM(Sr))
+Corollary 1 (Degree Matrix Transition over p−1
+S ). With the knowledge
+of DM(S) = (di,j,0 ≤i< 5,0 ≤j <64), we have DM(p−1
+S (S)) = (d′
+i,j,0 ≤i <
+5,0 ≤j <64), where d′
+i,j,0 ≤i< 5,0 ≤j <64 are computed as
+d′
+0,j = max(d4,j + d3,j + d2,j,d4,j + d3,j + d1,j,d4,j + d3,j + d0,j,d3,j + d2,j + d0,j,
+d3,j + d2,j,d3,j,d2,j,d1,j + d0,j,d1,j,0)
+d′
+1,j = max(d4,j + d2,j + d0,j,d4,j,d3,j + d2,j,d2,j + d0,j,d1,j,d0,j)
+d′
+2,j = max(d4,j + d3,j + d1,j,d4,j + d3,j,d4,j + d2,j + d1,j,d4,j + d2,j + d0,j,
+d4,j + d2,j,d4,j,d3,j + d2,j,d3,j + d1,j + d0,j,d3,j + d1,j,d2,j + d1,j + d0,j,
+d2,j + d1,j,d2,j + d0,j,d1,j,d0,j,0)
+d′
+3,j = max(d4,j + d2,j + d1,j,d4,j + d2,j + d0,j,d4,j + d2,j,d4,j + d1,j,d4,j,d3,j,
+d2,j + d1,j,d2,j + d0,j,d1,j)
+d′
+4,j = max(d4,j + d3,j + d2,j,d4,j + d2,j + d1,j,d4,j + d2,j + d0,j,d4,j + d2,j,
+d3,j + d2,j + d0,j,d3,j + d2,j,d3,j,d2,j + d1,j,d2,j + d0,j,d1,j + d0,j)
+The ANF of p−1
+L is a little complicated, so we introduce a simpler version of
+the degree matrix transition for p−1
+L .
+Corollary 2 (Simpliﬁed Degree Matrix Transition over p−1
+L ). With the
+knowledge of DM(S) = ( d′
+i,j,0 ≤i< 5,0 ≤j <64), we have DM(p−1
+L (S)) =
+50
+(d′′
+i,j,0 ≤i< 5,0 ≤j <64), where d′′
+i,j,0 ≤i< 5,0 ≤j <64 are computed as
+d′′
+0,j = max
+0≤k<64
+(d′
+0,k)
+d′′
+1,j = max
+0≤k<64
+(d′
+1,k)
+d′′
+2,j = max
+0≤k<64
+(d′
+2,k)
+d′′
+3,j = max
+0≤k<64
+(d′
+3,k)
+d′′
+4,j = max
+0≤k<64
+(d′
+4,k)
+,0 ≤j <64
+It is easy to verify that Corollary 1 and 2 give an upper bound on the degree of
+output bits of p−1
+S and p−1
+L . Thus, we can replay the calculation of Section 7 to
+the inverse Ascon permutation.
+Considering that with (X,∆) in Equation 9, the upper bounds on the degree
+of the ﬁve words of the output after 8 rounds are (47, 47, 45, 47, 47), we only
+test the ( X,∆) for the 4-round inverse Ascon permutation. Note that in the
+forward direction, we did not include the ﬁrstpC, thus we add it to the backward
+calculation. In other words, the four rounds of inverse Ascon permutation is
+Pb = (pC ◦p−1
+S ◦p−1
+L )4 ◦pC.
+We ﬁrst calculate the exact ANFs of the output of p−1
+L ◦pC ◦p−1
+S ◦p−1
+L ◦
+pC(X⊕x∆), then apply Corollary 1 and 2 to calculate the degree upper bounds
+for 4 rounds of inverse Ascon permutation, i.e., Pb. Finally, with ( X,∆) ∈
+{(0xf,0x18),(0x17,0x18)}, the degree upper bounds are shown in Table 8.
+Thus, we choose 55 positions from {0,1,..., 63}, traverse the variables, and
+keep the remaining 64 −55 = 9 positions as constants for the state after pC of
+the ﬁfth round of the 12-roundAscon permutation. The corresponding plaintext
+and ciphertext sets are zero-sum. Thus we obtain a zero-sum distinguisher for
+12-round Ascon permutation, with complexity of 255. Similarly, with 7 forward
+rounds and 3 backward rounds, we can construct a zero-sum distinguisher for 10
+rounds with 225 complexity; with 8 forward rounds and 3 backward rounds, we
+can construct a zero-sum distinguisher for 11 rounds with 2 48 complexity. We
+experimentally veriﬁed the 7-round zero-sum distinguisher.
+Here we only give the results, which have been abstracted into Table 8 11.
+According to Tables 4 and 8, we choose 55 positions from {0,1,..., 63},
+traverse the variables, and keep the remaining 64−55 = 9 positions as constants
+for the state after pC of the ﬁfth round of the 12-round Ascon permutation.
+The corresponding plaintext and ciphertext sets are zero-sum. Thus we obtain a
+zero-sum distinguisher for a 12-round Ascon permutation, with a complexity of
+255. Similarly, with 8 forward rounds and 3 backward rounds, we can construct
+a zero-sum distinguisher for 11 rounds with 2 48 complexity; with 7 forward
+rounds and 3 backward rounds, we can construct a zero-sum distinguisher for 10
+rounds with 2 25 complexity; We experimentally veriﬁed the 10-round zero-sum
+distinguisher.
+11 Recalling Section 7, we ignore the ﬁrst pC for the forward direction. Here we include
+this pC in the backward direction.
+51
+Table 8: Upper bounds on the algebraic degree of the DSF of the inverse As-
+con permutation with (X,∆) ∈{(0xf,0x18),(0x17,0x18)}. We experimentally
+veriﬁed the upper bounds on degrees up to 3 inverse rounds.
+Round r Upper bounds on the algebraic degree
+S[0] S[1] S[2] S[3] S[4]
+1 2 1 2 0 2
+2 4 6 6 6 6
+3 18 16 18 18 18
+4 54 54 54 54 54
+The impact of the zero-sum distinguisher. In [17], the designers gave a zero-sum
+distinguisher for 12 rounds with complexity 2 130 and noted: “The non-ideal
+properties of the permutation do not seem to aﬀect the security of Ascon. In
+particular, the complexity of 2130 is above the ciphers claimed security level.”
+Yet, we show that our 12-round distinguisher requires a much lower complexity
+than the cipher’s claimed security level (2 128).
+However, although these zero-sum distinguishers require low complexities,
+their actual impact on the security of the Ascon AEAD and Hash are very
+likely non-existent or at best not clear. As discussed in [37,20,22], the advantage
+of the zero-sum distinguisher for Ascon permutation and a perfect permutation
+is very small, usually falling under a factor of 2 (our zero-sum approach follows
+the same philosophy).
+Yet, zero-sum distinguishers still represent some non-ideal property of the
+target permutation. We can mention that the Keccak team decided to increase
+the number of rounds of Keccak-f (e.g., for Keccak-f[1600] from 18 to 24
+rounds) in round 2 of the SHA-3 competition, even though they judged as very
+unlikely that the zero-sum distinguishers on the full Keccak-f permutation
+can result in actual attacks against the global Keccak scheme. It is also worth
+mentioning that in [4], the Keccak team presented the fast hash scheme Kan-
+garooTwelve that is based on the 12-round Keccak-f[1600].
+Comparison with the zero-sum distinguisher in [17]. The zero-sum dis-
+tinguisher in [17] that needs 2 130 calls can be further adapted into a zero-sum
+partition distinguisher of the full Ascon permutation. That is, by enumerating
+the constant bits in the middle, we can divide the whole input-output space into
+2320−130 subspaces, and the plaintexts/ciphertexts in each subspace present a
+zero-sum distinguisher. Diﬀerently, our zero-sum distinguisher chose a speciﬁc
+initial structure of size 2 64 in the middle, which means it cannot be adapted
+into a zero-sum partition distinguisher. The strength of a zero-sum partition
+distinguisher is that it has a larger advantage from the generic attack when com-
+pared to simple zero-sum distinguishers. However, a noticeable disadvantage is
+that building or verifying such a zero-sum partition requires an extremely huge
+computational cost (2n calls for an n-bit cryptographic primitive) which is actu-
+52
+ally impossible to perform [20]. Besides, the cost of the best zero-sum partition
+generic algorithm remains only conjectured. We believe that our distinguishers
+provide some new insights into the structural properties of the Ascon permu-
+tation.
+Relationship with the previous structural algebraic distinguishers. In
+this section, we provided a systematic method to construct an algebraic distin-
+guisher based on analyzing the DSF. Since the DSF is parameterized by the
+input values and diﬀerences, a proper choice of ( X,∆) can reduce the degree of
+the output bits. Before our work, some similar ideas were proposed to analyze
+the permutation-based primitives. Usually, by analyzing the algebraic properties
+of the round functions, an “initial structure” is set as the input values of the tar-
+get permutation. With this initial structure, the algebraic degree would increase
+more slowly since some intermediate variables will become linear or quadratic.
+An example of these attacks is the conditional cube attack [26,12,13,3], where
+the inﬂuences of the secret keys on the algebraic degrees are captured to perform
+key recovery attacks. Such a technique is also called the linearization technique
+in some papers such as [10]. In terms of the DSF, a good ( X,∆) will also reduce
+the degrees of intermediate variables (in our case, the degree of f0 is reduced),
+thus our method searches for a good initial structure and implicitly uses the
+linearization technique to slow the degree increase. However, previous methods
+usually require careful manual analyses of the round functions, which are some-
+times tedious, or even impossible for complicated cases. Instead, our method is
+universal and can consistently analyze their algebraic properties by the DSF.
+The DSF is an explicit formula of an output HD/HDL, i.e., a Boolean function
+of both the input diﬀerence ( ∆) and input value ( X), which gives us a uniﬁed
+viewpoint for algebraic attacks on cryptographic primitives.
+53
+K Discussion of the Precision of HATF
+In this section, we provide three kinds of ﬁgures to show the precision of the
+HATF:
+1. In Section K.1, we show the ﬁgures of theoretical and experimental biases of
+the second-order HDL for 4-round Ascon initialization. The second-order
+diﬀerences denoted by ∆(0,i),1 ≤i< 64 are the captions of each ﬁgure.
+2. In Section K.2, we show the ﬁgures of theoretical and experimental biases of
+the second-order HDL for 5-round Ascon initialization. The second-order
+diﬀerences denoted by ∆(0,i),1 ≤i< 64 are the captions of each ﬁgure.
+3. In Section K.3, we show the ﬁgures of theoretical and experimental biases of
+ℓth-order (3 ≤ℓ ≤8) HDL for 5-round Ascon initialization. The ℓth-order
+diﬀerences denoted by ∆(i0,i1,...,i ℓ−1),0 ≤i0 < i1 <··· < iℓ−1 <64 are
+the captions of each ﬁgure.
+The theoretical biases obtained in Sections K.1,K.2 and K.3 are obtained
+with the partition technique: When the input diﬀerence is ∆(i0,i1,...,i ℓ−1) for
+an ℓth HDL cryptanalysis, the 2 ℓ bits of keys
+S(0)[1][i0],S(0)[2][i0],...,S (0)[1][iℓ−1],S(0)[2][iℓ−1] (25)
+are used to partition the whole input space into 2 2ℓ subspaces. For the experi-
+ments, we use 226 samples to obtain the data.
+Next, based on these ﬁgures, we discuss the precision of HATF and the impact
+of the partitioning technique.
+1. From the second-order HDL distinguishers for 4-roundAscon in Section K.1,
+we can ﬁnd that the curves of theoretical and experimental results coincide
+almost exactly. That is to say, HATF predicts the second-order HDL biases
+almost perfectly for 4-round Ascon.
+2. From the second-order HDL distinguishers for 5-roundAscon in Section K.2,
+we can see that the precision of HATF drops. Not all biased bits and their
+biases are predicted correctly. However, there are two important points:
+(a) The shapes of the curve of theoretical results are related to those of the
+experimental results: one peak of the theoretical curve is always related
+to one experimental peak, although the former ones might be weaker
+than the latter ones.
+(b) The absolute values of the biases in most cases are smaller than the ex-
+perimental ones, except for the ∆(0,26) (the leftmost peak) and ∆(0,38)
+(the peak at index 40). Note that even for the two exceptions, HATF
+correctly predicts that the bits are signiﬁcantly biased, only the biases
+are overestimated. Later, with an advanced partitioning technique, we
+can overcome the overestimations.
+Considering the two points, we are conﬁdent that HATF is very useful to
+ﬁnd second-order distinguishers for the 5-round Ascon. If HATF predicts
+that a bit is biased, then there is a high probability that the bit is truly
+biased. And there is a high probability that the value of the bias is greater
+than the prediction.
+54
+3. From the ℓth-order HDL distinguishers for 5-round Ascon, 3 ≤ℓ ≤8 in
+Section K.3, Firstly, we can also observe the similar two points with the
+second-order HDL distinguishers for 5-round Ascon. Secondly, as the num-
+ber of orders increases, the real biases of output bits become higher. HATF
+performs better for larger biases than smaller ones.
+Comparing the precision of the second-order HATF for 4-round and 5-round
+Ascon, we guess that the reduction of the precision of HATF is mainly caused
+by the more complicated HATF. More complicated HATF assumes more inde-
+pendent intermediate state bits and fail more easily.
+Recall that all theoretical results in Sections K.1,K.2 and K.3 are obtained
+with partitioning the input subspaces based on the 2ℓkey bits in Equation 25. A
+better partition of the input space can simplify the HATF drastically in each sub-
+space. For example, for the second-order HDL cryptanalysis on 5-round Ascon
+with the input diﬀerence ∆(0,9), we can use the 10 Equations 14–24 to parti-
+tion the input space, which is obtained by injecting conditions into the ﬁrst two
+rounds of the HATF. The improved theoretical result with ∆(0,9) for 5-round
+Ascon is given in Figure 5a. With the improved partition, it can be seen the
+precision increases signiﬁcantly. Similarly, we can obtain 16 conditions into the
+ﬁrst two rounds of the HATF concerning ∆(0,26), which are used to partition
+the whole input space into 216 subspaces. With the improved partition, the the-
+oretical curve of ∆(0,26) is shown in Figure 5b. It can be seen, the precision also
+increases signiﬁcantly, and the leftmost peak is also predicted correctly. Thus,
+we can conclude that a better partition can improve the precision signiﬁcantly.
+0 20 40 60
+0
+2
+4
+·10−3
+Index ofS(5)[0]
+Bias
+Theoretical
+Experimental
+(a) Second-order HDL biases for 5-R
+Ascon with improved partition with
+∆(0,9)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+Theoretical
+Experimental
+(b) Second-order HDL biases for 5-R
+Ascon with improved partition with
+∆(0,26)
+Fig. 5: The theoretical and experimental biases curves for 5-round Ascon with
+improved partition.
+55
+K.1 Figures of Second-Order HDL Biases for 4-Round Ascon
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,1)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,2)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,3)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,4)
+0 20 40 60
+−0.1
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,5)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,6)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,7)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,8)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,9)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,10)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,11)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,12)
+56
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,13)
+0 20 40 600
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,14)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,15)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,16)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,17)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,18)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,19)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,20)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,21)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,22)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,23)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,24)
+57
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,25)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,26)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,27)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,28)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,29)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,30)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,31)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,32)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,33)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,34)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,35)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,36)
+58
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,37)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,38)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,39)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,40)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,41)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,42)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,43)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,44)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,45)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,46)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,47)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,48)
+59
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,49)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,50)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,51)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,52)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,53)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,54)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,55)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,56)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,57)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,58)
+0 20 40 60
+−0.1
+0
+0.1
+0.2
+0.3
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,59)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,60)
+60
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,61)
+0 20 40 60
+0
+0.2
+0.4
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,62)
+0 20 40 60
+0
+0.1
+0.2
+0.3
+0.4
+0.5
+Index ofS(4)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,63)
+K.2 Figures of Second-Order HDL Biases for 5-Round Ascon
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,1)
+0 20 40 60
+0
+1
+2
+3
+4 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,2)
+0 20 40 60
+0
+0.2
+0.4
+0.6
+0.8
+1
+·10−2
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,3)
+0 20 40 60
+0
+0.5
+1
+1.5
+2
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,4)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,5)
+0 20 40 60
+0
+2
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,6)
+61
+0 20 40 60
+0
+2
+4
+6
+8 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,7)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,8)
+0 20 40 60
+0
+2
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,9)
+0 20 40 60
+0
+2
+4
+6 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,10)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,11)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,12)
+0 20 40 60
+0
+1
+2
+3
+4 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,13)
+0 20 40 60
+0
+2
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,14)
+0 20 40 60
+0
+1
+2
+3
+4
+5 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,15)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,16)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,17)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,18)
+62
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,19)
+0 20 40 60
+0
+2
+4
+6
+8 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,20)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,21)
+0 20 40 60
+0
+2
+4
+6 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,22)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,23)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,24)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,25)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,26)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,27)
+0 20 40 60
+0
+0.5
+1
+1.5
+2
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,28)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,29)
+0 20 40 60
+0
+2
+4
+6 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,30)
+63
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,31)
+0 20 40 60
+0
+0.5
+1
+1.5
+2
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,32)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,33)
+0 20 40 60
+0
+2
+4
+6 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,34)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,35)
+0 20 40 60
+0
+0.5
+1
+1.5
+2
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,36)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,37)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,38)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,39)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,40)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,41)
+0 20 40 60
+0
+2
+4
+6 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,42)
+64
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,43)
+0 20 40 60
+0
+2
+4
+6
+8 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,44)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,45)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,46)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,47)
+0 20 40 60
+0
+2
+4
+6
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,48)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,49)
+0 20 40 60
+0
+2
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,50)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,51)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,52)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,53)
+0 20 40 60
+0
+2
+4
+6 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,54)
+65
+0 20 40 60
+0
+2
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,55)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,56)
+0 20 40 60
+0
+2
+4
+6
+8 ·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,57)
+0 20 40 60
+0
+2
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,58)
+0 20 40 60
+0
+1
+2
+3
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,59)
+0 20 40 60
+0
+0.5
+1
+1.5
+2
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,60)
+0 20 40 60
+0
+0.2
+0.4
+0.6
+0.8
+1
+·10−2
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,61)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,62)
+0 20 40 60
+0
+1
+2
+3
+4
+·10−3
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,63)
+66
+K.3 Figures of HDL Biases for 5-Round Ascon for 3rd to 8th Order
+0 20 40 60
+0
+0.2
+0.4
+0.6
+0.8
+1
+·10−2
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(0,24,33)
+0 20 40 60
+0
+0.2
+0.4
+0.6
+0.8
+1
+1.2 ·10−2
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(0,9,15,41)
+0 20 40 60
+0
+1
+2
+·10−2
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,9,24,51,55)
+0 20 40 60
+0
+0.5
+1
+1.5
+·10−2
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(a) ∆(1,12,18,22,21,52)
+0 20 40 60
+0
+1
+2
+3
+·10−2
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(b) ∆(10,13,21,31,49,55,61)
+0 20 40 60
+0
+5·10−2
+0.1
+Index ofS(5)[0]
+Bias
+TheoreticalExperimental
+(c) ∆(0,8,9,13,14,26,43,60)
+67
