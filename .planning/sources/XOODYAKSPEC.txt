@@ -1,0 +1,1464 @@
+Xoodyak, a lightweight cryptographic scheme
+Joan Daemen 2, Seth Hoﬀert, Silvia Mella 1,2, Michaël Peeters 1,
+Gilles Van Assche 1 and Ronny Van Keer 1
+1 STMicroelectronics
+2 Radboud University
+Abstract. In this paper, we present Xoodyak, a cryptographic primitive that can
+be used for hashing, encryption, MAC computation and authenticated encryption.
+Essentially, it is a duplex object extended with an interface that allows absorbing
+strings of arbitrary length, their encryption and squeezing output of arbitrary length.
+It inherently hashes the history of all operations in its state, allowing to derive its
+resistance against generic attacks from that of the full-state keyed duplex. Internally,
+it uses the Xoodoo[12] permutation that, with its width of 48 bytes, allows for very
+compact implementations. The choice of 12 rounds justiﬁes a security claim in the
+hermetic philosophy: It implies that there are no shortcut attacks with higher success
+probability than generic attacks. The claimed security strength is 128 bits. We
+illustrate the versatility of Xoodyak by describing a number of use cases, including
+the ones requested by NIST in the lightweight competition. For those use cases,
+we translate the relatively detailed security claim that we make for Xoodyak into
+simple ones.
+Version of Xoodyak : v1
+Version of this document : v2 (May 17, 2021)
+Keywords: lightweight cryptography · permutation-based cryptography · sponge con-
+struction · duplex construction · authenticated encryption · hashing
+1 Introduction
+Xoodyakis a versatile cryptographic object that is suitable for most symmetric-key func-
+tions, including hashing, pseudo-random bit generation, authentication, encryption and
+authenticated encryption. It is based on the duplex construction, and in particular on
+its full-state variant when it is fed with a secret key [ 3, 23, 17]. It is stateful and shares
+features with Markku Saarinen’s Blinker [ 28], Mike Hamburg’s Strobe protocol frame-
+work [18] and Trevor Perrin’s Stateful Hash Objects (SHO) [ 26]. In practice, Xoodyak is
+straightforward to use and its implementation can be shared for many diﬀerent use cases.
+Internally, Xoodyak makes use of the Xoodoo permutation [ 12, 13]. The design ap-
+proach of this 384-bit permutation is inspired by Keccak-p [5, 24], while it is dimensioned
+like Gimli for eﬃciency on low-end processors [ 1]. The structure consists of three planes of
+128 bits each, which interact per 3-bit columns through mixing and nonlinear operations,
+and which otherwise move as three independent rigid objects. Its round function lends
+itself nicely to low-end 32-bit processors as well as to compact dedicated hardware.
+The mode of operation on top of Xoodoo is called Cyclist, as a lightweight counter-
+part to Keyak’s Motorist mode [ 6]. It is simpler than Motorist, mainly thanks to the
+absence of parallel variants. Another important diﬀerence is that Cyclist is not limited to
+authenticated encryption, but rather oﬀers ﬁne-grained services, à la Strobe, and supports
+hashing.
+Of interest in the realm of embedded devices, Xoodyakcontains several built-in mech-
+anisms that help protect against side-channel attacks.
+•Following an idea by Taha and Schaumont [ 32], Cyclist can absorb the session
+counter that serves as nonce in chunks of a few bits. This counters diﬀerential power
+analysis (DPA) by limiting the degrees of freedom of an attacker when exploiting a
+selection function, see Section 3.2.2.
+•Another mechanism consists in replacing the incrementation of a counter with a key
+derivation mechanism: After using a secret key, a derived key is produced and saved
+for the next invocation of Xoodyak. The key then becomes a moving target for
+the attacker, see Section 3.2.6.
+•Then, to mitigate the impact of recovering the internal state, e.g., after a side
+channel attack, the Cyclist mode oﬀers a ratchet mechanism, similar to the “forget”
+call in [ 3]. This mechanism oﬀers forward secrecy and prevents the attacker from
+recovering the secret key prior to the application of the ratchet, see Section 3.2.5.
+•Finally, the Xoodoo round function lends itself to eﬃcient masking countermea-
+sures against diﬀerential power analysis and similar attacks.
+1.1 History
+Here we describe the changes in this version of the document (v2) compared to last
+submission in March 2019 (v1.1).
+•In Section 6, we updated the sequence submitted for the NIST authenticated en-
+cryption with associated data (AEAD) to use the third method described in Sec-
+tion 3.2.2, that is, we integrated the nonce with the key identiﬁer upon initialization.
+This change was announced and described in our last update document [ 14].
+•We updated the usage examples to favor the integration of the nonce into the key
+identiﬁer parameter.
+•We merged the text published in ToSC Special Edition [ 16].
+There is no change in the deﬁnition of Xoodyak or the underlying mode Cyclist.
+1.2 Notation
+The set of all bit strings is denoted Z∗
+2 and ϵ is the empty string. Xoodyak works with
+bytes and in the sequel we assume that all strings have a length that is multiple of 8 bits.
+The length in bytes of a string X is denoted |X|, which is equal to its bit length divided
+by 8.
+We denote a sequence of m strings X(0) to X(m−1) as X(m−1) ◦···◦X(1) ◦X(0). The
+set of all sequences of strings is denoted (Z∗
+2)∗ and ∅is the sequence containing no strings
+at all.
+We denote with enc8(x) a byte whose value is the integer x ∈Z256.
+1.3 Usage overview
+Xoodyak is a stateful object. It oﬀers two modes: the hash and the keyed modes, one of
+which is selected upon initialization.
+2
+1.3.1 Hash mode
+In hash mode, it can absorb input strings and squeeze digests at will. Absorb(X) absorbs
+an input string X, while Squeeze(ℓ) produces an ℓ-byte output depending on the data
+absorbed so far. The simplest case goes as follows:
+Cyclist(ϵ, ϵ, ϵ ) {initialization in hash mode}
+Absorb(x) {absorb string x}
+h ← Squeeze(n) {get n bytes of output}
+Here, h gets a n-byte digest of x, where n can be chosen by the user. Xoodyakoﬀers 128-
+bit security against any attack, unless easier on a random oracle. To get 128-bit collision
+resistance, we need to set n ≥32 bytes ( 256 bits), while for a matching level of (second)
+preimage resistance, it is required to have n ≥16 bytes ( 128 bits). This is similar to the
+SHAKE128 extendable output function (XOF) [ 24].
+More complicated cases are possible, for instance:
+Cyclist(ϵ, ϵ, ϵ )
+Absorb(x)
+Absorb(y)
+h1 ← Squeeze(n1)
+Absorb(z)
+h2 ← Squeeze(n2)
+Here, h1 is a digest over the two-string sequence y ◦x and h2 is a digest over z ◦y ◦x. The
+digest is over the sequence of strings and not just their concatenation. In this aspect, we
+here have a function that is similar to and has the same security level as TupleHash128 [ 25].
+1.3.2 Keyed mode
+In keyed mode, Xoodyak can do stream encryption, message authentication code (MAC)
+computation and authenticated encryption.
+As a ﬁrst example, the following sequence produces a tag (a.k.a. MAC) on a mes-
+sage M:
+Cyclist(K, ϵ, ϵ ) {initialization in keyed mode with key K}
+Absorb(M) {absorb message M}
+T ← Squeeze(t) {get tag T}
+The last line produces a t-byte tag, where t can be speciﬁed by the application. A typical
+tag length would be t = 16 bytes ( 128 bits).
+Then, encryption is done in a stream cipher-like way, hence it requires a nonce. The ob-
+vious way to do encryption would be do call Squeeze() and use the output as a keystream.
+Encrypt(P) works similarly, but it also absorbs P block per block as it is being encrypted.
+This oﬀers an advantage in case of nonce misuse, as the leakage is limited to one block
+when the two plaintexts start to diﬀer. Hence, to encrypt plaintext P under a given nonce,
+we can run the following sequence:
+Cyclist(K, ϵ, ϵ )
+Absorb(nonce)
+C ← Encrypt(P) {get ciphertext C}
+And to decrypt ciphertext C, we simply replace the last line with:
+3
+P ← Decrypt(C) {get plaintext P}
+Finally, authenticated encryption can be achieved by combining the previous sequences.
+For instance, to encrypt plaintext P under a given nonce and associated data A, we
+proceed as follows:
+Cyclist(K, ϵ, ϵ )
+Absorb(nonce)
+Absorb(A) {absorb associated data A}
+C ← Encrypt(P)
+T ← Squeeze(t) {get tag T}
+Note that Xoodyakusage goes much further than the simple examples above. In next
+sections we give more examples showing how the nonce can be absorbed more eﬃciently
+or in a way that makes side-channel attacks more diﬃcult, or how Xoodyak supports
+sessions and rolling subkeys.
+We attach a fairly precise, yet involved, security claim to Xoodyak in keyed mode.
+In addition, we provide clear corollaries with the resulting security strength for speciﬁc
+use cases. Here are two examples, which both assume a single secret key made of κ = 128
+uniformly and independently distributed bits.
+•First, let us take the MAC computation at the beginning of this section. It does
+not enforce the use of a nonce, hence an adversary gets more power in exploiting
+adaptive queries. Yet, this authentication scheme can resist against an adversary
+with up to 2128 computational complexity and up to 264 data complexity (measured
+in blocks).
+•Then, we discuss the last example of this section, namely the authenticated en-
+cryption scheme. We assume an application that correctly implements nonces and
+that does not release unveriﬁed decrypted ciphertexts. The use of nonces makes
+Xoodyak resist against even stronger adversaries. Our claim implies that this
+nonce-based authenticated encryption scheme can resist against an adversary with
+up to 2128 computational complexity and up to 2160 data complexity. Furthermore,
+the key size κ can be increased up to about 180 bits and the computational com-
+plexity limit follows 2κ, still with a data complexity of 2160.
+1.4 Advantages and limitations
+The advantages of Xoodyak are the following.
+•It is compact: It only requires a 48-byte state and some input and output pointers.
+The underlying duplex construction allows for bytes that arrive to be immediately
+integrated into the state without the need of a message queue. Furthermore, the
+permutation can be computed in-place [ 12, Section 4.1].
+•It foresees protections against side-channel attacks.
+– It oﬀers leakage resilience. During a session, the secret key is a moving target,
+as there is no ﬁxed key. In between sessions, it foresees a mechanism to roll
+keys.
+– If the same key must be used many times, one can easily add protection against
+implementation attacks. The degree-2 round function of Xoodoo makes mask-
+ing and threshold schemes relatively cheap.
+4
+•Its speciﬁcations are short and simple, while supporting all symmetric crypto oper-
+ations with a security strength of 128 bits.
+•Its mode oﬀers great ﬂexibility and can be adapted to the speciﬁc needs of an
+application. For instance, it supports sessions and intermediate tags in authenticated
+encryption in a transparent way. Intermediate tags allow reducing the buﬀer at the
+receiving end to store the plaintext before checking the tag.
+•It considers the security against multi-target attacks in the design.
+•It relies on a strong and eﬃcient permutation.
+– Xoodoo is based on the same principles as Keccak-p and hence its propaga-
+tion properties are well understood.
+– Xoodoo has an exceptionally good security strength build-up per operation
+count. This is visible in the diﬀusion properties and trail bounds.
+•In case of misuse (i.e., nonce misuse or release of unveriﬁed decrypted ciphertexts),
+the key cannot be retrieved by cryptanalysis. Authentication does not rely on a
+nonce.
+It has the following limitations:
+•It is inherently serial at construction level.
+•It does stream encryption so accidental nonce re-use may result in a leakage of up
+to 24 bytes of plaintext.
+2 Speciﬁcations
+Xoodyakis an instance of the Cyclist mode of operation on top of the Xoodoo permuta-
+tion. We start with the deﬁnition of the permutation in Section 2.1. Then in Section 2.2
+we present the mode of operation. And ﬁnally, in Section 2.3, we deﬁne Xoodyak and
+its associated security claim.
+2.1 The Xoodoo permutation
+Xoodoo is a family of permutations parameterized by its number of rounds nr and de-
+noted Xoodoo[nr].
+Xoodoo has a classical iterated structure: It iteratively applies a round function to
+a state. The state consists of 3 equally sized horizontal planes, each one consisting of 4
+parallel 32-bit lanes. Similarly, the state can be seen as a set of 128 columns of 3 bits,
+arranged in a 4 ×32 array. The planes are indexed by y, with plane y = 0 at the bottom
+and plane y = 2 at the top. Within a lane, we index bits with z. The lanes within a
+plane are indexed by x, so the position of a lane in the state is determined by the two
+coordinates (x, y ). The bits of the state are indexed by (x, y, z ) and the columns by (x, z ).
+Sheets are the arrays of three lanes on top of each other and they are indexed by x. The
+Xoodoo state is illustrated in Figure 1.
+The permutation consists of the iteration of a round function Ri that has 5 steps: a
+mixing layer θ, a plane shifting ρwest, the addition of round constants ι, a non-linear layer
+χ and another plane shifting ρeast.
+We specify Xoodoo in Algorithm 1, completely in terms of operations on planes and
+use thereby the notational conventions we specify in Table 1. We illustrate the step
+mappings in a series of ﬁgures: the χ operation in Figure 2, the θ operation in Figure 3,
+the ρeast and ρwest operations in Figure 4.
+5
+x
+y
+z
+lane
+x
+y
+z
+plane
+x
+y
+z
+state
+x
+y
+z
+sheet
+x
+y
+z
+column
+Figure 1: Toy version of the Xoodoo state, with lanes reduced to 8 bits, and diﬀerent
+parts of the state highlighted.
+Table 1: Notational conventions
+Ay Plane y of state A
+Ay ≪(t, v ) Cyclic shift of Ay moving bit in (x, z ) to position (x + t, z + v)
+Ay Bitwise complement of plane Ay
+Ay + Ay′ Bitwise sum (XOR) of planes Ay and Ay′
+Ay ·Ay′ Bitwise product (AND) of planes Ay and Ay′
+Algorithm 1 Deﬁnition of Xoodoo[nr] with nr the number of rounds
+Parameters: Number of rounds nr
+for Round index i from 1 −nr to 0 do
+A = R i(A)
+Here Ri is speciﬁed by the following sequence of steps:
+θ :
+P ← A0 + A1 + A2
+E ← P ≪(1, 5) + P ≪(1, 14)
+Ay ← Ay + E for y ∈{0, 1, 2}
+ρwest :
+A1 ← A1 ≪(1, 0)
+A2 ← A2 ≪(0, 11)
+ι:
+A0 ← A0 + Ci
+χ :
+B0 ← A1 ·A2
+B1 ← A2 ·A0
+B2 ← A0 ·A1
+Ay ← Ay + By for y ∈{0, 1, 2}
+ρeast :
+A1 ← A1 ≪(0, 1)
+A2 ← A2 ≪(2, 8)
+Table 2: The round constants ci with −11 ≤i ≤0, in hexadecimal notation (the least
+signiﬁcant bit is at z = 0 ).
+i ci i ci i ci i ci
+−11 0x00000058 −8 0x000000D0 −5 0x00000060 −2 0x000000F0
+−10 0x00000038 −7 0x00000120 −4 0x0000002C −1 0x000001A0
+−9 0x000003C0 −6 0x00000014 −3 0x00000380 0 0x00000012
+6
+0
+1
+2
+complement
+Figure 2: Eﬀect of χ on one plane.
++ =
+column parity θ-eﬀect
+fold
+Figure 3: Eﬀect of θ on a single-bit state.
+0
+1
+2
+shift (2,8)
+shift (0,1)
+0
+1
+2
+shift (0,11)
+shift (1,0)
+Figure 4: Illustration of ρeast (left) and ρwest (right).
+7
+The round constants Ci are planes with a single non-zero lane at x = 0 , denoted as ci.
+We specify the value of this lane for indices −11 to 0 in Table 2 and refer to Appendix A
+for the speciﬁcation of the round constants for any index.
+Finally, in many applications the state must be speciﬁed as a 384-bit string s with
+the bits indexed by i. The mapping from the three-dimensional indexing (x, y, z ) and i is
+given by i = z + 32(x + 4y).
+2.2 The Cyclist mode of operation
+The Cyclist mode of operation relies on a cryptographic permutation and yields a stateful
+object to which the user can make calls. It is parameterized by the permutation f, by the
+block sizes Rhash, Rkin and Rkout, and by the ratchet size ℓratchet, all in bytes. Rhash, Rkin
+and Rkout specify the block sizes of the hash and of the input and output in keyed modes,
+respectively. As Cyclist uses up to 2 bytes for frame bits (i.e., bits used for padding and
+domain separation), we require that max(Rhash, R kin, R kout) + 2 ≤b′, where b′ = b/ 8 is
+the permutation width in bytes.
+Upon initialization with Cyclist(K, id, counter), the Cyclist object starts either in
+hash mode if K = ϵ or in keyed mode otherwise. In the latter case, the object takes the
+secret key K together with its (optional) identiﬁer id, then absorbs a counter in a trickled
+way if counter ̸= ϵ. In the former case, it ignores the initialization parameters. Note that,
+unlike Strobe [ 18], there is no way to switch from hash to keyed mode, although we might
+extend Cyclist this way in the future.
+The available functions depend on the mode the object is started in: The functions
+Absorb() and Squeeze() can be called in both hash and keyed modes, whereas the
+functions Encrypt(), Decrypt(), SqueezeKey() and Ratchet() are restricted to the
+keyed mode. The purpose of each function is as follows:
+•Absorb(X) absorbs an input string X;
+•C ← Encrypt(P) enciphers P into C and absorbs P;
+•P ← Decrypt(C) deciphers C into P and absorbs P;
+•Y ← Squeeze(ℓ) produces an ℓ-byte output that depends on the data absorbed so
+far;
+•Y ← SqueezeKey(ℓ) works like Y ← Squeeze(ℓ) but in a diﬀerent domain, for
+the purpose of generating a derived key;
+•Ratchet() transforms the state in an irreversible way to ensure forward secrecy.
+Process history. Together, everything that inﬂuences the output of a Cyclist object,
+as returned by Squeeze(), SqueezeKey() or as keystream produced by Encrypt(), is
+captured by the process history, see Deﬁnition 1 below.
+The state of a Cyclist object will depend on the sequence of calls to it and on its inputs.
+More precisely, the intention is that any output depends on the sequence of all input strings
+(without ambiguity on their boundaries) and of all input calls (i.e., Absorb(), Encrypt()
+and Decrypt()) so far. In addition, any two subsequent output calls (i.e., Squeeze()
+and SqueezeKey()) generate strings from diﬀerent domains.
+To capture the idea that the output depends also on the operations performed, the
+process history contains symbols from the set Sin Deﬁnition 1 below. For instance, a call
+to Absorb(X) means the output will depend on the sequence X ◦Absorb, while a call
+to Encrypt(P) will make the output depend on P ◦Crypt, with Absorb, Crypt ∈S.
+As a side-eﬀect of other design criteria, like minimizing the memory footprint, the state
+also depends on the number of blocks in the previous calls to Squeeze() or SqueezeKey()
+8
+Table 3: Symbols and strings appended to the process history.
+Hash mode:
+Absorb(X) X ◦Absorb
+Squeeze(ℓ) after another Squeeze() Blocknhash(ℓ) ◦Squeeze
+Squeeze(ℓ) (otherwise) Blocknhash(ℓ)
+Keyed mode:
+Cyclist(K, id, counter) counter ◦id ◦AbsorbKey
+Absorb(X) X ◦Absorb
+C ← Encrypt(P) P ◦Crypt
+P ← Decrypt(C) P ◦Crypt
+Squeeze(ℓ) Blocknkout(ℓ) ◦Squeeze
+SqueezeKey(ℓ) Blocknkout(ℓ) ◦SqueezeKey
+Ratchet() Ratchet
+and on the previously processed plaintext or ciphertext blocks in Encrypt() or Decrypt().
+In particular, each symbol Block in the process history represents an extra output block
+requested via Squeeze() or SqueezeKey(), see Table 3.
+Note that, when in keyed mode, the output naturally also depends on the secret key
+absorbed upon initialization, although the key is not part of the process history itself.
+This ensures that the security claim can be properly expressed in an indistinguishability
+setting where the adversary has full control on the process history but not on the secret
+key, see Claim 2.
+Deﬁnition 1. The process history (or history for short) is a sequence of strings and
+symbols in (Z∗
+2 ∪S)∗, with
+S= {Absorb, AbsorbKey, Crypt, Squeeze, SqueezeKey, Block, Ratchet}.
+At initialization of the Cyclist object, the history is initialized to ∅. Then, each call to
+the Cyclist object appends symbols and strings according to Table 3, where
+nhash(ℓ) = max
+(
+0,
+⌈ ℓ
+Rhash
+⌉
+−1
+)
+and nkout(ℓ) = max
+(
+0,
+⌈ ℓ
+Rkout
+⌉
+−1
+)
+.
+In addition, the process history is updated with the Rkout-byte blocks of plaintext as they
+are processed by Encrypt() or Decrypt().
+Inside Cyclist. The Cyclist mode of operation is deﬁned in Algorithms 2 and 3. Here
+are some notes for a better understanding of the behavior of Cyclist.
+•At the bottom level, Cyclist deﬁnes the Down() and Up() methods.
+– The Down() method absorbs one block of input, by bitwise adding it to the
+state, together with a color cD in the last byte of the state. In this case,
+the color is a value that provides domain separation between the ﬁrst block
+of Absorb() (‘01‘ in hash mode or ‘03‘ in keyed mode), the ﬁrst block of
+AbsorbKey() (‘02‘) and any other block.
+– The Up() method aims at producing one block of output. It absorbs a color
+cU , calls the underlying permutation f and returns the ﬁrst bytes of the state.
+Here the color provides domain separation between a block of keystream ( ‘80‘),
+the ﬁrst block of Squeeze() (‘40‘), the ﬁrst block of SqueezeKey() (‘20‘), a
+ratchet ( ‘10‘) and anything else.
+9
+– The phase attribute keeps track of whether the last internal call was a Up() or
+a Down().
+•At the next level, the AbsorbAny() method aims at absorbing input. It cuts
+the input string in blocks of given length ( r parameter) and calls Down() and
+Up() appropriately. Similarly, SqueezeAny() provides output of a given length
+(ℓ parameter). Finally, the Crypt() method alternates calls to Up() to produce
+keystream and to Down() to absorb the plaintext. The Rabsorb attribute contains
+the block size when absorbing, which is Rkin in keyed mode or Rhash in hash mode.
+Similarly, the Rsqueeze attribute contains the block size when squeezing, which is
+Rkout in keyed mode or Rhash in hash mode.
+•At the top level, the public methods rely on AbsorbAny(), Crypt() and SqueezeAny().
+Algorithm 2 Deﬁnition of Cyclist[f, R hash, R kin, R kout, ℓ ratchet]
+Instantiation: cyclist ← Cyclist[f, R hash, R kin, R kout, ℓ ratchet](K, id, counter)
+Phase and state: (phase, s ) ← (up, ‘00‘b′
+)
+Mode and absorb rate: (mode, R absorb, R squeeze) ← (hash, R hash, R hash)
+if K not empty then AbsorbKey(K, id, counter)
+Interface: Absorb(X)
+AbsorbAny(X, R absorb, ‘03‘(absorb))
+Interface: C ← Encrypt(P), with mode = keyed
+return Crypt(P, false)
+Interface: P ← Decrypt(C), with mode = keyed
+return Crypt(C, true)
+Interface: Y ← Squeeze(ℓ)
+return SqueezeAny(ℓ, ‘40‘(squeeze))
+Interface: Y ← SqueezeKey(ℓ), with mode = keyed
+return SqueezeAny(ℓ, ‘20‘(key))
+Interface: Ratchet(), with mode = keyed
+AbsorbAny(SqueezeAny(ℓratchet, ‘10‘(ratchet)), R absorb, ‘00‘)
+10
+Algorithm 3 Internal interfaces of Cyclist[f, R hash, R kin, R kout, ℓ ratchet]
+Internal interface: AbsorbAny(X, r, c D)
+for all blocks Xi in Split(X, r ) do
+if phase ̸= up then Up(0, ‘00‘)
+Down(Xi, c D if ﬁrst block else ‘00‘)
+Internal interface: AbsorbKey(K, id, counter), with |K ||id|≤Rkin −1
+(mode, R absorb, R squeeze) ← (keyed, R kin, R kout)
+AbsorbAny(K ||id ||enc8(|id|), R absorb, ‘02‘(key))
+if counter not empty then AbsorbAny(counter, 1, ‘00‘)
+Internal interface: O ← Crypt(I, decrypt)
+for all blocks Ii in Split(I, R kout) do
+Oi ← Ii ⊕Up(|Ii|, ‘80‘(crypt) if ﬁrst block else ‘00‘)
+Pi ← Oi if decrypt else Ii
+Down(Pi, ‘00‘)
+return ||i Oi
+Internal interface: Y ← SqueezeAny(ℓ, c U )
+Y ← Up(min(ℓ, R squeeze), c U )
+while |Y |< ℓ do
+Down(ϵ, ‘00‘)
+Y ← Y ||Up(min(ℓ −|Y |, R squeeze), ‘00‘)
+return Y
+Internal interface: Down(Xi, c D)
+(phase, s ) ← (down, s ⊕(Xi ||‘01‘||‘00‘∗ ||(cD & ‘01‘ if mode = hash else cD)))
+Internal interface: Yi ← Up(|Yi|, c U )
+(phase, s ) ← (up, f (s if mode = hash else s ⊕(‘00‘∗ ||cU )))
+return s[0] ||s[1] ||. . . ||s[|Yi|−1]
+Internal interface: [Xi] ← Split(X, n )
+if X is empty then return array with a single empty string [ϵ]
+return array [Xi], with X = ||i Xi and |Xi|= n except possibly the last block.
+2.3 Xoodyak and its claimed security
+We instantiate Xoodyak in Deﬁnition 2 and attach to it security Claims 1 and 2.
+Deﬁnition 2. Xoodyak is Cyclist[f, R hash, R kin, R kout, ℓ ratchet] with
+•f = Xoodoo[12] of width 48 bytes (or b = 384 bits)
+•Rhash = 16 bytes
+•Rkin = 44 bytes
+•Rkout = 24 bytes
+•ℓratchet = 16 bytes
+Claim 1. The success probability of any attack on Xoodyak in hash mode shall not be
+higher than the sum of that for a random oracle and N2/ 2255, with N the attack complexity
+11
+in calls to Xoodoo[12] or its inverse. We exclude from the claim weaknesses due to the
+mere fact that the function can be described compactly and can be eﬃciently executed, e.g.,
+the so-called random oracle implementation impossibility [ 21], as well as properties that
+cannot be modeled as a single-stage game [ 27].
+This means that Xoodyak hashing has essentially the same claimed security as, e.g.,
+SHAKE128 [ 24].
+Claim 2. Let K = ( K0, . . . , K u−1) be an array of u secret keys, each uniformly and
+independently chosen from Zκ
+2 with κ ≤256 and κ a multiple of 8. Then, the advantage
+of distinguishing the array of Xoodyak objects after initialization with Cyclist(Ki, ·, ·)
+with i ∈Zu from an array of random oracles RO(i, h ), where h ∈(Z∗
+2 ∪S)∗ is a process
+history, is at most
+qivN +
+(u
+2
+)
+2κ + N
+2184 + (L + Ω)N +
+(L+Ω+1
+2
+)
+2192 + M2
+2382 + Mq
+2min(192+κ, 384) . (1)
+Here we follow the notation of the generic security bound of the full-state keyed duplex [ 17],
+namely:
+•N is the computational complexity expressed in the (computationally equivalent)
+number of executions of Xoodoo[12].
+•M is the online or data complexity expressed in the total number of input and output
+blocks processed by Xoodyak.
+•q ≤M is the total number of initializations in keyed mode.
+•Ω ≤ M is the number of blocks, in keyed mode, that overwrite the outer state
+(i.e., the ﬁrst Rkout bytes of the state) and for which the adversary gets a subsequent
+output block. In particular, this counts the number of blocks processed by Decrypt(·)
+for which the adversary can also get the corresponding key stream value or other
+subsequent output (e.g., in the case of the release of unveriﬁed decrypted ciphertext
+in authenticated encryption). And it also counts the number of calls to Ratchet()
+followed by Squeeze(ℓ) or SqueezeKey(ℓ) with ℓ ̸= 0 .
+•L ≤M is the number of blocks, in keyed mode, for which the adversary knows the
+value of the outer state from a previous query and can choose the input block value
+(e.g., in the case of authentication without a nonce, or of authenticated encryption
+with nonce repetition). This includes the number of times a call to Absorb() follows
+a call to Squeeze(ℓ) or to SqueezeKey(ℓ) with ℓ ̸= 0 .
+•qiv ≤u is the maximum number of keys that are used with the same id, i.e.,
+qiv = max
+id
+|{i |Cyclist(Ki, id, ·) is called at least once }|.
+Claims 1 and 2 ensure Xoodyakhas 128 bits of security both in hash and keyed modes
+(assuming κ ≥128). Regarding the data complexity, it depends on the values of q, Ω and
+L, for which we will see concrete examples in Section 3. Given that they are bounded by
+M, Xoodyakresists to a data complexity of up to 264 blocks, as the probability in Eq. ( 1)
+is negligible as long as N ≪2128 and M ≪264. In the particular case of L + Ω = 0 ,
+it resists even higher data complexities, as the probability remains negligible also when
+M ≪2160.
+The parameter qiv relates to the possible security degradations in the case of multi-
+target attacks, as an exhaustive key search would erode security by log2 qiv ≤log2 u bits
+in this case. However, when the protocol ensures qiv = 1 , there is no degradation and the
+security remains at min(128, κ ) bits even in the case of multi-target attacks.
+A rationale for the security claim is given in Section 4.
+12
+3 Using Xoodyak
+Xoodyak, as a Cyclist object, can be started in hash mode and therefore used as a
+hash function, as an extendable output function (XOF) or most generally as a doubly
+extendable cryptographic (or dec) function. Alternatively, one can start Xoodyak in
+keyed mode and, e.g., to use it as a doubly-extendable cryptographic keyed (or deck)
+function or for duplex-like session authenticated encryption. In this section, we cover use
+cases in this order, ﬁrst in hash mode, then in keyed mode, then some combination of
+both.
+3.1 Hash mode
+As already mentioned, Xoodyak can be used as a hash function. More generally, it can
+serve as a XOF, the generalization of a hash function with arbitrary output length. To
+get a n-byte digest of some input x, one can use Xoodyak as follows:
+Cyclist(ϵ, ϵ, ϵ )
+Absorb(x)
+Squeeze(n)
+This sequence is the nominal sequence for using Xoodyak as a XOF. Its security is
+summarized in the following Corollary.
+Corollary 1. Assume that Xoodyak satisﬁes Claim 1. Then, this hash function has the
+following security strength levels, with n the output size in bytes:
+collision resistance min(8n/ 2, 128) bits
+preimage and second preimage resistance min(8n, 128) bits
+m-target preimage resistance min(8n −log m, 128) bits
+By using consecutive calls to Absorb(), Xoodyak can hash not just one string, but
+potentially a sequence of strings. For instance, to compute a n-byte digest over the
+sequence x3 ◦x2 ◦x1, one does the following:
+Cyclist(ϵ, ϵ, ϵ )
+Absorb(x1)
+Absorb(x2)
+Absorb(x3)
+Squeeze(n)
+The output depends on the sequence as such and not just on the concatenation of the
+diﬀerent strings. In this respect Xoodyak is therefore similar to TupleHash [ 25].
+Most generally, Xoodyak enjoys incrementality properties on both its input and its
+output: Appending a string to the input sequence costs only the processing of the new
+string, and requesting more output bits costs only the production of these new bits. Hence,
+we say that Xoodyak implements a dec function [ 13].
+A XOF can be implemented in a stateful manner and can come with an interface
+that allows for requesting more output bits. This is the so-called extendable output
+feature, and for Cyclist this is provided quite naturally by the Squeeze() function.
+Here, some care must be taken for interoperability: For supporting use cases such as
+the one in Section 3.2.4, Cyclist considers squeezing calls as being in distinct domains.
+This means a Cyclist objects with some given history, the n + m bytes returned by
+Squeeze(n) ||Squeeze(m) and Squeeze(n + m) will be the same in the ﬁrst n bytes
+and diﬀer in the last m bytes. If an extendable output is required without this feature,
+13
+an interface can be built to allow incremental squeeze calls. For instance, an interface
+SqueezeMore() would behave such that calling Squeeze(n) followed by SqueezeMore(m)
+is equivalent to calling Squeeze(n + m) in the ﬁrst place.
+3.2 Keyed mode
+In keyed mode, Xoodyak can naturally implement a deck function [ 13], although we
+focus instead on duplex-based ways to perform authentication and (authenticated) en-
+cryption [ 3].
+To use Xoodyak as a keyed object, one starts it with Cyclist(K, id, counter) where
+K is a secret key with a ﬁxed length of κ bits. We ﬁrst show how to use the id and
+counter parameters, to counteract multi-target attacks and to handle the nonce, then
+discuss various kinds of authenticated encryption use cases.
+3.2.1 Two ways to counteract multi-target attacks
+The id is an optional key identiﬁer. It oﬀers one of two ways to counteract multi-target
+attacks.
+In a multi-target attack, the adversary is not just interested in breaking a speciﬁc
+device or key, but in breaking any device or key from a (possibly large) set. If there are u
+keys in a system, the security can degrade by up to log2 u bits in such a case [ 8]. Claim 2
+reﬂects this in the term qivN
+2κ ≤ N
+2κ−log2 u as qiv ≤u.
+Let us assume that we wish to target a security strength level of 128 bits including
+multi-target attacks. Xoodyak can achieve this in two ways.
+•We extend the length of the secret key. By setting κ = 128 + log 2 u, then the term
+qivN
+2κ becomes
+qivN
+2128+log2 u ≤ N
+2128 .
+•We make the key identiﬁer id globally unique among the u keys and therefore ensure
+that qiv = 1 . Then, there is no degradation for exhaustive key search in a multi-
+target setting, and the key size can be equal to the target security strength level, so
+κ = 128 in this example.
+For instance, the following sequence gives an example on how to encrypt a message P
+under a given nonce using a key K and key identiﬁer id :
+Cyclist(K, id, ϵ )
+Absorb(nonce)
+C ← Encrypt(P)
+3.2.2 Three ways to handle the nonce
+The counter parameter of Cyclist() is a data element in the form of a byte string that
+can be incremented. It is absorbed in a trickled way, one digit at a time, so as to limit the
+number of power traces an attacker can take with distinct inputs [ 32]. At the upper level,
+the user or protocol designer ﬁxes a basis 2 ≤B ≤256 and assumes that the counter is
+a string in Z∗
+B. A possible way to go through all the possible strings in Z∗
+B is as follows.
+First, the counter is initialized to the empty string. Then, as the counter is incremented,
+it takes all the possible strings in Z1
+B, then all the possible strings in Z2
+B, and so on.
+The counter shall be absorbed starting with the most signiﬁcant digits. This allows
+caching the state after absorbing part of the counter as the ﬁrst digits absorbed will change
+the least often. The smaller the value B, the smaller the number of possible inputs at
+14
+each iteration of the permutation, so the better protection against power analysis attacks
+and variants.
+This method of absorbing a nonce, as a counter absorbed in a trickled way, is desired in
+situations where protection against power analysis attacks matter. Otherwise, the nonce
+can be absorbed at once with Absorb(nonce) just after Cyclist(K, id, ϵ ).
+Finally, a third method consists in integrating the nonce with the id parameter. This
+method is the most eﬃcient, in particular for small messages. In addition, if id is a global
+nonce, i.e., it is unique among all the keys used in the system, this also ensures qiv = 1 as
+explained above.
+3.2.3 Authenticated encryption
+We propose using Xoodyak for authenticated encryption as follows. To encrypt a plain-
+text P under a given nonce and associated data A under key K, and to get a tag of t = 16
+bytes, we make the following sequence of calls:
+Cyclist(K, nonce, ϵ )
+Absorb(A)
+C ← Encrypt(P)
+T ← Squeeze(t)
+return (C, T )
+To decrypt (C, T ), we proceed similarly:
+Cyclist(K, nonce, ϵ )
+Absorb(A)
+P ← Decrypt(C)
+T′ ← Squeeze(t)
+if T = T′ then
+return P
+else
+return ⊥
+If the nonce is not repeated and if the decryption does not leak unveriﬁed decrypted
+ciphertexts, then we have L = Ω = 0 here, see Claim 2. In addition, if the nonce is globally
+unique in order to ensure qiv = 1 , we obtain the following simpliﬁed security claim.
+Corollary 2. Assume that (1) Xoodyak satisﬁes Claim 2; (2) this authenticated encryp-
+tion scheme is fed with a single κ-bit key with κ ≤192; (3) it is implemented such that
+the nonce is not repeated and the decryption does not leak unveriﬁed decrypted ciphertexts.
+Then, it can be distinguished from an ideal scheme with an advantage whose dominating
+terms are:
+N
+2κ + N
+2184 + M2
+2192+κ .
+This translates into the following security strength levels assuming a t-byte tag (the com-
+plexities are in bits):
+computation data
+plaintext conﬁdentiality min(184, κ, 8t) 96 + κ/ 2
+plaintext integrity min(184, κ, 8t) 96 + κ/ 2
+associated data integrity min(184, κ, 8t) 96 + κ/ 2
+15
+3.2.4 Session authenticated encryption
+Session authenticated encryption works on a sequence of messages and the tag authen-
+ticates the complete sequence of messages received so far. Starting from the sequence
+in Section 3.2.3, we add the support for messages (Ai, P i), where Ai, Pi or both can be
+empty.
+Cyclist(K, nonce, ϵ )
+Absorb(A1)
+C1 ← Encrypt(P1)
+T1 ← Squeeze(t)
+⇒ output (C1, T 1) and wait for next message
+Absorb(A2)
+C2 ← Encrypt(P2)
+T2 ← Squeeze(t)
+⇒ output (C2, T 2) and wait for next message
+Absorb(A3)
+T3 ← Squeeze(t)
+⇒ output T3 and wait for next message
+C4 ← Encrypt(P4)
+T4 ← Squeeze(t)
+⇒ output (C4, T 4) and wait for next message
+T5 ← Squeeze(t)
+⇒ output T5 and wait for next message
+In this example, T2 authenticates (A2, P 2) ◦(A1, P 1). The third message has no plain-
+text, the fourth message has no associated data, and the ﬁfth message is empty. In such
+a sequence, the convention is that the call to Squeeze() ends a message. Since it appears
+in the processing history, there is no ambiguity on the boundaries of the messages even if
+some of the elements (or both) are empty.
+The use of empty messages may be clearer in the case of a session shared by two (or
+more) communicating devices, where each device takes a turn. A device may have nothing
+to say and so skips its turn by just producing a tag.
+To relate to Claim 2, we have to determine L by counting the number of invocations
+to Absorb() that follow Squeeze(). If the nonce is not repeated and if the decryption
+does not leak unveriﬁed decrypted ciphertexts, we have L = T −q, with T the number of
+messages processed (or tags produced), and Ω = 0 .
+3.2.5 Ratchet
+At any time in keyed mode, the user can call Ratchet(). This causes part of the state to
+be overwritten with zeroes, thereby making it computationally infeasible to compute the
+state value before the call to Ratchet() to mitigate the impact of recovering the internal
+state, e.g., after a side channel attack.
+In an authenticated encryption scheme, the call to Ratchet() can be typically in-
+serted either just before producing the tag or just after. The advantage of calling it just
+before the tag is that it is most eﬃcient: It requires only one extra call to the permutation
+f. An advantage of calling it just after the tag is that its processing can be done asyn-
+chronously, while the ciphertext is being transmitted and it waits for the next message.
+Unless Ratchet() is the last call, the number of calls to it must be counted in Ω.
+Cyclist(K, nonce, ϵ )
+Absorb(A)
+16
+C ← Encrypt(P)
+Ratchet() {either here . . . }
+T ← Squeeze(t)
+Ratchet() {. . . or here}
+3.2.6 Rolling subkeys
+As an alternative to using a long-term secret key together with its associated nonce
+that is incremented at each use, Cyclist oﬀers a mechanism to derive a subkey via the
+SqueezeKey() call. On an encrypting device, one can therefore replace the process of
+incrementing and storing the updated nonce at each use of the long-term secret key with
+the process of updating a rolling subkey:
+K1 ← K and i ← 1
+while necessary do
+Initialize a new Xoodyak instance with Cyclist(Ki, ϵ, ϵ )
+Ki+1 ← SqueezeKey(ℓsub) {and store Ki+1 by overwriting Ki}
+Ratchet() {optional}
+Absorb(Ai)
+Ci ← Encrypt(Pi)
+Ti ← Squeeze(t)
+⇒ output (Ci, T i) and wait for next message
+i ← i + 1
+Here ℓsub should be chosen large enough to avoid collisions, say ℓsub = 32 bytes ( 256
+bits). Assuming that there are no collisions in the subkeys, L = 0 and Ω is the number of
+calls to Ratchet().
+Using Cyclist this way oﬀers resilience against side channel attacks, as the long-term
+key is not exposed any more and can even be discarded as soon as the ﬁrst subkey is derived.
+The key to attack becomes a moving target, just like the state in session authenticated
+encryption.
+3.2.7 Nonce reuse and release of unveriﬁed decrypted ciphertext
+The authenticated encryption schemes presented in this section assume that the nonce is
+unique per session, namely that the value is used only once per secret key. It also assumes
+that an implementation returns only an error when receiving an invalid cryptogram and
+in particular does not release the decrypted ciphertext if the tag is invalid. If these two
+assumptions are satisﬁed, we refer to this as the nominal case ; otherwise, we call it the
+misuse case .
+In the misuse case security degrades and hence we strongly advise implementers and
+users to respect the nonce requirement at all times and never release unveriﬁed decrypted
+ciphertext. We detail security degradation in the following paragraphs.
+A nonce violation in general breaks conﬁdentiality of part of the plaintext. In partic-
+ular, two sessions that have the same key and the same process history (i.e., the same K,
+id and/or nonce, counter and the same sequence of associated data, plaintexts) will result
+in the same output (ciphertext, tag). We call such a pair of sessions in-sync. Clearly,
+in-sync sessions leak equality of inputs and hence also plaintexts. As soon as in-sync ses-
+sions get diﬀerent input blocks, they lose synchronicity. If these input blocks are plaintext
+blocks, the corresponding ciphertext blocks leak the bitwise diﬀerence of the corresponding
+plaintext blocks (of Rkout = 24 bytes). We call this the nonce-misuse leakage.
+Release of unveriﬁed decrypted ciphertext also has an impact on conﬁdentiality as it
+allows an adversary to harvest keystream that may be used in the future by legitimate
+parties. An adversary can harvest one key stream block at each attempt.
+17
+Nonce violation and release of unveriﬁed decrypted ciphertext have no consequences for
+integrity and do not put the key in danger for Xoodyak. This is formalized in Corollary 3.
+Corollary 3. Assume that (1) Xoodyak satisﬁes Claim 2; (2) this authenticated encryp-
+tion scheme is fed with a single κ-bit key with κ ≤192. Then, except for nonce-misuse
+leakage and keystream harvesting, it can be distinguished from an ideal scheme with an
+advantage whose dominating terms are:
+N
+2κ + N
+2184 + MN + M2
+2192 .
+This translates into the following security strength levels assuming a t-byte tag (the com-
+plexities are in bits):
+computation data
+plaintext conﬁdentiality (nominal case) min(128, κ, 8t) 64
+plaintext conﬁdentiality (misuse case) - -
+plaintext integrity min(128, κ, 8t) 64
+associated data integrity min(128, κ, 8t) 64
+3.3 Authenticated encryption with a common secret
+A key exchange protocol, such as Diﬃe-Hellman or variant, results in a common secret
+that usually requires further derivation before being used as a symmetric secret key. To
+do this with a Cyclist object, we can use an object in hash mode, process the common
+secret, and use the derived key in a new object that we start in keyed mode. For example:
+Cyclist(ϵ, ϵ, ϵ )
+Absorb(ID of the chosen protocol )
+Absorb(KA) {Alice’s public key}
+Absorb(KB) {Bob’s public key}
+Absorb(KAB) {Their common secret produced with Diﬃe-Hellman}
+KD ← Squeeze(ℓ)
+Cyclist(KD, nonce, ϵ )
+Absorb(A)
+C ← Encrypt(P)
+T ← Squeeze(t)
+return (C, T )
+Note that if ℓ ≤ Rhash, an implementation can eﬃciently chain KD ← Squeeze(ℓ)
+and the subsequent reinitialization Cyclist(KD, ϵ, ϵ ). Since KD is located in the outer
+part (i.e., the ﬁrst Rhash bytes) of the state, it needs only to set the rest of the state to
+the appropriate value before calling f.
+Note also that if at least one of the public key pairs is ephemeral, the common secret
+KAB is used only once and no nonce is needed.
+4 Design rationale
+In this section, we give the design rationale of Xoodyak. First, we give the general
+strategy. Then, we report on the generic security of the Cyclist mode and relate it to
+Xoodyak’s security claim. Finally, we highlight the properties of the Xoodoo[12] per-
+mutation.
+18
+4.1 Design strategy
+Xoodyak connects a mode of operation, namely Cyclist, to a permutation, namely
+Xoodoo[12]. The design strategy is hermetic in the following sense: We chose the num-
+ber of rounds in Xoodoo such that the best attacks on Xoodyak are (claimed to be)
+the generic attacks on the Cyclist mode. This is visible in the security claims Claim 1
+and 2, as they replicate the best known security bounds of the sponge and keyed duplex
+constructions. In contrast, a non-hermetic strategy would keep some buﬀer between the
+claimed security level and the generic attacks.
+Note that the strategy behind Xoodyak diﬀers from the so-called “hermetic sponge
+strategy” [ 5]. Putting aside deﬁnitional issues, the hermetic sponge strategy described
+in [5] targets the absence of distinguishers on the permutation in an absolute sense, whereas
+we only consider the security of the resulting function Xoodyak. Hence we do not claim
+that Xoodoo[12] is free of distinguishers, only that it is strong enough when plugged in
+Cyclist.
+4.2 Generic security and the security claim
+We now give more details to relate the generic security of the sponge and keyed duplex
+constructions to Xoodyak’s security claim.
+4.2.1 Xoodyak in hash mode
+In hash mode, Cyclist can be expressed on top of the duplex construction [ 3] with simple
+padding as recalled in Algorithm 4. The state is initialized to the all-zero string like
+Cyclist, and a duplexing call corresponds to a sequence of Down() and Up().
+The rate is set to r = 8 Rhash + 2 bits, which amounts to the input block size plus two
+additional bits that can be potentially controlled by the attacker, namely the padding bit
+and one color bit (i.e., cD & ‘01‘) via Down() in Algorithm 3. Note that, in the duplex
+construction, the input σ and its padding aﬀect only the ﬁrst r bits, whereas Cyclist’s
+color bit is in the last byte of the state. This could be formalized by permuting the bit
+positions before and after f, i.e., by running the duplex construction on f′ = π−1 ◦f ◦π
+with π a bit transposition such that all the input bits are in the ﬁrst r positions, and this
+would not aﬀect the generic security.
+Algorithm 4 The duplex construction duplex[f, pad10∗, r ]
+Instantiation: duplex ← duplex[f, pad10∗, r ]
+State: s ← 0b
+Interface: Z ← duplexing(σ, ℓ ) with ℓ ≤r, σ ∈∪r−1
+n=0 Zn
+2 , and Z ∈Zℓ
+2
+s ← s ⊕(σ||10∗)
+s ← f(s)
+return ⌊s⌋ℓ
+Using the Duplexing-Sponge Lemma [ 3], the generic security of the duplex construction
+can be reduced to that of the sponge construction with a capacity of c = b −r, so c = 254
+bits in the case of Xoodyak. Consequently, we make a ﬂat sponge claim [ 2] with claimed
+capacity equal to c, hence accounting for a success probability of N2
+2c+1 = N2
+2255 in Claim 1.
+4.2.2 Xoodyak in keyed mode
+When in keyed mode, Cyclist can be rephrased in terms of calls to the full-state keyed
+duplex (KD), as recalled in Algorithm 5. Here the rate is r = 8 Rkout and c = b −r,
+19
+so c = 192 bits in the case of Xoodyak. A crucial property of the KD is that each
+duplexing call starts with applying the permutation f, then generates a block of output
+and ﬁnally adds an input block to the outer state, as depicted in Figure 5. In the language
+of Cyclist, a duplexing call translates into a sequence of Up() followed by Down(X). This
+cycle is exactly an iteration of Encrypt(), where the plaintext block is given before the
+corresponding keystream block is output, so an iteration of Encrypt() directly translates
+to a call to KD. A similar comment applies to AbsorbAny(), possibly except the ﬁrst
+iteration.
+±
+K
+f
+iv
+Z ¾
+f
+Z ¾
+f
+Z ¾
+…
+Figure 5: The full-state keyed duplex construction.
+Algorithm 5 Full-state keyed duplex construction KDf
+K=(K0,...,K u−1) with ∀i, K i ∈Zκ
+2
+Interface: Z ← KD. Init(Kδ, iv, σ, ﬂag) with δ ∈ Zu, iv ∈ Zb−κ
+2 , σ ∈ Zb
+2, ﬂag ∈
+{true, false}, and Z ∈Zr
+2
+s ← f(Kδ||iv)
+Z ← the ﬁrst r bits of s
+if ﬂag = true then σ ← σ ⊕(Z||0∗)
+s ← s ⊕σ
+return Z
+Interface: Z = KD . Duplexing(σ, ﬂag) with σ ∈Zb
+2, ﬂag ∈{true, false}, and Z ∈Zr
+2
+s ← f(s)
+Z ← the ﬁrst r bits of s
+if ﬂag = true then σ ← σ ⊕(Z||0∗)
+s ← s ⊕σ
+return Z
+However, a call to SqueezeAny() always ends with Up(), without knowing what the
+next input will be. To simulate this and properly remap it to the KD setting [ 17], we can
+say that in that case the Cyclist object gets its output block by making a duplexing call
+with an arbitrary input block. When the actual input block becomes known, it restarts
+the whole KD object with the same queries, but this time with the correct input block.
+This is like re-doing a query with the same path and is accounted for in L each time it
+happens.
+The diﬀerent terms of Claim 2’s Eq. ( 1) stem from the security bound in the KD
+paper [ 17], which we now detail.
+•(L+Ω)N
+2c and (
+L+Ω+1
+2 )
+2c are present as is in Eq. ( 1).
+•
+2ν2(M−L)
+r,c (N+1)
+2c is upper bounded as 2b(N+1)
+4×2c since it is shown in [ 17] that 2(r−c)/ 2 <
+M ≤2r−1 implies ν2(M−L)
+r,c ≤ν2M
+r,c ≤b/ 4. We then bound 2b(N+1)
+4×2c = 384(N+1)
+2c+1 ≤
+N
+2c−8 .
+20
+•(M−q−L)q
+2b−q + M(M−L−1)
+2b is not greater than 4M2
+2b for q ≤2b−1, and 4M2
+2b = M2
+2382 here.
+•Hmin(DK) = Hcoll(DK) = κ in our setting, so (M−q−L)q
+2
+Hmin(DK)+min(c,b −k) is upper bounded
+as Mq
+2min(c+κ,b ) , qivN
+2
+Hmin(DK) as uN
+2κ (since qiv ≤u), and (
+u
+2)
+2Hcoll(DK) = (
+u
+2)
+2κ .
+4.2.3 Decodability
+In this section, we show the following lemma, which means that any output of Cyclist
+unambiguously depends on the process history. For the keyed mode, in particular, this
+links the Cyclist mode to the full-state keyed duplex construction [ 17].
+Lemma 1. From the sequence of b-bit blocks that are added to the state between each call
+to f, one can recover the process history of the Xoodyak object, together with the secret
+key if in keyed mode.
+Proof. First let us observe that any sequence of calls to the Cyclist object is translated
+internally into an alternating sequence of Down(Xi, c D) and Up(|Yi|, c U ) steps. The ﬁrst
+step is the internal input step that takes a message block Xi, applies a simple reversible
+padding to it and injects the result into the state, complemented optionally by a color
+byte cD, i.e., a byte that performs domain separation between the diﬀerent operations.
+The second step is the internal output step, which ﬁrst optionally injects a color byte cU
+into state, applies the permutation f and then produces the requested number of bytes
+as output. Since the parts of the state that these two steps deal with are not overlapping,
+and since each input block Xi is padded in a reversible way, it is straightforward to extract
+from the b-bit block sequence the corresponding calls to Down() and Up() along with
+their parameters Xi, cD and cU . We ignore the output length parameter |Yi|that is not
+necessary for the decodability.
+In general, each Cyclist call starts with a ﬁrst colored step and continues with zero,
+one or several uncolored steps. One can use this property to easily detect where each call
+starts in the alternating sequence of Down() and Up() steps. There are a few exceptions
+to this color property that we detail now.
+The most notable exception is in hash mode, where none of Squeeze() steps are
+colored. If there are Down() steps, these will have empty input strings. For the sake of
+decodability, we can then simply consider that these steps are part of the previous call.
+There are also exceptions in keyed mode. In the case the phase is down, Absorb() will
+start with an uncolored Up() step. This case may occur for instance if Absorb() is called
+twice in a row. A similar yet more subtle situation occurs if Squeeze() is called after any
+call that terminates with a Up() step. In that case, Squeeze() starts with an implicit
+uncolored void step , i.e., a Down()-like step that has no eﬀect on the state. The same
+situation occurs for Encrypt(), Decrypt() and Ratchet(). For all these exceptions,
+we can in fact either ignore the ﬁrst uncolored step or consider that this step is part of
+the sequence attached to the previous call. Since each call to Cyclist is associated with a
+unique color, we can then use this color property to decode the alternating step sequence
+and extract the corresponding call parameters.
+To summarize, the decodability of Cyclist works as follows. First, we convert the
+sequence of b-bit blocks that are added to the state into the corresponding sequence of
+step calls Down() and Up() along with their parameters. Working backward, we cut
+this sequence into sub-sequences, each starting with a colored step (or a void step) and
+followed by zero, one or more uncolored steps. We associate then each sub-sequence
+to corresponding call, reconstructing when necessary the message parameter from the
+concatenation of all block parameters extracted in the sub-sequence. This is illustrated
+in Table 4. In hash mode, we observe that although calls to Squeeze() are not meant to
+be decodable, some of them can still be decoded as a side-eﬀect of the insertion of a void
+21
+Table 4: Matching up and down sub-sequences with process history. Here u() and d()
+are shortcut notations for Up() and Down(), respectively.
+Hash mode:
+[u(·)] d(Xi, ‘01‘) (u(·) d(Xi or ϵ, ·))∗ [u(·)] Block∗◦X = ||iXi ◦Absorb
+d() u(·) ( d(ϵ, ·) u(·))nhash(ℓ) Blocknhash(ℓ) ◦Squeeze
+Keyed mode:
+[u(·)] d(Xi, ‘02‘) (u(·) d(Xi, ·))∗ (counter ◦(K||id)) = ||iXi ◦AbsorbKey
+[u(·)] d(Xi, ‘03‘) (u(·) d(Xi, ·))∗ X = ||iXi ◦Absorb
+[d()] u(‘80‘)d(Xi, ·) ( u(·) d(Xi, ·))∗ P = ||iXi ◦Crypt
+[d()] u(‘40‘) (d(ϵ, ·) u(·))nkout(ℓ) Blocknkout(ℓ) ◦Squeeze
+[d()] u(‘20‘) (d(ϵ, ·) u(·))nkout(ℓ) Blocknkout(ℓ) ◦SqueezeKey
+[d()] u(‘10‘) (d(Xi or ϵ, ·) u(·))∗ Ratchet
+step (denoted d()) between two consecutive calls to Squeeze(), or due to empty down
+steps that appear in long Squeeze() calls ( ℓ > R hash).
+4.3 Choice of the permutation
+The choice of the permutation was driven by the idea of sharing resources between hash
+and keyed modes. The size of the permutation is therefore determined mainly by the
+hash mode, as for a given security level, it requires more capacity than the keyed mode.
+Since 128-bit security is desired, we need to have a capacity of at least 256 bits to prevent
+collisions. The permutation should therefore be wider than 256 bits, but not too much
+wider.
+A possible candidate was Keccak-p[400, n r], as the permutation size leaves enough
+room for the input block. However, it uses operations on 16-bit lanes but 16-bit processors
+are not so common nowadays. Instead, the choice of Xoodoo was quite natural as it shares
+a lot of similarity with the Keccak-p family and works on 32-bit lanes. The entire state
+of 384 bits can be held in 12 registers of 32 bits, making it a nice ﬁt with the low-end
+32-bit devices.
+For the design rationale of Xoodoo, we give here some highlights and refer to [ 12] for
+more details. Xoodoo operates on three planes of 128 bits each, which interact per 3-bit
+columns through mixing and nonlinear operations, and which otherwise move as three
+independent rigid objects. Its round function uses the ﬁve step mappings θ, ρwest, ι, χ
+and ρeast. The nonlinear layer χ is an instance of the transformation χ that was already
+described and analyzed in [ 10], and that operates on 3 bits in Xoodoo. It has algebraic
+degree 2, it is involutive and hence r rounds of Xoodoo or its inverse cannot have an
+algebraic degree higher than 2r. The mixing layer θ is a column parity mixer [ 31]. As
+in both the parity plane computation in θ and in χ the state bits interact only within
+columns, the dispersion steps aim at dislocating the bits of the columns between every
+application of θ and of χ. For that reason, ρeast and ρwest shift the planes, treating
+them as rigid objects, between each χ and each θ step. Finally, the translation-invariance
+symmetry is destroyed by adding a round constants in the step ι.
+The Xoodoo round function exhibits fast avalanche properties: It needs 3. 5 rounds
+or 2 inverse rounds to satisfy the strict avalanche criterion [ 36]. Like Keccak-p, it has
+so-called weak alignment [ 4], where alignment characterizes the way diﬀerences or linear
+correlations propagate. The weak alignment has the advantage of making Xoodoo less
+susceptible to truncated diﬀerentials attacks or to trail clustering eﬀects.
+22
+Finally, in terms of diﬀerential and linear cryptanalysis, Xoodoo has strong bounds on
+the weight of its trails (see below). Note that the weight of a trail relates to its diﬀerential
+probability or its correlation, see [ 12, Section 5.2] for more details.
+The choice for the number of rounds, namely 12, comes for one part from our experience
+in designing sponge-based hash functions and authenticated encryption schemes, and for
+another part from the similarity to Keccak-p on which extensive cryptanalysis has been
+performed in the last ten years [ 7]. With 12 rounds, Xoodoo[12] has strong avalanche, dif-
+ferential and linear propagation properties, even stronger than those of Keccak-p[400, n r]
+in terms of diﬀerential and linear trails. Even if an attack can somehow skip 4 rounds, it
+is guaranteed that any 8-round trail, either diﬀerential or linear, has weight at least 148.
+For hashing, the best collision or (second) preimage attack on Keccak reaches only 5
+or 6 rounds, depending on how many degrees of freedom are available [ 30]. Note that in
+hashing mode, Xoodyak has a much smaller rate (or block size), hence much less degrees
+of freedom, than the aforementioned Keccak instances.
+For keyed operations, we believe that Xoodoo[12] is suitable to be plugged in the
+full-state keyed duplex construction, on which Cyclist relies. As a comparison, this is
+the same number of rounds that is used for Keccak-p in Keyak [6], also relying on the
+full-state keyed duplex construction.
+4.3.1 Extended trail analysis
+Since the publication of Xoodoo, we have extended the trail analysis and improved the
+bounds. Table 5 shows the currently known lower bounds. In particular, we improved
+upon [ 12, Table 7] for 4 and 5 rounds.
+Let us ﬁrst summarize the notions related to diﬀerential and linear trails. For more
+details, please refer to [ 12, Sections 5.2 and 7].
+We split the round function into the nonlinear layer χ and the sequence of linear
+mappings λ = ρwest ◦θ ◦ρeast. An n-round diﬀerential trail is the concatenation of n
+round diﬀerentials (ai, a i+1), with ai the diﬀerence at the output of χ after i rounds, and is
+fully speciﬁed by the sequence (a0, a 1, . . . , a n). We use a redundant representation of trails,
+where we also include the diﬀerences after the linear layer: Q = ( a0, b 0, a 1, b 1 . . . , b n−1, a n),
+with bi = λ(ai). We deﬁne the restriction weight wr(bi → ai+1) as DP(bi → ai+1) =
+2−wr(bi→ ai+1). As shown in [ 12], wr(bi → ai+1) is equal to 2 times the number of active
+columns in bi or ai+1, and this number is preserved through χ, so we can write wr(bi →
+ai+1) = w r(bi) = w r(ai+1).
+We deﬁne the weight of a trail Q as wr(Q) = ∑b−1
+i=0 wr(bi) = w r(a1) + ∑b−1
+i=1 wr(bi).
+Consequently, the evaluation of wr(Q) do not require the value of a0, b0 or an. To bound
+the weight of trails, we can therefore restrict our attention to diﬀerential trail cores , as
+in [ 11]:
+Q = a1
+λ
+−→ b1
+χ
+−→ a2
+λ
+−→ b2
+χ
+−→ a3
+λ
+−→ . . . a n−1
+λ
+−→ bn−1 .
+For linear trails, the reasoning is similar, but diﬀerences are replaced with masks, the
+restriction weight is replaced with the correlation weight, and the operations are taken
+in reverse order and transposed [ 12]. The correlation weight of an n-round linear trail
+(a0, b 0, a 1, b 1, . . . , b n−1, a n) is given by wc(a1) + ∑n−1
+i=1 wc(bi), with wc(u) denoting the
+correlation weight of a mask u. This is a linear trail core :
+Q = a1
+λ⊤
+−→ b1
+χ
+−→ a2
+λ⊤
+−→ b2
+χ
+−→ a3
+λ⊤
+−→ . . . a n−1
+λ⊤
+−→ bn−1 .
+Due to the high similarity of the trail search between diﬀerential and linear trails, we
+discuss them generically, and use the notation w(·) to denote either wr(·) or wc(·).
+•For 4 rounds, we exhaustively covered the space of diﬀerential and linear trail cores
+with weight w(a1) + w( b1) + w( b2) + w( b3) ≤ 72. Since no such trail core was
+23
+Table 5: The weight of the best diﬀerential and linear trails (or lower bounds) as a function
+of the number of rounds.
+# rounds: 1 2 3 4 5 6 8 10 12
+diﬀerential: 2 8 36 ≥74 ≥94 ≥104 ≥148 ≥188 ≥222
+linear: 2 8 36 ≥74 ≥94 ≥104 ≥148 ≥188 ≥222
+found and since all weights are even, a 4-round trail must have weight at least 74.
+We divided the search into two parts. First, we generated 2-round trail cores with
+weight w(a1) + w( b1) ≤38 and extended them forward to 4 rounds up to weight 72.
+Second, when w(a1) + w( b1) > 38, we have w(b2) + w( b3) = w( a3) + w( b3) ≤ 32.
+So we generated 2-round trail cores with weight w(a3) + w( b3) ≤32 and extended
+them backwards to 4 rounds up to weight 72. The unbalance between the two parts
+compensates for the higher cost of the backward extension compared to the forward
+extension.
+•For 5 rounds, we exhaustively covered the space of diﬀerential and linear trail cores
+with weight w(a1) + w(b1) + w(b2) + w(b3) + w(b4) ≤92. Since no such trail core was
+found, a 5-round trail must have weight at least 94. We again divided the search into
+two parts. First, we generated 2-round trail cores with weight w(a1)+w(b1) ≤40 and
+extended them forward to 5 rounds up to weight 92. Second, when w(a1) + w(b1) >
+40, we have w(b2) + w( b3) + w( b4) ≤50, and this coincides with the set of 3-round
+trail cores produced in [ 12]. So we just took these trail cores and extended them
+backwards to 5 rounds up to weight 92.
+4.4 Known attacks
+At the time of writing, there are no known attacks on Xoodyak and therefore Claims 1
+and 2 can plausibly be believed to hold.
+Xoodyak is built on strong foundations and is based on conservative design choices.
+There is a large number of research papers on the generic security of sponge and duplex-
+based modes, on Keccak, Ketje, Keyak and other permutation-based designs for hash-
+ing or authenticated encryption. These show the fairly wide understanding of the ﬁeld
+around Xoodyak by the cryptographic community.
+In [ 29], Song et al. mounted cube attacks on a Xoodoo-based authenticated encryp-
+tion scheme following the same mode as Ketje. The authors succeed on the initialization
+phase reduced to 6 rounds of Xoodoo. Despite that Xoodyak does not use the same
+mode as Ketje, there is nevertheless signiﬁcant similarity between their initializations.
+Furthermore, the authors discuss the eﬀects of switching from 5-bit to 3-bit χ between
+Keccak-p and Xoodoo, and argue that the narrower χ contributes to an increased
+resistance against cube-attack-like analysis.
+In [ 38], Zhou et al. mounted a conditional cube attack on Xoodyak with the permu-
+tation reduced to 6 rounds (out of the nominal 12). In the nonce-misuse setting, their
+attack could recover the 128-bit key in about 244 operations with negligible memory costs.
+In [ 20], Liu et al. show that a zero-sum distinguisher can be mounted on Xoodoo[12].
+This is not surprising given the current knowledge on such distinguishers on Keccak-p,
+see, e.g., [ 9]. This distinguisher on the permutation does not contradict our claim of
+hermetic strategy as it does not extend to Xoodyak (or to a sponge-based function on
+top of Xoodoo[12] in general), see [ 15, Section 4.1].
+From these two research papers, we can deduce that 12 rounds provide enough safety
+margin against this type of attacks.
+24
+4.5 Tunable parameters
+Xoodyak does not have user-chosen parameters, as the security claims apply to the only
+deﬁned instance of Xoodyak. In contrast, Keccak has user-chosen parameters, namely
+the rate and capacity, for which the full range is covered by a security claim.
+This said, should the need arise, we can already identify the parameters that could be
+modiﬁed to adapt Xoodyak’s performance or security.
+•The number of rounds of the permutation. Clearly, this is an essential parameter
+to protect against shortcut attacks. Reducing it can improve the performance but
+lower the safety margin. Should shortcut attacks be found, it can be increased to
+add safety margin.
+•The diﬀerent rates (or block sizes) Rhash, Rkin and Rkout. In a hermetic approach,
+tuning the rates (hence the associated capacities) have an impact mainly on the
+generic security. Increasing such a rate would have a positive impact on performance
+and the expense of the generic, and therefore claimed, security levels. For instance,
+we have a lot of margin in terms of data complexity in the case L = Ω = 0 (see
+Corollary 2), and in that case we could increase Rkout to, say, 28 bytes. In the other
+direction, we could also wish to increase the generic and claimed security levels by
+reducing Rhash or Rkin. Decreasing these rates may also be a way to counteract
+some shortcut attacks, but this idea is not in the spirit of a hermetic approach.
+5 Implementation
+The purpose of the NIST Lightweight Cryptography Standardization Process [ 15] is to get
+algorithms that are suitable for use in constrained environments. In this section, we discuss
+the implementation of Xoodyakin the light of this aspect and report on implementations
+on ARM Cortex-M0 and Cortex-M3. For more details on the implementation of the
+Xoodoo permutation, we refer to [ 12, Section 4].
+5.1 Lightweight?
+It is a reasonable question to ask whether a scheme like Xoodyak, based on a 384-bit
+permutation, can be called lightweight.
+Part of the answer comes from the use of a permutation-based construction like duplex.
+Even if, say, the AES-128 block cipher has only a data path of 128 bits, one must take into
+account an extra 128 bits for its key schedule, plus the memory needed for whatever mode
+of operation on top the block cipher. In contrast, all the use-cases of Xoodyak rely on
+the duplex construction having a state whose size is equal to the width of the permutation,
+and it needs almost no additional state for the modes on top. The Xoodoo permutation
+can be computed essentially in-place (see [ 12, Section 4.1]), and the input and output
+are added to and extracted directly from the state, without the need of a message queue.
+Even if the interface allows the user to enter inputs and extract outputs incrementally,
+everything ﬁts in the 384 bits of the permutation plus a couple of pointers for bookkeeping.
+In a diﬀerent (i.e., non-lightweight) context, Yalla et al. showed the beneﬁts of such a
+construction in terms of area in a hardware implementation [ 37]. Not surprisingly, many
+candidates to the NIST Lightweight Cryptography Standardization Process adopted the
+same strategy [ 15].
+Another aspect is the permutation itself and the choice of operations in it. Xoodoo
+has a lot of symmetry, making it possible to reuse parts of the circuit or the code. The
+operations are all simple, making use of logical XORs and ANDs, and we deliberately
+avoided modular additions with their long carry chains. Finally, Xoodyak comes with
+25
+Table 6: Performance ﬁgures of Xoodyak in cycles per byte.
+ARM ARM
+Cortex-M0 Cortex-M3
+Hash mode
+Absorb() 134.5 39.3
+Squeeze() 136.2 40.6
+Keyed mode
+Absorb() 48.7 14.2
+Encrypt() 91.2 27.1
+Decrypt() 91.3 27.4
+Squeeze() 86.2 24.3
+Table 7: Code sizes (in bytes) of our implementations of Xoodyakand of the permutation
+only.
+of which
+Xoodyak Xoodoo[12] Notes
+ARM Cortex-M0 3494 468 1 round in a loop
+ARM Cortex-M3 4058 2388 12 rounds unrolled
+several features to protect against side-channel attacks, something that is otherwise very
+costly to achieve.
+5.2 Software implementation results
+We implemented Xoodyak on ARM Cortex-M0 and -M3 processors. On Cortex-M0, the
+implementation of Xoodoo[12] executes one round in a loop. Being a compact proces-
+sor, the focus was more on compactness than on speed. In contrast, the implementation
+on Cortex-M3 unrolls the 12 rounds of the permutation, hence maximizing the speed by
+taking advantage of the implicit rotations in parallel with the other operations. Note
+that we could also unroll the implementation on Cortex-M0 and/or make a more com-
+pact implementation on Cortex-M3, but these give interesting extreme points. These
+implementations are available in the extended Keccak code package (XKCP) [ 35].
+We report on the computational performance of Xoodyak in Table 6. In terms of
+memory consumption, our implementation maintains a state of size the width of the
+permutation ( 48 bytes) together with 4 bytes to store the phase, the mode, Rabsorb and
+Rsqueeze, so 52 bytes in total.
+Finally, we report in Table 7 the sizes of the code of these two implementations. We
+also report the code size taken by the permutation only. Naturally, the size of the unrolled
+permutation is signiﬁcantly larger than the other one. At the time of this writing, we are
+experimenting with code size optimizations and we expect to reach around 1200 bytes of
+code for the full Xoodyak with similar speeds.
+5.3 Hardware implementation results
+We developed hardware implementations of the algorithms for authenticated encryption
+with associated data and hashing described in Section 6 and performed performance anal-
+ysis for ASIC and FPGA.
+The implementation makes use of the Development Package for Hardware Implemen-
+tations Compliant with the Hardware API for Lightweight Cryptography , v1.1.0 [ 34]. The
+26
+supported external data bus width is 32 bits. The number of rounds R performed in a
+clock cycle is conﬁgurable at design time and can be set to one of the divisors of the total
+number of rounds of the permutation, namely 1, 2, 3, 4, 6, or 12.
+The code is publicly available on GitHub as part of the Xoodyak repository [ 22] and
+was submitted to the FPGA and ASIC benchmarking projects [ 33, 19].
+To compute the throughput of our implementation, note that the processing of a n-bit
+block of data takes n/ 32 + 12 /R + 1 clock cycles, where n = 352 , 192, 128 for associated
+data, plaintext/ciphertext and message to hash, respectively.
+5.3.1 ASIC results
+We synthesized the circuit in STMicroelectronics 40nm technology with Synopsys Design
+Compiler version Q-2019.12-sp1.
+Table 8 reports the throughput and the area cost in gate equivalent (GE) for the most
+interesting R-frequency pairs. It appears that small values of R are usually better in terms
+of speed per area, unless a small frequency is required.
+Note that we also developed an alternative version that supports only authenticated
+encryption and decryption (i.e., without hashing), and we noticed that the performance
+gain in terms of area is negligible (between 200 and 326 GE for the variants in Table 8).
+Table 8: Area cost (GE) and throughput (Gbit/second) for associated data (AD), encryp-
+tion and hashing for some area/speed trade-oﬀs of the ASIC implementation synthesized
+in STMicroelectronics 40nm technology.
+Area (GE) Freq. (MHz) R AD Enc. Hash
+8097 100 1 1.47 1.01 0.75
+8101 200 1 2.93 2.02 1.51
+8144 300 1 4.40 3.03 2.26
+8234 400 1 5.87 4.04 3.01
+8492 500 1 7.33 5.05 3.76
+8770 600 1 8.80 6.06 4.52
+9593 700 1 10.27 7.07 5.27
+10558 100 2 1.96 1.48 1.16
+10565 200 2 3.91 2.95 2.33
+10604 300 2 5.87 4.43 3.49
+10671 400 2 7.82 5.91 4.65
+12942 500 2 9.78 7.38 5.82
+13020 100 3 2.20 1.75 1.42
+13024 200 3 4.40 3.49 2.84
+13073 300 3 6.60 5.24 4.27
+5.3.2 FPGA results
+We performed the synthesis using Vivado v2019.2 and a board of the Xilinx Artix-7 family
+(xc7a12tcsg325-3), which has 8,000 lookup tables (LUTs) and 16,000 ﬂip-ﬂops (FFs). The
+board is one of those suggested by the Athena FPGA benchmarking project.
+Table 9 reports the resource utilization (in terms of LUTs, FFs, and slices), the maxi-
+mum frequency reached, and the relative throughput for the values of R that give the most
+interesting area/throughput trade-oﬀs. Like for the ASIC, it appears that small values
+of R are usually better in terms of speed per area, unless a small frequency is required.
+Also in this case, the cost of the variant supporting only authenticated encryption and
+decryption does not diﬀer signiﬁcantly from the reported values.
+27
+Table 9: Resource usage, maximum frequency, and maximum throughput (Gbit/second)
+for associated data (AD), encryption and hashing area, for some area/speed trade-oﬀs of
+the FPGA implementation.
+LUTs FFs Slices Max Freq. (MHz) R AD Enc. Hash
+1410 576 410 218 1 3.20 2.20 1.64
+2057 576 578 176 2 3.44 2.60 2.05
+2770 576 772 122 3 2.68 2.13 1.74
+6 Submission to NIST Lightweight Cryptography Standard-
+ization Process
+This document is part of the submission of Xoodyak to NIST Lightweight Cryptography
+Standardization Process.
+•The algorithm submitted for authenticated encryption with associated data (AEAD)
+is the sequence in Section 3.2.3 executed with Xoodyak. By default, the key length
+is κ = 128 bits, there is no global key identiﬁer but the nonce (length is 128 bits) is
+integrated into the id parameter ( id = nonce) and the tag length is 128 bits ( t = 16 ).
+The amount of data that can be processed by a key is only implied by the security
+claim.
+This gives the following sequence of calls to encrypt a plaintext P:
+Xoodyak(K, nonce, ϵ )
+Absorb(A)
+C ← Encrypt(P)
+T ← Squeeze(t)
+return (C, T )
+To decrypt (C, T ), we proceed similarly:
+Xoodyak(K, nonce, ϵ )
+Absorb(A)
+P ← Decrypt(C)
+T′ ← Squeeze(t)
+if T = T′ then
+return P
+else
+return ⊥
+•The algorithm submitted for hashing is the ﬁrst sequence in Section 3.1 executed
+with Xoodyak. The default output length is n = 32 bytes, or otherwise freely
+chosen as in a XOF. The limit on the message size is only implied by the security
+claim.
+Xoodyak(ϵ, ϵ, ϵ )
+Absorb(x)
+Squeeze(n)
+These two algorithms share the same underlying Xoodyakalgorithm and an implementa-
+tion would naturally share the Xoodoo permutation and several input-output operations
+for absorbing and squeezing data. These two algorithms are therefore paired to be evalu-
+ated jointly.
+28
+References
+[1] D. J. Bernstein, S. Kölbl, S. Lucks, P. Maat Costa Massolino, F. Mendel, K. Nawaz,
+T. Schneider, P. Schwabe, F.-X. Standaert, Y. Todo, and B. Viguier, Gimli : A cross-
+platform permutation, Cryptographic Hardware and Embedded Systems - CHES 2017,
+Proceedings (W. Fischer and N. Homma, eds.), Lecture Notes in Computer Science,
+vol. 10529, Springer, 2017, pp. 299–320.
+[2] G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche, Cryptographic sponge func-
+tions, January 2011, https://keccak.team/papers.html.
+[3] , Duplexing the sponge: Single-pass authenticated encryption and other appli-
+cations, Selected Areas in Cryptography - SAC 2011, Revised Selected Papers (A. Miri
+and S. Vaudenay, eds.), Lecture Notes in Computer Science, vol. 7118, Springer, 2011,
+pp. 320–337.
+[4] , On alignment in Keccak, ECRYPT II Hash Workshop, 2011.
+[5] , The Keccak reference, January 2011, https://keccak.team/papers.
+html.
+[6] G. Bertoni, J. Daemen, M. Peeters, G. Van Assche, and R. Van Keer, CAESAR
+submission: Keyak v2, document version 2.2 , September 2016, https://keccak.
+team/keyak.html.
+[7] , Keccak third-party cryptanalysis , 2019, https://keccak.team/third_
+party.html.
+[8] E. Biham, How to decrypt or even substitute des-encrypted messages in 2 28 steps,
+Inf. Process. Lett. 84 (2002), no. 3, 117–124.
+[9] C. Boura, A. Canteaut, and C. De Cannière, Higher-order diﬀerential properties of
+Keccak and Luﬀa , Fast Software Encryption, FSE 2011, Revised Selected Papers
+(Antoine Joux, ed.), Lecture Notes in Computer Science, vol. 6733, Springer, 2011,
+pp. 252–269.
+[10] J. Daemen, Cipher and hash function design strategies based on linear and diﬀerential
+cryptanalysis, PhD thesis , K.U.Leuven, 1995.
+[11] J. Daemen and G. Van Assche, Diﬀerential propagation analysis of Keccak , Fast
+Software Encryption (FSE) 2012. Revised Selected Papers (A. Canteaut, ed.), Lecture
+Notes in Computer Science, vol. 7549, Springer, 2012, pp. 422–441.
+[12] J. Daemen, S. Hoﬀert, G. Van Assche, and R. Van Keer, The design of Xoodoo and
+Xooﬀf, IACR Trans. Symmetric Cryptol. 2018 (2018), no. 4, 1–38.
+[13] , Xoodoo cookbook, IACR Cryptology ePrint Archive 2018 (2018), 767.
+[14] J. Daemen, S. Hoﬀert, S. Mella, M. Peeters, G. Van Assche, and R. Van
+Keer, Xoodyak, an update , Publication to NIST Lightweight Cryptography
+Standardization Process (round 2), September 2020, https://csrc.nist.
+gov/CSRC/media/Projects/lightweight-cryptography/documents/round-2/
+status-update-sep2020/Xoodyak-update.pdf .
+[15] J. Daemen, S. Hoﬀert, M. Peeters, G. Van Assche, and R. Van
+Keer, Xoodyak, a lightweight cryptographic scheme , Submission to NIST
+Lightweight Cryptography Standardization Process (round 2), March 2019,
+https://csrc.nist.gov/CSRC/media/Projects/lightweight-cryptography/
+documents/round-2/spec-doc-rnd2/Xoodyak-spec-round2.pdf .
+29
+[16] , Xoodyak, a lightweight cryptographic scheme , IACR Trans. Symmetric Cryp-
+tol. 2020 (2020), no. S1, 60–87.
+[17] J. Daemen, B. Mennink, and G. Van Assche, Full-state keyed duplex with built-in
+multi-user support , Advances in Cryptology - ASIACRYPT 2017, Proceedings, Part
+II (T. Takagi and T. Peyrin, eds.), Lecture Notes in Computer Science, vol. 10625,
+Springer, 2017, pp. 606–637.
+[18] M. Hamburg, The STROBE protocol framework , Real World Crypto, 2017.
+[19] M. Khairallah, T. Peyrin, and A. Chattopadhyay, Lightweight cryptography asic
+benchmarking, March 2020, https://github.com/mustafam001/lwc-aead-rtl.
+[20] F. Liu, T. Isobe, W. Meier, and Z. Yang, Algebraic attacks on round-reduced Kec-
+cak/Xoodoo, IACR Cryptol. ePrint Arch. 2020 (2020), 346.
+[21] U. Maurer, R. Renner, and C. Holenstein, Indiﬀerentiability, impossibility results on
+reductions, and applications to the random oracle methodology , Theory of Cryptog-
+raphy - TCC 2004 (M. Naor, ed.), Lecture Notes in Computer Science, no. 2951,
+Springer-Verlag, 2004, pp. 21–39.
+[22] S. Mella, Xoodyak hardware code , May 2021, https://github.com/KeccakTeam/
+Xoodoo.
+[23] B. Mennink, R. Reyhanitabar, and D. Vizár, Security of full-state keyed sponge and
+duplex: Applications to authenticated encryption , Advances in Cryptology - ASI-
+ACRYPT 2015, New Zealand, 2015 (T. Iwata and J. H. Cheon, eds.), LNCS, vol.
+9453, Springer, 2015, pp. 465–489.
+[24] NIST, Federal information processing standard 202, SHA-3 standard: Permutation-
+based hash and extendable-output functions , August 2015, http://dx.doi.org/10.
+6028/NIST.FIPS.202.
+[25] , NIST special publication 800-185, SHA-3 derived functions: cSHAKE,
+KMAC, TupleHash and ParallelHash , December 2016, https://doi.org/10.6028/
+NIST.SP.800-185.
+[26] T. Perrin, Stateful hash objects: API and constructions , https://github.com/
+noiseprotocol/sho_spec/blob/master/output/sho.pdf, 2018.
+[27] T. Ristenpart, H. Shacham, and T. Shrimpton, Careful with composition: Limitations
+of the indiﬀerentiability framework , Eurocrypt 2011 (K. G. Paterson, ed.), Lecture
+Notes in Computer Science, vol. 6632, Springer, 2011, pp. 487–506.
+[28] M.-J. O. Saarinen, Beyond modes: Building a secure record protocol from a cryp-
+tographic sponge permutation , Topics in Cryptology - CT-RSA 2014. Proceedings
+(J. Benaloh, ed.), Lecture Notes in Computer Science, vol. 8366, Springer, 2014,
+pp. 270–285.
+[29] L. Song and J. Guo, Cube-attack-like cryptanalysis of round-reduced Keccak using
+MILP, IACR Trans. Symmetric Cryptol. 2018 (2018), no. 3, 182–214.
+[30] L. Song, G. Liao, and J. Guo, Non-full sbox linearization: Applications to collision
+attacks on round-reduced Keccak , Advances in Cryptology - CRYPTO 2017 (J. Katz
+and H. Shacham, eds.), Lecture Notes in Computer Science, vol. 10402, Springer,
+2017, pp. 428–451.
+30
+[31] K. Stoﬀelen and J. Daemen, Column parity mixers , IACR Trans. Symmetric Cryptol.
+2018 (2018), no. 1, 126–159.
+[32] M. M. I. Taha and P. Schaumont, Side-channel countermeasure for SHA-3 at almost-
+zero area overhead , 2014 IEEE International Symposium on Hardware-Oriented Se-
+curity and Trust, HOST 2014, IEEE Computer Society, 2014, pp. 93–96.
+[33] M. Tempelmeier, F. Farahmand, E. Homsirikamol, W. Diehl, J-P Kaps, and Kris
+Gaj, A comprehensive framework for fair and eﬃcient benchmarking of hardware im-
+plementations of lightweight cryptography , June 2020, https://cryptography.gmu.
+edu/athena/index.php?id=LWC.
+[34] , Development package for hardware implementations compliant with the hard-
+ware api for lightweight cryptography , October 2020, https://github.com/GMUCERG/
+LWC.
+[35] G. Van Assche, R. Van Keer, and Contributors, Extended Keccak code package ,
+February 2020, https://github.com/XKCP/XKCP.
+[36] A. F. Webster and S. E. Tavares, On the design of S-boxes , Advances in Cryptology -
+CRYPTO ’85, Proceedings (H. C. Williams, ed.), Lecture Notes in Computer Science,
+vol. 218, Springer, 1985, pp. 523–534.
+[37] P. Yalla, E. Homsirikamol, and J.-P. Kaps, Comparison of multi-purpose cores of
+Keccak and AES , Design, Automation Test in Europe DATE 2015, ACM, March
+2015, pp. 585–588.
+[38] H. Zhou, Z. Li, X. Dong, K. Jia, and W. Meier, Practical key-recovery attacks on
+round-reduced Ketje Jr, Xoodoo-AE and Xoodyak , IACR Cryptology ePrint Archive
+2019 (2019), 447.
+A Constants for any number of rounds
+See [ 12].
+31

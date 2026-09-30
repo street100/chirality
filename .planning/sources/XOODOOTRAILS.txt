@@ -1,0 +1,1638 @@
+IACR Transactions on Symmetric Cryptology
+ISSN 2519-173X, Vol. 2023, No. 4, pp. 187–214. DOI:10.46586/tosc.v2023.i4.187-214
+Tighter Trail Bounds for Xoodoo
+Silvia Mella1, Joan Daemen1 and Gilles Van Assche2
+1 Radboud University, Nijmegen, The Netherlands
+silvia.mella@ru.nl,joan@cs.ru.nl
+2 STMicroelectronics, Diegem, Belgium
+gilles-tosc@noekeon.org
+Abstract. Determining bounds on the differential probability of differential trails and
+the squared correlation contribution of linear trails forms an important part of the
+security evaluation of a permutation. ForXoodoo, such bounds were proven using
+the trail core tree search technique, with a dedicated tool (XooTools) that scans the
+space of allr-round trails with weight below a given thresholdTr. The search space
+grows exponentially with the value ofTr and XooTools appeared to have reached
+its limit, requiring huge amounts of CPU time to push the bounds a little further.
+The bottleneck was the phase called trail extension where short trails are extended to
+more rounds, especially in the backward direction. In this work, we present a number
+of techniques that allowed us to make extension much more efficient and as such to
+increase the bounds significantly. Notably, we prove that the minimum weight of any
+4-round trail is 80, the minimum weight of any6-round trail is at least 132 and the
+minimum weight of any12-round trail is at least 264, both for differential and linear
+trails. As a byproduct we found families of trails that have predictable weight once
+extended to more rounds and use them to compute upper bounds for the minimum
+weight of trails for arbitrary numbers of rounds.
+Keywords: lightweight cryptography· permutation-based cryptography· differential
+cryptanalysis · linear cryptanalysis· trail bounds
+1 Introduction
+The Xoodoo cryptographic permutation [DHVV18a] is the core ofXoodyak [DHP+20,
+DHP+21] andXoofff [DHP+20]. Xoodyak is a versatile cryptographic object based
+on the Cyclist construction [DHP+20], intended for lightweight applications, and notably
+one of the ten finalists of the NIST Lightweight Crypto Standardization process [Nat21].
+It can be used to build most symmetric-key functionalities, including hashing, pseudo-
+random bit generation, authentication, encryption and authenticated encryption. Another
+cryptographic object that internally usesXoodoo is the deck functionXoofff [DHVV18a],
+an instance of Farfalle [BDH+17]. Xoofff is very efficient on a wide range of platforms
+and can be used for building stream ciphers, MAC functions and (session) authenticated
+encryption schemes.
+The Xoodoo permutation has a classical iterated structure, namely it repeatedly
+applies a round function to a state, where the number of rounds is a parameter. The choice
+for the number of rounds is motivated by performance and security requirements. Namely,
+when plugged in a construction, the resulting permutation shall offer sufficient security
+margin and still be fast. The number of rounds was chosen such that the constructed
+primitive (Xoofff or Xoodyak) offers a comfortable safety margin with respect to all
+known attacks. InXoofff this is 6 rounds and inXoodyak this is 12 rounds.
+In terms of differential and linear cryptanalysis, this means that it shall not have high-
+probability differential trails or high-correlation linear trails (or equivalently, low-weight
+Licensed under Creative Commons License CC-BY 4.0.
+Received: 2023-09-01 Accepted: 2023-11-01 Published: 2023-12-08
+188 Tighter Trail Bounds for Xoodoo
+trails), that can be exploited in attacks. Roughly speaking, the data and/or computational
+complexity of an attack that uses a given trail is exponential in the weight of the trail. So,
+the higher the weight, the higher the cost of the attack.
+The non-existence of low-weight trails is usually proved by determining lower bounds
+on the weight of trails. This is not enough to guarantee security for the function built on
+top of the permutation, but it can help in evaluating the resistance against some specific
+attacks. For instance, in the Farfalle construction used byXoofff, the expected data
+complexity to generate internal collisions is directly linked to bounds on the weight of
+differential trails [DHVV18a, FRD23].
+1.1 Prior art
+An initial analysis on the differential and linear propagation properties ofXoodoo was
+presented in [DHVV18a], where lower bounds on the weight of trails were proved for several
+numbers of rounds. The analysis was later extended and improved bounds were reported
+in [DHP+20] an in [The21]. We summarize these results in Table 1.
+All these results were obtained by using a computer-aided approach for scanning the
+space of all trails with weight below a given thresholdTr and for a given number of
+rounds r in a tree based fashion. Since this approach is used in different works [MDV17,
+DHVV18a, MMGD22, HMMD22, BFR22], we decided to give it a name:Trail core tree
+search. If such space of trails is non-empty, then the trail with the smallest weight defines
+a tight bound on the weight of allr-round trails. OtherwiseTr defines a bound that is not
+necessarily tight. The size of the search space increases exponentially with increasingTr,
+and so does the computational cost of the search. It follows that the value ofTr that can
+be achieved in practical time is usually below the actual minimum weight of the trails. In
+particular, forKeccak-p, Xoodoo, andAscon, up to now no tight bounds were found
+for more than 3 rounds.
+1.2 The contribution of this paper
+In this work, we present a number of methods that allow us to make the search more
+efficient and, as a consequence, target higher values ofTr in a time that is still practical.
+In Section 5 we improve the definition of stability masks introduced in [DHVV18a]
+and present an optimization technique to extend trails more efficiently in the backward
+direction, which is the main bottleneck in trail core tree search as conducted until now.
+This technique leverages the propagation properties of column parity mixers to compute a
+more accurate lower bound on the weight of trails, allowing us to discard non-useful trails
+earlier in the search.
+In Section 6.3, we present a new approach to scan the space of all 6-round trails with
+weight belowT6 starting from the space of all 2-round trails with weight belowT6/3 instead
+of the usual approach of starting from 3-round trails of weight belowT6/2. This approach
+allows us to split the search space in subspaces that are smaller and partially overlap,
+making their exploration faster.
+Thanks to such methods, we can improve over known bounds forXoodoo for different
+numbers of rounds and we present such results in Section 6. Notably, we prove tight
+bounds for the weight of linear and differential trails over 4 rounds. Whereas, for 6 and 12
+rounds, we prove for the first time (non-tight) bounds beyond 128 and 256, respectively.
+We summarize our improved bounds in Table 1.
+In Section 7 we report on all differential and linear trails we found for 2, 3, and 4
+rounds. It is worth noticing that the histograms for the linear trails and the differential
+trails are very close to each other.
+During our search, we encountered some trails with interesting properties. The weight
+profile of such trails presents a regular and predictable behavior through the rounds. We
+Silvia Mella, Joan Daemen and Gilles Van Assche 189
+Table 1:Lower bounds on the weight of differential and linear trails and the weight of
+best trails as a function of the number of rounds.
+Previous works This work
+# rounds lower bound best known lower bound best known
+1 2 [DHVV18a] 2 [DHVV18a] - -
+2 8 [DHVV18a] 8 [DHVV18a] - -
+3 36 [DHVV18a] 36 [DHVV18a] - -
+4 74 [DHP +20] - 80 80
+5 94 [DHP +20] - 98 120
+6 108 [The21] - 132 160
+8 148 [DHP +20] - 176 264
+10 188 [DHP +20] - 220 400
+12 222 [DHP +20] - 264 568
+x
+y
+z
+lane
+x
+y
+z
+plane
+x
+y
+z
+slice
+x
+y
+z
+sheet
+x
+y
+z
+column
+Figure 1: Toy version of theXoodoo state, with lanes reduced to8 bits, and different
+parts of the state highlighted.
+discuss such trails in Section 8 and use them to provide upper bounds, which are reported
+in the last column of Table 1.
+The methods that we introduce in this work already appeared in its pre-print ver-
+sion [DMA22] and some of them were later also used to perform trail search inAscon
+in [HMMD22]. In fact, these methods are more widely applicable. In particular, the
+technique used to explore the space of 6-round trail cores (Section 6.3) can be applied to
+any iterated cipher. The new definition of stability mask, (Eq. 1 in Section 5.1), can be
+applied to permutations where the set of compatible differences forms an affine space. This
+is the case inKeccak-f and Ascon for forward extension, but also in ciphers with S-boxes
+that are differentially 4-uniform. This is not the case in backward extension inKeccak-f
+and Ascon, but there the definition can be adapted in a natural way by replacing the
+basis vectors in Eq. 1 by all the compatible differences per S-box. The technique presented
+in Section 5.2 is instead limited to permutations that have a column parity mixer as mixing
+layer, likeXoodoo and Keccak-f.
+2 Xoodoo
+Xoodoo is a bit-oriented iterated permutation operating on a three-dimensional state of
+4×3×32 bits. A bit of the state is specified by(x,y,z ) coordinates. A column is composed
+by 3 bits with given(x,z) coordinates, while a plane is composed by 128 bits with giveny
+coordinate. The Xoodoo state is illustrated in Figure 1 with its different parts. In the
+following examples, we depict the states as seen from the top with columns collapsing to
+single cells. The value in a column is indicated by a number: a value(a0,a1,a2), with
+indices denoting the plane, is encoded asa0 + 2a1 + 4a2. Additionally we give them colors
+to make the figures easier to read. For simplicity, cells with value 0 are left empty. An
+example is given in Figure 2.
+190 Tighter Trail Bounds for Xoodoo
+1234567 zx
+Figure 2: A Xoodoo state seen from the top. Column (0,0) has all bits set to 0. Column
+(0,1) has bity= 0 set to 1 and the other two set to 0. Column (0,2) has bity= 1 set to 1
+and the other two set to 0. Column (0,3) has bity= 0 and y= 1 set to 1 and bity= 2
+set to 0. Etc.
+The round function ofXoodoo is composed by five steps: the mixing layerθ, two
+plan shiftingρwest and ρeast, the round constants additionι, and the non-linear layerχ.
+The number of rounds is a parameter. It is12 in Xoodyak, and6 in Xoofff. The i-th
+round function is defined asRi = ρeast ◦χ◦ι◦ρwest ◦θ with
+θ:
+P ←A0 + A1 + A2
+E ←P ≪(1,5) + P ≪(1,14)
+Ay ←Ay + E for y∈{0,1,2}
+ρwest :
+A1 ←A1 ≪(1,0)
+A2 ←A2 ≪(0,11)
+ι:
+A0 ←A0 + Ci
+χ:
+B0 ←A1 ·A2
+B1 ←A2 ·A0
+B2 ←A0 ·A1
+Ay ←Ay + By for y∈{0,1,2}
+ρeast :
+A1 ←A1 ≪(0,1)
+A2 ←A2 ≪(2,8).
+The stepθ is a column parity mixer [SD18]. It adds a planeE, calledθ-effect, to each
+plane Ay of the state. Theθ-effect is computed as the sum of two translated versions of
+the parity planeP, which is obtained by adding the three planes of the state together. On
+states whose parity plane is all-zero,θ acts as the identity. Such states are those with zero
+or two non-zero bits in all columns. We say that such states are in the (column parity)
+kernel. Otherwise, we say that a state is outside the kernel.
+The nonlinear layerχ can be seen as the parallel application of4 ×32 3-bit S-boxes
+operating on 3-bit columns, that we denote byχ3. It is an instance of the transformation
+χ that was described and analyzed in [Dae95], with interesting propagation properties.
+The two stepsρeast and ρwest act as dispersion layers after every application ofθ and of
+χ. Both consists in plane translations over a given offset. Since the state bits interact only
+within columns inθ and χ, ρeast and ρwest are used to dislocate bits of the same column
+to different columns. Such breaking up of columns results in weak alignmet [BDPV11].
+The stepιconsists in the addition of a round constantCi, that is a plane with a single
+non-zero lane atx= 0.
+All steps, exceptι, are translation-invariant, that is they operate on bits of the state
+independently of their position. More formally, a stepα is translation-invariant over
+(x,y,z ) if α◦τ(x,y,z) = τ(x,y,z) ◦α, whereτ(x,y,z) is a (cyclic) translation of the state by
+(x,y,z ). The translation-invariance in horizontal directions of the step mappings results in
+high symmetry, which is destroyed by the addition of round constants in the stepι. In
+Silvia Mella, Joan Daemen and Gilles Van Assche 191
+Table 2:Offset o and basis vectorsv1,v2 for the affine spacesA(∆in) and A(uout).
+∆in/uout o v 1 v2
+001 001 010 100
+011 001 011 100
+111 001 011 101
+trail search, the round constants additions can be ignored and we can take advantage of
+this symmetry properties.
+2.1 Propagation properties of χ
+In Xoodoo, theχtransformation operates on state columns independently. Therefore, its
+propagation properties can be analyzed at column level throughχ3. The mappingχ3 is
+an involution and its propagation properties hold also for its inverse.
+Difference propagation As for any transformation with domainZb
+2, the restriction weight
+of a differential(∆in,∆out) overχis defined as the inverse of the logarithm of its differential
+probability (DP):
+wr(∆in,∆out) = b−log2|{x: χ(x) ⊕χ(x+ ∆in) = ∆out}|.
+If the DP is non-zero, we say that∆in and ∆out are compatible, or that∆out is an output
+difference compatible with∆in, or that∆in is an input difference compatible with∆out.
+We refer to a non-zero column in a difference as anactive column. Since χ acts on each
+column independently, the DP and weight of a differential are the product and sum of
+the column differentials overχ3. For any given input differenceδin, the set of compatible
+differences overχ3 forms an affine spaceA(δin) of size 4 [Dae95]. Table 2 gives such affine
+spaces in form of offset and basis vectors, for any possible input ofχ3 up to rotation. For
+a given compatible differenceδout, the restriction weight of(δin,δout) depends only onδin
+and is equal tolog2|A(δin)|= 2 [Dae95]. As a consequence, the weight of a differential
+over χis twice the number of non-zero columns in the input (or output) state difference in
+the differential.
+Linear masks propagation As for any transformation with domainZb
+2, the correlation
+weight of a linear approximation(uin,uout) overχis defined as the inverse of the logarithm
+of its squared correlation (C):
+wc(uin,uout) = −log2
+|{x∈Zb
+2 |uinTx+ uoutTf(x) = 0|
+2b−1 −1 .
+If the correlation is non-zero, we say thatuin and uout are compatible, or thatuout is an
+output mask compatible withuin, or thatuin is an input mask compatible withuout. We
+refer to a non-zero column in a mask as anactive column. A state mask overχis composed
+by column masks overχ3 and its correlation and correlation weight depend on the active
+columns. For any given output maskuout, the set of compatible input masks overχ3 forms
+an affine spaceA(uout) of size 4 [Dae95]. Offset and basis vectors specifying such affine
+space are again those in Table 2. The correlation weight of any pair of masks(uin,uout)
+depends only onuout and is equal tolog2|A(uout)|= 2 [Dae95]. As in the differential case,
+the weight of a state mask is twice the number of non-zero columns in the mask.
+192 Tighter Trail Bounds for Xoodoo
+3 Trail cores and search strategy
+When looking for all trails with weight below a given thresholdTr, the search space grows
+exponentially with increasingTr. Trail search can take advantage of the fact that the set
+of r-round trails can be split in equivalence classes, so that the weight of trails in the same
+class can be easily bounded. Generating one representative for each class is thus enough
+for the purpose of proving bounds. Even if the number of such representatives still grows
+exponentially withTr, we can reach higher values ofTr compared to what we can achieve
+when we generate all trails. In [DV12], the set of trails is split in equivalence classes called
+trail coresand methods to lower bound the weight of all trails in a core are presented. In
+Xoodoo, all trails in a trail core have the same weight and its value can be immediately
+derived by the number of active columns in the states composing the trail [DHVV18a]. In
+this section we first recall what trail cores are and how their weight can be computed for
+Xoodoo, as discussed in [DHVV18a]. Then, we recall the generic strategy introduced
+in [DV12] to perform trail search, that we will use also in this work.
+3.1 Differential probability and differential trail cores
+For the study of difference propagation, it is convenient [DHVV18a] to rephaseXoodoo
+round function as starting withρeast and ending inχ. Therefore, the round function
+becomes χ◦ι◦ρwest ◦θ◦ρeast. The sequence of linear mappings are grouped inλ =
+ρwest ◦θ◦ρeast and we callλ the linear layer. Therefore, the re-phased round function
+becomes χ◦ι◦λ. Since constant addition does not influence the trail weight,ι can be
+ignored.
+An r-round differential trail is a sequence(a0,a1,...,a r) of r round differentials and
+its restriction weight is the sum of the restriction weights of the round differentials that
+compose the trail. We use a redundant representation of trails, where we also specify the
+differences after the linear layer:(a0,b0,a1,b1 ...,b r−1,ar) with bi = λ(ai).
+Since λ is linear, the restriction weight of the trail only depends on the differentials
+over χ and is given by∑
+iwr(bi−1,ai).
+Two differencesbi and ai+1 are compatible overχ only if they have the same column
+activity pattern, i.e., they have the same active column indexes, and each pair of columns
+is compatible overχ3. As shown in Section 2.1, the restriction weightwr(bi,ai+1) is twice
+the number of active columns inbi, or equivalently, inai+1. It follows that the restriction
+weight of anr-round trail(a0,b0,a1,b1,...,b r−1,ar) is fully determined by the sequence
+b1,...,b r−1 and can be expressed aswr(a1) +∑
+1≤i<rwr(bi). It is thus independent of the
+value ofa0, b0, andar. As in [DV12], we calldifferential trail corethe sequence:
+Q= a1
+λ
+−→b1
+χ
+−→a2
+λ
+−→b2
+χ
+−→a3
+λ
+−→...a r−1
+λ
+−→br−1 .
+We call the sequencewr(a1),wr(b1),..., wr(br) the weight profileof the trail core.
+A differential trail core defines a set of2wr(a1) ×2wr(br−1) r-round trails with the same
+weight. Such trails are all trails of the form(a0,b0,Q,a r) for any value ofa0, b0, andar
+such thatb0 is compatible witha1, a0 = λ−1(b0) and ar is compatible withbr−1. With
+the goal of lower bounding the weight of trails, in our analysis we can thus limit ourselves
+to bound the weight of trail cores.
+A differential trail core can be extended to anr+ 1-round differential trail core by
+either pre-pending a couplea0,b0 with b0 compatible witha1 and a0 = λ−1(b0), or by
+appending a couplear,br with ar compatible withbr−1 and br = λ(ar). In the former
+case, we speak about extension in the backward direction, while in the latter case we speak
+about extension in the forward direction.
+Silvia Mella, Joan Daemen and Gilles Van Assche 193
+3.2 Correlation and linear trail cores
+An r-round linear trail is a sequence ofr linear approximations. A linear approximation
+over roundi is defined by a maskai at its output and a maskai+1 at its input and we
+denote its correlation valueC(ai,ai+1). The correlation weight of trail is the sum of the
+correlation weight of its round linear approximations.
+As for differential trails, we use a redundant representation of trails by including the
+masks after the linear layer. Also in this case, it is convenient to rephase theXoodoo round
+function to make notation consistent between linear and differential trails [DHVV18a]. As
+linear propagation is studied from the output to the input, the round is rephased starting
+with χ and ending withλ, so that the trail first encountersλ and thenχ of each round
+(as in the differential case).
+A trail is of the form(a0,b0,a1,b1 ...,b r−1,ar), wherea0 is the mask after the last
+round andar the mask before the first round. A maskai at the output ofλmaps to a mask
+bi = λ⊤(ai) before λ, whereλ⊤denotes the linear mapping obtained by the multiplication
+of a matrix that is the transpose of the matrix defining the linear mappingλ. It follows
+that λ⊤ = ρ⊤
+east ◦θ⊤◦ρ⊤
+west = ρ−1
+east ◦θ⊤◦ρ−1
+west since the inverse of a bit transposition
+matrix is its transpose.
+The correlation weight of a round linear approximation(ai,ai+1) depends only on the
+correlation weight of(bi,ai+1) over χ, which is non-zero only ifbi and ai+1 have the same
+column activity pattern. Since the weight of each column is 2, the correlation weight is
+twice the number of active columns inbi, or equivalently, inai+1. Therefore, the correlation
+weight of anr-round trail(a0,b0,a1,b1,...,b r−1,ar) is fully determined by the sequence
+b1,...,b r−1 and is given bywc(a1) + ∑
+1≤i<rwc(bi). A linear trail coreis defined as the
+sequence
+Q= a1
+λ⊤
+−→b1
+χ
+−→a2
+λ⊤
+−→b2
+χ
+−→a3
+λ⊤
+−→...a r−1
+λ⊤
+−→br−1 .
+It defines a set of2wc(a1) ×2wc(br−1) r-round trails that share the sequenceQ and that
+differ by the initial masksa0,b0 and the final maskar. Similarly to differential trail cores,
+linear trail cores can be extended tor+ 1 rounds by extension in the forward or backward
+direction. We call the sequencewc(a1),wc(b1),..., wc(br) the weight profileof the trail
+core.
+3.3 Trail search strategy
+Given the similarities between the study of differential and linear trails, a unified notation
+is introduced in [DHVV18a] and we adopt that notation in this paper. A trail core is
+denoted by
+Q= a1
+λ⋆
+−→b1
+χ
+−→a2
+λ⋆
+−→b2
+χ
+−→a3
+λ⋆
+−→...a r−1
+λ⋆
+−→br−1
+where λ⋆ = ρlate ◦θ⋆ ◦ρearly and
+• λ⋆ = λ, ρearly = ρeast , θ⋆ = θ and ρlate = ρwest for differential trails, and
+• λ⋆ = λ⊤, ρearly = ρ−1
+west, θ⋆ = θ⊤and ρlate = ρ−1
+east for linear trails.
+This convention is illustrated in Figure 3.
+We denote the weight of a trail byw, wherew = wr for differential trails andw = wc
+for linear trails.
+Let r be an even number. For anyr-round trail core(a1,b1,...,b r−1) of weight below
+Tr, eitherw(a1,...,b r/2) <Tr/2 or w(ar/2,...,b r−1) <Tr/2, otherwise their sum would
+exceed Tr. It follows that suchr-round trail cores can be generated by generating allr
+2 -
+round trail cores with weight belowTr/2 and extending them in the forward and backward
+direction to reach the desired number of rounds.
+194 Tighter Trail Bounds for Xoodoo
+DC
+late early
+θ
+ρwest
+Δχ
+ρeast
+LC
+early late
+θT
+ρ-1
+west
+corrχ
+ρ-1
+east
+Figure 3: Conventions for differential (DC) and linear (LC) trails in the round function.
+This reasoning can of course be generalized to other partitionings, and it can be iterated
+until reaching the shortest trail cores which are2-round trail cores. See Section 6 for more
+details.
+A 2-round trail core is fully specified by a statea and its weight is given byw(a) +
+w(λ⋆(a)). If τ is a translation overx and z directions, then w(τ(a)) + w(λ⋆(τ(a))) =
+w(a) + w(λ⋆(a)). In other words, the 2-round trail cores specified bya and τ(a) have the
+same weight. We can thus partition all statesa in equivalence classes where states in the
+same class are translated versions of each other. For the goal of lower bounding the weight
+of trails, it is thus sufficient to generate only one representative per class. We call such
+representative state (and its corresponding trail core)canonical.
+Canonical statesa such thatw(a) + w(λ⋆(a)) <T2 are iteratively generated by using
+a tree-based approach with an efficient method to lower bound the weight of nodes that
+allows to efficiently prune branches. In this work we rely on the2-round trail cores
+generation of [DHVV18a] and refer to that paper for details.
+Once 2-round trail cores are generated, they have to be extended. Extension is in
+general an expensive operation, whose cost depends on the number of trail cores to extend
+and the number of active columns in each trail core. In fact, for any stateb at the input
+of χ there are2w(b) compatible states at the output ofχ. In the next sections we recall
+how trail extension works forXoodoo and how we optimized it in order to achieve higher
+target weights.
+4 Trail core extension
+In this section we recall the methods presented in [DHVV18a] to extend trail cores. These
+are up to now the most efficient ones to perform trail core extension inXoodoo.
+4.1 Affine space of compatible states
+Extending a trail core means looking for all the possible states that are compatible through
+χ with its first or with its last state. The latter is calledforward extension, while the
+former isbackward extension.
+In forward extension, each active columnb[x,z] at the input ofχdefines an affine space
+o+ ⟨v1,v2⟩in the same column at the output ofχ, according to Table 2. Gathering all the
+active columns, a description of the affine spaceA(b) of statesaat the output ofχis given
+by A(b) = O+ ⟨V1,...,V w⟩, where the offsetO and the basis vectorsVi’s are defined as
+follows. The offset is a stateO with column(x,z) equal to the offset specified by column
+b[x,z]; if the column is passive, then also the corresponding column inO is passive. The
+offset has thus the same number of active columns asb. Then, for the two column vectors
+v1,v2 specified by the active columnb[x,z], we build two statesV1,V2 whose columns
+are all zero except column(x,z) that gets the value of one of the two column vectors:
+Silvia Mella, Joan Daemen and Gilles Van Assche 195
+V1[x,z] = v1 and V2[x,z] = v2. The dimension of the basis is the weight ofb, that is twice
+the number of its active columns.
+Backward extension works similarly sinceχ is an involution. From a statea at the
+output ofχ, we define the set of statesb at the input ofχ as an affine spaceB(a).
+Example 1. Consider the following differencea that we want to extend in the backward
+direction.
+5 25 252 2
+a
+The statea has seven active columns, each with value 2 or 5. Therefore, the affine
+space B(a) has an offset with seven active columns and fourteen basis vectors. They are
+the following:
+4 24 242 2
+O
+5
+V1
+2
+V2
+4
+V3
+1
+V4
+5
+V5
+2
+V6
+4
+V7
+1
+V8
+5
+V9
+2
+V10
+4
+V11
+1
+V12
+4
+V13
+1
+V14
+△
+4.2 Extension as a tree-based search
+The affine spaceA(b) or B(a) = O+ ⟨V1,...,V w⟩can be scanned in a tree-based search.
+At the root of the tree there is the offsetO. A node at leveli is composed by the offset
+plus ivectors of the basis. To avoid duplicates, we introduce an order relation among basis
+vectors; arbitrarily, we say thatVi ≺Vj if and only ifi<j . The children of a node are
+obtained by adding a new basis vector to the node, running over all remaining vectors that
+are larger than the last vector composing the node, according to the order relation adopted.
+More formally, let a node be defined byO+ Vi1 + ... + Vik. Its children are all the nodes of
+the formO+ Vi1 + ... + Vik + Vik+1 with ik+1 ∈{ik + 1,..., w}. Alternatively, the parent
+of nodeO+ Vi1 + ... + Vik−1 + Vik is O+ Vi1 + ... + Vik−1 if ik = max{i1,...,i k}.
+Example 2.Consider the affine space in Example 1 and consider the nodeN = O+V3+V11.
+The parent of this node isO+V3 and its children areO+V3 +V11 +V12, O+V3 +V11 +V13
+and O+ V3 + V11 + V14. They are depicted below with the other descendants ofN.
+196 Tighter Trail Bounds for Xoodoo
+O+V3
+N=O+V3+V11
+O+V3+V11+V13O+V3+V11+V12 O+V3+V11+V14
+O+V3+V11+V13+V14O+V3+V11+V12+V13 O+V3+V11+V12+V14
+O+V3+V11+V12+V13+V14
+△
+4.3 Limiting the search using the far view
+Scanning the entire affine space takes2w(a) (or 2w(b)) iterations and becomes prohibitively
+expensive ifa (or b) has high weight. However, we do not need to scan the whole space,
+but we need to build only the compatible states with a weight below the target, when we
+look at them afterλ⋆ (or λ⋆−1 for backward extension). As a convention, we say that the
+near viewis when we look at states just afterχ (or just beforeχ for backward extension),
+and thefar viewafter λ⋆ (or λ⋆−1).
+Since λ⋆ is a linear operation, we can easily transpose the affine spaceA(b) through
+the different steps mappings by applying the step mappings to the offset and the basis
+elements. This goes up to the input to the nextχ and we obtain the spacesρearly(A(b)),
+θ⋆(ρearly(A(b))), andλ⋆(A(b)). If
+A(b) = Onear + ⟨Vnear
+1 ,...,V near
+w ⟩.
+then we have
+B(b) = λ⋆(A(b)) = Ofar +
+⟨
+Vfar
+1 ,V far
+2 ,...,V far
+w
+⟩
+with Ofar = λ⋆(Onear) and Vfar
+i = λ⋆(Vnear
+i ). This is depicted in Figure 4.
+b A(b)
+ρearly (A(b)) θ⋆(ρearly (A(b)))
+B(b) =
+Ofar +
+⟨
+V far
+1 ,V far
+2 ,...,V far
+w
+⟩
+=
+Onear + ⟨V near
+1 ,...,V near
+w ⟩
+χ λ⋆ χ
+ρearly
+θ⋆
+ρlate
+Figure 4: Near view and far view for forward extension.
+Silvia Mella, Joan Daemen and Gilles Van Assche 197
+aB(a)
+ρ−1
+late (B(a))θ⋆−1 (ρ−1
+late (B(a)))
+A(a) =
+Ofar +
+⟨
+V far
+1 ,V far
+2 ,...,V far
+w
+⟩
+=
+Onear + ⟨V near
+1 ,...,V near
+w ⟩
+χλ⋆χ
+ρ−1
+late
+θ⋆−1
+ρ−1
+early
+Figure 5: Near view and far view for backward extension.
+Similarly for the backward extension, we can transpose
+B(a) = Onear + ⟨Vnear
+1 ,...,V near
+w ⟩
+to ρ−1
+late(B(a)), θ⋆−1(ρ−1
+late(B(a))), and
+A(a) = λ⋆−1(B(a)) = Ofar +
+⟨
+Vfar
+1 ,V far
+2 ,...,V far
+w
+⟩
+with Ofar = λ⋆−1(Onear) and Vfar
+i = λ⋆−1(Vnear
+i ). This is depicted in Figure 5.
+Example 3. Consider the differencea of Example 1 and assume we want to extend it in
+the backward direction. Therefore the offset and basis vectors in Example 1 represent the
+space B(a) in the near view. We consider the basis vectorV1 in the near view and we map
+it through the different steps ofλ⋆−1. We obtain the following differences.
+5
+V1
+1 4
+ρ−1
+late(V1)
+17 7 77 7 74 7 77777777777 777 77 7777777 7777777 7 777777 77777 77777 77777 7
+θ⋆−1(ρ−1
+late(V1))
+71461427546144 425444614654442523756561212527544235614 614542371231231461237312712527333161425273561277371 6123371467
+Vfar1
+λ ⋆
+ρ − 1
+late
+θ ⋆− 1
+ρ − 1
+early
+Similarly, we obtain the offset and the other basis vectors in the far view. The resulting
+representation ofA(a) is the following.
+198 Tighter Trail Bounds for Xoodoo
+63376561467124444467121616567331252525254252125 2125212377121257752735477737754254425 4442121212525214214
+Ofar
+71461427546144425444614654442523756561212527544235614614542371231231461237312712527333161425273561277371 6123371467
+Vfar1
+6565442144275463144256714445252121421212121 252123523354275233716712333163161244214254214 2544 42
+Vfar227523371671233316316123523354254214 2544 4 442144214427546314425671444 656542121421212121425212525
+Vfar3
+161235233542752337167123331634 54214254214 254444 656544214427546314425671452125252121421212121 2
+Vfar4
+71467161425273561277371 6123346547146142754614442544461614442523756561212527544235614273335423712312314612373127125
+Vfar54244214254214 2544444 65654421442754631442567125212525212142121212131612352335427523371671233316
+Vfar6
+1235233542752337167123331631644214254214 2544 46565442144275463144256714441252521214212121214252
+Vfar7
+123331631612352335427523371672544 4 542142542144425671444 6565442144275463121 2521252521214212121
+Vfar81 61233714671614252735612773725444614654714614275461444544235614614442523756561212527312712527333542371231231461237
+Vfar9
+2544 424421425421414425671444 6565442144275463121 25212525212142121271233316316123523354275233716
+Vfar10
+65654421442754631442567144425252121421212121425212352335427523371671233316316144214254214 2544 4
+Vfar11425671444 65654421442754631421 252125252121421212123331631612352335427523371671544 4 54214254214 2
+Vfar12
+5671444 6565442144275463144214252125252121421212123316316123523354275233716712344 4 44214254214 25
+Vfar13
+427546314425671444 656544214421212121 25212525212123371671233316316123523354275214 2544 4 54214254
+Vfar14
+△
+All the elements of the space in the far view can again be built by a tree-based approach,
+and naturally we say thatVfar
+i ≺Vfar
+j if and only ifi<j .
+Notice that a node can have weight smaller than the weight of its parent, since the
+addition of a new basis vector can turn some active bits into passive bits, possibly decreasing
+the number of active columns. This means that when a node is encountered whose weight
+is higher than the target weight, we still need to build all its descendants and check if
+their weight is below the target. However, it is possible to lower bound the weight of the
+descendants of a node, so that if such lower bound is higher than the target weight, we
+can safely discard them [DHVV18a]. The more accurate such bound is, the more efficient
+the search becomes. In this work, we will use the termscore to refer to such lower bound,
+as introduced in [MMGD22].
+4.4 Computing the score based on stability masks
+For a given nodeO+ Vi1 + ... + Vik in the far view (we omit the “far” superscript here),
+we define itsstable bitsas the set of bits that have in all the node’s descendants the same
+value as the bits in the node. Note that the stability of bits depends only on the index of
+the last basis element in the node encountered, in this caseik, as only basis elements with
+index j >ik can be further added.
+We represent the stable bits as astability mask, i.e., a state value where a bit has a
+value 1 if it is stable and0 otherwise. We denote the stability mask of a node with last
+basis element with indexi by Si. S0 is the stable bit mask for the entire basis andSw is
+the all-one mask.
+For a given nodeN = O+ Vi1 + ... + Vik, we therefore have thatN ∧Sik gives the
+active bits ofN that are guaranteed to remain active in all its descendants. It follows that
+the weight of any descendant ofN has weight at leastw(N∧Sik). This is the score of the
+node N, which lower bounds the weight of all nodes in the subtree underN. Similarly,
+the score of the root node isw(O∧S0).
+4.5 Triangularization
+The stability masksS0 through Sw depend on the basis⟨V1,V2,...,V w⟩in the far view.
+To limit the search as much as possible, we would like that the number of stable bits inSi
+grows quickly withi. This way, the score computes the weight over many columns and the
+search can prune early.
+To this end, we proposed in [DHVV18a] to triangularize the basis⟨V1,V2,...,V w⟩.
+Triangularization of the basis ⟨V1,V2,...,V w⟩requires the establishment of an order
+relation of the bit positionsp= (x,y,z ) in the state, for instance the lexicographic order
+relation. Let ⟨V1,V2,...,V w⟩be a triangularized basis and letpi be the smallest active
+Silvia Mella, Joan Daemen and Gilles Van Assche 199
+bit in Vi. Then by construction, all bits in positions≤pi are passive in all vectors in
+Vi+1,...,V w, and they are consequently included in the stability maskSi.
+Example 4. Consider the basis of Example 3. If we triangularize it following the lexico-
+graphic order[y,x,z ] we obtain the following offset and vectors.
+63376561467124444467121616567331252525254252125 2125212377121257752735477737754254425 4442121212525214214
+Ofar
+71461427546144425444614654442523756561212527544235614614542371231231461237312712527333161425273561277371 6123371467
+Vfar1
+675425614633123773523542377567425733775237167371442373146141237773777567561654446752142744675256563167752127121271465
+Vfar242546733123356752127331444677547567161216716161614673167737773561637754 67731614661631463716316142756165652
+Vfar3
+2565444446165463546542135466354427544465442146335633312146123773371252316316212146312373123354277737756752
+Vfar4
+612337146716142527356127737275646146567146142754444454423561461442523756561212527312716527333542371231231461637
+Vfar544256352316752377735444277512254465232527542316754233167712771446756752146731233163335446144277163146563314421
+Vfar6
+44427161422352127354467337463564423144654654442146757163121656316521254446121274633373127312146337523752733
+Vfar7
+44427161422352127354467337463564423144654654442146757163121656316521254446121274633373127312146337523752733
+Vfar84 2544 4 44214254225654314425651444 6546542144421212121425212525212133716312333163161235233542352
+Vfar9
+4244214254214 2544444 65654421442754631442567125212525212142121212131612352335427523371671233316
+Vfar10
+44244423114 6121233544235273367375465467121444444216332771423144273544254215442525614231277373775467737
+Vfar11444444 656314675463144 66775365445542146354671652523142773375425423121633333112312123731771654273716312773
+Vfar12
+446 4447754675461233754441252523714445144277542314275672333775275427546333333333167123331 46525633752561273716
+Vfar13
+4444 444675467144233754716554237354544675427146562331275275 27546333333123144652333123652563135256523331
+Vfar14
+These lead to the following stability masks.
+S0
+1
+S1
+11
+S2
+111
+S3
+1111
+S4
+11111
+S5
+111111
+S6
+1111111
+S7
+11111111
+S8
+111111111
+S9
+1111111111
+S10
+111111111111
+S11
+1111111111111
+S12
+111111111111111
+S13
+77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
+S14
+The number of stable bits in each maskSi is given by the Hamming weight ofSi. The
+sequence of such Hamming weights is therefore
+0,1,2,3,4,5,6,7,8,9,10,12,13,15,384.
+△
+5 Optimizing the trail core extension
+In this section we describe optimization techniques to make the number of stable bits grow
+more quickly.
+5.1 Redefining stability masks
+We noticed that the implementation of the trail extension in [DHVV18a] is suboptimal. It
+computes the score using a stability mask that includes the bits in positions smaller than
+pi+1, but there can be more bits that are stable. As a matter of fact, for a given node
+with last basis vectorVi, all bits in positions where the basis vectorsVi+1 to Vw are all
+200 Tighter Trail Bounds for Xoodoo
+zero, are stable. Hence, we define the stability mask of a node as the bitwise AND of the
+complements of the basis vectors that can be added to the node to form its descendents:
+Si =
+⋀
+j>i
+Vj . (1)
+The example below shows how, with this new definition of stability mask, the number
+of stable bits grows more quickly withi.
+Example 5. Consider the triangularized basis given in Example 4. By applying the
+definition given in (1) we obtain the following stability masks.
+S0
+1
+S1
+31 4
+S2
+331 44
+S3
+3331 444
+S4
+33331 4444
+S5
+333311 44444
+S6
+3333135 2121421 4444444
+S7
+33331371212 21214 21212114 425 4444444644
+S8
+333313731212 21214 21212154 425 4444444644
+S9
+3333137333123 21214 212122121 21215444 425 444444464444 4 4
+S10
+33331373733123 21214 2312 4 23223121 212154444 42521 444444446444444 25 4 4
+S11
+33731377733373 2121254423342214 23223331 21421775444 2527352144444444461 4444675125 4 44
+S12
+3377337777337731231633754423761227354423727373712356371217775446527527775231444444654633125444675471275214642521254446
+S13
+77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
+S14
+The sequence of Hamming weights of the stability masks, for increasingi, is therefore
+0,1,4,7,10,13,15,27,46,49,66,85,122,212,384
+△
+5.2 Triangularization based on θ-effect
+To speed things up even further, we introduce new ideas to improve the triangularization.
+The bottleneck is the backward extension, so we focus on that one.
+As shown in Table 2, the affine basis elements ofB(a) contain only one or two active
+bits each in the near view. In the latter case, the two bits end up in different columns
+at the input ofθ⋆−1 because ofρ−1
+late, so in both cases none of the basis elements are in
+the kernel. As the inverse ofθ⋆ is dense on states outside the kernel, computing(λ⋆)−1
+over such a basis gives elements with many active bits. See for instance Example 3. As all
+basis vectors have many active bits, their complements typically have only half of their
+bits equal to 1 and due to the fact that the stability masks are the bitwise AND, they are
+rather sparse unlessi is close tow. See for instance Example 5.
+We can make the triangularization more effective by adopting a different ordering of
+bit positions, leading to more dense stability masks. For this purpose, we are going to look
+at columns before and afterθ⋆. When we look at states at the input ofθ⋆ we call it the
+mid view.
+The θ-effect is defined as the sum of an input and an output ofθ⋆, i.e., E(x) =
+x ⊕(θ⋆)−1(x) for a given outputx of θ⋆. Because θ⋆ is a column parity mixer, the bits
+in any given column ofE(x) are either all three active or all three passive. So, the basis
+elements in the mid view have one or two active bits plus a number of completely active
+columns.
+Silvia Mella, Joan Daemen and Gilles Van Assche 201
+aB(a)
+ρ−1
+late (B(a))θ⋆−1(ρ−1
+late (B(a)))
+A(a) =
+Ofar +
+⟨
+Vfar
+1 ,V far
+2 ,...,V far
+w
+⟩
+=
+Onear + ⟨Vnear
+1 ,...,V near
+w ⟩
+⊕
+E(a)=
+OE +
+⟨
+VE
+1 ,...,V E
+w
+⟩
+=
+Omid +
+⟨
+Vmid
+1 ,...,V mid
+w
+⟩
+χλ⋆χ
+ρ−1
+late
+θ⋆−1
+ρ−1
+early
+Figure 6: Mid view andθ-effect for backward extension.
+Example 6. Consider the basis vector Vnear
+1 as in Example 3. In the mid view,
+Vmid
+1 = θ⋆−1(ρ−1
+late(Vnear
+1 )) has two columns with one active bit and all other active
+columns have three active bits. It is in fact given by the sum ofρ−1
+late(Vnear
+1 ) and the
+corresponding θ-effect VE
+1 = E(ρ−1
+late(Vnear
+1 )):
+7 7 77 7 7 7 77777777777 777 77 7777777 7777777 7 777777 77777 77777 77777 7
+VE1
+△
+The idea is therefore to triangularize in a way that takes a whole active column in
+the mid view as a pivot. This eliminates the three bits of the column in all other basis
+elements, and therefore stabilizes three bits in three different columns in the far view, i.e.,
+after going throughρ−1
+early. To do this, we perform triangularization over theθ-effect.
+Let us describe this procedure more precisely. First, we let
+E(a) = E(ρ−1
+late(B(a)))
+be the affine space representing theθ-effect ofB(a). In other words, if
+B(a) = Onear + ⟨Vnear
+1 ,...,V near
+w ⟩.
+then
+E(a) = OE +
+⟨
+VE
+1 ,...,V E
+w
+⟩
+with OE = E(ρ−1
+late(Onear)) and VE
+i = E(ρ−1
+late(Vnear
+i )). This is depicted in Figure 6.
+Then, we triangularize
+⟨
+VE
+1 ,...,V E
+w
+⟩
+and modify the representation ofBaccordingly:
+Every time we addVE
+i to VE
+j in E(a), we addVnear
+i to Vnear
+j in B(a). Finally, we transpose
+B(a) to A(a) = λ⋆−1(B(a)).
+Example 7. Consider the basis given in Example 1. For each basis vectorVnear
+i we can
+compute the correspondingρ−1
+late(Vnear
+i ), Vmid
+i , andVE
+i as we did in Example 3 and 6 for
+Vnear
+1 . Then, by performing triangularization based on theθ-effect following the lexico-
+graphic order[y,x,z ], we obtain the following basis for the mid view.
+202 Tighter Trail Bounds for Xoodoo
+777777777777777 7777177 777 74 77 7777777777 77777777777777777777777
+Vmid1
+177 777 74 7 77777777777 777 777777777777777777777777777777777 777777
+Vmid277 7 7777 7777 7 77 777 7 7777777 7777777777777772 7 7 7 7
+Vmid3
+777777777777777 7777777777777 747777777777777777 7777 72777777777 7777 7
+Vmid4
+1 77 7777 3777777776677777 7747777777 77 77777772777777777 777777777
+Vmid51 7777777737777 77773717777777 74477777777 77777777777777777 777777777 777
+Vmid6
+7777777777777 7777 67 7767777773777777777 77777 7777777577 7 77777 7777 7
+Vmid7
+1 77 27773777 77773717 7777 7744777777777777777777 77777757777777777 7777 7
+Vmid81 7777757747777777737717777 777 7477777 7 7 777777 77747 7777777777777777
+Vmid9
+2 7 7 7 777 7 7777 777777 7 77 777 777777777 777777777777
+Vmid10
+1 2 7577747777 777476677777677777733 7777777777 77777777777477777717777 7777
+Vmid111 2 577774777777371777 17 77777377777777777 77777777777723777774777777777777
+Vmid12
+1 7773 77777741677777 7774 77777777 77777777777477777476777717777777
+Vmid13
+1 436 6 3
+Vmid14
+The correspondingθ-effects are the following. We can notice that the pivot column for
+E1 is in position(0,0), forE2 it is in position(0,1), forE3 it is in position(0,2), and so on.
+777777777777777 7777 77 777 7 77 7777777777 77777777777777777777777
+VE1
+77 777 7 7 77777777777 777 777777777777777777777777777777777 777777
+VE277 7 7777 7777 7 77 777 7 7777777 7777777777777777 7 7 7
+VE3
+777777777777777 7777777777777 7 7777777777777777 7777 7777777777 7777 7
+VE4
+77 7777 7777777777777777 77 7777777 77 7777777777777777 777777777
+VE57777777777777 7777777777777 7 77777777 77777777777777777 777777777 777
+VE6
+7777777777777 7777 77 7777777777777777777 77777 7777777777 7 77777 7777 7
+VE7
+77 7777777 7777777 7777 77 777777777777777777 77777777777777777 7777 7
+VE877777777777777777777777 777 7 77777 7 7 777777 7777 7777777777777777
+VE9
+7 7 7 777 7 7777 777777 7 77 777 777777777 777777777777
+VE10
+77777 7777 77777777777777777777 7777777777 777777777777777777777 7777
+VE117777777777777 777 7 77777777777777777 777777777777777777 777777777777
+VE12
+7777 777777 777777 777 77777777 77777777777777777777777777777
+VE13
+77 7 7
+VE14
+Once the basis for the mid view is mapped to the far view, we obtain the following sequence
+of stability masks.
+S0
+24
+S1
+21 244
+S2
+231 2444
+S3
+2331 24444
+S4
+23331 244444
+S5
+233311 2444444
+S6
+2333135 21 221421 44444444
+S7
+23731371212 21214 212212114 2525 44444444644
+S8
+23731373121212 21214 212212121544 2525 444444446444
+S9
+23731377331233 21214 2122121231 2142154444 25271 4444444461 4465 4 4
+S10
+23731377733373 2121254423342214 2323331 21421775444 2527352144444444461 444675125 4 44
+S11
+2377337777337731231633754423761273544235273737123563712177754465275277752314444446546331254467547127521464252125446
+S12
+67777777777777777777777777777777775657777777757777777777756777777777777777777377777777777777777777777737777777777777777777777377
+S13
+77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
+S14
+The sequence of Hamming weights of the stability masks, for increasingi, is therefore
+0,2,5,8,11,14,16,28,50,59,81,119,207,374,384
+△
+We can notice that the number of active bits in the stability masks in Example 7 does
+not increase by at least 3 for eachi, which would be the optimal behavior. Moreover, we
+can also notice that even if the number of stable bits increases by 3 fromSi to Si+1, some
+of these bits may end up in the same column. Hence, the number of new active columns
+Silvia Mella, Joan Daemen and Gilles Van Assche 203
+can be smaller than 3, and the score will be computed on less active columns than the
+optimal situation.
+Wenowdiscusswhataretheconditionsthatleadtosuchandothernon-optimalbehavior
+and explain how we can refine our method to overcome them. Both our refinements are
+related to the order in which we consider the columns(x,z) when choosing a pivot.
+5.2.1 Refinement based on go-columns
+First, we notice that vectorVmid
+i cannot lead to 3 new stable bits when there are active
+bits inVmid
+j in the same pivot column ofVmid
+i for somej >i.
+Example 8. Consider the basis for the mid view in Example 7. The pivot column ofVmid
+1
+is column(0,0). The basis vectorsVmid
+j with j ∈{2,5,6,8,9,11,12,13,14}all have an
+active bit in this column, i.e. the bit(0,0,0). Therefore, the three bits ofVE
+1 [0,0] cannot
+be considered all stable, but only the two bits iny= 1 and y= 2. These are in fact the
+two bits that appear inS1 (mapped throughρ−1
+early).
+△
+Moreover, if the offsetOmid already contains one or more bits in the pivot column of
+Vmid
+i , the addition ofVmid
+i will cancel them. It follows that less bits will be considered
+when computing the score.
+To overcome these problems, when looking atρ−1
+late(B(a)), we divide the columns(x,z)
+in two sets: thego columns are those that do not contain any active bit in either the offset
+or the basis elements ofρ−1
+late(B(a)), and theno-go columns are the remaining ones. When
+choosing a pivot in the triangularization ofE(a), we look at go columns in priority. Only
+if there are no more go columns available, then we choose a no-go column.
+The reason for favoring go columns can be explained more formally as follows. Assume
+that (x,z) is a go column and that it is taken as a pivot in the triangularization ofE(a).
+Because it is a go column, we have:
+ρ−1
+late(b)[x,z] = (0,0,0) for allb∈B(a).
+Since it is taken as pivot, it means that
+VE
+i [x,z] = 1 and Vmid
+i [x,z] = (1,1,1)
+for some basis vectorVnear
+i of B(a), and that the column(x,z) is going to be inverted by
+θ⋆−1 when addingρ−1
+late(Vnear
+i ). Then ρ−1
+early will move these three bits to three different
+columns in the far view. Furthermore, they are stable after taking thei-th basis element
+as pivot, because they do not appear in any later basis vector. SoSi includes them. Three
+stable active bits in three different columns count as6 in the scorew(N ∧Si), so this is
+optimal when aiming at pruning the tree as soon as possible.
+Choosing a no-go column is less favorable, so they are used as pivot near the end of the
+triangularization procedure. When the offsetρ−1
+late(Onear)[x,z] is non-zero, the active bits
+in that column will be turned passive after applyingθ⋆−1, therefore counting as less than
+6 in the score. As another case, assume thatVnear
+i with VE
+i [x,z] = 1 is taken as pivot and
+that some basis vectorρ−1
+late(Vnear
+j )[x,z] with j >iis non-zero. Then, at least one of these
+bits will not be stable and cannot be taken into account when computing the score.
+5.2.2 Refinement based on a diagonal pattern
+Another non-optimal situation that can happen is due to the fact that we usually follow
+a horizontal pattern during triangularization, i.e., after pivot column(x,z), we consider
+pivot column(x,z + 1). In the differential case, the three bits(x,0,z), (x,1,z), (x,2,z) of
+the first pivot column will be mapped to(x,0,z), (x,1,z −1), (x+ 2,2,z −8), respectively,
+204 Tighter Trail Bounds for Xoodoo
+after ρ−1
+early = ρ−1
+east. But for the second pivot column,(x,1,z + 1) will be mapped to
+(x,1,z), sitting in the same column as(x,0,z) after ρ−1
+early. Hence, because of this overlap,
+the score will be computed on at most5 columns in the far view instead of6.
+Example 9. Consider the basis in the mid view given in Example 7. The pivot column
+of Vmid
+2 is (0,1). Its three bits are mapped to bits(0,0,1), (0,1,0), (2,2,25) after ρ−1
+early.
+They are the bits that appear inS2 but not inS1. The pivot column ofVmid
+3 is (0,2). Its
+three bits are mapped to bits(0,0,2), (0,1,1), (2,2,26) after ρ−1
+early. They are the bits that
+appear inS3 but not inS2. Bit (0,1,1) goes in the same column of bit(0,0,1). Therefore
+the number of active columns increases from5 in S2 to 7 in S3.
+△
+To limit this effect, when we look for a pivot column we follow a diagonal pattern in
+the θ-view. Namely, we loop over(x,z) = (kmod 4,(k+ ⌊k/32⌋) mod 32) for k∈Z128.
+To avoid potential misunderstanding due to similar terminology, we highlight that this
+diagonal pattern differs from the diagonal coordinate introduced in [BFR22, Section 5.3].
+In fact, the authors of [BFR22] adopt a diagonal ordering of units to maximize the number
+of stable coordinates in their 2-round trail cores generation, whereas our ordering is meant
+for trail extension instead. Therefore, while the final goal of both approaches is to compute
+more accurate lower bounds for the weight during the trail search, they focus on different
+aspects of the search.
+Example 10. Consider the affine space given in Example 1. By applying the new trian-
+gularization technique based on theθ-effect and the refinements based on the go-columns
+and the diagonal pattern, we finally obtain the following stability masks.
+S0
+21 4
+S1
+42121 4
+S2
+421 42121 4
+S3
+4 4 421 2142121 2121 4 4
+S4
+44 4 421 4 214 42121 2312121 4 421
+S5
+21 44 4 421 44 214 442121 2312121 4 631
+S6
+21 44 4 421 421 1 444214 442121 23142121 214 6331
+S7
+44 21 21 65 44 421 421 1 444214 452161235 231 242121 214 6331
+S8
+44 21 21 6544444612144252561444214 4521271235 423121234214252121612216331
+S9
+652125231465214654467214425425714444214 45216731235425 673521634214252121631221633121
+S10
+6752565277527746567356565677567771465654254425752544671654446777377337356735273567377775273736333737127323356335223146335271
+S11
+67777677777777677777777777777777775657777777757777777777756777777777773777777377777777777777737777777737777777777777777777777375
+S12
+77777677777777677777777777777777777777777777777777777777777777777777773777777777777777777777737777777777777777777777777777777775
+S13
+77777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777
+S14
+The sequence of Hamming weights of the stability masks, for increasingi, is therefore
+0,3,6,9,18,27,33,43,58,86,119,251,369,379,384 .
+We can notice that the number of stable bits in this example increases by at least 3 with
+each i, unlike in the previous examples.
+△
+Clearly, we can see that the number of stable bits increases much faster in Example 10
+than in Example 4. As active columns count for 2 in the weight, each stability bits
+potentially contributes to 2 to the score. Once the score reaches the threshold weight of
+the extension, the entire subtree of descendants is pruned. Since the number of states to
+investigate increases exponentially as we go down the tree, it is clear that pruning earlier
+has a direct and significant reduction on the search time. This highlights the benefits of
+having a tighter score and a faster increasing number of stability bits.
+Silvia Mella, Joan Daemen and Gilles Van Assche 205
+Table 3:Details on the generation of r-round canonical differential trail cores with weight
+below Tr. Timings are rounded to the closest integer and in the fourth column they are
+meant to be incremental. Timings between parenthesis means that the same computation
+has been already done in a previous step, so it is counted only once. - means that the step
+is not performed since the starting set is empty. * the time withXooTools on a desktop
+PC equipped with an Intel® Core™ i5-6500 CPU.
+search space details
+r T r # cores found time step r T r # cores found time
+4 88 4 95d
+generation 2 44 2,983,444,980 301h
+forw.ext. 3 86 2,283,985 27h
+forw.ext. 4 88 3 3m
+back.ext. 3 86 291,994 1942h
+back.ext. 4 88 1 1m
+5 98 0 21d
+generation 2 44 2,983,444,980 (301h)
+forw.ext. 5 98 0 28h
+generation 3 54 201 480h*
+back.ext. 5 98 0 1s
+6 132 0 21s
+generation 3 54 201 (480h*)
+forw.ext. 6 132 0 3s
+back.ext. 6 132 0 1s
+generation 2 44 2,983,444,980 (301h)
+ext. from start 6 132 0 (27h+) 16s
+ext. from middle 6 132 0 (27h+) 1s
+ext. from end 6 132 0 (1942h)
+8 176 0 2s
+generation 4 88 4 (95d)
+forw.ext. 8 176 0 1s
+back.ext. 8 176 0 1s
+10 220 0 12m
+generation 4 88 4 (95d)
+forw.ext. 10 220 0 12m
+generation 6 132 0 (115d)
+back.ext. 10 220 0 -
+12 264 0 -
+generation 6 132 0 (115d)
+forw.ext. 12 264 0 -
+back.ext. 12 264 0 -
+6 Improved bounds
+In this section, we report on our results for both differential and linear trail cores. The
+improved bounds resulting from our search are reported in Table 1. Details on our search,
+as the number of (canonical) trail cores found and the execution time for the different
+steps, are reported in Table 3 for differential trails and in Table 4 for linear trails.
+We will integrate our optimizations into the public softwareXooTools [DHVV18b].
+All our experiments are run on a server equipped with an AMD EPYC 7552 48-Core
+Processor @2.2GHz. We exploited the multicore architecture to run some of our experiments
+in parallel. However, execution times are reported as single-core time.
+As starting point, we consider the set of all 2-round trail cores with weightw(a1) +
+w(b1) <44 and all3-round trail cores below weight 54. The former are generated using
+XooTools. The latter were produced at the end of 2021 [The21] and can be found in the
+XooTools repository [DHVV18b].
+206 Tighter Trail Bounds for Xoodoo
+Table 4:Details on the generation of r-round canonical linear trail cores with weight below
+Tr. Timings are rounded to the closest integer and in the fourth column they are meant
+to be incremental. Timings between parenthesis means that the same computation has
+been already done in a previous step, so it is counted only once. - means that the step is
+not performed since the starting set is empty. * the time withXooTools on a desktop
+PC equipped with an Intel® Core™ i5-6500 CPU.
+search space details
+r T r # cores found time step r T r # cores found time
+4 88 3 94d
+generation 2 44 2,983,073,628 344h
+forw.ext. 3 86 2,456,384 27h
+forw.ext. 4 88 2 3m
+back.ext. 3 86 274,104 1878h
+back.ext. 4 88 1 1m
+5 98 0 21d
+generation 2 44 2,983,073,628 (344h)
+forw.ext. 5 98 0 28h
+generation 3 54 204 480h*
+back.ext. 5 98 0 1s
+6 132 0 23s
+generation 3 54 204 (480h*)
+forw.ext. 6 132 0 3s
+back.ext. 6 132 0 2s
+generation 2 44 2,983,073,628 (344h)
+ext. from start 6 132 0 (27h+) 17s
+ext. from middle 6 132 0 (27h+) 1s
+ext. from end 6 132 0 (1878h)
+8 176 0 4s
+generation 4 88 3 (94d)
+forw.ext. 8 176 0 1s
+back.ext. 8 176 0 3s
+10 220 0 2m
+generation 4 88 3 (94d)
+forw.ext. 10 220 0 2m
+generation 6 132 0 (114d)
+back.ext. 10 220 0 -
+12 264 0 -
+generation 6 132 0 (114d)
+forw.ext. 12 264 0 -
+back.ext. 12 264 0 -
+6.1 Bounds on 4 rounds
+We generated all 4-round differential and linear trail cores withw(a1) + w(b1) + w(b2) +
+w(b3) < 88. We found 2 differential trail cores of weight 80, one of weight 82, and one
+of weight 86. We also found 2 linear trail cores of weight 80 and one of weight 82. This
+finally solves the open problem of proving a tight bound for 4-round trails inXoodoo.
+The trails of weight 80 that we found have some interesting properties that we will discuss
+in Section 8.
+To perform our search, we observe that any 4-round trail core with weightw(a1) +
+w(b1) + w(b2) + w(b3) <88 has w(a1) + w(b1) <44 or w(b2) + w(b3) <44, otherwise their
+sum would give at least88. Therefore, all 4-round trail cores with weight smaller than88
+can be generated by extending all 2-round trail cores withw(a) + w(b) <44 either in the
+forward or backward direction. Extension is performed by first extending all 2-round trail
+Silvia Mella, Joan Daemen and Gilles Van Assche 207
+cores to 3 rounds below86 (because the remaining round will contribute at least 2 to the
+weight) and then by extending the obtained 3-round trail cores to 4 rounds below weight
+88. This search took in total 95 CPU days.
+6.2 Bounds on 5 rounds
+We scanned the space of all 5-round differential and linear trail cores withw(a1) + w(b1) +
+w(b2) + w(b3) + w(b4) <98. We found that both spaces are empty. It follows that any
+5-round trail has weight at least98.
+We split our search space into two sub-spaces. The first sub-space contains the 5-round
+trail cores withw(a1) + w(b1) <44. This space can be covered by extending all 2-round
+trail cores withw(a)+w( b) <44 in the forward direction to 5 rounds below weight98. The
+second sub-space contains the 5-round trail cores withw(a1) + w(b1) ≥44. For such trail
+cores, w(b2) + w(b3) + w(b4) <54 otherwise their weight would be at least98. We can thus
+cover this space by extending all 3-round trail cores with weight below54 in the backward
+direction to 5 rounds below weight98. This search took 21 CPU days, considering that we
+reused the 2-round trail cores withw(a) + w(b) <44 already generated.
+6.3 Bounds on 6 rounds
+We scanned the space of all 6-round differential and linear trail cores withw(a1) + w(b1) +
+w(b2) + w(b3) + w(b4) + w(b6) <132. We found that such spaces are empty. It follows
+that any 6-round trail has weight at least 132.
+We split our search space into two sub-spaces. The first sub-space contains the 6-round
+trail cores withw(a1) + w(b1) + w(b2) <54 or w(b3) + w(b4) + w(b5) <54. Such trail cores
+can be generated by extending all 3-round trail cores withw(a1) + w(b1) + w(b2) <54 in
+the forward and backward direction by three rounds belowT6.
+The second sub-space contains the 6-round trail cores withw(a1) + w(b1) + w(b2) ≥54
+and w(b3) + w(b4) + w(b5) ≥54. We further split this space into three parts. In fact, we
+observe that any 6-round trail core of weightw(a1)+w( b1)+w( b2)+w( b3)+w( b4)+w( b5) <
+132 has w(a1) + w(b1) <44, orw(b2) + w(b3) <44, orw(b4) + w(b5) <44. Otherwise their
+sum would give at least132. Any such 6-round trail core can be built by starting from a
+2-round trail core withw(a) + w(b) <44 placed at the beginning, or in the middle, or at
+the end of the trail. When such 2-round trail core is at the beginning, we extend it by
+four rounds in the forward direction. When it is in the middle, we extend it by two rounds
+in the forward direction and two rounds in the backward direction. When it is at the end,
+we extend it by four rounds in the backward direction.
+Notice that we could start from any of these three positions, but we tried to prioritize
+forward extension over backward extension, since it is cheaper. When we extended a trail
+core, we performed extension by one round at a time, limiting the weight up to which we
+perform extension, taking into account the minimal weight contribution of the remaining
+rounds. A detailed description of the steps performed is given in the following.
+1 Starting fromw(a1) + w(b1) <44 and forward extension by 4 rounds:
+1a First, we extend to 3 rounds in the forward direction with54 ≤w(a1) + w(b1) +
+w(b2) <132−54 = 78, because we are in the case wherew(a1)+w( b1)+w( b2) ≥
+54 and w(b3) + w(b4) + w(b5) ≥54.
+1b Then, we extend the obtained 3-round trail cores to 4 rounds in the forward
+direction withw(a1) + w(b1) + w(b2) + w(b3) <132 −8 = 124, because we know
+that w(b4) + w(b5) ≥8.
+1c Then, we extend the obtained 4-round trail cores to 5 rounds in the forward
+direction withw(a1) + w(b1) + w(b2) + w(b3) + w(b4) <132 −2 = 130, because
+w(b5) ≥2.
+208 Tighter Trail Bounds for Xoodoo
+1d Finally, we extend the obtained 5-round trail cores to 6 rounds in the forward
+direction withw(a1) + w(b1) + w(b2) + w(b3) + w(b4) + w(b5) <132.
+2 Starting fromw(a3) + w(b3) <44 and forward extension by 2 rounds and
+backward extension by 2 rounds: we can assume that w(a1) + w(b1) ≥44
+because the opposite is already covered in the previous step.
+2a First, we extend to 3 rounds in the forward direction withw(a3)+w(b3)+w(b4) <
+132 −44 −2 = 86, becausew(a1) + w(b1) ≥44 and w(b5) ≥2.
+2b Then, we extend the obtained 3-round trail cores to 4 rounds in the forward
+direction withw(a3) + w(b3) + w(b4) + w(b5) <132 −44 = 88, becausew(a1) +
+w(b1) ≥44. Among the trail cores found, we consider only those satisfying
+w(b3) + w(b4) + w(b5) ≥54. Moreover, we consider only the lightest trail for a
+given statea3, since any other will lead to a trail core with higher weight once
+extended.
+2c Then, we extend the remaining 4-round trail cores to 5 rounds in the backward
+direction withw(a2)+w( b2)+w( b3)+w( b4)+w( b5) <132−2 because w(a1) ≥2.
+2d Finally, we extend the obtained 5-round trail cores to 6 rounds in the backward
+direction withw(a1) + w(b1) + w(b2) + w(b3) + w(b4) + w(b5) <132.
+3 Starting fromw(a5) + w(b5) <44 and backward extension by 4 rounds:we
+can assume thatw(a1) + w(b1) ≥44 and w(b2) + w(b3) ≥44 because the opposite is
+already covered in the previous steps.
+3a First, we extend to 3 rounds in the backward direction with54 ≤w(a4) +
+w(b4) + w(b5) < 132 −54 = 78 , because w(a1) + w(b1) + w(b2) ≥54 and
+w(b3) + w(b4) + w(b5) ≥54.
+3b Then, we extend the obtained 3-round trail cores to 4 rounds in the backward
+direction with w(a3) + w(b3) + w(b4) + w(b5) < 132 −44, because w(a1) +
+w(b1) ≥44. Among the trail cores found, we consider only those satisfying
+w(a3) + w(b3) ≥44.
+3c Then, we extend the remaining 4-round trail cores to 5 rounds in the backward
+direction withw(a2)+w(b2)+w(b3)+w(b4)+w(b5) <132−2, becausew(a1) ≥2.
+3d Finally, we extend the obtained 5-round trail cores to 6 rounds in the backward
+direction withw(a1) + w(b1) + w(b2) + w(b3) + w(b4) + w(b5) <132.
+We observe that the set of trail cores in step 1a is a subset of the set of trail cores in
+step 2a. Such set is already covered when we prove bounds for 4 rounds. Also, the set
+of trail cores in steps 2b, 3a, and 3b are already covered during that search. Therefore,
+we did not need to perform these steps, but we extracted the trail cores satisfying the
+required properties from the previously built sets.
+Both in the differential and linear case, step 1c did not output any trail core. Therefore,
+we did not perform step 1d. Similarly, we did not need to perform step 3c and 3d since
+the output of step 3b was empty. All in all, this search took a few seconds for both the
+differential and linear case.
+6.4 Bounds on 8 rounds
+We generated all 8-round differential and linear trail cores with weight below176 and
+found that there are no such trail cores. Therefore,176 defines a (non-tight) lower bound
+on the weight of any8-round trail.
+To perform our search, we observe that a 8-round trail core with weight below176 has
+w(a1) + w(b1) + w(b2) + w(b3) <88 or w(b4) + w(b5) + w(b6) + w(b7) <88, otherwise their
+Silvia Mella, Joan Daemen and Gilles Van Assche 209
+sum would give at least176. Therefore, all 8-round trail core with weight smaller than176
+can be generated by extending all 4-round trail cores with weight below88 by four rounds
+in the forward or backward direction. Since there are only four 4-round differential trail
+cores and three 4-round linear trail cores with weight below88, extension to 8 rounds took
+a few seconds in each case.
+6.5 Bounds on 10 rounds
+We scanned the space of all 10-round differential and linear trail cores with weight below
+220. We found that both spaces are empty. It follows that any 10-round trail has weight
+at least220.
+We split our search space into two sub-spaces. The first sub-space contains the 10-round
+trail cores withw(a1)+w( b1)+w( b2)+w( b3) <88. This space can be covered by extending
+all 4-round trail cores with weight below88 in the forward direction to 10 rounds below
+weight 220. The second sub-space contains the 10-round trail cores withw(a1) + w(b1) +
+w(b2)+w( b3) ≥88. For such trail cores,w(b4)+w( b5)+w( b6)+w( b7)+w( b8)+w( b9) <132
+otherwise their weight would be at least220. We can thus cover this space by extending
+all 6-round trail cores with weight below132 in the backward direction to 10 rounds below
+weight 220. However, there are no such 6-round trail cores. For this reason and given that
+we already generated all 4-round trail cores with weight below88, proving the bound on
+10 rounds took only 12 minutes for differential trails, and 2 minutes for linear trails.
+6.6 Bounds on 12 rounds
+Any 12-round trail core with weight below264 has w(a1) + w(b1) + w(b2) + w(b3) + w(b4) +
+w(b6) <132 or w(b7) + w(b8) + w(b9) + w(b10) + w(b11) + w(b12) <132. Since there are no
+6-round trails with weight below132, we can conclude that there are no 12-round trails
+with weight below264.
+7 Trail core distributions
+In Figure 7, 8, and 9, we report on all canonical trail cores that we found for 2, 3, and
+4 rounds, respectively. For 2 rounds, we found a total of 2,983,444,980 differential trail
+cores and 2,983,073,628 linear trail cores with weight below 44. It is worth noticing that
+these numbers are close to each other within0.05%. Similarly, for 3 and 4 rounds we can
+notice that for each weight, the difference between the number of linear and differential
+trail cores with that weight is only 1 or 2. This is a consequence of the choice of 3-bitχ
+over, for instance, 5-bitχ as inKeccak-p.
+8 Staircase trail cores
+In our search we found four families of (canonical) trail cores, two differential and two
+linear, that have interesting properties. Due to their weight profiles, we call themstaircase
+trail cores. Each family of staircase trail cores has a member for each length. Forr rounds,
+they have weight
+(r
+2
+)
+8. Put differently, extending anr−1-round staircase trail core by
+one round will add weight8r. For two staircase trail cores this extension can only be done
+forward and these have weight profile(8,16,24,32,... ). We call theseupstairs trail cores.
+For the two other staircase trail cores this extension can only be done backward and these
+have weight profile(..., 32,24,16,8) and we call themdownstairs trail cores.
+We illustrate the differential staircase trail cores in Figure 10 and Figure 11.
+210 Tighter Trail Bounds for Xoodoo
+8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42
+1
+102
+104
+106
+108
+1010
+3
+24
+600
+2
+442
+10,062
+80,218
+11,696
+229,475
+2,113,811
+8,485,462
+6,354,162
+58,113,318
+305,056,717
+854,013,023
+1,748,975,965
+3
+24
+600
+2
+442
+10,062
+80,218
+11,696
+229,451
+2,113,947
+8,485,376
+6,352,663
+58,112,663
+305,090,170
+853,965,318
+1,748,620,993
+weight w
+# trail cores with weightw differential
+linear
+Figure 7: Number of canonical 2-round trail cores with weightw.
+36 38 40 42 44 46 48 50 52
+0
+20
+40
+60
+80
+4
+3
+3
+24
+33
+55
+79
+4
+3
+5
+24
+31
+56
+81
+weight w
+# trail cores with weightw
+differential
+linear
+Figure 8: Number of canonical 3-round trail cores with weightw.
+80 82 84 86
+0
+1
+2
+2
+1
+1
+2
+1
+0
+weight w
+# trail cores with weightw
+differential
+linear
+Figure 9: Number of canonical 4-round trail cores with weightw.
+Silvia Mella, Joan Daemen and Gilles Van Assche 211
+12121 233331 212121 233331 2a1
+ρeast3333333333333333
+ρwest32323313133232331313 b1
+χ 23121212312312121231 a2
+ρeast 333333333333
+ρwest 3123321331233213 b2
+χ 2121233121212331 a3
+ρeast 3333333333
+ρwest 323313323313 b3
+χ 231231231231 a4
+ρeast 33333333
+ρwest 33333333 b4
+χ 21212121 a5
+ρeast 3333
+ρwest 3333 b5
+Figure 10: Differential staircase trail that goes downstairs
+5 55 5a1
+ρeast5 55 5
+ρwest1 4 1 44 1 4 1b1
+χ 5 5 5 55 5 5 5a2
+ρeast5 5 5 55 5 5 5
+ρwest1 4 5 1 4 55 1 4 5 1 4b2
+χ 5 5 4 5 5 41 5 5 1 5 5a3
+ρeast5 5 5 55 5 5 5 5 5
+ρwest14 1 4 14 1 45 14 5 5 14 5b3
+χ 55 1 4 55 1 41 55 4 1 55 4a4
+ρeast55 5 55 55 55 5 55
+ρwest15 1 44 15 1 4454 11 4 54 11 4b4
+χ 54 1 45 54 1 4515 51 4 15 51 4a5
+ρeast5 5 5 5 5 555 55 55 55
+ρwest14 14 41 14 14 4155 11 44 55 11 44b5
+Figure 11: Differential staircase trail that goes upstairs
+It can be seen that both depicted staircase trail cores are in theθ-kernel: the states
+between ρeast and ρwest have always an even number of active bits in each column. For
+such trails,θ behaves as the identity and we therefore omit it from our figures.
+Mask propagation and difference propagation through theχ layer of Xoodoo is
+governed by the same laws and masks and differences also propagate the same through bit
+shuffles. As a consequence, the differential trail cores in Figure 10 and Figure 11 can also
+be interpreted as linear trail cores. So, despite the fact that we have four staircase trail
+cores, we only have two different staircase trail structures.
+We will discuss the downstairs trail core in Figure 10 because it is easiest to understand
+thanks to its simple geometry. However, the upstairs trail core in Figure 11 is structurally
+very similar to it.
+The states of the trail core are only active in two planes: plane 0 and 1, limiting the
+differences in the active columns to1,2 and 3, where 3 is in the kernel. The seed of
+the trail core is in the last round: we see that the state atθ there has 4 active columns
+in the same slice.ρwest leaves plane 0 where it is and shifts plane 1 one position up in
+the direction of thex-axis, vertical in the figure. So the pattern is invariant underρwest.
+ρeast−1 also leaves plane 0 where it is and shifts plane 1 one position left in the direction
+of thez-axis, horizontal in the figure. This leads to 8 active columns ina5, each with a
+single active bit. This state is compatible withb4, that is again in the kernel: it consists of
+two copies of the structure ofb5. This state is invariant underρwest and θ. ρeast−1 shifts
+plane 1 and this results in a three-slice state: one slice with all bits in plane 0 active, one
+slice with all bits in plane 1 active and in between one slice with all bits in both planes
+active. Through χ the two outer slices propagate to in-kernel patterns and the middle one
+to an alternating pattern of active bits in plane 0 and 1. This value ofb3 propagates to
+212 Tighter Trail Bounds for Xoodoo
+ρwest 3333 b5
+χ 1111 a6
+ρeast 1111
+θ 1 7 71 7 71 7 71 7 7
+ρwest 1 3 34 41 3 34 41 3 34 41 3 34 4b6
+Figure 12: Forward extension of the differential staircase trail that goes downstairs
+an in-kernel pattern throughρwest−1 as it aligns the alternating pattern in two columns.
+The effect ofρeast−1 on this state results in a state similar toa4 but now there are two
+middle slices with alternating structures. Throughχ the two outer slices propagate again
+to in-kernel patterns and the middle ones to alternating patterns of active bits in plane 0
+and 1.
+In general, the weight profile can be understood as follows. In any round except the
+last, the state atθ consists of a tablecloth pattern boarded by two fully active slices.ρwest
+moves plane 1 one position up resulting in a different tablecloth pattern of the same width.
+ρeast−1 moves plane 1 one position to the left resulting in yet another tablecloth pattern
+that is one slice wider. The tablecloth patterns atbi are compatible with the ones asai+1
+through χas the compatible pairs are(1,1),(1,3),(3,1),(2,2),(2,3),(3,2). Note that(3,3)
+is not a compatible pair. So with each round the pattern gets one slice wider, increasing
+the weight by 8. Fromb5 one cannot extend this trail inside the kernel anymore: afterχ
+only a single slice will be active andρeast will move bits in the same column to columns in
+different slices. Still, as illustrated in Figure 12, forward extension yields in a relatively
+light difference with weight 40, resulting in a weight profile(..., 48,40,32,24,16,8,40).
+This is the weight profile that determines the upper bounds to the minimum trail weight
+reported in Table 1.
+The upstairs trail core in Figure 11 looks very different. It has states that are only
+active in the cross sections of plane 0 and plane 2 and sheet 0 and 2, its weight profile is
+increasing and it has a different symmetry. But on the other hand it is also very similar
+and can be explained in a similar way: it is in the kernel in all rounds and exhibits a
+regularly expanding pattern over the rounds. As opposed to the downstairs trail, extending
+this trail from the seed with weight 8 in the opposite direction does not lead to a relatively
+light difference. This is due to the fact that this extension requires the dense inverse ofθ.
+9 Conclusions
+Thisworkfurtherdevelopsthetrailcoretreesearchtechniquetoproveboundsondifferential
+and linear trails. In particular, we presented new methods to make trail extension in
+Xoodoo more efficient. To this end, we further exploited the propagation properties
+of χ and θ. Once coupled with the 2-round trail core generation techniques presented
+in [DHVV18a], these new methods allowed us to scan in practical time larger spaces of
+trails than before. As a direct consequence, we could improve over known bounds for
+differential and linear trails. We prove a tight bound of 80 for the weight of4-round
+trails, both linear and differential. For 6 and 12 rounds, we proved bounds of 132 and 264,
+respectively.
+Acknowledgments
+Joan Daemen is supported by the European Research Council under the ERC advanced
+grant agreement under grant ERC-2017-ADG Nr. 788980 ESCADA.
+Silvia Mella is supported by PROACT (NWA.1215.18.014), a project financed by the
+Netherlands Organisation for Scientific Research (NWO); by the European Commission
+Silvia Mella, Joan Daemen and Gilles Van Assche 213
+through the ERC Starting Grant 805031 (EPOQUE); by the Cryptography Research Center
+of the Technology Innovation Institute (TII) under the TII-Radboud projectEvaluation
+and Implementation of Lightweight Cryptographic Primitives and Protocols.
+References
+[BDH+17] G.Bertoni, J.Daemen, S.Hoffert, M.Peeters, G.VanAssche, andR.VanKeer.
+Farfalle: parallel permutation-based cryptography.IACR Trans. Symmetric
+Cryptol., 2017(4):1–38, 2017.
+[BDPV11] G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche. On alignment in
+Keccak. In ECRYPT II Hash Workshop, 2011.
+[BFR22] Christina Boura, Margot Funk, and Yann Rotella. Differential analysis of the
+ternary hash function troika. InSelected Areas in Cryptography - SAC 2022,
+2022.
+[Dae95] J. Daemen. Cipher and hash function design strategies based on linear and
+differential cryptanalysis, PhD Thesis. K.U.Leuven, 1995.
+[DHP+20] J. Daemen, S. Hoffert, M. Peeters, G. Van Assche, and R. Van Keer. Xoodyak,
+a lightweight cryptographic scheme. IACR Trans. Symmetric Cryptol.,
+2020(S1):60–87, 2020.
+[DHP+21] J. Daemen, S. Hoffert, M. Peeters, G. Van Assche, and R. Van Keer. Xoodyak,
+a lightweight cryptographic scheme. Submission to NIST Lightweight Cryp-
+tography Standardization Process (round 3), May 2021.https://csrc.nist.
+gov/CSRC/media/Projects/lightweight-cryptography/documents/
+finalist-round/updated-spec-doc/xoodyak-spec-final.pdf .
+[DHVV18a] J. Daemen, S. Hoffert, G. Van Assche, and R. Van Keer. The design of
+Xoodoo and Xoofff.IACR Trans. Symmetric Cryptol., 2018(4):1–38, 2018.
+[DHVV18b] J. Daemen, S. Hoffert, G. Van Assche, and R. Van Keer. XooTools software.
+https://github.com/XoodooTeam/Xoodoo, 2018.
+[DMA22] Joan Daemen, Silvia Mella, and Gilles Van Assche. Tighter trail bounds for
+xoodoo. IACR Cryptol. ePrint Arch., page 1088, 2022.
+[DV12] J. Daemen and G. Van Assche. Differential propagation analysis of Keccak. In
+A. Canteaut, editor,Fast Software Encryption (FSE) 2012. Revised Selected
+Papers, volume 7549 ofLecture Notes in Computer Science, pages 422–441.
+Springer, 2012.
+[FRD23] Jonathan Fuchs, Yann Rotella, and Joan Daemen. On the security of keyed
+hashing based on public permutations. In Helena Handschuh and Anna
+Lysyanskaya, editors,Advances in Cryptology - CRYPTO 2023 - 43rd Annual
+International Cryptology Conference, CRYPTO 2023, Santa Barbara, CA,
+USA, August 20-24, 2023, Proceedings, Part III, volume 14083 ofLecture
+Notes in Computer Science, pages 607–627. Springer, 2023.
+[HMMD22] Solane El Hirch, Silvia Mella, Alireza Mehrdad, and Joan Daemen. Improved
+differential and linear trail bounds for ASCON.IACR Trans. Symmetric
+Cryptol., 2022(4):145–178, 2022.
+214 Tighter Trail Bounds for Xoodoo
+[MDV17] S. Mella, J. Daemen, and G. Van Assche. New techniques for trail bounds and
+application to differential trails in Keccak.IACR Trans. Symmetric Cryptol.,
+2017(1):329–357, 2017.
+[MMGD22] Alireza Mehrdad, Silvia Mella, Lorenzo Grassi, and Joan Daemen. Differential
+trail search in cryptographic primitives with big-circle chi: Application to
+subterranean. IACR Trans. Symmetric Cryptol., 2022(2):253–288, 2022.
+[Nat21] National Institute of Standards and Technology. Status report on the second
+round of the nist lightweight cryptography standardization process, 2021.
+[SD18] K. Stoffelen and J. Daemen. Column parity mixers.IACR Trans. Symmetric
+Cryptol., 2018(1):126–159, 2018.
+[The21] The Keccak Team. Updated bounds on differential and linear trails in Xoodoo.
+https://keccak.team/2021/updated_bounds_xoodoo.html, 2021.

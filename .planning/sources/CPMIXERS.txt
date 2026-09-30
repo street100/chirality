@@ -1,0 +1,1633 @@
+IACR Transactions on Symmetric Cryptology
+ISSN 2519-173X, Vol. 2018, No. 1, pp. 126–159. DOI:10.13154/tosc.v2018.i1.126-159
+Column Parity Mixers
+Ko Stoﬀelen1∗ and Joan Daemen1,2
+1 Digital Security Group, Radboud University, Nijmegen, The Netherlands
+k.stoffelen@cs.ru.nl,joan@cs.ru.nl
+2 STMicroelectronics, Diegem, Belgium
+Abstract. We present column parity mixers (CPM), a generalization of theθ mixing
+layer that is used inKeccak. Thanks to our description using matrix arithmetic, we
+can easily derive algebraic, diﬀusion, and mask propagation properties, leading to
+a surprising distinction between two types of CPMs. We compare CPMs to other
+popular types of mixing layers and argue that CPMs can be more eﬃcient. While
+Keccak has a bit-oriented structure, we make the case that CPMs are also suitable
+for nibble- or byte-oriented designs.
+We outline a general substitution-permutation-network-based design strategy using a
+CPM, for which we show how one can attain strong bounds for diﬀerential and linear
+trails. We apply this strategy concretely to design a 256-bit permutation with an
+eﬃcient inverse and strong trail bounds. Our permutation design uses a number of
+ideas that are of independent interest and allows a fast bitsliced implementation that
+compares quite well with other established ciphers and permutations.
+Keywords: mixing layers· iterative permutations· iterative block ciphers
+1 Introduction
+In recent years, there has been a lot of research on lightweight cryptography. A need is
+perceived for cryptographic primitives that can be implemented on resource-constrained
+platforms, such as devices in the Internet-of-Things. Historically the most important
+primitives were block ciphers, but since a few years cryptographic permutations gain in
+popularity. Most of these ciphers consist of the repeated application of an invertible round
+function, where in the case of block ciphers each round takes a round key. As inspired by
+DES [77] and later AES [DR02], often the round function consists of a number of separate
+layers, each with a particular task. There is typically a non-linear S-box layer and a linear
+diﬀusion layer. In some modern ciphers, this linear layer consists of a sub-layer that mixes
+the bits (or bytes) and typically has a high branch number [DR02], and a transposition
+sub-layer that moves bits (or bytes around). In AES, the mixing layer MixColumns consists
+of the parallel application of a maximum-distance separable (MDS) mapping on each
+of the 4-byte columns. This mapping has branch number 5, the maximum attainable
+value. In combination with the transposition layer ShiftRows, this allows to give a simple
+proof for a strong upper bound on the diﬀerential probability of 4-round diﬀerential trails
+(characteristics) and the correlation of 4-round linear trails.
+With lightweight cryptography in mind, there has been a substantial amount of
+publications in the last few years on constructions for lightweight MDS mappings, see
+e.g., [BKL16; GPP11; LS16; LW16]. This has led to a better understanding of the
+implementation cost of such mappings in relation to their dimensions: the number and
+∗This work was supported by the European Commission through the Horizon 2020 program under
+project number ICT-645622 (PQCRYPTO).
+Licensed under Creative Commons License CC-BY 4.0.
+Received: 2017-06-01, Revised: 2017-11-23, Accepted: 2018-01-23, Published: 2018-03-01
+
+Ko Stoﬀelen and Joan Daemen 127
+size of elements (e.g., 4 bytes in MixColumns). We can now build block ciphers and
+permutations with the same design philosophy as AES, leading to easily provable bounds
+with more lightweight components.
+Another cipher where the designers emphasize the mixing layer isKeccak-f, the
+permutation underlyingKeccak and the SHA-3 functions [Ber+11b; NIS15]. Its mixing
+layer θdoes not operate on separate subblocks as MixColumns does, and it has a branch
+number of 4. However, despite the fact that it requires only 2 XOR operations per bit,
+in combination with the other layers of the round function it appears to have quite good
+diﬀusion. In particular, [MDA17] reports on computer-aided proofs for quite promising
+upper bounds for the diﬀerential probability of diﬀerential trails. It appears thatθ-like
+mappings would be a good candidate for a linear mixing layer, or in general for a mixing
+layer with a good trade-oﬀ between implementation cost and mixing power.
+There is a remarkable diﬀerence between AES andKeccak-f. In the former, all step
+mappings are deﬁned in terms of operations on bytes and in the latter each step mapping
+treats groupings of bits along diﬀerent axes. The AES design approach has received quite
+some following and it can be called byte-oriented (although there are also ciphers where
+these units are 4-bit nibbles or even 5-bit units). We call theKeccak-f design approach
+bit-oriented. The byte-oriented design approach has the advantage that one can easily
+prove bounds. We believe thatθ-like mappings are suitable for both design approaches.
+The latter may have an inverse with high implementation cost but also with very
+interesting diﬀusion properties (see Section 4). They are suited for permutations used in
+MACs or in stream encryption, or in conjunction with authenticated encryption modes
+that do not require the inverse such as the sponge and duplex constructions [Ber+11a],
+where the permutation width is also less bound to a power of two.
+We seeKeccak-f as a representative example of a bit-oriented design that makes
+use of a column parity mixing layer and we make the case that they are also suitable for
+byte-oriented designs. In Section 5 we outline a general design strategy with attention for
+how strong bounds can be attained for diﬀerential and linear trails. We apply this strategy
+concretely to design a 256-bit permutation called Mixifer with an eﬃcient inverse. This
+can be used as a permutation in an Even-Mansour block cipher [EM93] or in modes such
+as proposed in [Men16]. The width of 256 is large enough to make the birthday bound
+2128 far enough to not pose a practical problem and it is small enough to still be called
+lightweight.
+Our permutation design, presented in Section 6, uses a number of ideas that are of
+independent interest. It operates on an array of 4 rows of 16 nibbles each and we arrange
+the bits of the nibbles in such a way that a bitsliced implementation is immediate. Its
+design can be seen as a hybrid between that of AES and that ofKeccak-f. We show
+in Section 6.6 that in comparison with AES and some established permutations, the
+performance of our permutation is better or comparable.
+2 Column parity mixers and their properties
+2.1 Our contributions
+In this paper we present a generalization of theθmixing layer inKeccak-f called column
+parity mixers (CPMs). CPMs operate on two-dimensional arrays and in their deﬁnition
+parities computed over the columns play a central role, hence the namecolumn parity
+mixers. In Section 2 we provide an elegant description using matrix arithmetic, allowing
+us to easily derive algebraic, diﬀusion, and mask propagation properties. We also show
+that column parity mixers operating on states with an even number of rows have quite
+diﬀerent properties from those operating on an odd number of rows.
+The former are involutions and are ideally suited for block ciphers and permutations
+128 Column Parity Mixers
+that need to have an eﬃcient inverse. Coincidentally, those are the ones that are typically
+required to have a permutation width (or ‘block size’) that is a power of two, and this is
+nicely compatible with an even number of rows. An example is disk encryption where the
+disk sector size is a power of two. Column parity mixers are generalizations of the mixing
+layer θin Keccak. Therefore, we adopt the terminology proposed in [Ber+11b]. Unlike
+the descriptions therein, we will treat the states that these mixing layers operate on as
+two-dimensional arrays that we will interpret as matrices. In the context of this section
+we limit ourselves to matrices with elements ofGF(2), but one can easily generalize our
+treatment to elements ofGF(p) with p a prime or even elements of an arbitrary ﬁnite
+group.
+2.2 Matrices
+We useI to denote a (square) identity matrix and0 to denote an all-zero matrix. We
+assume that the dimensions of these matrices are determined by the context. The transpose
+of a matrixA is denoted asAT.
+We use1x to denote a column vector ofx components that are all equal to1. Conse-
+quently,1T
+x is an all-1 row vector withx components. We use1y
+x to denote a matrix with
+x rows andy columns with all components 1. Clearly,1y
+x = 1x1T
+y.
+The element of a matrixA at rowi and columnj is denoted byAi,j. If B = AT, we
+have Bi,j = Aj,i. The trace of a square matrix is the linear function that simply takes the
+sum of its diagonal elements. It is denoted bytr(A), sotr(A) =∑
+iAi,i.
+2.3 Deﬁnition of column parity mixers
+We consider linear mappingsθthat operate on arrays withm rows andn columns.
+Deﬁnition 1. The column parityof a matrixA is a (row) vector deﬁned as1T
+mA.
+In a matrixA, a columnx is called even (odd) if the component with indexx in 1T
+mA
+is zero (one).
+Deﬁnition 2. The expanded column parityof A is a matrix withm rows all equal to the
+column parity ofA, and it is given by1m
+mA.
+A column parity mixer (CPM) makes use of a linear transformation operating on
+the column parity of a matrix, called itsparity-folding transformation. We denote the
+parity-folding transformation by multiplying the column parity with a square matrixZ at
+the right. We call then×n matrix Z the parity-folding matrixof θ. We are now ready to
+deﬁne theθ-eﬀect of a matrixA.
+Deﬁnition 3. The θ-eﬀect of A with respect toZ is a row vector, denoted aseZ(A) (or
+just e(A) if Z is clear from the context) and is deﬁned byeZ(A) =1T
+mAZ.
+For a given inputA and parity-folding matrix Z, a column x is called unaﬀected
+(aﬀected) if the component with indexx in eZ(A) is zero (non-zero). Whether a column
+is aﬀected or not is fully determined by the column parity ofA and the columnx of the
+parity-folding matrixZ.
+Deﬁnition 4. The expandedθeﬀect of A with respect toZ is a matrix withm rows all
+equal to the CPM eﬀect, namely,EZ(A) =1m
+mAZ.
+A column parity mixerθsimply consists in computing the expandedθ-eﬀect of a matrix
+A and adding it toA.
+Deﬁnition 5. The column parity mixerθusing parity-folding matrixZ is deﬁned as:
+θ(A) =A+ EZ(A) =A+ 1m
+mAZ.
+Ko Stoﬀelen and Joan Daemen 129
+Note that a column parity mixer is fully deﬁned by a parity-folding matrixZ and m.
+Example 1.Keccak [Ber+11b] uses a three-dimensional structure, so, for the sake of this
+example, let us ﬁrst ‘ﬂatten’ the state by looking at a single sheet. WithKeccak-f[200],
+this array would havem= 5rows andn= 8columns. Consider the following stateA:
+A=
+
+]]]]
+0 0 0 0 0 1 0 0
+1 0 0 0 0 1 0 0
+0 0 0 0 0 1 0 0
+0 0 1 0 0 1 0 0
+0 1 1 0 0 1 0 0
+
+[
+.
+Then thecolumn parityof A is [1,1,0,0,0,1,0,0], so the ﬁrst two columns and the sixth
+column areodd, while the rest iseven. Theθstep inKeccak-f aﬀects the adjacent sheets,
+but one can modify it slightly such that the operation is performed within the same sheet.
+To the reader who is familiar with theKeccak speciﬁcation, we changex−1 mod 5 and
+x+ 1mod 5 to xmod 5 in the computation ofD[x,z] given C[x,z]. This means that we
+can express theparity-folding matrixZ as follows:
+Z =
+
+]]]]]]]]]]
+1 0 0 0 0 0 0 1
+1 1 0 0 0 0 0 0
+0 1 1 0 0 0 0 0
+0 0 1 1 0 0 0 0
+0 0 0 1 1 0 0 0
+0 0 0 0 1 1 0 0
+0 0 0 0 0 1 1 0
+0 0 0 0 0 0 1 1
+
+[
+.
+This yields aθ-eﬀect of e(A) = [0,1,0,0,1,1,0,1], so the second, ﬁfth, sixth, and eighth
+column areaﬀected, the rest isunaﬀected. The result of thecolumn parity mixerdeﬁned
+by Z and m on A is then:
+θ(A) =
+
+]]]]
+0 1 0 0 1 0 0 1
+1 1 0 0 1 0 0 1
+0 1 0 0 1 0 0 1
+0 1 1 0 1 0 0 1
+0 0 1 0 1 0 0 1
+
+[
+.
+2.4 Group properties
+Composition of two column parity mixers is again a column parity mixer.
+Lemma 1. Let α = θ′◦θwith θand θ′column parity mixer with parity-folding matrices
+Z and Z′respectively. Thenα is a column parity mixer. Ifm is even, the parity-folding
+matrix ofα is Z+ Z′. If m is odd, its parity-folding matrix is(Z′+ I)(Z+ I) +I.
+Proof. We have
+θ′(θ(A)) =A+ 1m
+mAZ+ 1m
+m(A+ 1m
+mAZ) Z′
+= A+ 1m
+mAZ+ 1m
+mAZ′+ (1m
+m)2AZZ′.
+If m is even, we have(1m
+m)2 = 0 and this reduces toA+ 1m
+mA(Z+ Z′). If m is odd, we
+have (1m
+m)2 = 1m
+m and we have
+θ′(θ(A)) =A+ 1m
+mA(Z+ Z′+ ZZ′)
+= A+ 1m
+mA((Z+ I)(Z′+ I) +I) .
+⊓ ⊔
+130 Column Parity Mixers
+This implies the following corollary:
+Corollary 1. The set of all column parity mixers for given dimensionsm×n, withm
+even, form a group with composition that is isomorphic to the abelian group(Zn2
+2 ,+).
+Proof. Lemma 1 says that the composition of two CPMs with parity-folding matricesZ
+and Z′is the CPM with parity-folding matrixZ+ Z′. It follows that the set of all CPMs
+of given dimensionsm×n and m even, is isomorphic to the set of binaryn×n matrices
+with addition. This addition is closed and inherits the associativity and commutativity
+from the addition inGF(2). Its neutral element is0 and each element is its own inverse.
+This is(Zn2
+2 ,+). ⊓ ⊔
+It follows that column parity mixers operating on matrices with an even numberm of
+rows are involutions.
+For m odd, not all column parity mixers are invertible. We have the following:
+Corollary 2. The set of column parity mixers for given dimensionsm×n, withm odd
+and Z+ I non-singular, form a group with composition that is isomorphic to the group of
+binary invertiblen×n matrices with multiplication.
+Proof. Lemma 1 says that the composition of two CPMs with parity-folding matricesZ
+and Z′is the CPM with parity-folding matrix(Z+ I)(Z′+ I) +I. Let us callZ+ I the
+associated matrix of a CPM. Then the associated matrix of the composition of two CPMs
+is the product of their associate matrices. It follows that the set of all CPMs of given
+dimensions m×n and m odd, is isomorphic to the set of invertible binaryn×n matrices
+with multiplication. This is the general linear groupGL(n,2) [DF04]. ⊓ ⊔
+Formodd, the order of a CPM is the multiplicative order of its associated matrixZ+I.
+The associated matrix of the inverse of an invertible CPM with parity-folding matrixZ is
+(Z+ I)−1.
+2.5 The special case of circulant parity-folding matrices
+Z is a circulant matrix if its elements satisfyZi+j mod n, j= Zi,0 for alli,j. Circulant
+matrices have become a popular building block in many ciphers, including AES [DR02]
+and Keccak [Ber+11b]. As the product and sum of two circulant matrices is a circulant
+matrix and bothI and 0 are circulant matrices, it follows that both form even and odd
+the set of invertible circulant CPMs form subgroups of the set of invertible CPMs, for
+given dimensions.
+We can express multiplication by a circulant matrix as multiplication by a polynomial.
+For that purpose, we express a matrixAas a bivariate polynomial, where the element in row
+i and columnj corresponds with the coeﬃcient of monomialxiyj. Computing the column
+parity ofA corresponds with multiplication by the polynomial∑n−1
+i=0 yi modulo 1 +yn.
+This polynomial can also be expressed as1+yn
+1+y . Multiplication by Z then corresponds
+with multiplication by a polynomialz(x) modulo 1 +xn. So for our column parity mixer
+θ, we have:
+θ(a(x,y)) =a(x,y) +1 +ym
+1 +y z(x)a(x,y) mod (1 +xn)(1 +ym) .
+We callz(x) the parity-folding polynomial.
+Circulant CPMs with evenmare involutions. A circulant CPM with oddmis invertible
+if its associated polynomial1 +z(x) is coprime to1 +xn and its inverse has the associated
+polynomial y(x) = (z(x) + 1)−1 mod (1 +xn). A necessary condition for invertibility is
+that z(x) has an even number of non-zero terms. If not,1 +x divides both1 +z(x) and
+1 +xn.
+Ko Stoﬀelen and Joan Daemen 131
+The transpose ofθis determined by the parity-folding polynomialz(x−1) mod 1 +xn,
+i.e., the polynomialz(x) where the termsxi are replaced byxn−i.
+2.6 Computational cost
+Computing the column parities costsm−1 additions inGF(2) per column totalling to
+(m−1)n additions. Adding the eﬀect to the matrix costs one addition per bit totalling to
+mnbinary additions. So the total computational cost is(2m−1)nplus the computational
+cost of applyingZ to the parity.
+For circulant mixers withh the Hamming weight ofz(x), a straightforward parity-
+folding implementation would cost(h−1)n, totalling to(2m+ h−2)n. Dividing by the
+total number of bits in the state, this results in a computational cost per bit of2+( h−2)/m.
+Remarkably, for parity-folding polynomials with two non-zero terms, the cost is exactly2
+additions per bit.
+The number of additions gives a good idea of the circuit complexity in dedicated
+hardwareandthenumberofbinaryXORgatesinbitslice-orientedsoftwareimplementations.
+In the latter, the eﬃciency additionally depends on the way the state can be mapped onto
+CPU words and computingθmay involve additional (cyclic) shift operations. Section 6.5
+shows the exact cost for a concrete example.
+3 Propagation of linear masks
+After having explained what CPMs are, this section discusses its properties related to
+linear cryptanalysis [Mat94]. We ﬁrst provide a brief overview of linear propagation for
+generic iterated permutations, before discussing CPM-speciﬁc details.
+3.1 Linear propagation in iterated permutations
+Linear cryptanalysis (LC) exploits large correlations across a cryptographic primitive and
+resistance against it is one of the main criteria of modern cryptographic design. It can be
+described in diﬀerent ways and we adopt the notation and formalism used in [DR02].
+In LC we consider a sum (inGF(2)) of bits (usually calledparities) at the output of
+a mapping and try to ﬁnd sums of bits at the input of the mapping that have a high
+correlation with the sum at the output. Exactly which bits are included in the sums is
+described withmasks. Masks have the same dimensions and shape as the state and indicate
+the bits included in a sum by having a 1 in the corresponding positions and 0 in all other
+positions. While the correlations are between sums of input bits and sums of output bits,
+we will indicate these by the term mask to make the descriptions more readable. Masks
+play a role in LC similar to that ofdiﬀerences in diﬀerential cryptanalysis (DC).
+In iterated permutations or block ciphers, a correlation between an output maskv and
+an input masku can be split into a number oflinear trails. The value of the correlation is
+the sum of thecorrelation contributionsof these individual trails. Note that correlations
+and correlation contributions have a sign, so there can be destructive interference. A linear
+trail Q over ann-round permutation (or block cipher) consists of a sequence ofn+ 1
+masks: a mask at the input of each roundqi and a maskqn at the output of the last
+round. A pair of consecutive masksqi,qi+1 has a certain correlation over roundi, denoted
+as C(qi,qi+1). The correlation contributionC(Q) of a linear trailQ is simply the product
+of the correlations over all its rounds:∏n−1
+i=0 C(qi,qi+1).
+The value of an input-output correlationC(u,v) is given by:
+C(u,v) =
+
+Q with q0=u,qn=v
+C(Q) .
+132 Column Parity Mixers
+Large input-output correlations can hence occur if there are linear trails with large
+correlation contributions (e.g., in the block cipher DES [Mat94]) but it can in principle
+also occur when there is systematic clustering of huge numbers of trails with very small
+correlation contribution. (An artiﬁcial example is a permutationP that consists of a
+permutation P′followed by its inverseP′−1. The permutationP is the identity and hence
+has many large input-output correlations but no high-correlation linear trails ifP′has
+none.)
+Modern ciphers should be designed taking LC into account and hence should not have
+linear trails with high correlation contributions. A way to achieve this with a relatively
+small number of rounds is called thewide trail strategy[DR02], underlying many modern
+designs including AES andKeccak. In this strategy, the mixing layer in the round
+function plays an important role. To study the correlation contribution of linear trails, we
+need to study correlations over the round function. The round function typically consists
+of a non-linear layer and a linear layer. The description of the correlation properties of
+non-linear S-box layers can be eﬃciently computed using the Walsh-Hadamard transform.
+Linear layers have the property that every output mask is correlated to exactly one input
+mask and that the correlation is one. In other words, there is a deterministic function that
+maps masksv at the output of a linear layer to masksu at its input. In the following
+subsection, we will derive an expression for this functionu= f(v).
+3.2 Mask propagation in column parity mixers
+We want to express this function in our matrix notation. As an intermediate step, we
+ﬁrst need a way to express a sum of speciﬁc bits of a matrix, for which we use the trace
+function.
+The trace function has a number of interesting properties that we will exploit in our
+derivation:
+•Linearity: tr(A+ B) = tr(A) + tr(B).
+•Transpose-invariance: tr(AT) = tr(A).
+•Commute-invariance: forA and B with compatible dimensions andAB a square
+matrix, it is easy to show thattr(AB) = tr(BA) [LLM16].
+•Multiplication-cyclicinvariance: foranysequenceofmatrices A,B,C,...,Z withcom-
+patibledimensionsandwith AB···Zasquarematrix: tr(AB···Z) = tr(BC···ZA) =
+tr(CD···ZAB) =....
+A maskV has the same dimensions as the matrixA and it speciﬁes the sum (inGF(2))
+of the elements ofA in positions whereV has a one, i.e.,∑
+i,jVi,jAi,j. This cannot be
+expressed as a matrix multiplication, but we can express it with the trace function.
+Lemma 2. The sum of the elements ofA selected by the maskV can be expressed as
+tr(VTA) .
+Proof. Let B = VTA, then Bj,j = ∑
+iVi,jAi,j. As tr(B) = ∑
+jBj,j, it follows that
+tr(VTA) =∑
+i,jVi,jAi,j. ⊓ ⊔
+Lemma 3. A sum of bits at the input ofθdeﬁned by a maskU equals a sum of bits at
+the output ofθdeﬁned by maskV if and only if
+U = V + 1m
+mVZT .
+Ko Stoﬀelen and Joan Daemen 133
+Proof. Let B be the image ofAthrough the column parity matrix. Then giventr(UTA) =
+tr(VTB), we want to derive the relation betweenU and V. In particular, given the mask
+V at the output ofθ, we can compute the maskU at its input by ﬁlling in the expression
+for B:
+tr(UTA) = tr(VT(A+ 1m
+mAZ))
+= tr(VTA+ VT1m
+mAZ)
+= tr(VTA) + tr(VT1m
+mAZ) .
+For the rightmost term, using multiplication-cyclic invariance gives tr(VT1m
+mAZ) =
+tr(ZVT1m
+mA). Moreover, usingZVT1m
+m = (1m
+m
+TVZT)
+T
+with 1m
+m
+T = 1m
+m yields
+tr(UTA) = tr(VTA) + tr((1m
+mVZT)
+T
+A)
+= tr(VTA+ (1m
+mVZT)
+T
+A)
+= tr((V + 1m
+mVZT)
+T
+A) .
+⊓ ⊔
+We call the mapping fromV to U speciﬁed in Lemma 3 the transpose ofθand denote it
+as θT. The expression of Lemma 3 is essential when searching for linear trails, as reported
+on in Section 5.3.
+4 Diﬀusion properties
+The diﬀusion properties of an MDS matrix are typically summarized by its diﬀerential
+and linear branch numbers [DR02] that are both the same and equal to the dimension
+of the matrix plus 1. This dimension is also the number of elements a single-element
+diﬀerence propagates to. The study of the diﬀusion properties of an MDS matrix is largely
+independent of the other steps in the round function. For example, the proof of the fact
+that every 4-round trail in AES has 25 active S-boxes only requires from the MixColumns
+matrix that it is MDS.
+Diﬀusion in column parity mixers is more subtle: their properties only become mean-
+ingful in the context of a design approach, where interaction with other steps of the round
+function must be taken into account. In this section we discuss some concepts that are
+shared by all column parity mixers.
+4.1 The column parity kernel
+The set of statesA with column parity equal to zero form a vector space with dimension
+n(m−1). Following [Ber+11b], we call this the(column parity) kernel. For statesA in
+the kernel the parity is zero and consequentlyθreduces to the identity mapping.
+There are states in the kernel with Hamming weight 2, namely all states with a pair of
+active bits in the same column. Again following [Ber+11b], we call this anorbital. States
+in the kernel have an even number of active bits per column and as observed in [MDA17],
+they can be seen as a collection of orbitals. Due to the existence of single-orbital states,
+the (Hamming) branch number, both diﬀerentially and linearly, of every column parity
+mixer is at most 4. We prove that for all reasonable choices ofm,n and Z, the branch
+number is 4.
+Lemma 4.An invertible CPMθwith m≥2 and whereZ has no all-zero rows or columns,
+has diﬀerential and linear branch numbers 4, with the only exception of the case where
+m= n= 2and Z = I.
+134 Column Parity Mixers
+Proof. The branch number is at most 4 asθwill map a single-orbital state to a single-orbital
+state.
+Let us ﬁrst look at the diﬀerential branch number. The diﬀerential branch number can
+only become smaller than 4 if there is a single-bit state that is mapped to a state with less
+than 3 bits byθor θ−1.
+Let us ﬁrst look at a single-bit state at the input ofθ. A single-bit stateA leads to a
+single-bit parity. Let the number of aﬀected columns in theθ-eﬀect bex. We know that
+x≥1 as Z has at least one 1 per row. If these aﬀected columns overlap with the column
+with the single 1 inA, then the Hamming weight ofθ(A) is xm−1. If not, it isxm+ 1.
+Let ν denote the sum of the Hamming weights ofA and θ(A). It follows thatν= xm
+and ν= xm+ 2, respectively. We now distinguish between the cases wherem is even and
+where m is odd.
+•Even m: if there was no overlap,ν= xm+ 2≥4. If there was overlap,ν= xm= 2
+only if x = 1 and m = 2: so a single aﬀected column overlapping with the odd
+column. But this is exactly the case that is excluded in the lemma. As for evenm
+we haveθ−1 = θ, that case is proven too.
+•Odd m: if x= 1, i.e., there is one aﬀected column, then it cannot overlap. Namely,
+if that is the case, it implies a single 1 in the corresponding row that is on the main
+diagonal. But forθto be invertible,Z+ I must be invertible and ifZ contains a
+row with a single 1 and that is on the main diagonal, that row is 0 inZ+ I and
+hence it is not invertible. The same reasoning applies toθ−1 as Z′+ I with Z′the
+parity-folding matrix ofθ−1 must be invertible.
+For the linear branch number it suﬃces to replaceθby θT and rows ofZ become
+columns ofZ. ⊓ ⊔
+Example 2.The simplest possible CPM that satisﬁes the conditions of Lemma 4 operates
+on two rows and two columns and has
+Z =
+[0 1
+1 0
+]
+.
+If the 4 bits of the state are arranged in a 4-bit column vector,θcan be expressed as
+multiplying it with the following familiar matrix:
+
+]]
+1 1 0 1
+1 1 1 0
+0 1 1 1
+1 0 1 1
+
+[.
+This matrix was ﬁrst used in the block cipher MMB [DGV93] and is still used in many
+modern lightweight ciphers (sometimes modulo some row and/or column permutations),
+where it is often referred to as a near-MDS matrix. See for instance Minalpher [Sas+15],
+L0 and L3 in PRIDE [Alb+14], or Midori [Ban+15]. It has an implementation cost of1.5
+additions per bit. To see that the CPM with the givenZ and the matrix are very similar,
+let
+A=
+[a b
+c d
+]
+.
+Then, using a CPM:
+θ(A) =A+ 12
+2AZ =
+[a b
+c d
+]
++
+[1 1
+1 1
+][a b
+c d
+][0 1
+1 0
+]
+=
+[a+ b+ d a + b+ c
+b+ c+ d a + c+ d
+]
+.
+Ko Stoﬀelen and Joan Daemen 135
+Similarly: 
+]]
+1 1 0 1
+1 1 1 0
+0 1 1 1
+1 0 1 1
+
+[
+
+]]
+a
+b
+c
+d
+
+[=
+
+]]
+a+ b+ d
+a+ b+ c
+b+ c+ d
+a+ c+ d
+
+[.
+We now consider the size of the column parity kernel by counting the number of states
+with a given number of orbitals. The number of single-orbital states, i.e., that have in
+total 4 active bits before and afterθ, is given in following lemma.
+Lemma 5. The number of single-orbital states isn
+(m
+2
+)
+.
+Proof. The orbital can be in one ofn columns and the number of possible positions of the
+bits of the orbital in the column is
+(m
+2
+)
+. ⊓ ⊔
+If we divide the number of 2-bit states in the kernel by the state size, we obtainm−1
+2 .
+In this respect, it is advantageous for a given state size to have a small number of rows
+and a large number of columns.
+We can similarly compute the number of states in the kernel with 2, 3, 4, etc. orbitals.
+The number of such states increases exponentially with the number of active bits. For
+example, we have the following lemma on the number of two-orbital states.
+Lemma 6. The number of two-orbital states is
+(n
+2
+)(m
+2
+)2
++ n
+(m
+4
+)
+where the second term
+disappears form< 4.
+Proof. We can partition the set of states with two orbitals into two subsets: those where
+the orbitals are in diﬀerent columns and those where they are in the same column. For
+the ﬁrst set of states, one can position the 2 orbitals in then columns in
+(n
+2
+)
+ways and
+each of the two orbitals can take
+(m
+2
+)
+positions. Their product accounts for the ﬁrst term.
+For the second set of states, the 4 active bits can be in one ofn columns and the number
+of possible positions among thembits of that column is
+(m
+4
+)
+. If m< 4, of course no 4 bits
+can be stuﬀed in a column and the second term disappears. ⊓ ⊔
+4.2 Propagation of isolated bits
+Often one tries to determine the minimum number of rounds such that each output bit
+depends on each input bit, typically calledfull diﬀusion. One way of measuring full
+diﬀusion is propagating single-bit input diﬀerences or a single-bit output mask through
+the rounds. In this context it is interesting to see how single-bit diﬀerences propagate.
+A single-bit diﬀerence at the input ofθpropagates to on average1 +|Z|mbits, with|Z|
+the Hamming weight ofZ divided by its dimension. For the circulant case, this is exactly
+1 +|z(x)|m with |z(x)|the Hamming weight of the parity-folding polynomial, assuming
+its constant term is 0. The same holds for propagation of single-bit masks at the output of
+θto the input. For a single-bit diﬀerence at the output (or single-bit mask at the input)
+of θwe have to distinguish between two cases. Ifm is even, the column parity mixer is an
+involution and the same properties hold as in the forward direction. For oddm, we have
+to consider the column parity mixer deﬁned byZ′= (Z+ I)−1 + I. The matrixZ′may
+have much higher Hamming weight thanZ, as is illustrated byθin Keccak [Ber+11b]
+and even for large states, full diﬀusion in the backward direction can be immediate.
+4.3 Comparison to other mixing layers
+Mixing layers can be compared by their cost, where cost can mean the number of additions,
+but also the number of cycles on a speciﬁc CPU microarchitecture or other quantities.
+136 Column Parity Mixers
+Table 1:Comparison of mixing layers.
+Cipher/permutation Type Dimensions Additions
+per bit
+Branch
+number
+AES MDS 4 ×4, GF(28) 3.03 5
+Joltik [JNP15] MDS 4 ×4, GF(24) 3 5
+PHOTON [GPP11] MDS 6 ×6, GF(24)* 5† 7
+Prøst [Kav+14] MDS 16 ×16, GF(2) 4.5† 5
+Midori [Ban+15] Not MDS ‡ 4 ×4, GF(24) or GF(28) 1.5 4
+Minalpher [Sas+15] Not MDS‡ 4 ×4, GF(24) 1.5 4
+Prince [Bor+12] Not MDS 64 ×64, GF(2) 1.5 4
+SKINNY [Bei+16] Not MDS 4 ×4, GF(24) or GF(28) 0.75 2
+Keccak-f [Ber+11b] CPM 5 ×5 ×w§, GF(2) 2 4
+Circulant CPM CPM m×n 2 +h−2
+m
+∥ 4
+* Dimensions are forP100, P144, andP196.
+†Unknown whether it can be computed with less additions.
+‡Can also be considered to be a CPM, following Example 2.
+§ Where w∈{8,16,32,64}, depending on which variant ofKeccak-f.
+∥Where h is the Hamming weight ofz(x). Additions/bit∈[2 −1/m,2 + (n−2)/m].
+Here we consider the number of binary additions or two-input XOR gates, as that is
+independent from CPUs or standard cell libraries.
+Mixing layers should also be compared by their ‘mixing power’. This is best quantiﬁed
+by bounds on linear and diﬀerential trails, but that requires to study a full permutation.
+We will do so in Section 6.3, but for the moment we restrict ourselves to only consider
+the mixing layer itself. This implies that we are limited to use the linear and diﬀerential
+branch numbers that should be high relative to the dimensions of the state.
+Ever since SHARK [Rij+96] and AES [DR02], MDS matrices have been a common
+choice for a mixing layer as their branch numbers are optimal. The past few years have
+seen a lot of work on searching for more eﬃcient MDS matrices. A noteworthy development
+is that of serialization of the mixing layer, ﬁrst put forward by PHOTON [GPP11] and
+LED [Guo+11]. This decreases the hardware area that is required to implement matrix
+multiplication. Another line of work focussed more directly on searching MDS matrices
+that require less additions [BKL16; LS16; LW16; LW17].
+While there has been a lot of improvement, it was always assumed that there was a
+ﬁxed cost ofn(n−1)m additions [BKL16], derived from summing all the multiplication
+results. Recently, it has been shown that this lower bound does not really hold when global
+optimizations are taken into account [Kra+17]. In fact, there exist MDS matrices that can
+be implemented with less additions.
+Other ciphers such as PRIDE [Alb+14], Midori [Ban+15], Minalpher [Sas+15], and
+SKINNY [Bei+16] have dropped the MDS requirement to achieve a better trade-oﬀ between
+performance and security.
+Table 1 provides a comparison of mixing layers. Most cost numbers are computed using
+the results of [Kra+17]. We list the number of additions per bit, in order to normalize for
+the diﬀerent dimensions. While more lightweight mixing layers exist, CPMs oﬀer a good
+trade-oﬀ. It should be noted, however, that bounds over multiple rounds for a concrete
+scheme are much more meaningful than just a pair of branch numbers.
+Ko Stoﬀelen and Joan Daemen 137
+5 A general design strategy
+In this section, we present a design strategy for the round function of nibble- or byte-
+oriented iterative block ciphers or permutations, viewed as a substitution-permutation
+network (SPN), where a CPM is embedded as its mixing layer. We also outline a search
+strategy for truncated linear and diﬀerential trails. In Section 6, we instantiate this
+design strategy with a speciﬁc permutation and give security bounds and implementation
+benchmarks.
+5.1 Structure of the round function
+We take theb-bit state to be a rectangle withm rows andn columns. The state consists
+of mn cells of sizeℓ, sob= ℓmn. The cells are typically nibbles (l= 4) or bytes (l= 8)
+for software performance reasons, although other values are also possible. The cells can be
+seen as elements of GF(2ℓ).
+The round function consists of four layers:
+•A nonlinear S-box layerγ, that applies the same invertible S-box to every cell.
+•A column parity mixerθ. Although it operates on elements of GF(2ℓ), the parity-
+folding matrix only contains 0 and 1.
+•A transposition layer. This consists of two steps: one that permutes the rows called
+π and one that performs cyclic shift operations (rotations) on the rows, calledρ.
+•The addition of round constants.
+In the case of a block cipher, round keys can be added between the rounds that are
+derived from a cipher key (and a possible tweak in the case of tweakable block ciphers)
+by means of a key schedule. In this paper we consider the design of key schedules out of
+scope.
+The roles of the diﬀerent layers are the same as in the well-known wide trail strategy.
+The role of the round constants is to remove invariants of the round function:
+•Invariance of the round function with respect to simple transformations of the
+mappings of the state, such as rotations. Attacks relevant in this context are
+rotational cryptanalysis [KN10].
+•Invariance of the round function across the diﬀerent rounds. Relevant in this context
+are slide attacks [BW99].
+•Existence of sets that are invariant under the round function. Relevant attacks are
+here invariant subspace attacks [Lea+11].
+5.2 Outline of the steps in our design approach
+We assume the designers are faced with the request to design a permutation or block
+cipher with some given widthb, that must be eﬃcient on some given set of platforms.
+They also know whether side-channel attacks are a concern leading to the requirement
+of constant-time code or the ability to mask eﬃciently, and whether the inverse of the
+mapping must be eﬃcient.
+The ﬁrst step in the design process consists of choosingℓ, m, andnwith the constraint
+ℓmn= b. As we have showed in Section 4.1, choosingm large compared ton implies that
+there will be more states in the kernel ofθ. Diﬀusion of isolated bits, however, beneﬁts
+from choosingm large, as shown in Section 4.2.
+138 Column Parity Mixers
+Once ℓis determined, one can design theγ S-box quasi-independently of the other
+components of the round function. Important metrics are its algebraic degree, the maximum
+input-output correlation, the maximum diﬀerential probability, but also its implementation
+cost. For the latter, one should take into account which are the main implementation
+targets, such as ASICs, bitsliced software, or software using table look-ups. This is not
+diﬀerent from most design strategies.
+The design ofθ, π, andρcan be performed in two phases, taking advantage of the
+kernel property of CPMs.
+In a ﬁrst phase, propagation is investigated of diﬀerence patterns and masks inside
+the kernel and that aretruncated [Knu95]. The latter means that at cell level we do not
+consider the actual values but only whether the cell in the pattern is passive (all-zero) or
+active (non-zero). For such patterns,θacts as the identity function, as we impose that
+they are in the kernel. Moreover,γacts as the identity, because the S-box is invertible and
+hence a non-zero input diﬀerence leads to a non-zero output diﬀerence, and any sum of
+bits at the output is balanced and hence a non-zero mask at the output cannot propagate
+to an all-zero mask at the input. It follows that the propagation of such patterns is fully
+determined by the transposition stepsπ and ρ. As these steps just move cells around and
+do not mix them, this propagation is fullydeterministic. Moreover, transpositions are
+their own transpose and hence masks and diﬀerence patterns propagate in the same way.
+Hence one can take a patternA0 in the kernel and propagate it forward throughρ◦π
+resulting inA1. If the resulting pattern can be in the kernel, one can propagate one more
+round and so on. A pattern that has at least one column with a single active cell cannot
+be in the kernel, all other patterns can. In a column with two active cells, these must have
+the same value (2ℓ possibilities). In a column with three active cells, if two of the cells
+have valuex and y, the third has valuex+ y and hence it follows thatx̸= y (2ℓ(2ℓ−1)
+possibilities). As the number of active cells grows, more cases can be distinguished. In any
+case, a pattern can be propagated through the rounds until it has a column with a single
+active cell.
+This ﬁrst phase can be used to select the rotation distances ofρand theπ permutation.
+This allows to reduce all possible values to a reasonably-sized set of candidate parameter
+values. For instance, ifρ0 and ρ1 are two rotation distances andρ0 = ρ1, it makes it easier
+to remain longer in the kernel: a single orbital in some column will, afterρ◦π, still be a
+single orbital. Hence this should be avoided. Similarly, whenρi ̸= ρj but ρi = cρj for all
+i,j ∈[0,m −1],i ̸= j where c is some integer, there exist patterns with multiple orbitals
+that remain in the kernel after applying the transposition layer.
+The obtained bounds of trails in the kernel can then be used in the second phase to
+decide on the amount of work one wants to do in the parity folding matrix. A further
+selection ofZ candidates can be made by means of a full trail search and diﬀusion criteria
+such as the number of rounds to reach full diﬀusion or to meet the (strict) avalanche
+criterion.
+Finally, the round constants can be designed quasi-independently from the other parts
+of the round function, such that various invariant attacks are not a concern [Bei+17].
+5.3 Searching linear and diﬀerential trails
+Given a candidate design that follows the outlined approach, its resistance against truncated
+linear and diﬀerential cryptanalysis should be quantiﬁed by scanning a large search space
+of trails. For most ciphers nowadays, this search is performed using Mixed Integer Linear
+Programming (MILP). However, recently a very diﬀerent technique was used to ﬁnd
+trails for Keccak, which appeared to be quite promising [MDA17]. There, a unique
+decomposition of a diﬀerence pattern is deﬁned, allowing a tree-based generation of ‘two-
+round trail cores’, where many branches can be pruned and symmetry can be used to skip
+over large parts in the search space. We will explain this in more detail.
+Ko Stoﬀelen and Joan Daemen 139
+We use techniques that are based on that work to ﬁnd trails for our design. However,
+to make it work for our design, we have to make a number of modiﬁcations. In this
+section we will also highlight the most interesting diﬀerences, that are due to the diﬀerent
+dimensions of the states and the choice of a bit-oriented design versus a design with an
+almost arbitrary cell sizeℓ.
+5.3.1 Trails
+A trailQ is a sequence overr rounds. In the case of linear cryptanalysis, it is a sequence
+of masks. In the case of diﬀerential cryptanalysis, it is a sequence of diﬀerence patterns.
+This section mostly uses the neutral termstate pattern. A cell in a state pattern is called
+passive when it is 0 andactive when it is any non-zero value.
+We barely distinguish between linear and diﬀerential cryptanalysis, because we have
+shown in Section 3 that masks propagate throughθT in the same way that diﬀerences
+propagate through θ. Furthermore, the γ step acts as the identity function as it does
+not alter the activity of cells: what is active remains active and what is passive remains
+passive. The same holds for the addition of round constants. Linear masks also propagate
+the same as diﬀerences through row permutations and rotations. This means that the only
+diﬀerence between searching truncated diﬀerential and truncated linear trails is that in
+diﬀerential trails, forward propagation throughθis governed byZ, and in linear trails
+backward propagation throughθis governed byZT.
+Because we only consider truncated trails, we only look at cells and not at individual
+bits. Theweight W of a trailQis deﬁned asW = ∑r−1
+i=0 |qi|, where|qi|denotes the number
+of active cells inqi.
+5.3.2 Trivial trails in the kernel
+The possibility to remain in the kernel leads to some trivial trails. One example of a
+starting state pattern is given in Figure 1a, for dimensionsm= 4and n= 16, with two
+full rows of active cells. In general, for all dimensions, if the column parity is the all-0
+vector, θwill just be the identity function. Furthermore, a transposition layer consisting
+of row permutations and rotations will be unable to move the pattern out of the kernel.
+This leads to a trivial trail over an arbitrary number of rounds. However, this trail has a
+high weight ofW = 2nr active cells.
+When Z is circulant, when there is only one full row of active cells and when the
+column parity is therefore the all-1 vector,θis the identity function when the number of
+aﬀected columns for a single active cell is even. Then there is a trail of weightW = nr
+active cells. Recall that a column is aﬀected when its bit in theθ-eﬀect is one. When the
+number of aﬀected columns is odd,θwill be the complement function. The trail (with
+even length) will then have weightW = nr
+2 + (m−1)nr
+2 = mnr/2 active cells.
+For reasonable dimensions,n is high enough such that these do not pose a problem.
+Other state patterns with less active cells might be able to stay in the kernel for one or
+two rounds, but the transposition layer should always move them out of the kernel soon.
+An example is shown in Figure 1b. This means that the property that a CPM has a kernel
+will not pose a serious threat.
+5.3.3 Generating two-round trails
+In anr-round trail with weightW the average weight per round diﬀerential isW
+r and
+hence it always contains a round diﬀerential with weightL ≤
+⌊W
+r
+⌋
+active cells. When
+one wants to ﬁnd allr-round trails up to weightW, one can therefore generate round
+diﬀerentials up to weightL and extend all of them forward and backwardr−1 rounds.
+However, it was observed in [MDA17] that there are less two-round trail cores with weight
+140 Column Parity Mixers
+(a) Remains in the kernel indeﬁnitely. (b) Should quickly move out of the kernel.
+Figure 1: Examples of state patterns in the kernel.
+below 2Lthan diﬀerentials of weight belowL. We therefore generate two-round trail cores
+up to weight2L+ 1active cells and extend themr−2 rounds forward and backward.
+Similarly to [MDA17], generating the two-round trails is modelled as the traversal of a
+tree, where each node represents a pair of state patterns at the input and output ofθ. The
+root is formed by the empty state patterns. The idea is that the weight monotonically
+increases when visiting a node’s children. Branches where it is known that all descendants
+will have a weight higher than2L can then be pruned.
+As withKeccak-f, we can uniquely decompose every state pattern into aparity-bare
+state and a list offree orbitals. A parity-bare state is a state pattern that does not have free
+orbitals. A free orbital is a pair of two active cells in an unaﬀected column, as was already
+mentioned in Section 4.1. Removing a free orbital from a state pattern also removes two
+active cells afterθ, so adding a free orbital to a state pattern will always increase the
+weight of a trail by 4 active cells. This decomposition reduces the problem to that of
+generating all parity-bare states in a weight-increasing manner, because we can construct
+all states up to some weight2L+ 1by generating all parity-bare states up to that weight
+and adding free orbitals to those where there is still budget.
+A parity-bare state consists of a list of odd columns, i.e., columns with non-zero parity.
+Initially, at the root node, this list is empty. Then one odd column is added to the list.
+This means that the children of the root node are all the state patterns with a single odd
+column. At every level of the tree, new columns are added.
+On top of the tree of parity-bare states, all the nodes also form the root of their own
+tree, now maintaining a list of free orbitals, such that at each level free orbitals are added
+up to the limit weight. Together, this guarantees that all two-round trails will be found.
+Moreover, the rotation-symmetric nature of the state in the horizontal direction and
+of all operations allow us to prune many more branches of the trees. There is only need
+to considercanonical state patterns, where a state pattern is deﬁned to be canonical if
+and only if it is minimal under all horizontal translations given a total ordering over state
+patterns. In this case, the total ordering is just the lexicographical ordering on[z,y], where
+z is the horizontal axis andy the vertical axis, to keep the notation similar to [MDA17].
+The lower left has coordinates(z,y) = (0,0).
+5.3.4 Propagation of cells and trail extension
+After having generated two-round trail cores, they need to be extended forwards and
+backwards byr−2 rounds. With Keccak-f, extension implies that one needs to check
+which patterns are compatible trough the nonlinearχ step. Given a non-zero state pattern
+at the end of a trail, there are multiple possibilities afterχ and each case needs to be
+explored. This branching behaviour causes an exponential increase of the search space
+when extending to more rounds.
+However, in our case we are considering truncated trails andγhas no eﬀect on state
+patterns. This is very diﬀerent from the situation in [MDA17]. Instead, this branching
+behaviour is now caused byθ.
+To see this, consider a state pattern before and afterθ. Assume a column has≥2
+Ko Stoﬀelen and Joan Daemen 141
+active cells beforeθ. To applyθ, we start by computing the parity of that column. This
+means that we sum over non-zero diﬀerences (in the case of diﬀerential cryptanalysis). It
+is possible that this results in a non-zero diﬀerence (i.e. the column is odd), but it is also
+possible that the non-zero diﬀerences cancel each other out and the column becomes even.
+Both cases should be explored and this causes the search space to branch.
+There is another source of branching. We distinguish between four types of columns:
+even aﬀected, even unaﬀected, odd aﬀected, and odd unaﬀected.
+When a column of the state pattern is unaﬀected,θwill not add anything to the cells in
+that column. Therefore, cells that were active beforeθwill remain active afterθ. Passive
+cells will also remain passive. We therefore only need to consider aﬀected columns. In
+aﬀected columns, every cell that is passive beforeθbecomes active afterθ, as a non-zero
+diﬀerence is added to a diﬀerence of zero in the case of diﬀerential trails. However, if a cell
+is active cell beforeθ, it is unknown whether it will remain active or will cancel out afterθ,
+as some non-zero diﬀerence is added to some non-zero diﬀerence. A search for truncated
+trails would need to consider both cases for all active cells in aﬀected columns.
+However, one can do slightly better. How an active cell propagates depends on the
+number of active cells in that column. As an example, let#x denote the number of active
+cells in columnx(and letm≥4). We will make a case distinction on whetherxis even or
+odd, and on#x, up to#x = 4.
+#x = 0, x even. Nothing can cancel out. Of course, all cells become active (with the
+same diﬀerence value) afterθ.
+#x = 0, x odd. Impossible.
+#x = 1, x even. Impossible.
+#x = 1, x odd. That active cell may cancel out or not afterθ.
+#x = 2, x even. This can only happen when the two active cells have the same diﬀerence
+value. Whenxis aﬀected, the two active cells either both cancel out afterθ, or none
+of them, but never only one.
+#x = 2, x odd. This can only happen when the two active cells have a diﬀerent diﬀerence
+value. Therefore, either no active cells cancel out afterθ, or one of them, but never
+both.
+#x = 3, x even. This can only happen when all three active cells are diﬀerent. At most
+one of the active cells cancels out afterθ.
+#x = 3, x odd. Now there are more possibilities. The active cells can be all the same,
+all diﬀerent, or can consist of one pair and one other value. This implies that any in
+{0,1,2,3}active cells cancel out afterθ.
+#x = 4, x even. The active cells are all the same, all diﬀerent, or consist of two pairs.
+So any in{0,1,2,4}active cells cancel out afterθ.
+#x = 4, x odd. All combinations are possible, except that all active cells have the same
+diﬀerence value. Therefore any in{0,1,2,3}active cells may cancel out afterθ.
+This can be extended further to higher values for#x, but the relative amount of cases
+that can be skipped will then decrease. It is clear that the search space of diﬀerential trails
+branches heavily with a CPM.
+We wrote dedicated software to traverse the search space of truncated linear and
+diﬀerential trails for designs following our approach. The software is freely available at
+https://github.com/Ko-/cpm.
+142 Column Parity Mixers
+6 The Mixifer permutation
+6.1 Design goals
+To show an instance of this design strategy, in this section we introduce a concrete
+permutation and study its security and eﬃciency. We aim for a suitable permutation for
+lightweight applications, such as in the Internet of Things. In this case, with ‘lightweight’
+we mean that it should be fast in constant-time code for microcontrollers such as the ARM
+Cortex-M series and that it should require little area in ASICs.
+This could be used in a simple (single-key) Even-Mansour construction [EM93] to build
+a block cipher or in a construction such as XPX [Men16] to build a tweakable block cipher.
+Based on this, one could even build other primitives such as authenticated encryption.
+Depending on the mode, we may or may not need the inverse permutation. To make the
+permutation more ﬂexible, we therefore require that the inverse also needs to be eﬃcient.
+For eﬃcient full-width processing in software, we would like a state size that is a power
+of two. A potential problem with a state sizeb of 128 bits is that this gives a birthday
+bound of only 64 bits, which may or may not be an issue depending on the mode in which
+this permutation is to be used. Again, we design this permutation to be useful in many
+scenarios, which is why we choose our state size to be equal to the next power of two,
+b= 256bits. This gives a birthday bound of 128 bits, which should be more than enough.
+To achieve fast constant-time code, we aim for a round function that can be eﬃciently
+implemented with bitwise Boolean instructions and cyclic shifts. This has implications for
+the way we arrange the bits of the cells in CPU words.
+6.2 The construction
+First we have to selectℓ, m and n. To have an eﬃcient inverse ofθ, we choosen to be
+even, such thatθbecomes an involution. For an eﬃcient bitsliced implementation ofγ,
+we chooseℓ= 4. Now both 8 rows and 8 columns, and 4 rows and 16 columns are viable
+options. We set m = 4 and n = 16, based on the trivial in-kernel trails discussed in
+Section 5.3.2.
+For γ, applying a 4-bit S-box to every nibble separately can quickly become expensive.
+We make sure that, in software, the S-box can be applied eﬃciently on a full row, without
+using lookup tables or other operations that might lead to timing attacks. We suggest a
+bitsliced state representation and explore one such possibility in Section 6.5. This works
+when the S-box is rotation-symmetric.
+An ℓ-bit S-boxS : GF(2ℓ) → GF(2ℓ) is rotation-symmetric if and only ifS(a≫d) =
+S(a) ≫d for alla∈GF(2ℓ), d∈[0,ℓ−1], where≫denotes bitwise rotation. Properties
+of rotation-symmetric S-boxes (RSSBs) have been explored in, e.g., [RBG08] and [Kav12].
+Rotation-symmetric S-boxes are determined by a single coordinate function. There
+are therefore only224
+4-bit rotation-symmetric functions, which makes them eﬃciently
+enumerable. We search exhaustively through these candidate S-boxes to ﬁnd an example
+with nice cryptographic properties and that also has an eﬃcient implementation. Out of
+the 65536 functions, 1536 are invertible. Of course, many are linear and/or aﬃne equivalent
+to each other [LP07]. Out of these 1536 candidates, 512 are ‘optimal’ S-boxes, as deﬁned
+in [LP07]. This means that they have a maximum diﬀerential probability of1/4 and a
+maximum input-output correlation of1/2. All of these have 3 as their algebraic degree.
+We then selected the S-box based on the number of binary Boolean operations that are
+required to compute it and its inverse. It can be deﬁned in algebraic normal form by the
+coordinate functionb0 = a1 + a2 + a0a2 + a1a2 + a1a2a3. More details and representations
+can be found in Appendix A.
+For the ﬁrst phase of selectingθ, π, andρ, we consider trails in the kernel ofθ. Because
+of all the symmetry, we can arbitrarily set one rotation distance to zero, shaving oﬀ a few
+Ko Stoﬀelen and Joan Daemen 143
+more operations. After some experiments, we setπ to be the permutation that rotates
+all rows down.ρrotates rows nibble-wise to the right by the distances 14, 3, 10, and 0,
+respectively, from top to bottom. This yielded a best trail with a weight of 52 active cells
+over 4 rounds. For implementation eﬃciency, we also makeρcompute an ‘intra-nibble’
+rotation to the left for all nibbles that are wrapped to the other side. In Section 6.5 it will
+become clear why this ‘extra’ work is actually more eﬃcient and not less. Note that this
+does not aﬀect our truncated trail search.
+For the second phase, the parity-folding matrixZ should be chosen such that the
+truncated trail search yields bounds that are not much better than the in-kernel trails. We
+end up with a circulant matrix where a column can aﬀect three other columns. Over 4
+rounds, the best diﬀerential trail then has a weight of 46 active cells
+The steps of the round function have high symmetry. All fourγ, θ, π, and ρ are
+invariant to rotation along the rows and rotation of bits within the cells. Moreover,γand
+θare even invariant in rotation along the columns. We therefore add round constants,
+that should achieve the following goals:
+1. Applying a few rounds to a state that has some symmetryA⊕(A≫d) = 0shall
+result in a stateB where B⊕(B ≫d) has high Hamming weight, for all values ofd.
+2. Applying a few rounds to two statesA and A∗with A′= A⊕A∗and A′⊕(A′≫
+d) = 0shall result in a diﬀerenceB′where B′⊕(B′≫d) has high Hamming weight,
+for all values ofd.
+3. There shall be no invariant subspaces in the linear part of the round function,
+including the addition of the round constant.
+4. Round constant addition shall be cheap.
+The minimum cost of round constant addition is a single bitwise addition per round.
+Therefore, we have round constants that are non-zero in a single word. We choose the
+word that contains the nibbles of the top row in even positions. We use a simple scheme
+to achieve asymmetry: all round constants are obtained by performing a (non-cyclic) shift
+of a single master round constant, where the shift oﬀset is simply the round index. We
+believe criteria 1 and 2 listed above are satisﬁed for the following reasons. First, the round
+constants are outside the kernel and hence their inﬂuence will spread very quickly. Second,
+they do not have symmetry along the rows or within the nibbles.
+As for criterion 3, we investigated the algebraic properties of the linear part of the round
+function, as explained in [Bei+17]. It can be seen as 4 identical mappings, each operating
+on the bits in a speciﬁc position of the nibbles. So each one operates on a matrix of 4 rows
+and 16 columns. The characteristic polynomial of this mapping is1 +x64 = (1 +x)64.
+This suggests that it has non-trivial invariant subspaces of dimension 1, 2, 4, 8, 16, 32.
+These are easy to ﬁnd, knowing the symmetry. The ones of dimension above 2 simply
+consist of states that have periodic rows. The subspace of dimension 32 is the set of all
+states with period 8, dimension 16 with period 4, dimension 8 with period 2 and dimension
+4 with period 1 (rows are all-1 or all-0). The subspace with dimension 2 are the 4 states
+with an even number of all-1 states and an even number of all-0 rows. Finally, the subspace
+with dimension 1 are the all-0 and the all-1 state.
+The 32 active bits in the round constants are spread evenly over these 4 mappings. It
+would be problematic if the diﬀerences between the round constants were all periodic. We
+made sure that this is not the case.
+The master round constant has the following value expressed as a bit sequence:
+11000110111010100001001011001111, starting with the least signiﬁcant bit. This has
+been generated with the 5-bit LFSR with feedback polynomial1 +x3 + x5. While there are
+linear recurrences among bits due to a short LFSR, this has no relation with the symmetry
+in the steps of the round function and we therefore believe that this is not a problem.
+144 Column Parity Mixers
+A
+⊕
+1T4A eZ(A)
+θ(A)
+⊕
+Figure 2: The diﬀusion layerθ.
+π ρ
+Figure 3: The transposition layerρ◦π.
+The round constant for roundi is this sequence shifted to the left byi bits.
+Summary. To summarize this and to make this more precise, we introduce a 256-bit
+iterated permutation called Mixifer. Mixifer consists of 16 rounds. The 256-bit state is
+arranged asm= 4rows withn= 16columns of 4-bit nibbles. Every round consists of
+applying ι◦ρ◦π◦θ◦γ.
+•γis a non-linear mapping, the S-box. It is a 4-bit S-box that is applied to each nibble.
+We choose the rotational symmetric S-box deﬁned by the following equation (over
+GF(2)) for the ﬁrst coordinate:b0 = a1 + a2 + a0a2 + a1a2 + a1a2a3. Appendix A
+provides other descriptions of this S-box and its inverse.
+•θis our column parity mixer, deﬁned by dimensionsm = 4, n = 16, and by the
+following circulant parity-folding matrixZ:
+Z =
+
+]]]]]]]
+0 1 1 0 0 1 0 0 ···0
+0 0 1 1 0 0 1 0 ···0
+0 0 0 1 1 0 0 1 ···0
+... ... ... ... ... ... ... ... ... ...
+1 0 0 1 0 0 0 0 ···1
+1 1 0 0 1 0 0 0 ···0
+
+[
+.
+Alternatively, the parity-folding polynomial isz(x) =x+ x2 + x5.
+•π permutes the rows as follows:0 ↦→1,1 ↦→2,2 ↦→3,3 ↦→0, where{0,1,2,3}are
+row indices, starting from the top.
+•ρ rotates the 4 rows nibble-wise to the right by the distances 14, 3, 10, and 0,
+respectively, from top to bottom. Additionally, all the nibbles that are wrapped to
+the other side are rotated to the left by 1 bit within that nibble.
+•ιadds a round constant into the even cells of the top row, starting to count at 0,
+as highlighted in Figure 4. In roundi this is0xF3485763 shifted to the right byi,
+again starting to count at 0.
+Ko Stoﬀelen and Joan Daemen 145
+Figure 4: Locations whereιadds the round constant.
+6.3 Evaluation
+6.3.1 Avalanche eﬀect
+We ﬁrst study the diﬀusion of our CPM by considering the avalanche eﬀect for Mixifer.
+Good diﬀusion implies that a single bit will quickly aﬀect as many other bits as possible.
+Avalanche testing is a quick and easy test to quantify how quickly diﬀusion takes place.
+For each of the 256 bits, we generate 10000 random states. A round-reduced Mixifer is
+then applied to that state and to that state where one bit is ﬂipped. Each time, we look at
+the diﬀerences between the outputs. We consider the amount of bits that are ﬂipped, but
+also in how many diﬀerent cells bits are ﬂipped. It can be seen in Table 2 that a single
+bit ﬂip in a random state has very rapid diﬀusion. Already after 3 rounds, each bit of
+the output is ﬂipped with 50.0% probability. This is also known as the strict avalanche
+criterion.
+Table 2:Avalanche test ﬂipping a single bit.
+Rounds 1 2 3
+Average bit ﬂip probability 10.2% 47.1% 50.0%
+Average cell change probability 20.2% 88.83% 93.8%
+Worst-case bits ﬂipped 13 44 89
+Worst-case cells changed 13 32 48
+Another way to test the avalanche eﬀect is by starting with a state where only a single
+bit is set, and to measure how many rounds it takes before every bit in the state is touched.
+Typically, operations can be changed toORs and it can be checked when all bits in the
+state are set. The results are listed in Table 3. After 5 rounds, ’full’ diﬀusion is achieved
+from every starting bit.
+Table 3:Avalanche test starting with single bit set.
+Rounds 1 2 3 4 5
+Worst-case bits set 71 196 243 255 256
+Worst-case cells set 25 58 63 64 64
+6.3.2 Linear and diﬀerential cryptanalysis
+A strategy for searching truncated linear and diﬀerential trails has been outlined in
+Section 5.3. Here, we only summarize the trails and bounds that we computed for Mixifer.
+First it should be veriﬁed that the kernel of the CPM does not pose a serious concern
+and that it is infeasible to stay in the kernel for many consecutive rounds, except for trivial
+trails where two full rows are active, as was discussed in Section 5.3.2. We generated trails
+where the state pattern remains in the kernel until the last round. The number of active
+146 Column Parity Mixers
+cells per state pattern in the trail is therefore constant. Table 4 summarizes the bounds,
+while Appendix C contains the actual trails.
+Table 4:Minimum weight for trails that remain in the kernel until the last round.
+Number of roundsr 2 3 4
+Minimum W active cells 4 18 52
+Outside of the kernel, we ﬁrst use our software to generate two-round trails. Figure 5
+shows the number of two-round diﬀerential trails that need to be considered and their
+weights.
+0 4 8 12 16 20 24 28
+101
+103
+105
+107
+109
+W
+Number of trails
+Figure 5: Number of active cells of two-round diﬀerential trails.
+After extending these two-round trails, we ﬁnd the minimum weight trails for three
+and four rounds, both for linear and for diﬀerential trails. For three rounds, both the best
+linear and the best diﬀerential trail have a weight of 27 active cells. Table 5 shows the
+overall minimum weights (combing trails in the kernel and outside the kernel), while the
+trails themselves can be found in Appendix C. It can be seen that after four rounds, the
+trails in the kernel are no longer the minimum weight trails. We expect the weight to
+again increase signiﬁcantly for subsequent rounds, but we were not able to cover the full
+search space anymore.
+Table 5:Minimum weight in number of active cells for trails.
+Number of roundsr 1 2 3 4
+Minimum W diﬀerential 1 4 18 46
+Minimum W linear 1 4 18 40
+6.3.3 Clustering of diﬀerential trails
+So far we have considered truncated trails. However, as the round function is cell-oriented,
+there may be signiﬁcant cases of trail clustering. In particular, there may be multi-round
+diﬀerentials with many diﬀerential trails in the same truncated diﬀerential trail.
+For two-round AES, this was investigated in [DR06] and it turned out that the two-round
+diﬀerential over two rounds has a maximum diﬀerential probability (DP) of13.25 ×2−32,
+Ko Stoﬀelen and Joan Daemen 147
+while the best two-round trail has DP4 ×2−32. The diﬀerential is the result of 75 trails, all
+in the same truncated trail. These investigations were done on an interesting sub-structure
+of AES, the so-calledAES super-box. This structure is a permutation operating on a 4-byte
+array and consists of the SubBytes S-box layer, MixColumns, round key addition, and
+again a SubBytes S-box layer, all restricted to a 4-byte array. The best diﬀerentials over
+that structure have in total 5 active S-boxes over the two SubBytes layers and those are
+the ones that are investigated.
+For Mixifer, we analyze an analogous case, namely the best diﬀerential trails over two
+rounds. Those are the ones with two active cells that form an orbital inθof the ﬁrst
+round. So we have two nibbles in the same column with diﬀerence valuesd0 and d1 at
+the input ofγ, that maps them both to the same diﬀerenced∆ . The subsequentθacts as
+the identity andρand π move them to diﬀerent positions before they arrive at the nextγ
+layer. There, the two active nibbles map to output diﬀerencesd2 and d3. The remainder of
+the second round does not modify the diﬀerential probability. So the super-box structure
+we consider consists of twoγ S-boxes, followed by twoγ S-boxes. There is no mapping in
+between, only the requirement that in the intermediate diﬀerence the two active cells are
+equal. So the trails look like this:(d0,d1)
+γ
+→ (d∆ ,d∆ )
+γ
+→ (d2,d3). This means that their
+diﬀerential probability isDP(d0,d∆ )DP(d1,d∆ )DP(d∆ ,d2)DP(d∆ ,d3). They contribute
+to the super-box diﬀerential in the following way:
+DP((d0,d1) → (d2,d3)) =
+
+d∆
+DP(d0,d∆ )DP(d1,d∆ )DP(d∆ ,d2)DP(d∆ ,d3) .
+A single trail can have DP at most2−8, as the maximum DP of our S-box is2−2. We have
+exhaustively checked for all216 possible combinations of(d0,d1,d2,d3), and the diﬀerential
+with the highest DP turned out to be the one where alldi are all-1 (soF in hexadecimal).
+It has DP2−8 + 6×2−12 that is the contribution of 7 trails, one dominant with DP2−8
+and 6 with DP each2−12. This gives a DP for the diﬀerential that is only a factor1.375
+higher than that of its dominating trail.
+As a preliminary conclusion, it appears that the eﬀect of clustering appears to be
+smaller than for AES.
+6.3.4 Impossible diﬀerential cryptanalysis
+It is well-known that every permutation has many impossible diﬀerentials [BBS05]. For
+any input diﬀerence, there are exactly2b−1 pairs and hence there can be only2b−1 output
+diﬀerences. However, to the best of our knowledge no attacks have been reported that
+exploit that aspect. Impossible diﬀerential attacks exploit large classes of impossible
+diﬀerentials, i.e. diﬀerentials with zero probability. Here we will discuss whether this can
+be applied to Mixifer.
+Let us consider a single-cell diﬀerence at the input of a round (calledﬁrst round):
+•First round:θmaps the single active cell to a diﬀerence with three additional aﬀected
+columns and the subsequentρmoves the active cells to diﬀerent columns.
+•Second round: γ transforms the diﬀerence values of the 13 active cells to possibly
+diﬀerent values. The subsequentθadds aﬀected columns. We found that at this
+stage, all columns can be aﬀected. The subsequentρand π steps just move the
+active cells around.
+•Third round:γtransforms the diﬀerence values of the active cells to possibly diﬀerent
+values. Within each column, all possibilities can occur: in the kernel or out of the
+kernel, all four the same4, three the same3 + 1, 2 + 2, 2 + 1 + 1and all four diﬀerent
+1 + 1 + 1 + 1. The subsequentθcomputes column parities over all columns and adds
+148 Column Parity Mixers
+three aﬀected columns for each one. This leads to a state where each cell can be
+active or passive, with the exception of an all-passive state. This remains to be the
+case afterρand π.
+So a diﬀerence with a single active cell may lead to any (non-zero) truncated diﬀerence after
+three rounds. If we consider fully speciﬁed patterns taking into account the cell diﬀerence
+values, we have veriﬁed that, when we apply a diﬀerenceato the serial composition of two
+S-boxes with the addition of an oﬀset in between, that this may lead to all possible non-zero
+diﬀerences for any non-zero valuea. So, even though for any stage of the computation
+there will certainly exist (non-truncated) diﬀerence patterns that cannot occur, afterχ of
+the fourth round, it will be very hard to exploit them.
+We treated the case of a diﬀerence pattern with a single active cell. If there is more
+than one active cell, one may try to slow down diﬀusion by having the pattern at the input
+of θof the ﬁrst round in the kernel. In that case, one would apply a pattern at the input
+consisting of one or more orbitals. However, afterγof the ﬁrst round, the diﬀerence values
+of the active cells belonging to the same orbital depend on the absolute value of the state,
+and hence they are only equal in a subset of all cases. So for the other cases that may
+occur and are hence not impossible, there are actually more active cells present afterθ
+and hence diﬀusion is even faster.
+We see that Mixifer has no exploitable impossible diﬀerentials that start from a single-
+cell diﬀerence over more than 3 rounds. This is actually as good as AES despite the larger
+number of cells, and we attribute it to the large average diﬀusion of the column parity
+mixer that we use.
+6.3.5 Invariant attacks
+Under invariant attacks, we consider rotational cryptanalysis [KN10], slide attacks [BW99],
+invariant subspace attacks [Lea+11], and nonlinear invariant attacks [TLS16]. One property
+that these attacks share, is that they can be defeated by appropriately choosing round
+constants [Bei+17].
+We explicitly designed our round constants to fulﬁll all the relevant criteria, which is
+why we conclude that there are no exploitable invariant attacks against Mixifer.
+6.4 The number of rounds
+Recall that we aim for use cases such as XPX [Men16], where an adversary can apply
+diﬀerence patterns across the complete input and can do inverse permutation queries, and
+that we target a security level of 128 bits. Note that this is diﬀerent than for block ciphers
+where by default a security level equal to the block length is claimed, leading to the absurd
+situation that attacks requiring an adversary to query almost the full codebook canbreak
+a cipher, at least from an academic perspective. Our security claim is compatible with
+the fact that most modes do not achieve security above the birthday bound, that is at a
+comfortable 128 bits for our permutation width.
+Based on our investigations, we ﬁx the number of rounds to 16 and believe this gives a
+comfortable safety margin for the following reasons:
+•The best diﬀerential trails over 4 rounds have DP2−92, so the best ones over 12
+rounds have an approximated DP of2−276. In our best 2-round diﬀerential trail,
+the DP is2−8, while the best 2-round diﬀerential has DP1.375 ×2−8 ≈2−7.54. So
+clustering may lead to some loss, but even dividing the exponent of the best trail
+DP by two would give2−138, an unexploitable value.
+•For linear trails we have a maximum linear probability (square of the correlation) over
+4 rounds of2−80, resulting in2−240 over 12 rounds. This is slightly less comfortable
+Ko Stoﬀelen and Joan Daemen 149
+than the case of diﬀerential trails, but it is still very large, even if a huge degeneration
+due to clustering would occur.
+•The number of rounds for which structural attacks, such as integral cryptanalysis
+and impossible diﬀerentials, still work, is strongly correlated with the number of
+rounds that it takes to achieve full diﬀusion. We have illustrated this explicitly with
+impossible diﬀerentials. Speciﬁcally, we claim that despite its larger state and more
+lightweight round function, Mixifer achieves full diﬀusion about as fast as AES.
+•The algebraic degree of the round function is 3, as is that of its inverse. This already
+starts saturating after5 rounds, so we don’t expect there to be any problems.
+Of course every concrete cipher can only be considered secure after intensive public scrutiny
+so we invite all members of the cryptographic community to attack Mixifer.
+6.5 Implementation cost
+Mixifer is designed for eﬃcient constant-time implementations in hardware and in software
+on 32-bit and 64-bit architectures. We provide two reference implementations in C
+and an optimized assembly implementation for the (32-bit) ARM Cortex-M3 and M4
+microcontrollers.
+The ﬁrst C implementation uses 4uint64_ts to represent the state and implements
+the round function in a very straightforward way. In a naive software implementation
+like this,γcan be relatively computationally expensive. The S-box needs to be computed
+for each cell individually. Even when one applies the S-box to an entire row in parallel,
+bitmasks are typically required to separate the four bits of a cell over separate registers.
+By selecting a rotation-symmetric S-box and assuming a bitsliced state, this can be made
+more eﬃcient, especially on architectures such as those by ARM where shifts and rotations
+are cheap. After loading our state, we take it to be organized as in Figure 6.
+The ith byte of a 32-bit word stores theith bit for 8 cells, as the S-box can then be
+computed in just 4 instructions per register. We also choose to interleave adjacent cells
+over two words, as a word-rotation by one nibble is now only a bytewise rotation by one
+bit and a swap of registers, which is free, instead of having to do this bytewise rotation on
+two words. The second C implementation uses this approach and represents the state with
+8 uint32_ts.
+16 columns1 cell
+4 rows
+r0
+r1
+r2
+r3
+r4
+r5
+r6
+r7
+Figure 6: Bitsliced representation for 32-bit architectures. At the top is the 256-bits
+state, where every rectangle is a bit. At the bottom are 8 32-bit registers labeledr0 to r7,
+where every colored rectangle is a byte.
+On the ARM Cortex-M3 or M4, we can computeγ with this representation in 32
+single-cycle instructions. On a 64-bit architecture, this could naturally be twice as eﬃcient.
+150 Column Parity Mixers
+Computing θtakes 6 cycles for computing the parity, 17 cycles for calculating the eﬀect,
+and 8 cycles for adding it back to the state.π can be implemented by just renaming
+registers, andρtakes us 2 cycles per row, except for the last row which is not rotated, so
+only 6 cycles in total.ιtakes a single cycle.
+All combined, our optimized assembly implementations needs 70 cycles for a single
+round. Together with some overhead for a function call and for loading and storing data,
+the full unrolled 16-round permutation runs in 1174 cycles, or 36.69 cycles per byte on the
+ARM Cortex-M4, as measured on an STM32F407 microcontroller. For ARM Cortex-M3,
+we measure 1175 cycles on an STM32L100 microcontroller. The implementation uses only
+44 bytes on the stack, excluding the input. They are mostly to store callee-save registers.
+Notably, the inverse permutation has the same memory requirements and even a slightly
+higher speed, measuring 1126 cycles on the STM32F407.
+All source code is put in the public domain and available athttps://github.com/
+Ko-/mixifer.
+6.6 Comparing to other ciphers
+To put our bounds and benchmarks into context, we compare the results to some other
+permutations and ciphers. We aim to make this comparison fair by only considering
+schemes for which there is an optimized implementation for the ARM Cortex-M3 or M4.
+Aside from the usual speed and size numbers, we would also like to somehow incorporate
+the ‘quality’ of a round function into the comparison.
+Some schemes have many lightweight rounds while others have more computationally
+demanding rounds, but need less of them to reach a certain level of security. Some schemes
+are also more conservative than others with regard to the number of rounds compared
+to the best known attacks. Moreover, schemes target diﬀerent security levels. All of that
+makes it hard to quantify the notion of the quality of a round function in a meaningful
+way. Intuitively, however, we believe that it would be interesting to look at the amount of
+‘security’ that is gained per amount of ‘work’ that has to be done.
+Table 6 lists some of the results. Regarding ‘security’, we consider the weight that a
+single round adds to the best known diﬀerential trail. In the table, the weight is expressed
+as the−log of the maximum diﬀerential probability (DP). ’Work’ is then quantiﬁed as
+the number of cycles per byte per round on these Cortex-M microarchitectures. Of course
+these numbers do not reﬂect security against diﬀerent types of attacks, performance on
+diﬀerent architectures, the security margin, and so on.
+AES [DR02] is a prime example of a cipher using an MDS matrix and with strong
+bounds. For fair comparison, we also mention performance numbers for a bitsliced
+implementation that does not use any secret-data dependent lookup tables and is not
+vulnerable to cache attacks. Gimli [Ber+17] is a 384-bit permutation with a much lighter
+round function which shows in its speed, but also in the best known trails. We compare to
+Salsa20/20 [Ber08b] because it is known for being very fast. The speed that is mentioned,
+is actually that of ChaCha20 [Ber08a], which has comparable speed. However, to the best
+of our knowledge, no bounds are known for ChaCha20 and Salsa20/20 does not have an
+optimized implementation for the Cortex-M3 and M4. We compare toKeccak-f[400] and
+Keccak-f[800] [Ber+11b] because they are known to have very strong security guarantees
+against linear and diﬀerential cryptanalysis in the form of a good bound on the weight of
+trails [MDA17]. The big gap in performance is becauseKeccak-f[800] is the smallest
+Keccak-f that can fully use 32-bit registers.
+It is clear that Mixifer may not be as fast as Salsa20/20 or Gimli, but their currently
+available bounds leave something to be desired, although they may improve in the future.
+When one considers the amount of ‘security’ that one gets per amount of ‘work’ that needs
+to be done, Mixifer stands out.
+Ko Stoﬀelen and Joan Daemen 151
+Table 6:Comparison of performance on the Cortex-M3/M4 and bounds.
+Name Width r Speed (cycles/byte) Bound trails
+(bits) Full / r r −log(max DP) /r
+AES bitsliced 128 10 50.52 [SS16] 5.05 4 150 [DR02] 37.5
+AES tables 39.97 [SS16] 4.00
+Gimli 384 24 21.81 [Ber+17] 0.91 8 52 [Ber+17] 6.5
+Keccak-f[400] 400 20 106 [Ber+14] 5.3 6 92 [MDA17] 15.3
+Keccak-f[800] 800 22 48.02 [Ber+14] 2.18 6 92 [MDA17] 15.3
+Salsa20/20 512 20 13.88 [HRS16] 0.69 3 18 [MP13] 6
+Mixifer 256 16 36.69 2.33 4 92 23
+7 Conclusions and future work
+We have generalized the mixing layer of the permutation ofKeccak and showed that
+column parity mixers are an interesting alternative to MDS matrices. They can be very
+lightweight mixing layers and they lend themselves well to bitsliced implementations, even
+for nibble-oriented ciphers and permutations. Additionally, we formulated a strategy to
+obtain strong bounds with respect to truncated linear and diﬀerential cryptanalysis and
+demonstrated its eﬀectiveness by an example.
+CPMs look promising, but there are still some interesting aspects that are worth
+investigating. For instance, intuitively it makes sense that a sparser parity-folding matrix
+means less diﬀusion and a cheaper implementation, but it is less obvious what would be
+an ideal trade-oﬀ and how this relates to the trail search space that needs to be covered.
+One can imagine that after some point, there is not so much to be gained by making a
+parity-folding matrix denser, especially when considering trails over many rounds.
+For circulant parity-folding matrices, there exist interesting patterns after one selects
+which columns should be aﬀected given a single isolated active cell. For example, consider
+the case wherez(x) =x+ x2 + x3 + x4. Then a single active cell leads to four aﬀected
+columns. However, with two active cells in adjacent columns, there would be some
+destructive interference in theθ-eﬀect leading to only two aﬀected columns. In general,
+something similar can happen with other parity-folding matrices and multiple odd columns.
+It is worth investigating what is an optimal choice.
+As another example, it would be interesting to know whether there exist better
+transposition layers than a combination of row permutations and rotations. Or, to learn
+what is the optimal ratio betweenℓ, m, andn.
+For Mixifer, we considered truncated trails and while we touched upon the subject of
+trail clustering, more can be done. It would be interesting to investigate this behaviour
+for more rounds, both for AES and for MDS-based ciphers in general, as for Mixifer. We
+consider further research on clustering of trails to be future work.
+We are looking forward to see any future work on the subject of column-parity mixers.
+References
+[77] Data Encryption Standard. National Bureau of Standards, NBS FIPS PUB
+46, U.S. Department of Commerce. Jan. 1977.
+[Alb+14] Martin R. Albrecht, Benedikt Driessen, Elif Bilge Kavun, Gregor Leander,
+Christof Paar, and Tolga Yalçin. “Block Ciphers - Focus on the Linear Layer
+(feat. PRIDE)”. In:CRYPTO 2014, Part I. Ed. by Juan A. Garay and Rosario
+152 Column Parity Mixers
+Gennaro. Vol. 8616. LNCS. Springer, Heidelberg, Aug. 2014, pp. 57–76.doi:
+10.1007/978-3-662-44371-2_4 .
+[Ban+15] SubhadeepBanik,AndreyBogdanov,TakanoriIsobe,KyojiShibutani,Harunaga
+Hiwatari, Toru Akishita, and Francesco Regazzoni. “Midori: A Block Cipher
+for Low Energy”. In:ASIACRYPT 2015, Part II. Ed. by Tetsu Iwata and
+Jung Hee Cheon. Vol. 9453. LNCS. Springer, Heidelberg, Nov. 2015, pp. 411–
+436. doi: 10.1007/978-3-662-48800-3_17 .
+[BBS05] Eli Biham, Alex Biryukov, and Adi Shamir. “Cryptanalysis of Skipjack Re-
+duced to 31 Rounds Using Impossible Diﬀerentials”. In:Journal of Cryptology
+18.4 (Sept. 2005), pp. 291–311.doi: 10.1007/s00145-005-0129-3 .
+[Bei+16] Christof Beierle, Jérémy Jean, Stefan Kölbl, Gregor Leander, Amir Moradi,
+Thomas Peyrin, Yu Sasaki, Pascal Sasdrich, and Siang Meng Sim. “The
+SKINNY Family of Block Ciphers and Its Low-Latency Variant MANTIS”.
+In: CRYPTO 2016, Part II. Ed. by Matthew Robshaw and Jonathan Katz.
+Vol. 9815. LNCS. Springer, Heidelberg, Aug. 2016, pp. 123–153.doi: 10.1007/
+978-3-662-53008-5_5 .
+[Bei+17] Christof Beierle, Anne Canteaut, Gregor Leander, and Yann Rotella. “Proving
+Resistance Against Invariant Attacks: How to Choose the Round Constants”.
+In: CRYPTO 2017, Part II. Ed. by Jonathan Katz and Hovav Shacham.
+Vol. 10402. LNCS. Springer, Heidelberg, Aug. 2017, pp. 647–678.doi: 10.
+1007/978-3-319-63715-0_22 .
+[Ber+11a] Guido Bertoni, Joan Daemen, Michaël Peeters, and Gilles Van Assche.Crypto-
+graphic sponge functions. Jan. 2011.url: https://keccak.team/files/CSF-
+0.1.pdf.
+[Ber+11b] Guido Bertoni, Joan Daemen, Michaël Peeters, and Gilles Van Assche.The
+Keccak reference. Jan. 2011.url: http://keccak.noekeon.org/.
+[Ber+14] Guido Bertoni, Joan Daemen, Michaël Peeters, Gilles Van Assche, and Ronny
+Van Keer. Keccak code package. Oct. 2014. url: https : / / github . com /
+gvanas/KeccakCodePackage.
+[Ber+17] Daniel J. Bernstein, Stefan Kölbl, Stefan Lucks, Pedro Maat Costa Massolino,
+Florian Mendel, Kashif Nawaz, Tobias Schneider, Peter Schwabe, François-
+Xavier Standaert, Yosuke Todo, and Benoît Viguier. “Gimli : A Cross-Platform
+Permutation”. In:CHES 2017. Ed. by Wieland Fischer and Naofumi Homma.
+Vol. 10529. LNCS. Springer, Heidelberg, Sept. 2017, pp. 299–320.doi: 10.
+1007/978-3-319-66787-4_15 .
+[Ber08a] Daniel J. Bernstein. “ChaCha, a variant of Salsa20”. In:Workshop Record of
+SASC. 2008.url: http://cr.yp.to/chacha/chacha-20080120.pdf.
+[Ber08b] Daniel J. Bernstein. “The Salsa20 Family of Stream Ciphers”. In:New Stream
+Cipher Designs: The eSTREAM Finalists. Ed. by Matthew Robshaw and
+Olivier Billet. Vol. 4986. LNCS. Springer, 2008, pp. 84–97.isbn: 978-3-540-
+68351-3. doi: 10.1007/978-3-540-68351-3_8 .
+[BKL16] Christof Beierle, Thorsten Kranz, and Gregor Leander. “Lightweight Multipli-
+cation inGF(2n) with Applications to MDS Matrices”. In:CRYPTO 2016,
+Part I. Ed. by Matthew Robshaw and Jonathan Katz. Vol. 9814. LNCS.
+Springer, Heidelberg, Aug. 2016, pp. 625–653.doi: 10.1007/978-3-662-
+53018-4_23.
+Ko Stoﬀelen and Joan Daemen 153
+[Bor+12] Julia Borghoﬀ, Anne Canteaut, Tim Güneysu, Elif Bilge Kavun, Miroslav
+Knežević, Lars R. Knudsen, Gregor Leander, Ventzislav Nikov, Christof Paar,
+Christian Rechberger, Peter Rombouts, Søren S. Thomsen, and Tolga Yalçin.
+“PRINCE-ALow-LatencyBlockCipherforPervasiveComputingApplications
+- Extended Abstract”. In:ASIACRYPT 2012. Ed. by Xiaoyun Wang and
+Kazue Sako. Vol. 7658. LNCS. Springer, Heidelberg, Dec. 2012, pp. 208–225.
+doi: 10.1007/978-3-642-34961-4_14 .
+[BW99] Alex Biryukov and David Wagner. “Slide Attacks”. In:FSE’99. Ed. by Lars R.
+Knudsen. Vol. 1636. LNCS. Springer, Heidelberg, Mar. 1999, pp. 245–259.
+doi: 10.1007/3-540-48519-8_18 .
+[DF04] David S. Dummit and Richard M. Foote.Abstract algebra. John Wiley and
+Sons, Inc., 2004.
+[DGV93] Joan Daemen, René Govaerts, and Joos Vandewalle. “Block Ciphers Based on
+Modular Arithmetic”. In:Proceedings of the 3rd Symposium on the State and
+Progress of Research in Cryptography. Ed. by W. Wolfowicz. 1993, pp. 80–89.
+[DR02] Joan Daemen and Vincent Rijmen. The design of Rijndael – AES, The
+Advanced Encryption Standard. Springer, 2002.url: http://jda.noekeon.
+org/JDA_VRI_Rijndael_2002.pdf.
+[DR06] Joan Daemen and Vincent Rijmen. “Understanding Two-Round Diﬀerentials in
+AES”. In:SCN 06. Ed. by Roberto De Prisco and Moti Yung. Vol. 4116. LNCS.
+Springer, Heidelberg, Sept. 2006, pp. 78–94.doi: 10.1007/11832072_6.
+[EM93] Shimon Even and Yishay Mansour. “A Construction of a Cipher From a Single
+Pseudorandom Permutation”. In:ASIACRYPT’91. Ed. by Hideki Imai, Ronald
+L. Rivest, and Tsutomu Matsumoto. Vol. 739. LNCS. Springer, Heidelberg,
+Nov. 1993, pp. 210–224.doi: 10.1007/3-540-57332-1_17 .
+[GPP11] Jian Guo, Thomas Peyrin, and Axel Poschmann. “The PHOTON Family of
+Lightweight Hash Functions”. In:CRYPTO 2011. Ed. by Phillip Rogaway.
+Vol. 6841. LNCS. Springer, Heidelberg, Aug. 2011, pp. 222–239.doi: 10.1007/
+978-3-642-22792-9_13 .
+[Guo+11] Jian Guo, Thomas Peyrin, Axel Poschmann, and Matthew J. B. Robshaw.
+“The LED Block Cipher”. In:CHES 2011. Ed. by Bart Preneel and Tsuyoshi
+Takagi. Vol. 6917. LNCS. Springer, Heidelberg, Sept. 2011, pp. 326–341.doi:
+10.1007/978-3-642-23951-9_22 .
+[HRS16] Andreas Hülsing, Joost Rijneveld, and Peter Schwabe. “ARMed SPHINCS
+- Computing a 41 KB Signature in 16 KB of RAM”. In:PKC 2016, Part I.
+Ed. by Chen-Mou Cheng, Kai-Min Chung, Giuseppe Persiano, and Bo-Yin
+Yang. Vol. 9614. LNCS. Springer, Heidelberg, Mar. 2016, pp. 446–470.doi:
+10.1007/978-3-662-49384-7_17 .
+[JNP15] Jérémy Jean, Ivica Nikolić, and Thomas Peyrin.Joltik v1.3. Submission to
+the CAESAR submission. Aug. 2015.url: http://www1.spms.ntu.edu.sg/
+~syllab/m/images/c/ca/V1.3_Joltik.pdf.
+[Kav+14] Elif Bilge Kavun, Martin M. Lauridsen, Gregor Leander, Christian Rechberger,
+Peter Schwabe, and Tolga Yalçın.Prøst v1.1. Submission to the CAESAR com-
+petition. 2014.url: https://competitions.cr.yp.to/round1/proestv11.
+pdf.
+[Kav12] Selçuk Kavut. “Results on rotation-symmetric S-boxes”. In:Information
+Sciences 201 (2012), pp. 93–113.doi: 10.1016/j.ins.2012.02.030.
+154 Column Parity Mixers
+[KN10] DmitryKhovratovichandIvicaNikolic.“RotationalCryptanalysisofARX”.In:
+FSE 2010. Ed. by Seokhie Hong and Tetsu Iwata. Vol. 6147. LNCS. Springer,
+Heidelberg, Feb. 2010, pp. 333–346.doi: 10.1007/978-3-642-13858-4_19 .
+[Knu95] Lars R. Knudsen. “Truncated and Higher Order Diﬀerentials”. In:FSE’94. Ed.
+by Bart Preneel. Vol. 1008. LNCS. Springer, Heidelberg, Dec. 1995, pp. 196–
+211. doi: 10.1007/3-540-60590-8_16 .
+[Kra+17] Thorsten Kranz, Gregor Leander, Ko Stoﬀelen, and Friedrich Wiemer. “Shorter
+Linear Straight-Line Programs for MDS Matrices”. In:IACR Trans. Symm.
+Cryptol. 2017.4 (2017), pp. 188–211.issn: 2519-173X.doi: 10.13154/tosc.
+v2017.i4.188-211.
+[Lea+11] Gregor Leander, Mohamed Ahmed Abdelraheem, Hoda AlKhzaimi, and Erik
+Zenner. “A Cryptanalysis of PRINTcipher: The Invariant Subspace Attack”.
+In: CRYPTO 2011. Ed. by Phillip Rogaway. Vol. 6841. LNCS. Springer,
+Heidelberg, Aug. 2011, pp. 206–221.doi: 10.1007/978-3-642-22792-9_12 .
+[LLM16] David C. Lay, Steven R. Lay, and Judi J. McDonald.Linear Algebra and Its
+Applications. 5th ed. Pearson, 2016.
+[LP07] Gregor Leander and Axel Poschmann. “On the Classiﬁcation of 4 Bit S-Boxes”.
+In: Arithmetic of Finite Fields — WAIFI 2007. Ed. by Claude Carlet and
+Berk Sunar. Vol. 4547. LNCS. Springer, 2007, pp. 159–176.doi: 10.1007/978-
+3-540-73074-3_13 .
+[LS16] Meicheng Liu and Siang Meng Sim. “Lightweight MDS Generalized Circulant
+Matrices”. In:FSE 2016. Ed. by Thomas Peyrin. Vol. 9783. LNCS. Springer,
+Heidelberg, Mar. 2016, pp. 101–120.doi: 10.1007/978-3-662-52993-5_6 .
+[LW16] Yongqiang Li and Mingsheng Wang. “On the Construction of Lightweight
+Circulant Involutory MDS Matrices”. In:FSE 2016. Ed. by Thomas Peyrin.
+Vol. 9783. LNCS. Springer, Heidelberg, Mar. 2016, pp. 121–139.doi: 10.1007/
+978-3-662-52993-5_7 .
+[LW17] Chaoyun Li and Qingju Wang. “Design of Lightweight Linear Diﬀusion Layers
+from Near-MDS Matrices”. In:IACR Trans. Symm. Cryptol.2017.1 (2017),
+pp. 129–155.issn: 2519-173X.doi: 10.13154/tosc.v2017.i1.129-155.
+[Mat94] Mitsuru Matsui. “Linear Cryptanalysis Method for DES Cipher”. In:EURO-
+CRYPT’93. Ed. by Tor Helleseth. Vol. 765. LNCS. Springer, Heidelberg, May
+1994, pp. 386–397.doi: 10.1007/3-540-48285-7_33 .
+[MDA17] Silvia Mella, Joan Daemen, and Gilles Van Assche. “New techniques for trail
+bounds and application to diﬀerential trails in Keccak”. In:IACR Trans.
+Symm. Cryptol.2017.1 (2017), pp. 329–357.issn: 2519-173X.doi: 10.13154/
+tosc.v2017.i1.329-357.
+[Men16] Bart Mennink. “XPX: Generalized Tweakable Even-Mansour with Improved
+Security Guarantees”. In:CRYPTO 2016, Part I. Ed. by Matthew Robshaw
+and Jonathan Katz. Vol. 9814. LNCS. Springer, Heidelberg, Aug. 2016, pp. 64–
+94. doi: 10.1007/978-3-662-53018-4_3 .
+[MP13] Nicky Mouha and Bart Preneel.Towards Finding Optimal Diﬀerential Charac-
+teristics for ARX: Application to Salsa20. Cryptology ePrint Archive, Report
+2013/328. http://eprint.iacr.org/2013/328. 2013.
+[NIS15] NIST. SHA-3 Standard: Permutation-Based Hash and Extendable-Output
+Functions. FIPS 202. Aug. 2015.doi: 10.6028/NIST.FIPS.202.
+Ko Stoﬀelen and Joan Daemen 155
+[RBG08] Vincent Rijmen, Paulo SLM Barreto, and Décio L Gazzoni Filho. “Rotation
+symmetry in algebraically generated cryptographic substitution tables”. In:
+Information Processing Letters106.6 (2008), pp. 246–250.doi: 10.1016/j.
+ipl.2007.09.012.
+[Rij+96] Vincent Rijmen, Joan Daemen, Bart Preneel, Anton Bossalaers, and Erik De
+Win. “The Cipher SHARK”. In:FSE’96. Ed. by Dieter Gollmann. Vol. 1039.
+LNCS. Springer, Heidelberg, Feb. 1996, pp. 99–111.doi: 10.1007/3-540-
+60865-6_47.
+[Sas+15] Yu Sasaki, Yosuke Todo, Kazumaro Aoki, Yusuke Naito, Takeshi Sugawara,
+Yumiko Murakami, Mitsuru Matsui, and Shoichi Hirose.Minalpher v1.1.
+Submission to the CAESAR competition. 2015.url: https://info.isl.ntt.
+co.jp/crypt/minalpher/files/minalpherv11.pdf.
+[SS16] Peter Schwabe and Ko Stoﬀelen. “All the AES You Need on Cortex-M3 and
+M4”. In:SAC 2016. Ed. by Roberto Avanzi and Howard M. Heys. Vol. 10532.
+LNCS. Springer, Heidelberg, Aug. 2016, pp. 180–194.doi: 10.1007/978-3-
+319-69453-5_10.
+[TLS16] Yosuke Todo, Gregor Leander, and Yu Sasaki. “Nonlinear Invariant At-
+tack - Practical Attack on Full SCREAM, iSCREAM, and Midori64”. In:
+ASIACRYPT 2016, Part II. Ed. by Jung Hee Cheon and Tsuyoshi Takagi.
+Vol. 10032. LNCS. Springer, Heidelberg, Dec. 2016, pp. 3–33.doi: 10.1007/
+978-3-662-53890-6_1 .
+A S-box
+The S-boxS in algebraic normal form.
+b0 = a1 + a2 + a0a2 + a1a2 + a1a2a3
+b1 = a2 + a3 + a1a3 + a2a3 + a2a3a0
+b2 = a3 + a0 + a2a0 + a3a0 + a3a0a1
+b3 = a0 + a1 + a3a1 + a0a1 + a0a1a2
+S can be computed more eﬃciently. This takes 4 instructions in ARMv7-M, assuming
+the bit lay-out that was sketched in Section 6.5. In the assembly implementation,ai are
+stored ins and t is a temporary register.
+b0 = a1 + a2(a0 + (a1 OR a3))
+b1 = a2 + a3(a1 + (a2 OR a0))
+b2 = a3 + a0(a2 + (a3 OR a1))
+b3 = a0 + a1(a3 + (a0 OR a2))
+.macro gammapart s t
+orn \t, \s, \s, ror #16
+eor \t, \s, \t, ror #8
+and \t, \t, \s, ror #16
+eor \s, \t, \s, ror #24
+.endm
+156 Column Parity Mixers
+The inverse S-boxS−1 in algebraic normal form.
+a0 = b0 + b1 + b3 + b0b2 + b1b2 + b1b3 + b1b2b3
+a1 = b1 + b2 + b0 + b1b3 + b2b3 + b2b0 + b2b3b0
+a2 = b2 + b3 + b1 + b2b0 + b3b0 + b3b1 + b3b0b1
+a3 = b3 + b0 + b2 + b3b1 + b0b1 + b0b2 + b0b1b2
+S−1 can be computed more eﬃciently. This takes 4 instructions in ARMv7-M.
+a0 = b3 + (b2(b0 + (b1b3)))
+a1 = b0 + (b3(b1 + (b2b0)))
+a2 = b1 + (b0(b2 + (b3b1)))
+a3 = b2 + (b1(b3 + (b0b2)))
+.macro invgammapart s t
+bic \t, \s, \s, ror #16
+eor \t, \s, \t, ror #24
+bic \t, \t, \s, ror #16
+eor \s, \t, \s, ror #8
+.endm
+The S-box as hexadecimal lookup table.
+a 0 1 2 3 4 5 6 7 8 9 a b c d e f
+S(a) 0 c 9 d 3 a b 2 6 e 5 1 7 8 4 f
+Below are the diﬀerence distribution table and linear approximation table of the S-boxS.
+0 1 2 3 4 5 6 7 8 9 a b c d e f0 16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 01 0 0 0 0 4 0 0 0 2 4 0 2 2 0 0 22 0 2 0 4 0 0 0 2 4 2 0 0 0 0 0 23 0 4 0 0 0 2 0 2 2 0 0 2 2 2 0 04 0 4 2 2 0 0 4 0 0 0 0 0 0 0 2 25 0 0 0 0 0 2 2 0 0 2 4 2 0 0 2 26 0 2 4 0 0 0 0 2 0 2 2 2 0 0 2 07 0 0 2 2 0 0 2 2 0 2 2 0 0 2 2 08 0 0 4 0 2 0 2 0 0 0 0 0 4 2 0 29 0 0 0 0 2 0 2 0 4 0 2 2 0 2 2 0a 0 0 0 2 0 4 0 2 0 0 2 0 2 2 0 2b 0 2 0 2 0 2 0 2 0 2 0 2 2 0 2 0c 0 0 2 2 4 2 0 2 0 0 0 0 0 2 2 0d 0 0 0 0 0 0 2 2 2 2 2 2 2 2 0 0e 0 0 0 2 2 2 2 0 0 0 0 2 2 2 2 0f 0 2 2 0 2 2 0 0 2 0 2 0 0 0 0 4
+DDT
+0 1 2 3 4 5 6 7 8 9 a b c d e f0 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 01 0 -2 0 2 0 -2 0 2 4 2 0 2 -4 2 0 22 0 4 -2 2 0 0 2 2 0 -4 -2 2 0 0 2 23 0 -2 -2 0 0 2 2 0 4 2 -2 0 4 -2 2 04 0 0 4 -4 -2 -2 2 2 0 0 0 0 2 2 2 25 0 2 0 -2 2 4 2 0 0 2 0 -2 -2 0 -2 46 0 4 -2 2 -2 -2 0 0 0 4 2 -2 2 2 0 07 0 2 2 0 2 0 0 2 0 2 2 0 -2 -4 4 -28 0 0 0 0 4 0 -4 0 -2 2 -2 2 2 2 2 29 0 -2 0 2 4 -2 4 2 -2 0 2 0 2 0 -2 0a 0 0 2 2 0 0 -2 -2 2 -2 4 0 2 -2 0 4b 0 2 2 0 0 2 -2 4 2 0 0 2 2 0 -4 -2c 0 0 4 4 -2 2 2 -2 -2 2 -2 2 0 0 0 0d 0 2 0 -2 2 0 2 -4 2 0 2 4 0 2 0 -2e 0 0 2 2 2 2 0 0 2 -2 0 -4 0 4 2 -2f 0 -2 -2 0 -2 4 0 2 -2 0 4 2 0 2 2 0
+LAT
+B Test vectors
+Input: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000.
+Output: 82f0778a 1696c72c 5cd10f7e f3e2b448 dc8c6a7d 2d753216 43d11823 14f5d1f7.
+Input: 00010203 04050607 08090a0b 0c0d0e0f 10111213 14151617 18191a1b 1c1d1e1f.
+Output: e41eeafb 1c57ee87 a835b347 2ddef9cd 27ab6bff 95fd6df4 548db2bd 065d19b1.
+Input: fffefdfc fbfaf9f8 f7f6f5f4 f3f2f1f0 efeeedec ebeae9e8 e7e6e5e4 e3e2e1e0.
+Output: aefa559b 3a7a5781 6b10507d 5c68429a 0183a7cb 09575707 985a20c3 71f2d6ac.
+Ko Stoﬀelen and Joan Daemen 157
+C Minimum weight truncated trails
+C.1 In the kernel
+The following trails attempt to stay in the kernel for all rounds except the last.
+Three rounds
+The following trail hasW = 18.
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+Four rounds
+The following trail hasW = 52.
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+C.2 Extending two-round diﬀerential trails outside the kernel
+Three rounds
+The following trail hasW = 27.
+158 Column Parity Mixers
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+Four rounds
+The following trail hasW = 46.
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+C.3 Extending two-round linear trails outside the kernel
+Three rounds
+The following trail hasW = 27.
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+Four rounds
+The following trail hasW = 40.
+Ko Stoﬀelen and Joan Daemen 159
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+ρ◦ π◦ θ
+D Eﬀect distribution
+ThefollowingtableshowstherelationbetweentheHammingweightoftheparity(horizontal
+axis) and the Hamming weight of theθ-eﬀect (vertical axis) for Mixifer. The numbers
+show the number of possibilities. For example, there is only one possibility where there is
+a single odd column. Then there will be three aﬀected columns. With two odd columns, it
+is possible that six columns become aﬀected, but it is also possible that a few cancel each
+other out and there are only four aﬀected columns.
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0
+2 0 0 0 0 0 1 0 5 0 2 0 0 0 0 0 0
+3 1 0 1 0 3 0 11 0 16 0 3 0 0 0 0 0
+4 0 3 0 8 0 23 0 40 0 40 0 2 0 0 0 0
+5 0 0 9 0 30 0 81 0 111 0 42 0 0 0 0 0
+6 0 5 0 31 0 98 0 213 0 134 0 23 0 0 0 0
+7 0 0 19 0 96 0 237 0 258 0 99 0 6 0 0 0
+8 0 0 0 52 0 206 0 294 0 206 0 52 0 0 0 0
+9 0 0 6 0 99 0 258 0 237 0 96 0 19 0 0 0
+10 0 0 0 23 0 134 0 213 0 98 0 31 0 5 0 0
+11 0 0 0 0 42 0 111 0 81 0 30 0 9 0 0 0
+12 0 0 0 2 0 40 0 40 0 23 0 8 0 3 0 0
+13 0 0 0 0 3 0 16 0 11 0 3 0 1 0 1 0
+14 0 0 0 0 0 2 0 5 0 1 0 0 0 0 0 0
+15 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0
+16 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
