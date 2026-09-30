@@ -1416,3 +1416,17 @@
 - checked:  2026-09-29
 - owner:    `E154`, designed at `docs/arcs/parts/lowering-and-emit-LE18.md`. Whether its build reverts `dg-` is the unreviewed call at `records/author-calls.md:114`. The two lead sentences are a doc edit that no roster row takes
 - from:     none
+
+### PRB-101 a closure returned across a def boundary drops its captured linear value to ω
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    lib/typing/kernel.chiral, the quantity check on a returned closure
+- claim:    a `(1 b T)` binder is used exactly once. `prog/prapanca/backend.chiral:40-44` states `backend-close` CONSUMES its handle, and `docs/examples/E39-effect-row.md:157-159` relies on a captured linear value staying linear
+- measured: **2026-09-30, reproduced by the orchestrator after `docs/arcs/parts/memory-discipline-M8.md` probe S16.** A def `mk` of type `(=> (1 b Backend) (=> I64 Unit))` returns `(lam (x) (backend-close b))`; a def `twice` of type `(=> (=> I64 Unit) I64)` calls its argument twice; `compile-main` runs `(twice (mk (backend-open "http://h:1")))`. `bin/chirality check` prints OK, so one handle is closed twice. The control, the same closure built inside the body that holds `b` and passed to `twice` there (probe S14), is refused with `load: linear binder usage mismatch`. So QTT scaling holds inside one body and is lost where the closure crosses a return: the returned arrow's type carries no quantity for what it captured
+- evidence: re-runnable: the two probes above, fed to `bin/chirality check`. `prog/prapanca/backend.chiral:44`, `docs/arcs/parts/memory-discipline-M8.md` §2 S14 and S16, `docs/examples/E39-effect-row.md:157-159`
+- checked:  2026-09-30
+- owner:    none. It breaks `memory-discipline/M8`'s `buf-freeze` and `buf-drop` and the author's seal item alike, so a fix is owed before either builds
+- from:     none

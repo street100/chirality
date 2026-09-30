@@ -109,7 +109,9 @@ no word face.
    existing `Bytes` with `bget`.
 6. **Growth.** `M4`'s builder does not know its final length. A grow that copies
    into a larger buffer and consumes the old one gives amortized O(1) appends.
-7. **The arrow the primitives carry.** E159 forces `=>` on every primitive that
+7. **The arrow the primitives carry.** ⚑ Ruled 2026-09-30: `=>` on every
+   primitive, E159 unchanged, and purity for a pure consumer comes from a
+   separate seal. This item read: E159 forces `=>` on every primitive that
    returns the buffer (probe 5). P2 and P3 are stated pure (`->`,
    `docs/arcs/text-tools-arc.md:144`); once E171 lands, a `->` body cannot call
    them. §5 question 1.
@@ -190,7 +192,7 @@ yielding an `I64` element masked to its low byte:
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
-| 1 | Do the primitives carry `->` or `=>`? E159 forces `=>` on every one that returns the buffer (probe 5), and E171 would then refuse them inside P2's and P3's pure bodies | **NEEDS-AUTHOR** | measurement and options below |
+| 1 | Do the primitives carry `->` or `=>`? E159 forces `=>` on every one that returns the buffer (probe 5), and E171 would then refuse them inside P2's and P3's pure bodies | RESOLVED: `=>`, E159 unchanged. Ruled 2026-09-30 | [[records/author-calls]], the `ruled` row on E159's memory and authority porttypes. Purity for P2 and P3 comes from a sandboxed seal, which is its own item (§6 "Needed and unrostered") |
 | 2 | How does a linear read return the buffer without allocating a result cell? | **NEEDS-AUTHOR** | measurement and options below |
 | 3 | How does the linear binder reach the buffer? | RESOLVED: as an indexed porttype | probes 1 and 4; `is-linear` at `lib/typing/kernel.chiral:325-330`; the `Pool` precedent at `lib/ports/pool.port:13` |
 | 4 | Width as a type index, or separate element types over one carrier? | RESOLVED: width by carrier name, element type by index | Shape D's failure; [[decisions/decision-erased-word-level]] makes every `A` one word, so one word carrier covers `I64` and boxed |
@@ -199,15 +201,52 @@ yielding an `I64` element masked to its low byte:
 | 7 | Do existing programs' emitted bytes change? | RESOLVED: no | no existing source names a new primitive; the new `erase-prim` arms and `Mach` fields fire only on them. The compiler's own source grows, so `bin/chirality-bin` changes and the build rule's fixpoint (`C1 == C2`, `C2` reproducing the blob) is the check. Enforcement requirement 7 (`docs/arcs/enforcement-arc.md:471-480`) covers optimizer rewrites and this row adds none, unless question 2 takes option (a) |
 | 8 | A boxed value stored in a buffer that outlives its region | DEFERRED: `memory-discipline/M2` (`E82`) and `E41` | a region reset under a live `Buf` of pointers is a region-typing question; under `alloc-bump` nothing is reclaimed, so nothing dangles |
 
-### NEEDS-AUTHOR 1: the buffer's arrow
+### Question 1: the buffer's arrow, ruled
 
-**Plainly:** an in-place write to a buffer only one binder can see is
-unobservable, so P2 and P3 can stay pure. The rule that forbids a pure arrow
-here was written for capabilities, and probe 6 shows its stated reason does not
-hold for linear results in general. Changing it touches the loader's rule, which
-the author reviews.
+⚑ **Ruled 2026-09-30, neither option below.** This section recommended (b),
+splitting E159. The author ruled *"we want effectful + bridged sandboxed pure"*,
+and clarified that the effectful buffer and the seal are two separate items.
+Every operation in the table above is `=>`, E159 stands as built, and this row
+builds the effectful buffer alone. The seal that lets a pure body use it is
+recorded in §6 "Needed and unrostered". `PRINCIPLES.md:55-58` is the reason: a
+pure block gets its purity from a typed seal, and memory takes no exemption.
 
-- **Measured:** E159 refuses `(extern buf-new (-> (0 A (type 0)) (w n I64) A
+**The seal, measured 2026-09-30** by `bin/chirality check` over scratch sources
+with a stand-in `(seal (-> (0 A (type 0)) (-> (=> (0 s (type 0)) Unit A) A)))`
+in the shape of `runST`:
+
+- **S1.** A block of type `(=> (0 s (type 0)) Unit I64)` that allocates a
+  `(Buf s I64 4)`, writes and reads it checks OK, and a `->` def calls the seal.
+  The kernel takes a type-abstracting block as an argument today.
+- **S2.** Instantiating the seal's `A` at `(Buf s I64 4)` is refused, `load:
+  unknown name s`. A result type cannot name the block's region, so the handle
+  cannot escape bare. This is the half of `runST` that scoping gives.
+- **S3.** A block that calls an unrelated `=>` extern checks OK. The arrow is
+  one bit, `(data Seat () (s-pure) (s-proc))` at `lib/surface/syntax.chiral:12`,
+  carried in `v-pi` at `lib/typing/kernel.chiral:26`, so the seal cannot require
+  that a block's only crossings are on its own region.
+- **S4 and S15.** A block returns a closure of type `(=> I64 I64)` that captures
+  the handle. It checks OK, whether the handle is an unrestricted `data` or a
+  linear `porttype`, and in S15 the caller runs the escaped closure twice. The
+  closure's type does not name `s`, so S2's scoping does not reach it.
+- **S16.** The same leak with no seal: a def binds a linear buffer at `1`,
+  returns a closure over it, and the caller passes that closure to an ω
+  parameter that calls it twice. It checks OK. Passing the closure *built in the
+  same body* to that parameter is refused (S14, QTT scaling), so the leak is a
+  closure that crosses a return.
+
+What `runST` has that this tree lacks is the region inside the effect: an
+effectful function over region `s` carries `s` in its arrow, so a closure over a
+handle names `s` and S2's scoping refuses it, and a seal can discharge exactly
+the region-`s` crossings and nothing else. [[decisions/decision-effect-facets]]
+reserves that seat, *"The Pi gains an effect-row seat beside the grade seats"*
+with *"a **row-variable seat** reserved for higher-order code"*
+(`docs/decisions/decision-effect-facets.md:77-83`), and nothing builds it. The
+linear binder does not stand in for it (S15, S16). The published soundness
+arguments this rests on have no pin in [[records/findings]]; the seal's own
+design owes them.
+
+- **Measured, before the ruling:** E159 refuses `(extern buf-new (-> (0 A (type 0)) (w n I64) A
   (Buf A n)))`. Its premise, *"a pure `->` spine hands the capability back
   unrestricted"* (`lib/module/loader.chiral:446-449`), does not reproduce for a
   linear data result: probe 6's `->` extern result is tracked at q1 and its drop
@@ -219,10 +258,24 @@ the author reviews.
   memory porttype, whose operations are `->`. The loader gains the distinction
   and the buffer module declares its two carriers as memory porttypes. P2 and P3
   stay pure under E171.
-- **Recommendation:** (b). It is the proper answer: the effect membrane then
-  says what crosses, and a local buffer crosses nothing.
+- **Recommendation, set aside by the ruling:** (b), on the ground that the effect membrane
+  then says what crosses and a local buffer crosses nothing.
 
 ### NEEDS-AUTHOR 2: the linear read
+
+⚑ **Re-tested against the 2026-09-30 ruling. The seal does not dissolve this
+question for this row.** A read that returns only the value lowers to one load:
+the erase step routes a primitive by name, to a call when `crossing-wraps` holds
+a row for it and to an inline arm otherwise; the arrow plays no part
+(`lib/lowering/tal/erase.chiral:157-172`, `:217-227`). So a `=>` `buf-get`
+with an inline arm is one word load. The handle is the obstacle. A value-only
+read consumes a linear handle: one such read checks OK (S10), and a second read
+of the same binder is refused, `let binder usage mismatch` (S6). A handle that
+needs no return is unrestricted, and an unrestricted handle leaves the
+buffer's `buf-drop` and O(1) `buf-freeze` unsound under aliasing. That handle is
+only safe when the seal frees and freezes at its exit, the `runSTArray` shape.
+This row is the effectful buffer, complete without the seal, so it keeps the
+linear handle and the question stands.
 
 **Plainly:** a read has to hand the buffer back, and the tree's only way to hand
 two things back is a fresh cell, which is an allocation per read. Requirement 5
@@ -249,9 +302,10 @@ pair, or the lowering learns to skip it.
 
 ## 6. The mint packet
 
-Blocked on §5 questions 1 and 2. The packet below holds under the
-recommendations; either ruling the other way changes the arrows in the catalog
-row and nothing else in it.
+Blocked on §5 question 2. ⚑ This line said *"Blocked on §5 questions 1 and
+2"*; question 1 was ruled on 2026-09-30, every operation `=>`, and the packet
+below carries that ruling. A ruling on question 2 changes the read form and
+nothing else in it.
 
 - **Elements:** one. The two carriers share the index type, the allocation, the
   release, the read form and the gate, and the word face exists only to serve
@@ -261,17 +315,19 @@ row and nothing else in it.
 - **Band:** `UNASSIGNED`. `E81-E85` is minted whole
   (`docs/arcs/memory-discipline-arc.md:14`).
 - **Catalog row:**
-  `| E<NN> | **The linear indexed buffer**: `(Buf A n)` of one-word slots for every `A` and `(Bbuf n)` of byte slots, indexed porttypes allocated through `Alloc`, written in place and read in one load under a linear binder, the index a `(refine I64 (>= 0) (< n))` proven at compile time, frozen in O(1) to `(Arr A n)` or `Bytes`; a word load and word store join the TAL and `Mach` floors | primitive | Wadler 1990, *Linear types can change the world!*; Clean uniqueness-typed arrays; Linear Haskell's mutable arrays | shape | requirement 5 of the memory-discipline arc; one mechanism for `M4`'s byte builder, text-tools P2, P3, P5 and LE25's tables | SH |`
+  `| E<NN> | **The linear indexed buffer**: `(Buf A n)` of one-word slots for every `A` and `(Bbuf n)` of byte slots, indexed porttypes allocated through `Alloc`, written in place and read in one load under a linear binder, every operation effectful (`=>`) under E159, the index a `(refine I64 (>= 0) (< n))` proven at compile time, frozen in O(1) to `(Arr A n)` or `Bytes`; a word load and word store join the TAL and `Mach` floors | primitive | Wadler 1990, *Linear types can change the world!*; Clean uniqueness-typed arrays; Linear Haskell's mutable arrays | shape | requirement 5 of the memory-discipline arc; one mechanism for `M4`'s byte builder, text-tools P2, P3, P5 and LE25's tables | SH |`
 - **Ledger row:**
   `| E<NN> | linear-buffer | design | The linear indexed buffer: `Buf`/`Bbuf`/`Arr`, the word face on TAL and `Mach`, the read form. Check: a gate phase over bound refusal, linear-reuse refusal, a write whose cost is flat in the length, a read that is one load in the listing, freeze round-trips; BUILD RULE `C1 == C2` | `memory-discipline/M8` | SH |`
-- **Size:** about 13 files and 450 lines. A new `lib/memory/buf.chiral` with the
+- **Size:** about 13 files and 420 lines. A new `lib/memory/buf.chiral` with the
   porttypes and operations, about 90; the word face in
   `lib/lowering/tal/{ir,ssa,check,eval,erase,reify}.chiral` and
   `lib/typing/erased-nf.chiral`, about 70, sized on the byte face's arms beside
   it; `lib/lowering/mach/{mach,emit-core}.chiral` and the two instances, about
   50, sized on `x-bgt`; `buf-grow` and the fill loop as hand TAL beside
-  `nb-copy`, about 40; the arrow and read-form rulings in the loader and parser,
-  about 60; a gate script and probe roots, about 140.
+  `nb-copy`, about 40; the read form in the parser, about 30; a gate script and
+  probe roots, about 140. ⚑ This item read *"the arrow and read-form rulings in
+  the loader and parser, about 60"* and the total 450. The loader's half went
+  with the 2026-09-30 ruling, since E159 is unchanged, so the total is about 420.
 - **Related:** [[banks/memory]], [[arcs/memory-discipline-arc]],
   [[arcs/text-tools-arc]], `docs/arcs/parts/lowering-and-emit-LE25.md`,
   [[decisions/decision-erased-word-level]],
@@ -283,4 +339,6 @@ row and nothing else in it.
 |---|---|---|
 | E159's check misses a linear result carried inside a data | probe 6: an extern returning `Got` through `->` loads, while the same buffer returned bare is refused. The rule judges the result's head only | a `revisit` of `E159`, or an enforcement row |
 | `mem-put-checked` and `lib/memory/mem-linear.chiral` stay at zero importers | this row copies its bound and does not import it; whether the `Pool`'s raw `mem-put` keeps its runtime-checked path once a checked buffer exists is the memory bank's question | `memory-discipline/M6`'s neighbour, or [[banks/memory]] residue |
+| **The sandboxed seal**, a separate item by the author's 2026-09-30 ruling | a pure body that uses this row's `=>` operations needs a seal that discharges them. Mechanism, from S1 to S16 under §5 question 1: a rank-2 block `(=> (0 s (type 0)) … A)` with the region `s` named in the effect of every operation on a region-`s` handle, so the result type and every escaping closure's type name `s` and scoping refuses them, and the seal removes the region-`s` entries and no others. The kernel has the rank-2 block and the scoping (S1, S2). It lacks three things: the effect-row seat on the Pi, whose arrow is one bit today (`lib/surface/syntax.chiral:12`), with the row variable a seal's type needs (`docs/decisions/decision-effect-facets.md:77-83`); the membrane that refuses a `=>` call inside a `->` body, `E171` at `design` (`docs/elements/ledger.md:121`), without which purity is claimed and never checked; and a seal rule that removes one region's entries from a row. **Consumers:** P2 and P3 run inside the seal and stay pure. `M4`'s emit builder and LE25's and P5's tables do the same, each freezing before the seal returns. Until the seal is built, each of them either waits or is declared `=>`, and a `=>` stand-in is a deferral the consumer's own row has to take | an effect-row element under [[decisions/decision-effect-facets]], after `E171`; its design owes the pinned soundness argument for `runST` and for region-carrying effects |
+| a closure that crosses a return drops its captured linear value to ω | S16: a def returns a closure over a q1 buffer, and the caller calls it twice. It checks OK, and it breaks this row's `buf-freeze` and `buf-drop`: a closure that writes and freezes on each call mutates an `Arr` already handed out. `docs/examples/E39-effect-row.md:157-159` states that capture accounting forces such a closure to be consumed once, and S16 contradicts that for a returned closure | a linearity row, `enforcement` or a `revisit` of the binder rule behind E159; this row's gate needs a refusal probe for it |
 | `M4`, P2, P3, P5 and LE25 rewritten onto the buffer | each consumer's adoption is its own row's work; LE25 §5 reason 2 names the swap to a dense table and schedules nothing | the consumer rows themselves; LE25 needs a `revisit` once this is built |
