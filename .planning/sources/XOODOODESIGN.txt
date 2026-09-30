@@ -1,0 +1,1860 @@
+IACR Transactions on Symmetric Cryptology
+ISSN 2519-173X, Vol. 2018, No. 4, pp. 1–38. DOI:10.13154/tosc.v2018.i4.1-38
+The design of Xoodoo and Xooﬀf
+Joan Daemen2, Seth Hoﬀert, Gilles Van Assche1 and Ronny Van Keer1
+1 STMicroelectronics, Diegem, Belgium
+gilles-tosc@noekeon.org,ronny.vankeer@st.com
+2 Radboud University, Nijmegen, The Netherlands
+joan@cs.ru.nl,seth.hoffert@gmail.com
+Abstract. This paper presentsXoodoo, a 48-byte cryptographic permutation with
+excellent propagation properties. Its design approach is inspired byKeccak-p, while
+it is dimensioned like Gimli for eﬃciency on low-end processors. The structure consists
+of three planes of128 bits each, which interact per3-bit columns through mixing and
+nonlinear operations, and which otherwise move as three independent rigid objects.
+We analyze its diﬀerential and linear propagation properties and, in particular, prove
+lower bounds on the weight of trails using the tree search-based technique of Mella et
+al. (ToSC 2017).Xoodoo’s primary target application is in the Farfalle construction
+that we instantiate for the doubly-extendable cryptographic keyed (or deck) function
+Xoofff. Combining a relatively narrow permutation with the parallelism of Farfalle
+results in very eﬃcient schemes on a wide range of platforms, from low-end devices
+to high-end processors with vector instructions.
+Keywords: permutation-based cryptography· Farfalle · deck function· diﬀerential
+cryptanalysis · linear cryptanalysis
+1 Introduction
+Designing a symmetric cryptographic primitive involves careful trade-oﬀs between per-
+formance and security. For the former, an interesting challenge is to yield excellent
+performance on a wide range of targets, in particular from the low-end processors as used
+for embedded devices to the high-end server processors. This is especially useful if such
+a mixture of devices have to interact together. For the latter, while the security of a
+primitive cannot be measured and relies on public scrutiny by skilled cryptanalysts, a good
+design typically starts with a round function that mixes bits and frustrates the propagation
+of diﬀerences and linear correlations as quickly as possible.
+A way to achieve performance on a wide range of targets consists in combining a
+high level of parallelism with a relatively small building block. On a low-end target, the
+computation is done serially with a small footprint, and the high-end processor can fully
+exploit its capabilities with the evaluation of multiple instances of the building block in
+parallel. As a concrete example, the Farfalle construction is a mode of use based on a
+permutation that allows a very high level of parallelism [BDH+17]. Instantiated with a
+permutation of relatively small size, it oﬀers thus such a potential.
+In [BDH+17], the authors deﬁne Kravatte by instantiating Farfalle with the200-byte
+wide permutationKeccak-p[1600] with 6 rounds. In general, Kravatte is very fast on
+a wide range of platforms, but there are some exceptions due to the large width of the
+permutation. First, on low-end processors the computation is slowed down by swapping
+the permutation state in and out of registers. This eﬀect plays independently of the input
+and output lengths. Second, Kravatte with short input and output has a relatively large
+overhead per byte, and the cost of computing, say, a MAC over a message of20 bytes
+Licensed under Creative Commons License CC-BY 4.0.
+Received: 2018-09-01, Accepted: 2018-11-01, Published: 2018-12-13
+
+2 The design of Xoodoo and Xoofff
+is the same as for a MAC over a199-byte message. It therefore makes sense to consider
+instantiating Farfalle with a narrower permutation.
+The width of the permutation, denotedb, is lower bounded by generic attacks on the
+Farfalle construction. Exhaustive key search on any mask can be done with a computational
+complexity of2b Farfalle executions, and generating inputs that collide in the internal
+state can be done with data complexity2b/2 Farfalle executions. If the target security
+strength is an overall128-bit level, both in data and computation, this lower boundsb
+to 256 bits. Actually takingb= 256 then implies ahermetic approach: the diﬀerential
+properties of the permutation used in the compression phase should not allow collision
+attacks better than generic ones. This condition can be relaxed by increasingb.
+It therefore makes sense to consider instantiating Farfalle with a narrow permutation, yet
+larger than256 bits. The Keccak-p[800] permutation is well-suited for 32-bit processors,
+but its width of100 bytes makes it still rather large. Next, takingKeccak-p[400] is
+problematic as it is deﬁned in terms of operations on16-bit lanes. Alternatively, the
+Gimli permutation [BKL+17] has the interesting and inspiring feature that its state of384
+bits and its round function lend themselves nicely to low-end32-bit processors, but also
+vectorization and dedicated hardware. Unfortunately, its propagation properties are less
+than what could be expected. For constructing a Farfalle instance with128-bit security,
+one would have to take a relatively high number of rounds. We therefore took the initiative
+to design a permutation with the same width and objectives as Gimli, but with more
+favorable propagation properties. We called the resultXoodoo, and it can be seen as a
+porting of theKeccak-p design approach to a Gimli-shaped state.
+1.1 Farfalle and deck functions
+Although Xoodoo could be used in other permutation-based modes, in this paper we
+focus on the Farfalle construction as its primary target application of. This construction
+instantiates a pseudorandom function (PRF) and allows building all types of (authenticated)
+encryption and MAC functions, while exploiting arbitrary degrees of parallelism [BDH+17].
+A Farfalle instance takes a sequence of strings as input and outputs an arbitrary number
+of bits. We denote a sequence ofmstrings X(0) to X(m−1) as X(m−1) ◦···◦X(1) ◦X(0). Its
+output is extendable, since the caller can request for more output bits at a low incremental
+cost. Similarly, the input enjoys a speciﬁc extension property: computingF(Y ◦X) costs
+only the processing ofY if F(X) was previously computed.
+Clearly, Farfalle is not the only way to build functions with such properties. In order
+to decouple the external behavior of the function (PRF with extension properties) from an
+implementation (here, Farfalle), we propose to call themDoubly-Extendable Cryptographic
+Keyed functionsor deck functionsfor short.
+Deﬁnition 1.A deck functiontakes as input a secret keyK and a sequence of an arbitrary
+number of stringsX(m−1) ◦···◦X(0) ∈(Z∗
+2)+, produces a potentially inﬁnite string of bits
+and takes from it the range starting from a speciﬁed oﬀsetq∈N and for a speciﬁed length
+n∈N. We denote this as
+Z = 0n + FK
+(
+X(m−1) ◦···◦X(0)
+)
+≪ q .
+A deck function should allow eﬃcient incremental computing. In particular, by keeping
+state after computing an output for input sequenceX = X(m−1) ◦···◦X(0), computing
+an output forY(n−1) ◦···◦Y(0) ◦X should have a cost independent ofX.
+1.2 Contributions
+Our main contributions are (1) the permutationXoodoo, with strong bounds on trail
+weights, and (2) the deck functionXoofff, an instance of Farfalle on top of it. Furthermore,
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 3
+we provide (3) an improved attack strategy for generating accumulator collisions in Farfalle.
+Xoodoo is an iterated permutation that is inspired byKeccak-pand Gimli [BKL+17,
+BDPA11b], with a novel structure consisting of three planes of4 ×32 bits each. The three
+planes interact per3-bit columns through a column parity mixer [SD18] and a degree-2
+nonlinear operation, while they move as three independent rigid objects for dispersion.
+We show thatXoodoo scores very well with respect to avalanche metrics and has
+excellent diﬀerential propagation and correlation properties. In particular, we prove lower
+bounds on the weight of trails using the tree search-based technique of Mella et al. [MDA17],
+although using ﬁner-grained units than what was proposed forKeccak-p. The increased
+symmetry, the two dispersion layers and the involutive nature of the nonlinear layer make
+Xoodoo easier to analyze thanKeccak-p. In particular, it allows us obtain better trail
+bounds.
+Finally, this paper analyzesXoofff, its rolling functions and the properties ofXoodoo
+in the light of what is needed forXoofff to be secure. From a user perspective,Xoofff
+is an eﬃcient deck function that can be used for building stream ciphers, MAC functions
+and full-featured authenticated encryption schemes, as proposed in [BDH+17]. We provide
+benchmarks on some low-end and high-end processors.
+1.3 Design philosophy
+In this section, we discuss the design philosophy underlyingXoofff, in the more general
+context of building cryptographic schemes in a modular way.
+Typically, one speciﬁes a cryptographic scheme as a mode on top of a primitive, where
+one can prove the scheme secure on the condition that the primitive is secure (or ideal,
+or random, ...). We deﬁne a primitive as a cryptographic object that cannot be proved
+secure, but rather one that has theobjective of being secure. This objective is expressed
+as a security claim, and this claim can be used by cryptanalysts to challenge the primitive.
+In the security proof of the mode, the statements in the security claim are assumed to be
+true, and so the security of the scheme is conditional on the validity of these statements.
+In the case of this paper, what is the mode that is provably secure assuming the
+primitive is secure, and what is the primitive that must be cryptanalyzed? Here, the
+primitive isXoofff and provably secure modes are modes on top ofXoofff, such as
+those deﬁned in [DHAK18a].
+Xoofff is a primitive but, like many other primitives, it has been built in a modular
+way. It makes use of the Farfalle construction and uses as building blocks theXoodoo
+permutation and two rolling functions, see Figure 1. The idea behind Farfalle is not to
+build a secure function assuming the underlying building blocks are secure (or ideal or
+random). Instead, the idea is to use building blocks we know how to design in order
+to build an eﬃcient cryptographic function that is useful for encryption, authentication
+and authenticated encryption. Of course, the propagation and algebraic properties of the
+underlying components are relevant and interesting, but the object to be cryptanalyzed is
+Xoofff and there is no security claim on the building blocks. In particular, there is no
+security claim onXoodoo.
+One can compare it with the way block ciphers, MAC functions or stream ciphers have
+been built. Here are some examples.
+•Key-alternating block ciphers repeat a round function interleaved with round key
+addition [DR02]. The round keys are generated in a key schedule that takes the
+cipher key as input. No security claims are made on the round function nor the key
+schedule.
+•Tweakable block ciphers can be built using the tweakey framework [JNP14]. Also
+here, there is no security reduction to underlying parts, e.g., the so-called tweakey
+schedule or the round function.
+4 The design of Xoodoo and Xoofff
+pc
+c
+m0
+k
+pc
+c
+m1
+k
+…
+pc
+i c
+mi
+k
+pe
+e
+z0
+k′
+pe
+e
+z1
+k′
+…
+pej
+e
+zj
+k′
+K∥10 pb
+i+2
+c
+pd
+Figure 1: The Farfalle construction.
+•The MAC function Pelican-MAC, an application of the Alred framework, is built
+from AES and a building block similar toXoodoo: the permutation that consists
+of 4 unkeyed rounds of AES [DR10, DR14]. This permutation has many structural
+properties (e.g., symmetry, impossible diﬀerentials) not present in a random permu-
+tation, but there is no security claim on this building block, only on the function
+Pelican-MAC itself.
+•The Salsa stream cipher can be seen as a permutation, the so-calledSalsa core,
+in a certain mode [Ber08b]. The Salsa core has structural properties due to a
+very symmetric round function and the absence of round constants. But there is
+no security claim on this permutation: the construction prevents exploiting the
+symmetry properties, and the assumed security and target of cryptanalysis is in the
+Salsa stream cipher as a whole.
+1.4 Outline
+In Section 2, we deﬁne theXoodoo permutation and in Section 3 theXoofff deck
+function. Optimization techniques and benchmarks are presented in Section 4. The design
+rationale of the permutation is given in Section 5, while that of the deck function can be
+found in Section 6. We detail the techniques for searching diﬀerential and linear trails in
+Section 7. Finally, we conclude in Section 8.
+2 Xoodoo speciﬁcation
+Xoodoo is a family of permutations parameterized by its number of roundsnr and denoted
+Xoodoo[nr].
+Xoodoo has a classical iterated structure: It iteratively applies a round function to
+a state. The state consists of3 equally sized horizontalplanes, each one consisting of4
+parallel 32-bit lanes. Similarly, the state can be seen as a set of128 columns of 3 bits,
+arranged in a4 ×32 array. The planes are indexed byy, with planey= 0 at the bottom
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 5
+and plane y = 2 at the top. Within a lane, we index bits withz. The lanes within a
+plane are indexed byx, so the position of a lane in the state is determined by the two
+coordinates (x,y). The bits of the state are indexed by(x,y,z ) and the columns by(x,z).
+Sheets are the arrays of three lanes on top of each other and they are indexed byx. The
+Xoodoo state is illustrated in Figure 2.
+The permutation consists of the iteration of a round functionRi that has 5 steps: a
+mixing layerθ, a plane shiftingρwest, the addition of round constantsι, a non-linear layer
+χ and another plane shiftingρeast.
+We specify Xoodoo in Algorithm 1, completely in terms of operations on planes
+and use thereby the notational conventions we specify in Table 1. We illustrate the step
+mappings in a series of ﬁgures: theχ operation in Figure 3, theθoperation in Figure 4,
+the ρeast and ρwest operations in Figure 5.
+The round constantsCi are planes with a single non-zero lane atx= 0, denoted asci.
+We specify the value of this lane for indices−11 to 0 in Table 2 and refer to Appendix A
+for the speciﬁcation of the round constants for any index.
+Finally, in many applications the state must be speciﬁed as a 384-bit strings with
+the bits indexed byi. The mapping from the three-dimensional indexing(x,y,z ) and i is
+given byi= z+ 32(x+ 4y).
+3 Xooﬀf speciﬁcation and security claim
+Xoofff is a deck function obtained by applying the Farfalle construction onXoodoo[6]
+and two rolling functions:rollXc for rolling the input masks androllXe for rolling the state.
+We specify them with operations on the lanes of the state, following the conventions of
+Table 1 and Table 3.
+The input mask rolling function rollXc updates a stateA in the following way:
+A0,0 ← A0,0 + (A0,0 ≪ 13) + (A1,0 ≪3)
+B ← A0 ≪(3,0)
+A0 ← A1
+A1 ← A2
+A2 ← B
+The state rolling function rollXe updates a stateA in the following way:
+A0,0 ← A1,0 ·A2,0 + (A0,0 ≪5) + (A1,0 ≪13) + 0x00000007
+B ← A0 ≪(3,0)
+A0 ← A1
+A1 ← A2
+A2 ← B
+Deﬁnition 2(Xoofff). Xoofff is Farfalle[pb,pc,pd,pe,rollc,rolle] with the following
+parameters:
+•pb = pc = pd = pe = Xoodoo[6],
+•rollc = rollXc and
+•rolle = rollXe.
+6 The design of Xoodoo and Xoofff
+x
+y
+z
+lane
+x
+y
+z
+plane
+x
+y
+z
+state
+x
+y
+z
+sheet
+x
+y
+z
+column
+Figure 2: Toy version of theXoodoo state, with lanes reduced to8 bits, and diﬀerent
+parts of the state highlighted.
+Table 1:Notational conventions
+Ay Plane y of stateA
+Ay ≪(t,v) Cyclic shift ofAy moving bit in(x,z) to position(x+ t,z + v)
+Ay Bitwise complement of planeAy
+Ay + Ay′ Bitwise sum (XOR) of planesAy and Ay′
+Ay ·Ay′ Bitwise product (AND) of planesAy and Ay′
+Algorithm 1 Deﬁnition ofXoodoo[nr] with nr the number of rounds
+Parameters: Number of roundsnr
+for Round indexi from 1 −nr to 0 do
+A= Ri(A)
+Here Ri is speciﬁed by the following sequence of steps:
+θ:
+P ← A0 + A1 + A2
+E ← P ≪(1,5) + P ≪(1,14)
+Ay ← Ay + E for y∈{0,1,2}
+ρwest :
+A1 ← A1 ≪(1,0)
+A2 ← A2 ≪(0,11)
+ι:
+A0 ← A0 + Ci
+χ:
+B0 ← A1 ·A2
+B1 ← A2 ·A0
+B2 ← A0 ·A1
+Ay ← Ay + By for y∈{0,1,2}
+ρeast :
+A1 ← A1 ≪(0,1)
+A2 ← A2 ≪(2,8)
+Table 2: The round constantsci with −11 ≤i≤0, in hexadecimal notation (the least
+signiﬁcant bit is atz= 0).
+i ci i ci i ci i ci
+−11 0x00000058 −8 0x000000D0 −5 0x00000060 −2 0x000000F0
+−10 0x00000038 −7 0x00000120 −4 0x0000002C −1 0x000001A0
+−9 0x000003C0 −6 0x00000014 −3 0x00000380 0 0x00000012
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 7
+0
+1
+2
+complement
+Figure 3: Eﬀect ofχ on one plane.
++ =
+column parity θ-eﬀect
+fold
+Figure 4: Eﬀect ofθon a single-bit state.
+0
+1
+2
+shift (2,8)
+shift (0,1)
+0
+1
+2
+shift (0,11)
+shift (1,0)
+Figure 5: Illustration ofρeast (left) andρwest (right).
+Table 3:Notational conventions for speciﬁcation of the rolling functions
+Ay,x Lane x of planeAy
+B An auxiliary variable that has the shape of a plane
+Ay,x ≪v Cyclic shift of laneAy,x moving bit fromx to x+ v
+Ay,x ≪ v Shift of laneAy,x moving bit fromx to x+ v, setting bitsx<v to 0
+Ay,x + Ay′,x′ Bitwise sum (XOR) of lanesAy,x and Ay′,x′
+Ay,x ·Ay′,x′ Bitwise product (AND) of lanesAy,x and Ay′,x′
+8 The design of Xoodoo and Xoofff
+We make the following security claim onXoofff.
+Claim 1. Let K = ( K0,...,Ku−1) be an array ofu secret keys, each uniformly and
+independently chosen fromZκ
+2 with κ <384. Then, the advantage of distinguishing the
+array of functionsXoofffKi(·) with i∈Zu from an array of random oraclesRO(i,·), is
+at most
+uN +
+(u
+2
+)
+2κ + N
+2192 + M
+2128 +
+√uN′
+2κ/2−1 + N′
+295 . (1)
+Here,
+•N is the computational complexityexpressed in the (computationally equivalent)
+number of executions ofXoodoo[6],
+•N′is thequantum computational complexityexpressed in the (equivalent) number
+of quantum oracle accesses toXoodoo[6], and
+•M is theonline or data complexityexpressed in the total number of input and output
+blocks processed byXoofffKi(·).
+In (1), the ﬁrst term accounts for the eﬀort to ﬁnd one of theusecret keys by exhaustive
+search, and for the probability that two keys are equal. The second term expresses that
+the complexity of recovering the accumulator or any rolling state insideXoofff must be
+as hard as recovering192 secret bits. The third term expresses the eﬀort to ﬁnd a collision
+in the accumulator.
+The fourth and ﬁfth terms only apply if the adversary has access to a quantum computer.
+The fourth term accounts for a quantum search (or quantum ampliﬁcation algorithm) to
+ﬁnd one of theu keys [Gro96, BHMT02]. The probability of success afterN′iterations is
+sin2 ((2N′+ 1)θ) with θ= arcsin
+√
+u/2κ. We upper bound this as2N′√
+u/2κ. The ﬁfth
+term similarly accounts for a quantum search of a192-bit secret.
+Note that we assume thatXoofff is implemented on a classical computer. In other
+words, we do not make claims w.r.t. adversaries who would make quantum superpositions
+of queries to the device implementingXoofff and holding its secret key(s).
+We restrict keys to the uniform distribution to keep our claim simple and to avoid
+pathological cases that would not oﬀer good security. In the multi-user setting, we require
+the keys to be independently drawn. If an adversary can manipulateKi, such as in so-called
+unique keys that consist of a long-term key with a counter appended, we recommend
+hashing the key and the counter with a proper hash function.
+We do support the use of variable-length keys in the multi-user setting, where we
+assume that a key of given length is selected uniformly of the strings with that length.
+The claimed distinguishing bound then becomes slightly more complex and is given in
+Equation (2):
+∑
+κ∈L
+uκN +
+(uκ
+2
+)
+2κ + N
+2192 + M
+2128 +
+∑
+κ∈L
+√uκN′
+2κ/2−1 + N′
+295 , (2)
+with L the array of the distinct key lengths in use andul the number of keys of lengthl.
+4 Implementation aspects
+In this section, we ﬁrst report on some possible optimizations, then we give benchmarks
+for Xoofff.
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 9
+Table 4:Performance of a round of diﬀerent permutations on Cortex-M3 and -M0
+width cycles/byte per round
+ARM
+bytes Cortex M3 Cortex M0
+Keccak-p[1600] 200 2 .44 3 .64
+ChaCha [Ber08a] 64 0 .69 2 .00
+Gimli 48 0 .91 2 .04
+Xoodoo 48 1 .10 3 .76
+4.1 Optimizations
+Naturally, the lanes ofXoodoo coincide with words on32-bit processors. All the operations
+in Algorithm 1 can be implemented using bitwise logical operations and rotations. Theχ
+and θsteps can be implemented in a way that minimizes temporary storage.
+The step χ is speciﬁed by a number of parallel computations but can be serialized
+to allow in place processing with no computational penalty. In particular, the following
+sequence of operations performsχ:
+A0 ← A0 + A1 ·A2
+A1 ← A1 + A2 ·A0
+A2 ← A2 + A0 ·A1
+For the stepθ, one can exploit the fact that theθ-eﬀect E added to a sheetx depends
+only on the parity of the sheet atx−1. One can proceed as follows. First, one computes
+the lanex= 1 of theθ-eﬀect E (denoted E1) from the parity of the sheet atx= 0 and
+stores it in a temporary32-bit registerR. Then, one addsR= E1 to the sheet atx= 1.
+To computeE2 from the parity of the sheet atx= 1, we notice that the sheet atx= 1
+does not have its original value anymore, but all the lanes gotE1 added to it. Hence, one
+can reuse the registerR= E1 and add the three lanes of the sheet atx= 1 so thatE1
+cancels out andR correctly gets the parity beforeθ. One proceeds similarly to compute
+E3 then E0, each time re-using the register that contained the previous lane of theθ-eﬀect.
+4.2 Benchmarks
+We implementedXoodoo and Xoofff, and we benchmarked them on diﬀerent processors:
+the32-bit processors ARM Cortex-M0 and M3 and two mainstream desktop Intel processors,
+with the Skylake and SkylakeX architectures. The diﬀerence between these last two
+processors is that Skylake supports256-bit vector instructions (AVX2), while SkylakeX
+oﬀers 512-bit vector instructions (AVX-512).
+On the Cortex-M3, we ﬁt the state in12 registers and use2 registers for temporary
+variables. Furthermore, we can use the free rotations that this platform provides so that
+no explicit rotation instruction needs to be used. The state gets globally rotated, and this
+can be corrected at the end, as done by Schwabe et al. [SYY12]. With this technique, one
+round takes49 cycles, so about1.02 cycles/byte per round, plus12 cycles for the global
+correction at the end. In Table 4, we assume that this global correction and the function
+call overhead are amortized on18 rounds, as this can be done in the expansion phase of
+Xoofff.
+The Cortex-M0 limits bitwise logical operations to the ﬁrst8 registers and does not
+support free rotations. This translates into more transfers between the ﬁrst and the last
+registers, as well as explicit rotations. This trend is visible in Table 4, where we display the
+computational eﬀort for one round ofXoodoo, as well as the round of other permutations.
+10 The design of Xoodoo and Xoofff
+Table 5: Performance ofXoofff on diﬀerent platforms. The AES ﬁgures on Cortex-M0
+and -M3 come from [Log, SS]. Skylake refers to an IntelR⃝ CoreTM i5-6500 processor at
+3.2GHz and SkylakeX to an IntelR⃝ CoreTM i7-7800X processor at 3.5GHz. In both cases,
+the benchmark was performed with the Turbo Boost feature disabled.
+ARM Cortex Intel
+use case M0 M3 Skylake SkylakeX
+Xoofff, 47-byte input and48-byte output
+mask derivation only 1985 781 168 74 cycles
+full deck function 5658 2568 504 358 cycles
+Xoofff MAC
+512-byte input 18232 6846 1301 712 cycles
+long input 26.0 8.8 0.90 0.40 c/byte
+Xoofff Stream cipher
+512-byte output 17799 6510 1185 770 cycles
+long output 25.1 8.1 0.94 0.51 c/byte
+AES-128 counter mode 121.4 33.2 0.65 0.65 c/byte
+Xoodoo’s internal parallelism can be exploited with vector instructions, where one
+plane ﬁts in a128-bit register and several operations can be done plane-wise. Naturally,
+vector instructions are particularly well-suited to the parallelism provided byXoofff’s
+Farfalle construction. Here the size of the vector instruction determines the maximum
+number ofXoodoo instances that can be computed in parallel:8 for Skylake (AVX2)
+and 16 for SkylakeX (AVX-512). In addition, the AVX-512 instruction set allows arbitrary
+three-input bitwise logical operations in one instruction, as well as rotations. The former is
+used to implementχ and the parity computation inθ, and the latter speeds upθ, ρeast and
+ρwest. This explains whyXoodoo and Xoofff are faster on SkylakeX than on Skylake
+even at the same level of parallelism. We present benchmarks ofXoofff in Table 5 with
+simple use-cases.
+5 Design rationale of Xoodoo
+Xoodoo is an iterated permutation that is strongly inspired byKeccak-p: it is bit-
+oriented and its round function uses similar operations, see Section 5.1. It prevents
+high-probability diﬀerential trails and high-correlation linear trails by adopting the wide
+trail strategy, see Section 5.2. We discuss in Section 5.3 thatXoodoo enjoys the beneﬁts
+of weak alignmentlike Keccak-p does. These beneﬁts include negligible trail clustering
+of trails in diﬀerentials or correlations and the inapplicability of classes of attack such as
+truncated diﬀerentials [BDPA11a]. Moreover, theXoodoo avalanche characteristics we
+report in Section 5.4 show that the combination of wide trail with weak alignment results
+in very fast diﬀusion. We discuss the high degree of symmetry of the round function in
+Section 5.5 and the choice of round constants that remove that symmetry in Section 5.6.
+Finally, in Section 5.7 we explain how we gravitated to theXoodoo round function
+structure starting from that ofKeccak-p and Section 5.8 reports on how we arrived at
+the choices of the rotation constants.
+5.1 The Xoodoo round function in a nutshell
+The Xoodoo round function uses the ﬁve step mappingsθ, ρwest, ι, χ and ρeast. Four of
+them are very symmetric, as they operate on bits of the state inthe same way, independently
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 11
+of their position. More formally, we say that a given stepα is translation-invariant over a
+direction(x,y,z ) if it commutes with a translation by(x,y,z ), i.e., ifα◦τ(x,y,z) = τ(x,y,z)◦α,
+where τ(x,y,z) is a (cyclic) translation of the state by(x,y,z ).
+The nonlinear layerχ is an instance of the transformationχ that was already described
+and analyzed in [Dae95]. In Xoodoo it operates in parallel on 3-bit columns and as
+such forms a layer of4 ×32 3-bit S-boxes. In general,χ has algebraic degree two [Dae95,
+Section 6.9], with interesting consequences for the analysis (see Section 5.2.3). For 3-bit
+units, χ is involutive and hence this also holds for its inverse. Consequently,r rounds of
+Xoodoo or its inverse cannot have an algebraic degree higher than2r. The χ layer is
+translation-invariant in all directions.
+The mixing layerθis a column parity mixer [SD18] that operates as follows. It builds
+the parity planeby adding the three planes and computes from this theθ-eﬀect plane by
+cloning it, shifting these two copies and adding them. Then it adds theθ-eﬀect to each of
+the three planes. Theθlayer is invertible, has order 32 and its inverse is dense. Similar to
+χ it is translation-invariant in all directions.
+The dispersion layer inXoodoo consists of two steps. As in both the parity plane
+computation inθand inχ the state bits interact only within columns, there is a need
+for dislocating the bits of the columns between every application ofθand ofχ. For that
+reason, after eachχ layer, we have the so-calledEastern shiftρeast and after eachθlayer
+the Western shiftρwest. Both shift the planes, treating them as rigid objects. Clearly,ρeast
+and ρwest are translation-invariant in all directions withy= 0, so allhorizontal directions.
+Their breaking up of the columns results in weak alignment [BDPA11a].
+The translation-invariance in horizontal directions of the step mappings results in high
+symmetry. We destroy this symmetry by the classical addition of round constants in the
+step ι. In trail search the round constants can be ignored and we can take advantage of
+this high amount of symmetry.
+The round function is deﬁned asρeast ◦χ◦ι◦ρwest ◦θ. For the study of propagation,
+we often rephase the rounds as starting withρeast and ending inχ and group the sequence
+of linear mappings inλ= ρwest ◦θ◦ρeast, so the re-phased round function becomesχ◦ι◦λ.
+We callλ the linear layer. When studying propagation through the rounds, we denote the
+input toλ of the ﬁrst round bya0, its outputb0, the output ofχ by a1 and so on. One
+can think ofb as before χ and a as after χ. The values ofa and b with the same indexi
+are connected throughλ.
+The rounds numbering starts from negative numbers with the last round having index0.
+The reason for this is to avoid slide-like attacks whenXoodoo instances are used with
+diﬀerent numbers of rounds in a single construction.
+5.2 Diﬀerence and correlation propagation
+In this section, we report on the diﬀerence and correlation propagation inXoodoo. For a
+detailed description of the trail search we refer to Section 7.
+5.2.1 Diﬀerential probability and trails
+In many use cases we are interested in the diﬀerential propagation probabilities (DP) of a
+cryptographic primitive. In the case ofXoodoo speciﬁcally this is essential for the security
+of the compression phase ofXoofff. In particular, we would like to characterize the
+distribution ofDP(∆ in,∆ out) values over all input diﬀerences∆ in and output diﬀerences
+∆ out of our permutation, whereDP(∆ in,∆ out) is the fraction of input pairs with diﬀerence
+∆ in that results in a diﬀerence ∆ out after the primitive. For iterated cryptographic
+permutationsandblockciphers, thisisahardproblem. However, wecangainunderstanding
+by studyingdiﬀerential trails, as theDP of a diﬀerential is the sum over theDP values of
+its trails.
+12 The design of Xoodoo and Xoofff
+An n-round diﬀerential trail is the concatenation ofn round diﬀerentials(ai,ai+1) and
+is fully speciﬁed by the sequence(a0,a1,...,an). We say a pair(α,β) follows a trail when
+its initial diﬀerence isa0 and the diﬀerence after roundi is ai for alli≤n. We apply the
+rephasing introduced in Section 5.1 and use a redundant representation of trails, where we
+also include the diﬀerences after the linear layer:(a0,b0,a1,b1 ...,bn−1,an).
+Clearly bi = λ(ai) and each diﬀerential(bi−1,ai) overχ imposes a number of conditions
+on the members of the pair(α,β). We call this number the restriction weightwr. It
+follows that the restriction weight of a trail is the sum of the restriction weights of its
+round diﬀerentials. The restriction weight allows approximating theDP of a trail: If the
+conditions are independent, theDP of the trail is2−wr . We report on the distribution of
+trail weights for 3 rounds in Table 6 at the end of this section.
+Even in the absence of low-weight trails, one may have diﬀerentials(∆ in,∆ out) with
+high DP if there are very many diﬀerential trails from∆ in to ∆ out, or if there are diﬀerential
+trails where the DP is much higher than2−wr due to dependencies between the round
+diﬀerential conditions. The study of these two aspects is closely related to that ofalignment
+that we treat in Section 5.3.
+A diﬀerential overχ is only possible ifbi and ai+1 have the same column activity
+pattern, i.e., the set of active columns must be the same. As shown in Section 5.2.3 below,
+the restriction weight equals twice the number of active columns inbi, or equivalently, in
+ai+1. It follows that the restriction weight of ann-round trail(a0,b0,a1,b1,...,bn−1,an)
+is fully determined by the sequenceb1,...,bn−1 and is given bywr(a1) + ∑
+1≤i<nwr(bi).
+We call such a sequence adiﬀerential trail core, as in [DA12]:
+Q= a1
+λ
+−→b1
+χ
+−→a2
+λ
+−→b2
+χ
+−→a3
+λ
+−→...an−1
+λ
+−→bn−1 .
+A trail core can be extended to ann-round diﬀerential trail by pre-pending a couplea0,b0
+with b0 compatible throughχ with a1 and appending a valuean compatible throughχ
+with bn−1. It follows that a trail coreQ represents in total2wr(a1) ×2wr(bn−1) trails, all
+with the same weight. In our analysis, we bound the weight of trail cores. In the sequel,
+we usew(·) as a shortcut notation forwr(·) when clear from the context.
+5.2.2 Correlation and linear trail cores
+Similarly to diﬀerential probability, we are interested in the input-output correlation
+properties of a cryptographic primitivef. In particular, we would like to characterize
+the distribution ofC(u⊤
+outf(x),u⊤
+inx), i.e., the correlation between linear combinations of
+output bitsu⊤
+outf(x) and linear combination of input bitsu⊤
+inx over all values of output
+(linear) maskuout and input (linear) maskuin. For iterated cryptographic permutations
+and block ciphers, this is a hard problem. Here too, we can gain understanding by studying
+linear trails, as a correlationC(u⊤
+outf(x),u⊤
+inx) is the sum over the (signed) correlation
+contributions of its trails. In the sequel we will for readability slightly abuse terminology
+by speaking about correlations between masks.
+An n-round linear trail is the concatenation ofnsingle-round correlations. A correlation
+over roundi is deﬁned by a maskai at its output and a maskai+1 at its input and we
+denote its correlation valueC(ai,ai+1).
+As for diﬀerential trails, we use a redundant representation by including the masks
+after the linear layer. To make notation consistent with diﬀerential trails, we rephase the
+rounds as starting withχ and ending withλ. However, as linear propagation is studied
+naturally from the output to the input, the trail ﬁrst encountersλ and thenχ of each
+round. A maskai at the output ofλ maps to a maskbi = λ⊤(ai) before λ. In this wayai
+fully determinesbi via the linear layerλ. Our trails look like(a0,b0,a1,b1 ...,bn−1,an),
+where a0 is the mask after the last round andan the mask before the ﬁrst round. Note
+that the transposition denotes the following operation of a linear mapping: When the
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 13
+linear mapping µ is expressed as the multiplication by the matrixM, the transpose
+of µ, or µ⊤, is a linear mapping given by the multiplication byM⊤. It follows that
+λ⊤= ρ⊤
+east ◦θ⊤◦ρ⊤
+west = ρ−1
+east ◦θ⊤◦ρ−1
+west since the inverse of a bit transposition matrix is
+its transpose.
+The correlation contribution of a linear trail is the product of its round correlations.
+Similarly to diﬀerential trails, we deﬁne a correlation weight for a round correlation
+wc(bi,ai+1), as C2(bi,ai+1) = 2 −wc(bi,ai+1), and we deﬁne the weight of a trail as the
+sum of the weights of its round correlations. Also here we may have large input-output
+correlations (uout,uin) even in the absence of low-weight trails if there are very many linear
+trails fromuout to uin and their signed correlation contributions combine constructively.
+This is again covered by our treatment ofalignment in Section 5.3.
+The correlation weight of a round correlation(ai,ai+1) is determined by the correlation
+weight of the mask couple(bi,ai+1) over χ. This correlation is only non-zero ifbi and
+ai+1 have the same column activity pattern and, as shown in Section 5.2.3 below, the
+correlation weight equals twice the number of active columns inbi, or equivalently, inai+1.
+It follows that the correlation weight of ann-round trail(a0,b0,a1,b1,...,bn−1,an) is fully
+determined by the sequenceb1,...,bn−1 and is given bywra1 + ∑
+1≤i<nwrbi. This is a
+linear trail core.
+Q= a1
+λ⊤
+−→b1
+χ
+−→a2
+λ⊤
+−→b2
+χ
+−→a3
+λ⊤
+−→...an−1
+λ⊤
+−→bn−1 .
+We also usew(·) as shortcut notation forwc(·) when clear from the context that we are
+dealing with a linear trail.
+5.2.3 Properties of χ
+χ can be deﬁned generically, operating onn bits arranged in a circle. The diﬀerential and
+correlation propagation properties of this genericχ are non-trivial and have been described
+in [Dae95, Section 6.9]. Thanks to the fact that inXoodoo χ operates on 3-bit circle,
+formed by the columns, propagation of diﬀerences and masks through it can be speciﬁed
+very compactly. We do this in Proposition 1.
+Proposition 1. At column-level, a non-zero diﬀerenceb= (b0,b1,b2) at the input and a
+non-zero diﬀerencea= (a0,a1,a2) at the output ofχ are compatible ifa·b has odd parity,
+or equivalentlya0b0 + a1b1 + a2b2 = 1. Likewise, a non-zero maskb= (b0,b1,b2) at the
+output and a non-zero maska= (a0,a1,a2) at the input ofχ are compatible ifa·b has
+odd parity.
+We do not give a proof for this proposition as it can easily be checked exhaustively.
+Proposition 1 has several corollaries:
+Corollary 1.For ﬁxed (diﬀerence or mask)a, the compatible (diﬀerence or mask)bvalues
+form an aﬃne space of dimension2 and vice versa.
+Corollary 2. The restriction weight of a diﬀerential overχ is equal to two times the
+number of active columns inb, or equivalently ina.
+Corollary 3. The correlation weight of a diﬀerential overχ is equal to two times the
+number of active columns inb, or equivalently ina.
+These three corollaries simplify trail analysis in comparison with that ofKeccak-p.
+Thanks to the ﬁrst one both forward and backward extension can make use of linear
+algebra. Thanks to the last two corollaries we can replace the weight and the minimum
+reverse weight (see [DA12]) by the number of active columns.
+14 The design of Xoodoo and Xoofff
+5.2.4 Trail weight distributions
+As we will detail in Section 7, we have determined all3-round trails up to weight50, both
+for linear and diﬀerential trails and we list them in Table 6. The minimum weight for both
+types of trail is36. The trails of weight36 and 38 are simply due to the 3-plane structure
+of Xoodoo and are described in Section 7.6. Apart from them, there are no 3-round trails
+below weight44.
+Table 6:The 3-round trail cores. The number of trail cores is up to translations alongx
+and z, see Section 5.5.
+Weight # diﬀerential # linear
+36 4 4
+38 3 3
+44 3 5
+46 24 24
+48 31 29
+50 55 56
+When extending the 3-round trails to 6 rounds, none were found. This results in a
+lower bound on the weight of6-round trails is2T3 + 4 = 104, for both diﬀerential and
+linear trails. The lower bounds on trail weights are summarized in Table 7.
+5.3 Alignment
+In [BDPA11a], Bertoni et al. investigated an aspect of round functions calledalignment.
+Alignment is related to the propagation ofactivity patternsthrough the linear layer of a
+round function. We summarize what alignment means in the context of round functions
+that have an S-box layer as non-linear layer. Thes-bit S-boxes partition the bits of the
+state in subsets that are processed by the same S-box, and we call thoseboxes. When
+applying a diﬀerence∆ , a masku or in general any state-sized binary pattern, we can
+deﬁne its corresponding(box) activity pattern. The activity pattern corresponding to a
+concrete pattern speciﬁes for each box whether it contains only zero bits or at least one
+bit with value1. In the former case we call the boxpassive, in the latter we call itactive.
+Given an activity patterna with n active boxes, there are(2s −1)n concrete patternsa
+compliant witha. We will treat activity patterns as sets of concrete patterns and we say
+a∈a. Clearly, an invertible S-box layer preserves (box) activity patterns of diﬀerences
+and of linear masks (and those of most other propagating structures). This is not true in
+general for a linear layer.
+If the linear layer maps the elements ofa to many diﬀerent activity patterns, we say it
+has weak alignment. Otherwise, if it maps large fractions of the elements ofato a small set
+of activity patterns, we speak ofstrong alignment. This can be applied to diﬀerent types
+of patterns but the most important are diﬀerences and (linear) masks. Their propagation
+through the linear layer is governed by diﬀerent laws but they behave in very similar ways
+(see Sections 5.2.1 and 5.2.2). We denote byλ(a) the set of statesb with b= λ(a) and
+a∈a.
+Table 7:The weight of the best diﬀerential and linear trails (or lower bounds) as a function
+of the number of rounds.
+# rounds 1 2 3 4 5 6
+diﬀerential 2 8 36 ≥54 ≥56 ≥104
+linear 2 8 36 ≥54 ≥56 ≥104
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 15
+Let us illustrate strong and weak alignment by applying the simplest diﬀerence ac-
+tivity patterns to two of the best known cryptographic primitives: Rijndael [DR02] and
+Keccak-p [BDPA11b]. The simplest activity pattern is that with a single active box:
+•In Rijndael, boxes are bytes and the linear layer isMixColumns ◦ShiftRows. Shift-
+Rows is a transposition of boxes and therefore moves inputs with equal activity
+patterns to outputs with equal activity patterns. This allows us to ignore it and
+focus onMixColumns. If we apply an input to theMixColumns matrix with a single
+active byte, all4 output bytes will be active. This is a consequence of the fact that
+the MixColumns matrix has branch number 5. So the Rijndael linear layer maps all
+28 −1 = 255 patterns with a single active byte at some position to the same4-byte
+activity pattern, and this is the case for all16 byte positions of the active byte at
+the input.
+•In Keccak-p[400], boxes are 5-bit rows and the linear layerλ = π◦ρ◦θmaps
+the 31 single-row patterns to 31 diﬀerent activity patterns, and this for all row
+positions [BDPA11a].
+Clearly, for this simple case Rijndael has the strongest possible alignment andKec-
+cak-p[400] the weakest possible. If we consider input activity patterns with multiple active
+boxes the distinction is less extreme but the trend is similar.
+Strength of alignment manifests itself in the number of trail cores intruncated diﬀeren-
+tials [Knu94]. A truncated diﬀerential is deﬁned by a couple of activity patterns(∆ in,∆ out)
+and is the set of all diﬀerentials with input diﬀerence in∆ in and output diﬀerence in∆ out.
+A trail is in(∆ in,∆ out) if its initial diﬀerence is in∆ in and its ﬁnal diﬀerence is in∆ out.
+Let us now consider a truncated diﬀerential(∆ in,∆ out) over χ◦λ◦χ. The number of trail
+cores in this truncated diﬀerential is the number of elements inλ(∆ in) ∩∆ out. In the case
+of weak alignment the elements ofλ(∆ in) will per deﬁnition have many diﬀerent activity
+patterns and hence for any∆ out, the setλ(∆ in) ∩∆ out will be small. This implies that
+truncated diﬀerentials, and a fortiori ordinary diﬀerentials, will have a small number of
+trail cores. In the case of strong alignmentλ(∆ in) ∩∆ out may be large and (truncated)
+diﬀerentials possibly have many trails. An analogous reasoning holds for correlations and
+linear trails, where clustering depends on the alignment ofλ⊤instead.
+With a similar (but not the same) reasoning it can be shown that in the case of weak
+alignment the conditions imposed by round diﬀerentials in a trail tend to be independent,
+while strong alignment increases the risk for dependence, as observed in plateau trails of
+Rijndael [DR07].
+In Xoodoo the boxes are 3-bit columns and an activity pattern has the shape of a
+plane. Clearly, the linear layer maps the23 −1 single-row patterns (both diﬀerences and
+masks) to7 diﬀerent output activity patterns. This is weak alignment. We experimented
+with randomly generating many activity patternsa with n≤10 active columns and for
+the vast majority of cases the7n elements ofλ(a) had 7n diﬀerent activity patterns.
+5.4 Avalanche behavior
+When reporting on (reduced-round) cryptographic functions, one often mentions criteria
+such as full diﬀusion, avalanche and strict avalanche criterion (SAC) [WT85]. These
+criteria are useful in estimating the vulnerability of the cipher to certain attacks. Each of
+these criteria is binary: it is either met, or it is not. Typically, for an iterated cipher one
+reports on the number of rounds required to satisfy it. In this section we deﬁne metrics
+that allow evaluating in a more ﬁne-grained way how the function realizes it through the
+rounds.
+16 The design of Xoodoo and Xoofff
+5.4.1 Deﬁnition of avalanche metrics
+Concretely, we compute theavalanche probability vectorof a cryptographic primitiveF for
+some input diﬀerence∆ : a vectorP∆ F where componenti is the probability that biti of
+the output ofF ﬂips due to the input diﬀerence∆ . For clarity, we specify the generation of
+the avalanche probability vector in Algorithm 2. AfterM samples, the expected standard
+deviation of the elements ofP∆ F is 1/
+√
+M. So for high precision,M must be chosen large
+enough. In our experiments, we tookM = 250000.
+Algorithm 2Computation of the avalanche probability vectorP∆ F.
+Parameters: a transformationF overZb
+2, an input diﬀerence∆ and number of samples
+M.
+Output: the avalanche probability vectorP∆ F.
+Initialize ab-bit vectorp of probabilitiespi to all zeroes
+for M randomly generated statesA do
+Compute B = F(A) + F(A+ ∆)
+for all state bit positionsi do
+pi = pi + Bi/M
+return P∆ F = p
+From the avalanche probability vectorP∆ F we extract three metrics, each one measuring
+an aspect of the diﬀerence at the output ofF due to a given input diﬀerence∆ . In the
+following we writepi for P∆ F[i].
+Avalanche dependence: number of output bits that may ﬂip, deﬁned as:
+Dav(F,∆) = b−
+∑
+i
+δ(pi) ,
+with δ(x) equal to 1 ifx= 0 and 0 otherwise. This metric generalizes full diﬀusion,
+that is satisﬁed ifDav(F,∆) = b for all∆ with Hamming weight 1.
+Avalanche weight:expected Hamming weight of the output diﬀerence, deﬁned as:
+wav(F,∆) =
+∑
+i
+pi .
+Clearly wav(F,∆) ≤Dav(F,∆) . This metric generalizes the avalanche criterion, that
+is satisﬁed ifwav(F,∆) ≈b/2 for all∆ with Hamming weight 1.
+Avalanche entropy:uncertainty about whether output bits ﬂip, deﬁned as an entropy:
+Hav(F,∆) =
+∑
+i
+(−pilog2(pi) −(1 −pi) log2(1 −pi)) .
+This metric generalizes SAC, that is satisﬁed ifHav(F,∆) ≈bfor all input diﬀerences
+∆ with Hamming weight 1.
+The three metrics have values in the range[0 ...b] and for a random transformationF we
+have for any input diﬀerence∆ : Dav(F,∆) ≈b, wav(F,∆) ≈b/2 and Hav(F,∆) ≈b.
+5.4.2 Reporting on the avalanche properties of Xoodoo
+We report on the performance ofXoodoo with respect to the three avalanche metrics
+described above, for particular input diﬀerences and for diﬀerent number of rounds and
+inverse rounds. For each of these metrics, we report on the worst-case values of these
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 17
+Table 8:Avalanche scores
+δa δK δb
+stage Dav wav Hav Dav wav Hav Dav wav Hav
+a−2 384 191 .999 383 .999 384 191 .963 383 .999 384 191 .976 383 .999
+b−2 381 187 .636 357 .483 384 189 .751 376 .877 384 191 .977 383 .999
+a−1 293 176 .502 224 .000 346 183 .942 315 .999 384 191 .991 383 .999
+b−1 3 2 .000 2 .000 6 3 .999 4 .000 279 168 .504 220 .999
+a0 1 1 .000 0 .000 2 2 .000 0 .000 133 133 .000 0 .000
+b0 7 7 .000 0 .000 2 2 .000 0 .000 1 1 .000 0 .000
+a1 21 14 .001 14 .000 6 3 .999 4 .000 3 1 .998 2 .000
+b1 102 64 .494 75 .000 42 28 .005 28 .000 21 13 .991 14 .000
+a2 210 94 .748 187 .205 105 48 .497 87 .788 63 28 .003 50 .722
+b2 371 181 .096 366 .199 293 140 .463 268 .162 207 94 .992 182 .936
+a3 384 188 .576 382 .609 357 164 .850 343 .225 321 128 .604 293 .368
+b3 384 191 .997 383 .999 384 191 .938 383 .936 384 188 .014 381 .672
+metrics: the minimum value taken over all individual input diﬀerences of given type. We
+give the results in Table 8.
+In Table 8, we follow the conventionai and bi introduced in Section 5.2.1 and we apply
+the diﬀerence in the stagea0. As bi = λ(ai) with λ linear, applying a diﬀerence∆ at a0 is
+equivalent to applying a diﬀerenceλ(∆) at b0. Clearly, the avalanche scores at stageai
+report on the diﬀerence afteri Xoodoo rounds. If i is positive, these are forward rounds,
+if i is negative, these are inverse rounds. Avalanche scores at stagesbi add one linear layer
+λ to it. For the diﬀerences applied ata0 or b0, we consider:
+δa Single-bit diﬀerences ata0.
+δK Orbitals at the input/output ofθ. These are2-bit diﬀerences both ata0 and b0.
+δb Single-bit diﬀerences atb0.
+The avalanche behavior of a cipher gives a good indication of the number of rounds
+that certain structural distinguishers can cover. For example, as a rule of thumb, it is hard
+to ﬁnd impossible diﬀerentials that span a number of rounds that is more than two times
+the number of rounds it takes to have full diﬀusion. From Table 8 we can see that strict
+avalanche is reached after3.5 rounds in forward direction and after2 rounds in backward
+direction.
+5.5 Symmetry
+A plane inXoodoo can be seen as an inﬁnite state periodic in two directions: period4
+in the direction of thex-axis and period32 in the direction of thez axis. Put otherwise:
+it is invariant for translations over any vector in the two-dimensional lattice with basis
+vectors (4,0) and (0,32). We express this lattice as⟨(4,0),(0,32)⟩and we call this the
+Xoodoo lattice Ξ. Diﬀerences and masks propagate irrespective of the round constants so
+that symmetry can be maintained during propagation.
+This eﬀect also exists inKeccak-pand is called Matryoshka [BDPA11b]: states (diﬀer-
+ences or masks) ofKeccak-p[25 ×2n] with symmetry∀(x,y,z ) : A[x,y,z ] = A[x,y,z +2j]
+map to states ofKeccak-p[25 ×2n−j]. The invariance ofXoodoo with respect to all
+horizontal translations results in a two-dimensional Matryoshka property. A symmetric
+state of Xoodoo can be expressed with respect to a latticeV: ∀(x,y,z ) and v ∈V :
+A[x,y,z ] = A[(x,y,z ) + v]. If we takeV the Xoodoo lattice Ξ, this describes a regular
+Xoodoo state. If V is a lattice that hasΞ as a sub-lattice, we have a state with additional
+18 The design of Xoodoo and Xoofff
+symmetry. Each symmetric state maps to a state in a smaller instance ofXoodoo, with
+equal stepsχ and variants ofρwest, ρeast and θ.
+Each latticeV that hasΞ as a sub-lattice deﬁnes a symmetry classSV that forms a
+subset of the state values. A statea is in the symmetry classSV if it is invariant with
+respect to any translation alongV and there exists no latticeV′with V ⊂V′such thata
+is invariant with respect toV′. The symmetry classes form a partition of the state space.
+We can exhaustively specify the symmetry classes by the basis of their lattices, where
+the ﬁrst element of the basis is of the form(0,2e) with 0 ≤e≤5. For a basis with ﬁrst
+vector (0,2e), the second vector is in the following range:
+•(4,0), (2,0) and (1,0): exists for alle
+•(2,2e−1) and (1,2e−1): exist fore> 0
+•(1,2e−2) and (1,2e−23): exist fore> 1
+We count here6 ×3 + 5×2 + 4×2 = 36 lattices, includingΞ itself. The symmetry class
+SV of the latticeV = ⟨(1,0),(0,1)⟩can further be sub-divided in2 symmetry classes due
+the fact that all-0 or all-1 planes give rise to shift-invariance along they axis. The two
+classes are the one with three equal planes or the one with diﬀerent planes. We can model
+this split by extending the lattice vectors by ay-component and adding a third lattice
+vector. The 3-equal-plane lattice can now be speciﬁed as⟨(1,0,0),(0,0,1),(0,1,0)⟩. The
+36 other lattices just get the additional vector(0,3,0). For readability, we will stick to the
+two-dimension representation and will ignore they component. So there are37 symmetry
+classes in total. For36 of these classes, the elements exhibit some symmetry within the
+boundaries of theXoodoo state. For one class this is not the case: namelySΞ . This class
+contains about2384 −3 ×2192 of the2384 state values, so the vast majority.
+5.6 Round constants
+Thanks to their shift-invariance and invertibility, applying any step mapping of the round
+function other thanιto a state in a symmetry classSV results in a state in the same
+symmetry classSV. The symmetry classes are hence invariant subsets [LAAZ11]. Moreover,
+the union of any subset of the37 symmetry classes is also an invariant subset. Asn
+disjoint subsets can be grouped into two non-empty subsets in2n−1 −1 ways, all steps
+except ιhave the same236 −1 invariant subsets. This property would carry over to a
+round function variant withoutιand thus to such aXoodoo[nr] variant irrespective of
+the number of rounds.
+We chose the round constants to destroy shift-invariance of the round function and to
+remove all these236 −1 invariant subsets. For this reason, we chose them to be inSΞ so
+that addition of a round constant maps any state not inSΞ to a state inSΞ . As such the
+round function cannot have any of the236 −1 subsets as invariant subsets. AsSΞ contains
+more than half of the state values, it is not possible to group the symmetry classes into two
+equal subsets. This allows us to exclude the case of a subset mapping to its complement.
+It may be the case that the eﬀect of the round constant in two (or more) consecutive
+rounds would compensate each other. For that reason, we have opted for round constants
+with support in a single lane(x,y) = (0,0) so that the subsequent application ofθwill
+make it propagate to other lanes. Moreover, to avoid attacks that exploit equality of the
+rounds such as slide attacks [BW99], the round constants depend on the round number.
+Naturally, Xoodoo[6] is a permutation and for any permutation the union of the
+elements in any subset of its cycles forms an invariant subset. For a random permutation
+these invariant subsets would not carry enough structure to be exploitable in Farfalle.
+Investigating what are the relevant cycle behavior properties of a permutation in the
+context of Farfalle and whether such behavior is present inXoodoo[6] are interesting
+topics for future research.
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 19
+Finally, for allowing eﬃcient implementation on ARM Cortex-M3 processors, the round
+constants span at most4 consecutive positions along thez axis.
+5.7 The making of Xoodoo
+For the design ofXoodoo, we started fromKeccak-pand aimed for a384-bit permutation.
+We decided to use a nonlinear layer similar toKeccak-p’sχ but on3 bits instead of5 to
+match the factor3 in 384. Anyway,χ needs to apply on an odd number of bits, otherwise
+it is not invertible. Another option would be to aim for a320-bit permutation and to stick
+to Keccak-p’sχ on 5 bits, but we thought that384 bits would be better suited.
+Next, we opted for32-bit lanes. Another option could have been to take128-bit
+lanes and rewrite the algorithm into equivalent operations on32-bit words using the bit
+interleaving technique [BDP+12], but we found that a structure with3 planes of4 ×32
+bits was easier to describe.
+For the mixing layer, we opted for a column parity mixer, similar toKeccak-p’sθ.
+For this layer to have a dense inverse [SD18], θneeds to work on columns of odd size. This
+made it clear that bothχ and θwould need to work on3-bit columns.
+For dispersion,Keccak-puses two operations:πthat moves lanes andρthat translates
+lanes, both applied beforeχ, but it has no dispersion layer betweenχ and θ. In the case
+of Xoodoo, however, we need two dispersion layers, to avoid overlaps between the mixing
+and the nonlinear layers: one beforeχ and one beforeθ. So the idea of usingρeast and
+ρwest came early in the design. Another option would have been to haveχ operate on
+skewed columns, but this was equivalent and just more complicated to describe than the
+two dispersion layers. Moreover, it seemed that aρmapping that shifted planes rather
+than lanes would be suﬃcient, and so would be simpler than that inKeccak-p. We
+deﬁnitely liked the idea of three independent rigid objects interacting throughχ and θ.
+Initially, we thought that we could get away with one of the dispersion layers that
+moves only along thex axis, i.e., to only move lanes without any shifts, hence saving on
+the number of rotations in the implementation. However, it turned out that this was not
+enough, and we therefore added some translation alongz to make the work more balanced
+between the twoρsteps.
+Finally, we ﬁxed all the rotation oﬀsets as described in the next section.
+5.8 Choosing the shift oﬀsets in the light of trails
+Once we deﬁned the general structure of theXoodoo, we set out experiments to ﬁnd good
+shift oﬀsets for the linear layer. Speciﬁcally, the family we investigated is as in Algorithm 1,
+where
+•the θ-eﬀect is computed asE ← P ≪(1,t1) + P ≪(t3,t2),
+•in ρwest, the translation ofA2 is A2 ← A2 ≪(0,w1), and
+•in ρeast, the translation ofA2 is A2 ← A2 ≪(e0,e1),
+for parameterst1, t2, t3, w1, e0 and e1.
+In short, we chose the shift oﬀsets ofρeast, θand ρwest such that the number of trails
+of weight below44 is minimized, both for diﬀerential and linear trails. Actually, only
+the so-called inherent trails remain below44, see Section 7.6. Let us detail the decision
+process.
+We restricted the oﬀsets inρwest and ρeast from the start to limit their computational
+cost. As only relative shifts count, we start by not shifting planeA0 at all. For the other
+two planes, we set out to limit the number cyclic lane shifts as they are expensive on
+some platforms. In an early phase, we limited shifts inρwest and ρeast to shifts along the
+20 The design of Xoodoo and Xoofff
+x-axis (with an oﬀset of the form(s,0)) and shifts along thez-axis (of the form(0,t)). In
+particular, A1 would undergo a shift(1,0) in ρwest and a shift(0,1) in ρeast and A2 a shift
+(0,w1) in ρwest and (e0,0) in ρeast. In that way, bothρwest ◦ρeast and ρeast ◦ρwest shift any
+pair of planes with respect to each other over an oﬀset of the form(s,t) with s̸= 0 ̸= t.
+However, our propagation experiments immediately revealed systematic low-weight trails.
+Adding a shift ofA2 along thez-axis inρwest made these trails go away, even with the
+oﬀset e1 = 8 that is cheaper on some platforms.
+For θ, we needed to select the two oﬀsets in the computation of theθ-eﬀect. We
+decided to ﬁxt3 = 1, meaning that both aﬀected columns are in the same lane. This
+allows computing theθ-eﬀect with just one additional register (see Section 4.1).
+Loops are sequences of32 odd columns such that theθ-eﬀect cancels out, see Sec-
+tion 7.3.2 for a more formal deﬁnition. Given the number of odd columns, the weight of a
+trail containing a loop is well above our target, so this was not considered a problem. Yet,
+we required thatt1 −t2 is odd, as otherwise loops with fewer than32 odd columns would
+exist.
+There remained the choice of the values oft1,t2,w1,e0 in the light of diﬀerential and
+linear trails. For this part, we refer to Section 7 for the terminology. We proceeded in two
+steps. First, we looked for 3-round trail cores where the input toθis in the kernel in both
+rounds. In this case,θacts as the identity, and this process is thus independent of the
+values oft1,t2. This allowed us to select good candidates forw1,e0. Second, we extended
+the search to all 3-round trail cores to select good values fort1,t2.
+1. The Vortex is an inherent trail core with weight36 that is in the kernel (see Table 9).
+Other trails in the kernel we found were a few trails of weight46 = 16 + 14 + 16and
+three trails of weight48 (one with weight proﬁle18 + 16 + 14, one symmetric alongx
+with proﬁle24+16+8 , and one symmetric alongzwith proﬁle8+16+24 ). We looked
+for couples(w1,e0) with e0 ∈{2,3}and w1 ∈{2,...,31}such that no other trails in
+the kernel with weight up to48 exist. We found generally better results fore0 = 2, so
+we decided to ﬁx that value, and the valuesw1 ∈{2,3,4,5,6,7,9,10,11,15,19,20,21}
+satisﬁed the criterion.
+2. Outside the kernel, i.e., without any constraints on the input ofθ, the best trails are
+the Single-orbital fan and theθ2-glide. We looked for tuples(t1,t2,w1), withw1 in
+the set above, such that no other trails below weight44 would exist.
+After this selection process, we were left with a list of about20 candidate tuples for
+(t1,t2,w1). We ﬁnally selected a single tuple from this list on the basis of performance
+with respect to avalanche criteria, as illustrated in Table 8.
+6 Design rationale of Xooﬀf
+In this section, we ﬁrst discuss the rolling functions, then give a rationale for the number
+of rounds in the diﬀerent permutations.
+Both rolling functions operate as 12-stage feedback shift registers (FSR), with the lanes
+mapping to the 32-bit stages. We can deﬁne an inﬁnite sequenceV of stagesVi with i≥0.
+The initial state/mask consists of the ﬁrst 12 stages and the state/mask afterj iterations
+of the rolling function consists of stagesj to j+ 11. The mapping of these 12 stages to the
+lanes of the state/mask at iterationtis as follows:Ax,y = Vi with i= t+ y+ 3x. The ﬁrst
+12 stagesV0 to V11 are the initial value of the mask/state. All subsequent stagesVt are
+deﬁned by a recursion of the typeVt ← F(Vt−1 ...Vt−12). Clearly, this is the operation of
+an FSR.
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 21
+6.1 The rolling function rollXc
+The rolling functionrollXc is a lightweight invertible linear FSR of maximum order operating
+on the entire384-bit state constructed as proposed by Granger et al. [GJMN16]. It has
+the following minimal polynomial:
+1 + x46 + x92 + x94 + x138 + x142 + x186 + x188 + x190 + x199 + x223
++x238 + x245 + x247 + x269 + x271 + x284 + x286 + x295 + x319 + x330
++x334 + x341 + x343 + x352 + x365 + x367 + x378 + x380 + x382 + x384 .
+As a consequence, each non-zero mask value will be in a cycle of length2384 −1. The zero
+mask value is a ﬁxed point in our rolling function. We think the probability that a user
+key K maps to such a mask value is negligible.
+The recursion in the stage representation is:
+Vj+12 ← Vj + (Vj ≪ 13) + (Vj+1 ≪3) .
+As Vj+12 depends only onVj and Vj+1, this allows the parallel computation of up to11
+subsequent iterations. In other words, given that we haveVj to Vj+11, we can compute
+Vj+12 to Vj+22 in parallel.
+An important purpose ofrollXc is to avoid aﬃne spaces of large dimensions. This
+aspect is discussed in more detail by Bertoni et al. in [BDH+17].
+6.2 The rolling function rollXe
+The rolling functionrollXe is a lightweight invertible non-linear FSR. It is non-linear to
+resist against state-recovery attacks described in [CFG+18] that work ifrolle is linear,pb
+is Keccak-p with 6 rounds and the adversary has a very long sequence of output blocks.
+The recursion in the stage representation of rollXe is:
+Vj+12 ← (Vj ≪5) + (Vj+1 ·Vj+2) + (Vj+1 ≪13) + 0x00000007 . (3)
+As Vj+12 depends only onVj,Vj+1 and Vj+2, this allows the parallel computation of up to
+10 subsequent iterations, so givenVj to Vj+11, we can computeVj+12 to Vj+21 in parallel.
+The recursion contains a bitwise product of two stages for non-linearity, two linear
+terms for diﬀusion and a constant term to remove symmetry and avoid ﬁxed points. The
+algebraic normal form (ANF) ofrolli
+Xe(A) is non-linear. Informally, the criterion forrollXe
+is that the degree and number of monomials in this ANF grows suﬃciently withito thwart
+attacks like the aforementioned ones.
+The ANF ofrolli+1
+Xe (A) can be computed iteratively withi. Every iteration, the non-
+linear term in (3) introduces 32 fresh products, contributing to the increase in algebraic
+degree. The linear terms and the constant contribute to the increase of the number of
+monomials. Due to the fact that bits ofVj are independent ofVj−1 to Vj−10, monomial
+growth is relatively slow. Still, as the aforementioned attacks require a very long sequence
+of output blocks, we believe this is suﬃcient.
+Since rollXe is non-linear, its selection process is not as straightforward as that ofrollXc.
+We applied the following tests to arrive at our choice:
+Fixed points First we test for cycles of length one (i.e., ﬁxed points), preferring candidates
+that have the fewest. Since a single iteration of the rolling function merely moves all
+of the lanes by one position and calculates a new lane, the necessary and suﬃcient
+condition for the state to be a ﬁxed point is one where all lanes comprising the state,
+including the newly calculated lane, are equal. For 32-bit (and smaller) lane sizes, it
+is feasible to enumerate all ﬁxed points simply by testing every possible lane value.
+22 The design of Xoodoo and Xoofff
+Short cycles Then we test for short cycles induced by various symmetric states, preferring
+candidates for which no cycles could be found. The tested states are:
+•Alternating bit patterns10101...and 01010...
+•Single bit toggles such as10000..., 01000..., etc. and complements 01111...,
+10111..., etc.
+•Single bit toggles like the above, but starting with alternating lanes as
+032||132||032||...and 132||032||132||...
+Note that having an invertible rolling function is desirable since it is conducive to
+longer cycles, and makes the short cycle test more eﬃcient since it obviates the need
+to keep track of all states that have been seen. Instead, only the initial state needs
+to be remembered; if the state arrives back at the initial state, then a cycle has been
+found. In our tests, we ran106 iterations per pattern and candidate.
+Monomial count Then we run simulations to gain an understanding of the number of
+monomials present in the algebraic normal form of the rolling function aftern
+iterations, preferring candidates that contain the greatest number of monomials
+in the fewest number of iterations. We repeat this simulation for monomials of
+degree two, three, four and greater. We describe the degree two monomial count
+test in Algorithm 3; the higher degrees are a generalization of this algorithm except
+with a random sampling of monomial coordinates to make the execution time more
+practical.
+Algorithm 3Deﬁnition of monomials(F,r,M ) for monomials of degree two.
+Parameters: a b-bit non-linear rolling functionF, number of roundsr and number of
+samples M
+Let δi = 0i||1||0b−i−1
+Initialize monomial countp to 0
+for i= 0 to b−1 do
+for j = i+ 1 to b−1 do
+for all state bit positionsk do
+for M randomly generated statesA do
+Compute B = Fr(A) + Fr(A+ δi) + Fr(A+ δj) + Fr(A+ δi + δj)
+If Bk = 1, incrementp and break out of innermost loop
+return p
+6.3 Addressing Farfalle and Kravatte attacks
+In this subsection we discussXoofff in the light of the attack paths on Farfalle and
+Kravatteas identiﬁed in [BDH+17]. Speciﬁcally, our choice for the number of rounds
+in pb, pc, pd and pe follows essentially the same rationale as for the number of rounds in
+KravatteAchouﬀe, with6 rounds for the four permutations. Moreover, our choice of the
+two rolling functions was guided by the experience withKravatte. We will follow the
+canvas of Sections 5 and 7.4 of [BDH+17].
+6.3.1 Accumulator collisions
+Clearly, as the accumulator has width384, collisions can be found generically with expected
+complexity2192 Xoofff executions, the so-called birthday bound. Section 5.1 of [BDH+17]
+discusses threenon-generic methods to achieve collisions.
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 23
+The ﬁrst two methods are ﬁnding sets of input blocks that contribute0 to the accu-
+mulator and input block swapping that leave the accumulator unchanged. Both methods
+strongly depend on the properties of the mask rolling function. In [BDH+17, Section 5.1]
+an extensive analysis provides evidence that a maximum-order linear rolling function with
+a characteristic polynomial that is not too sparse has the properties to make these methods
+infeasible. This is the case of the mask rolling functionrollXc. Note that inKravatte
+the mask rolling function operates on320 of the1600-bit mask, thereby leaving1280 bits
+untouched, whilerollXc is a maximum-order linear mapping operating on the full384-bit
+state.
+The third method is the exploitation of diﬀerentials inpc and the choice ofXoodoo[6]
+for pc is actually motivated by this method. In this method one applies message pairs
+that diﬀer in two blocks by the same diﬀerence∆ and a collision occurs iﬀ the diﬀerences
+cancel in the accumulator. This happens with probability
+CP(∆) =
+∑
+γ
+DP2
+f(∆ ,γ) .
+We callCP(∆) the collision probability of∆ . Applying n pairs with the same diﬀerence
+∆ gives success probability nCP(∆) . In general, if we apply a set of messagesX =
+{X(1),X(2),...X(n)}, the success probability of having two message collide isCP(X) =∑
+i,jCP(X(i) +X(j)). Finding a setXthat maximizes its collision probability is in general
+a hard problem. Section 7.4.1 of [BDH+17] discusses how to ﬁnd a setXand an estimate
+of CP(X) for Kravattebased on the properties ofKeccak-p[6,nr]. When working out
+a similar analysis forXoofff, we found a method to increase the success probability for
+generating collisions. We explain our method in the next subsection.
+6.3.2 An improved collision generating method
+We describe the method for a6-round permutation, but it can trivially be generalized to
+any number of rounds. As in [BDH+17, Section 7.4.1], we make the assumption that the
+diﬀerentials over 6 and 5 rounds with the highestDP are dominated by a single trail. We
+believe this is the case for both ofXoodoo and Keccak-p thanks to weak alignment.
+Hence, in a pair of colliding messages, the diﬀerences∆ follow the same trail in both active
+blocks to end up in the same diﬀerenceγ. Denoting trails solely by the diﬀerencesbi at the
+input ofχ, (withb0 = λ(∆) ) the ones followed by the diﬀerences in the two active blocks
+is (b0,b1,b2,b3,b4,b5,γ). The value ofγis not important, as long as it is the same in both
+trails. There are2w(b5) possible values forγ, hence applyingM/4 two-block message pairs
+with input diﬀerences∆ leads to following success probability:
+M2−(2+2w(b0)+2w(b1)+2w(b2)+2w(b3)+2w(b4)+w(b5)) .
+In [BDH+17, Section 7.4.1] this success probability is slightly increased by embedding
+the pairs in a larger structure exploiting multiple input diﬀerences that have a highCP.
+Our new method does something similar, but with a more spectacular increase of success
+probability: it removes the contribution ofb0 to the weight altogether.
+In Xoofff, we arrange the two-block inputs in an aﬃne spaceV = U + q that we
+specify at the input ofχ of the ﬁrst round, withU a vector space andq an oﬀset. U is the
+vector space that spans all the bits in the columns of the two blocks wherea1 = λ−1(b1)
+is active, and all the other (passive columns) bits are ﬁxed to 0. The number of active
+columns in the two active blocks isw(a1) and hence the dimension ofV is 3w(a1). Knowing
+the basis ofU at the input ofχ it is straightforward to obtain the basis at the input ofλ
+by simply applyingλ−1 to the basis vectors.
+Note that, when applied toKravatte, we do the same but with rows taking the place
+of columns. InKravattethere is no one-to-one correspondence between the (minimum
+24 The design of Xoodoo and Xoofff
+reverse) weight ofa1 and the dimension ofU, except that it is at most5 times the minimum
+reverse weight ofa1.
+Since V takes all the possible values in each active column andχ is bijective, the setT
+obtained by applyingχ to the elements ofV is an aﬃne space with the same basis asU
+and it can only diﬀer fromV in its oﬀset. The point is now thatT contains |T|/2 = |V|/2
+pairs with diﬀerencea1 in both blocks, that we denote asa1||a1. We construct these pairs
+as follows. For each elementu∈T, constructu∗= u+ (a1||a1). As (a1||a1) ∈U, we have
+u∗∈T. This gives a pair with diﬀerencea1||a1. We can do this for any elementu∈T
+leading to a total of|T|/2 pairs. Note that the attacker cannot identify these pairs a priori
+due to the presence of the secret masks, but their mere presence inT contributes to the
+probability of a collision that is easily identiﬁable a posteriori.
+So, we apply|V|messages and have|V|/2 pairs at the input ofχ of the second round
+with a diﬀerenceb1 in both active blocks. We have basically linearizedχ of the ﬁrst round
+by applying inputs forming a column-aligned aﬃne space. Clearly, the ﬁrst diﬀerenceb0
+vanishes from the equation as doesγ and our attack is eﬀectively based on the trail core
+(b1,b2,b3,b4,b5). When applyingM/2 two-block inputs withM/2 a multiple of|V|, the
+success probability now becomes:
+Pr(collision) ≈M2−(2+2w(b1)+2w(b2)+2w(b3)+2w(b4)+w(b5)) .
+With the current trail weight bounds, found in Table 7, we would obtain an upper
+bound ofPr(collision) ≈M2−(2+54+56) = M2−112, higher than the term in our security
+claim. However, our 4- and 5-round bounds forXoodoo are not tight as they are just the
+side eﬀect of the absence of trails with weight below54 and 56 respectively. Improving the
+bounds to weights of, say,15 per round, would be enough to decrease this term well below
+M2−128. Our current bounds on3 and 6 rounds suggest this can be done by adapting our
+trail scanning software to 4- and 5-round trails and we consider this future work.
+We also consider following more theoretical questions as interesting research problems:
+•Is it possible to linearize (some active columns of) the non-linear layerχ of the
+second round and, if so, what is the cost in terms of data complexity?
+•How does success probability behave for values ofM that are not large enough to
+form an aﬃne space that covers all active columns ofa1?
+•Can one increase the success probability by constructing structures with multiple
+input diﬀerences that are horizontal shifts of each other?
+6.3.3 Properties of mask derivation
+The purpose of the mask derivation is to derive the384-bit maskk from a variable-size
+key K. To counter attacks that swap input blocksi and i+ δ, the adversary should have
+no eﬀective way to predict the value ofk+ rollδ
+Xc(k) by guessing part of the maskk or key
+K. Regarding collision attacks as described in the previous section, it shall be hard for
+the adversary to reduce the required dimension of the vector spaceU by n after guessing
+less thann bits of the masks (or linear combinations thereof) of the two active blocks.
+We have addressed these requirements by havingrollXc operate on the full state and
+having the non-linear layerχ after the diﬀusion mappingθin the round function.
+6.3.4 Attacks solely based on outputs
+Clearly, two or more blocks of output give enough information to determine the value of
+the output maskk′and the rolling state, independently of the compression phase or the
+input that was applied. Extracting it however should be computationally diﬃcult. When
+performing an algebraic attack using two or more output blocks, the adversary must solve
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 25
+a system of equations with unknown variables spread over two full instances ofXoodoo[6].
+The best reference on attacks on the expansion phase is Chaigneau et al. [CFG+18] that
+discusses attacks on a preliminary version ofKravattethat we will denote asKravatte’.
+They used the following techniques:
+Meet-in-the-middle They express bits of the intermediate state afterq rounds ofpe as
+polynomials of bits of the rolling staterollj
+e(y) on the one hand and as polynomials
+of the output maskk′on the other, using the knowledge of an output blockzj. The
+number of monomials inyis limited by the algebraic degree ofqrounds ofpe, and the
+number of monomials ink′is limited by the algebraic degree ofn−q inverse rounds
+of pe. As the inverse ofχ in Xoodoo has only algebraic degree2, this technique
+would likely work better inXoofff than inKravatte’.
+Linearization They convert non-linear equations to a system of linear equations by con-
+sidering the monomials as independent variables, so-called monomial variables.
+Elimination of monomials by exploiting linear recurrenceIf rolle is linear, the bits of
+rollj
+e(y) satisfy a linear recurrence equation. This allows eliminating the monomial
+variables inrollj
+e(y) from the system of linear equations above, leaving only monomial
+variables ink′.
+If rollXe would be linear, the attacks of [CFG+18] would probably work much better
+on Xoofff than on Kravatte’. In Xoofff the inverse ofχ has lower degree than
+in Kravatte’ and it has a smaller state. However,rollXe is not linear and it has been
+designed with these attacks in mind.
+6.3.5 Attacks using input-output pairs
+In [BDH+17, Section 5.4] an attack is described that exploits the outputs of a large set of
+inputs that result in an aﬃne space in the accumulator. In a way itskips the application
+of pc and rollc, by restricting the value of the input blocks in each position to two values.
+If the dimensionD of this aﬃne space is equal to the degreed of pe ◦pd, the sum of the
+outputs is independent of the input mask. IfD>d this sum is zero and if itD= d−1,
+each bit of the output sum is a linear function of the mask. The former two can lead to a
+distinguishing attacks, the latter to key recovery. These attacks impose a lower bound to
+the degree ofpe ◦pd. In Xoofff these are 12 rounds ofXoodoo and hence the degree
+approaches the maximum value383.
+In [CFG+18] this attack was improved by guessing output mask bits and peeling oﬀ2
+rounds at the end. Still, with12 rounds of Xoodoo even peeling oﬀ4 rounds would still
+require applying a set of2256 chosen inputs.
+All remaining attacks onXoofff require some distinguisher in an Even-Mansour like
+structure, where the input and output masks serve as secret keys and the permutation
+consists of 18 rounds of Xoodoo. This is the realm of the attacks based on classical
+distinguishers such as diﬀerential and linear cryptanalysis, truncated diﬀerentials, impossi-
+ble diﬀerentials, boomerang and rectangle attacks, integral cryptanalysis, and of course
+invariant subspace and nonlinear invariant attacks. The challenge for the majority of above
+attacks is that18 −ϵrounds need to be bridged with some distinguisher. In the light of
+the fact thatXoodoo reaches SAC after3.5 rounds, thatXoodoo has weak alignment
+and that for 4 rounds or more low-weight diﬀerential and linear trails are nowhere to be
+seen, ﬁnding such a distinguisher would be a major breakthrough. Moreover, note that an
+attacker has only access to theforward cipher, asXoofff, or Farfalle in general, simply
+has no inverse.
+26 The design of Xoodoo and Xoofff
+7 Trail analysis
+In this section, we prove lower bounds on the weight of diﬀerential and linear trails using
+a computer-aided approach. We base ourselves on the techniques presented by Mella et al.
+in [MDA17]. The results are in Section 5.2.4.
+7.1 Unifying diﬀerential and linear trail search
+Given the strong similarity between the study of diﬀerential and linear trails, we further
+unify the notation by deﬁning:
+•λ⋆ = λ, ρearly = ρeast , θ⋆ = θand ρlate = ρwest for diﬀerential trails, and
+•λ⋆ = λ⊤, ρearly = ρ−1
+west, θ⋆ = θ⊤and ρlate = ρ−1
+east for linear trails.
+This is illustrated in Figure 6.
+DC
+late early
+θ
+ρwest
+Δχ
+ρeast
+LC
+early late
+θT
+ρ-1
+west
+corrχ
+ρ-1
+east
+Figure 6: Conventions for diﬀerential (DC) and linear (LC) trails in the round function.
+7.2 General strategy
+Thanks to the similarity of our permutation withKeccak-p, we base our approach on
+that of Mella et al. in [MDA17]. We exhaustively scan the space of3-round trail cores and
+use that to prove lower bounds on the weight of trail cores up to6 rounds. The 3-round
+trails are in turn obtained by extending2-round trails forward and backward. We set our
+parameters such that all trails up to weightT3 = 50 are generated. Finally, we extend
+these trails to6 rounds with the guarantee that any trail with weight≤2T3 + 2 = 102 will
+be found, if it exists.
+In a nutshell, the underlying ideas are the following. The weight of a3-round trail is
+w(b0) + w(b1) + w(b2). A naive way to generate all trails up to some weight6n would be
+to generate all patternsb with weight below2n and then extend forward and backward to
+3-round trails. The number of such patterns however grows very fast with the weight, i.e.,
+there are
+(128
+n
+)
+7n patterns with weight2n. E.g., for2n= 10, this is already about242.
+The number of patterns can be drastically reduced by considering symmetry. As both
+χ and λ are invariant with respect to translations parallel to the planes, the number of
+patterns reduces roughly by a factor128. But it still grows very fast with the weight.
+The weight of a 3-round trail can be expressed alternatively asw(a1) + w(λ(a1)) + w(b2)
+or asw(a1) + w(a2) + w(λ(a2)). In the former case, two of the three weights are fully
+determined bya1 and in the latter case bya2. In both cases, the sum of those two weights
+is of the formw(a) + w(λ(a)).
+As demonstrated in [MDA17] forKeccak-p, we expect forXoodoo that the number
+of trails with a given weight per round decreases with the number of rounds. In other
+words, we expect that the number of2-round trails with weight below4n is smaller than
+that of1-round trails with weight below2n. We will hence scan the space of patterns
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 27
+a taking into account the sumw(a) + w(λ(a)) and extend them forward and backward,
+thereby dramatically reducing the number of patterns to extend.
+Let us detail our approach. A3-round trail coreQ = a1
+λ⋆
+−→ b1
+χ
+−→ a2
+λ⋆
+−→ b2 has
+weight w(Q) = w(a1) + w(b1) + w(b2) = w(a1) + w(a2) + w(b2). We are looking for all trail
+cores such thatw(Q) ≤T3. Among these, eitherw(a1) ≤w(b2) + δor w(a1) >w(b2) + δ,
+for some ﬁxed integerδthat we set toδ= 2 in our implementation.
+•The former case implies that2w(a1) + w(b1) ≤T3 + δ. Such trails can be obtained by
+generating all2-round trailsa1
+λ⋆
+−→b1 satisfying this inequality and then extending
+each of them forward by ﬁnding all statesa2 compatible withb1.
+•The latter case implies thatw(a2) + 2w(b2) < T3 −δ, and since all weights are
+even, the condition is equivalent tow(a2) + 2w(b2) ≤T3 −δ−2. Such trails can
+be obtained by generating all2-round trailsa2
+λ⋆
+−→b2 satisfying this inequality and
+then extending each of them backward by ﬁnding all statesb1 compatible witha2.
+Note that there are two diﬀerences between our general approach and that with the
+one of Mella et al. First, we do not distinguish between kernel and non-kernel states when
+generating 2-round trail cores. Second, we allow the generation of2-round trail cores to
+be unbalanced between those that are extended forward and backward by allowingδ̸= 0.
+We noticed that in our implementation the backward extension takes more time than the
+forward extension, so by settingδ >0 we reduce the number of2-round trails to extend
+backward, at the cost of an increase of those to be extended forward, and we reach a more
+balanced timing in both cases.
+7.3 Generation of 2-round trail cores
+We now concentrate on the generation of2-round trail cores of the forma
+λ⋆
+−→b. We do this
+by generating state valuesAat the input ofθ⋆, so that we can control the parity ofAand
+exploit the properties ofθ. FromA, we can computea= ρ−1
+early(A) and b= ρlate(θ⋆(A)).
+We do this while bounding the cost functionαw(a) + βw(b) for α,β ∈{1,2}as explained
+above.
+7.3.1 Properties of θ
+As θis a linear layer similar toKeccak’sθfunction, the following deﬁnitions are adapted
+from those in [BDPA11b]. Note that, as a linear function, the properties ofθare the same
+whether applied on a state absolute value or on a diﬀerence, so we just write “value”.
+The parity plane(or parity for short)P(A) of a valueA is deﬁned as the parity of the
+columns ofA, namelyP(A) = ∑
+yAy. A column iseven (resp. odd) if its parity is 0 (resp.
+1). When the parity of a value is zero (i.e., all its columns are even), we say it is in the
+column-parity kernel(or kernel for short).
+The θ-eﬀect of a valueA is E(A) = P(A) ≪(1,5) + P(A) ≪(1,14). A column
+of coordinates (x,z) is aﬀected iﬀ the corresponding bit inE(A) is 1; otherwise, it is
+unaﬀected. Note that theθ-eﬀect always has an even Hamming weight so the number of
+aﬀected columns is even. We deﬁne theθ-gap as the number of aﬀected columns divided
+by two.
+An odd column at coordinates(x,z) induces two aﬀected columns at coordinates
+(x+ 1,z + 5) and (x+ 1,z + 14). Adding a second odd column at coordinates(x,z + 9) will
+induce an aﬀected column at(x+1,z +23) and cancel the aﬀected column at(x+1,z +14).
+This can be further extended to more odd columns at coordinates(x,z + 9n). Informally,
+chaining such odd columns, together with their two induced aﬀected columns, makes up a
+run. When all the columns in a sheet are odd, then theθ-eﬀect cancels and there are no
+induced aﬀected columns. Informally, we call the set of such odd columns aloop.
+28 The design of Xoodoo and Xoofff
+To better formalize this, we can make a change of coordinates on thez-axis and use
+the t coordinates instead:
+z= 9t ⇔ t= 25z.
+An odd column at coordinates(x,t) induces two aﬀected columns at coordinates(x,t −3)
+and (x,t −2). A run is thus a sequence of odd columns with the samex coordinate and
+consecutive t coordinates.
+7.3.2 Decomposition of a state value aroundθ
+Given a state valueA, a bit at position(x,y,z ) (or, equivalently, at(x,y,t )) is said to be
+active if its value is1. Otherwise, it ispassive.
+We decompose a state value at the input ofθ as the sum of basis vectors, called
+elements, of three diﬀerent kinds: the parity loops, the parity runs and the orbitals.
+Deﬁnition 3. A parity loop(or loop for short) is a state value with32 active bits in a
+sheet, each in a distinct column.
+Deﬁnition 4.A parity run(or run for short) is a state value composed of1 ≤l≤31 active
+bits inldiﬀerent columns of a sheetxwith consecutivetcoordinates (t0,t0+1,...,t0+l−1),
+and of zero or two active bits in each of the (aﬀected) columns(x+ 1,t0 −3) and
+(x+ 1,t0 + l−3).
+Deﬁnition 5. An orbital is a state value with two active bits in the same column.
+Loops and runs generate odd columns, while runs also have aﬀected columns. From
+the decomposition of the value beforeθ, the value at the output ofθis easy to determine:
+A loop and an orbital are invariant throughθ, and a run gets the bits in its two aﬀected
+columns complemented throughθ, while the remaining columns remain unchanged. Since
+θis linear, the state afterθcan be decomposed in the images of the elements throughθ,
+with the same coeﬃcients. So the decomposition into elements tells as much about the
+state before as the state afterθ.
+Any state value can be expressed as the bitwise sum of elements and, as such, they
+generate the full state space. However, this decomposition is not unique. To make the
+decomposition unique, we rely on a number of conventions. These conventions also help
+bounding the weight of the states obtained when combining these elements by avoiding as
+much as possible turning an active bit back to passive on either side ofθ. The conventions
+are as follows. First, all odd columns stem from a unique loop or run. Then, an orbital
+can only be added to an empty column or to an unaﬀected odd column with a single active
+bit aty= 0. Finally, an aﬀected odd column must follow the odd-0 convention:
+Deﬁnition 6.The odd-0 convention says that an aﬀected odd column must be represented
+as the sum of an unaﬀected odd column with a single active bit aty= 0 (of a loop or of a
+run) and of an aﬀected even column (of a run) chosen accordingly. Figure 7 illustrates this.
+Lemma 1.The valueAat the input ofθcan be uniquely decomposed as a sum of elements.
+Proof. Let us deﬁne an algorithm that determines the last element of the state, then
+removes it by adding it back toA. The algorithm can then be applied recursively until all
+bits are passive.
+The algorithm takes as input a valueA at the input ofθ, computes the parityP(A)
+and theθ-eﬀect E(A) and then proceeds as follows.
+1. First, it looks for the unaﬀected column with two or more active bits with the highest
+coordinates using[x,z] lexicographical ordering. If it exists, the algorithm outputs
+an orbitalO by taking the two bits with the highesty coordinates in that column,
+adds backO to A and recursively starts again.
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 29
+= + = +
+= + = +
+Figure 7: The odd-0 convention, illustrated. Here, each rectangle represents a column
+and each circle a bit. A bit can be either passive (white) or active (black). In an aﬀected
+column, the left half shows the value beforeθ⋆, while the right half shows the value after
+θ⋆. The positiony= 0 is at the bottom.
+2. Otherwise, it looks for the odd column with coordinates(x,t) such that(x,t −1)
+is even and with the highest coordinates using[x,z] lexicographical ordering. If it
+exists, the algorithm counts how many consecutive columns are odd, until(x,t + l)
+is even. It then builds a runR by taking fromA the l active bits in each of the
+l columns from (x,t) to (x,t + l−1), plus some bits in the aﬀected columns at
+(x+ 1,t −3) and (x+ 1,t + l−3):
+(a) For each unaﬀected odd column, the run takes the unique odd active bit.
+(b) For each aﬀected odd column, it follows the odd-0 convention, i.e., the run is
+deﬁned with an active bit aty= 0, independently of what bit is actually active
+in A.
+(c) If the column at(x+ 1,t −3) is aﬀected even, the run takes the zero or two
+active bits in that column.
+(d) If the column at(x+ 1,t −3) is aﬀected odd, it follows the odd-0 convention,
+i.e., the run takes the zero or two active bits such that ﬂipping those bits leaves
+a single bit aty= 0 in that column.
+(e) The last two steps are repeated for the column at(x+ 1,t + l−3).
+It outputs the obtained runR, adds it back toA and recursively starts again.
+3. Otherwise, it looks for the sheet with32 odd columns with the highestx coordinate.
+If it exists, the algorithm outputs a loopL by taking fromA the 32 active bits in
+each of the32 columns, adds backL to A and recursively starts again.
+4. Otherwise, it returnsnone.
+The algorithm is deterministic, so the output is uniquely determined by the value ofA.
+It remains to show that the algorithm always terminates, and that it stops iﬀA= 0.
+When step 1 outputs an orbital, it strictly decreases the number of active bits. If step 1
+does not output an orbital, it means that all the unaﬀected columns have either zero or
+one active bit.
+When step 2 outputs a run, it strictly decreases the number of odd columns (byl≥1)
+and of aﬀected columns (by2). Furthermore, the aﬀected columns that are removed leave
+zero or one active bit behind, thanks to the odd-0 convention. If step 2 does not output a
+run, it means that there are no more aﬀected columns and that all columns contain at
+most one active bit. In such conditions, a state is either passive or contains only loops.
+When step 3 outputs a loop, it strictly decreases the number of odd columns (by32).
+If step 3 does not output a loop, it must be passive soA= 0.
+30 The design of Xoodoo and Xoofff
+7.3.3 Breaking down to bit-level units
+To construct diﬀerential and linear trails, we use the tree traversal technique as deﬁned
+by Mella et al. in [MDA17, Section 3]. We represent a state value as a set ofunits, each
+consisting of a pattern of active bits. By deﬁning anordering of units, a set of units
+becomes aunit list. A unit list can be constructed progressively by appending a unit at
+the end. Finally, we need to deﬁne acost functionand asubtree bounding functionto
+deﬁne the set of state values we are interested in and to be able to prune the search.
+Compared to the choice of more macroscopic units by Mella et al. for the bounds in
+Keccak [MDA17], we decided to deﬁne units that activate at most one bit beforeθand
+at most one bit afterθ. More speciﬁcally, a unit represents an active bit both before and
+after θin unaﬀected columns, or a bit that is active either before or afterθin aﬀected
+columns. This allows a ﬁner-grained bounding function, where the decision to set a bit
+can every time lead to pruning the tree and thus potentially save processing time. We
+thus break down loops, runs and orbitals in a number of bits, calledbit units.
+A bit unit is ﬁrst characterized by the type of the element it composes, and that can
+be a loop, a run or an orbital. The ordering is primarily on the type and such that loops
+come ﬁrst, then runs and ﬁnally orbitals:
+loop ≺run ≺orbital.
+•A loop-typed bit unit represents an active bit in a loop and is characterized by its
+(x,y,z ) coordinates. After the type, the ordering is lexicographic on[x,z,y ]. Since a
+loop is bound to a given sheetx, all the bit units composing a loop are consecutive
+in the unit list.
+•A run-typed bit unit represents an active bit in an odd column or in an aﬀected
+column of a run. It is ﬁrst characterized by the(x0,z0) (or, equivalently,(x0,t0))
+coordinates of the ﬁrst odd column. We then distinguish the diﬀerent bit units
+by their rankr and subrank s, and either by theiry coordinate or their valuev.
+After the type, the ordering is lexicographic on[x0,z0,r,s,y,v ] so that the bit units
+composing the same run are consecutive. The diﬀerent bit units are as follows, in
+this order:
+– For the aﬀected column at(x0 + 1,t0 −3), there are three bit units with rank
+r= 0 and subranks∈{−3,−2,−1}. Since these units represent what happens
+in an aﬀected column, they are also characterized by a valuev∈{before,after}
+telling whether the bit is active before or afterθ. The eﬀective position of the
+active bit is(x0 + 1,s + 3,t0 −3).
+– For each odd column, there is bit unit representing an active bit at(x0,y,t 0 + r)
+for rankr∈{0,1,...,l −1}, subranks= 0 and y coordinate. These bits are
+active before and afterθ.
+– For the aﬀected column at(x0 + 1,t0 + l−3), there are again three bit units
+characterized by their valuev and, this time, with rankr= l−1 and subrank
+s∈{1,2,3}. The eﬀective position of the active bit is(x0 + 1,s −1,t0 + r−2).
+•An orbital-typed bit unit represents an active bit in an orbital and is characterized
+by its(x,y,z ) coordinates. After the type, the ordering is lexicographic on[x,z,y ]
+so that the bit units composing an orbital are consecutive.
+As already said, the ordering of units is deﬁned such that the units that compose an
+element are consecutive in the unit list. Additionally, the ordering is chosen in agreement
+with Lemma 1. That is, for a state value represented as a unit list, the last units correspond
+to the element returned by the algorithm in the proof of Lemma 1.
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 31
+7.3.4 Lower bounding the cost
+Recall that we are interested in the cost functionαw(ρ−1
+early(A)) + βw(ρlate(θ⋆(A))) for
+α,β ∈{1,2}as explained above.
+In a unit list, we distinguish betweenstable and unstable bits. A stable bit is an active
+bit that is guaranteed to stay active even if more bit units are added to the unit list. We
+characterize stable bits as follows.
+•If the unit list does not contain orbital-typed bit units, an active bit in a loop or in
+a run is stable iﬀ itsy coordinate is not zero.
+•If the unit list contains at least one orbital-typed bit unit, all active bits are stable.
+The rationale is as follows. If an active bit in a loop or in a run is added to an
+unaﬀected column, it is active both before and afterθ. But if the column it sits in becomes
+aﬀected due to the addition of a run, the active bit is removed from either before or afterθ.
+Similarly, a bit in an even aﬀected column is active at a given side ofθ, but a new active
+bit from a loop or a run can be added to it, eﬀectively changing the side where the old bit
+is active. However, the odd-0 convention prevents an aﬀected column from being added to
+an odd column where the active bit is aty >0 and, vice-versa, it prevents an active bit of
+a loop or a run withy >0 from being added to an aﬀected column. So once an active bit
+with y >0 is added, it cannot be removed. Furthermore, an orbital is stable and comes
+after other types of elements, so once we start adding orbital-type bits, all the bits are
+stable.
+The subtree bounding function starts by counting the contribution of the stable bits
+after translations throughρ−1
+early and ρlate. An active bit contributes the weight by2 only
+if it lands in a column without any active bits yet. Then the subtree bounding function
+lower-bounds the contribution of the unstable bits. Notice that an unstable bit will yield
+an active bit at least in either side ofθ. So the subtree bounding function counts the
+minimum of the contribution of an active bit before or afterθ. It also marks the column
+where the unstable bit lands, on both side ofθ, so that the contribution in a given column
+cannot be counted more than once.
+7.4 Extension to 3 and 6 rounds
+For every2-round trail core produced, we extend it forward or backward according to the
+general strategy outlined in Section 7.2 above.
+The extension exploits the fact that the compatible states form an aﬃne space, as
+shown in Corollary 1. Let us illustrate this for the forward extension, as the backward
+extension enjoys the same property and the description can be easily adapted to that case.
+For each active column at the input ofχ, we form an aﬃne space of the compatible states
+at the output ofχ. We do this for all active columns, resulting in a description of an
+aﬃne space at the output ofχ: O+ ⟨B1,B2,...,Bw⟩. We then transform the oﬀset and
+basis vectors throughλ⋆ to get a description of the aﬃne space at the input of the nextχ,
+namely O′+ ⟨B′
+1,B′
+2,...,B′
+w⟩with O′= λ⋆(O) and B′
+i = λ⋆(Bi). This way, we can more
+easily compute (and bound) the weight that is added to the trail when extending it.
+To help bound the weight of the trail when extending it, we ﬁrst triangularize the
+basis vectors (Bi). The triangularization deﬁnes a nested sequence of sets(Bi) of bit
+positions such thati < j⇒B i ⊃Bj and Bi has no bits1 outside of Bi. The search
+through the aﬃne space also uses the technique of tree search of Mella et al. [MDA17].
+Here, the units represent the basis vectors and their ordering is according to their indexes,
+i.e., i<j ⇔ Bi ≺Bj. This way, if the current unit list ends withBi, we can lower bound
+the weight of all its descendants given that all bits outside ofBi+1 cannot be changed.
+32 The design of Xoodoo and Xoofff
+Table 9:Inherent trails
+name θ-gap proﬁle weight proﬁle #
+Vortex |0|0| 12 + 12 + 12 = 36 1
+Single-orbital fan |0|2| 4 + 4 + 28 = 36 3
+θ2-glide |1|2| 10 + 6 + 22 = 38 3
+A 6-round trail coreQ as
+Q= a1
+λ⋆
+−→b1
+χ
+−→a2
+λ⋆
+−→b2
+χ
+−→a3
+λ⋆
+−→b3
+χ
+−→a4
+λ⋆
+−→b4
+χ
+−→a5
+λ⋆
+−→b5
+has a weight ofw(Q) = w(a1) +∑5
+i=1 w(bi). Ifw(Q) ≤2T3 + 2 = 102, thenw(a1) + w(b1) +
+w(b2) ≤T3 or w(b3) + w(b4) + w(b5) = w(a4) + w(b4) + w(b5) ≤T3. So if such a trail exists,
+we must ﬁnd it when extending all3-round trails of weight at mostT3 both backward and
+forward.
+7.5 Concrete experiments
+We performed the generation of2-round trail cores and their extension to3 rounds together.
+The search for both diﬀerential and linear trails of3 rounds took about16 core×days on a
+desktop PC equipped with an IntelR⃝ CoreTM i5-6500 CPU. We ran the computation on
+four parts in parallel, split between linear and diﬀerential trails and between the forward
+and backward extensions, with the longest part taking5 days. The extension to6 rounds
+took a few minutes.
+The source code of the program to generate and extend trails is available as open source
+software [DHAK18b]. We wrote it in C++ and used parts ofKeccakTools [BDP+17],
+in particular for the generic tree search code from Mella at al. [MDA17]. We improved
+the generic tree search code slightly, then instantiated it with the appropriate classes for
+the generation of2-round trail cores. The resulting trail cores listed in Table 6 are also
+given, with diﬀerential and linear trails split in diﬀerent ﬁles [DHAK18b]. Each set of
+trails is provided both in a format easily parsable by the software and in a visual text
+representation.
+7.6 Inherent 3-round trails
+We now describe trails that are inherent to the very structure ofXoodoo.
+Deﬁnition 7. We say that a trail isinherent if a trail with the same structure exists
+for any variant ofXoodoo with θthat is a column parity mixer, withχ that allows
+one-active-bit patterns to propagate to the same one-active-bit pattern, and withρwest
+and ρeast that consist of plane shifts.
+For convenience, we restrict to the case where one odd column inθmakes 2 columns
+aﬀected, but this could be easily generalized to another number of aﬀected columns, and
+the number of active bits in the sequel would need to be adapted. Table 9 shows the three
+types of inherent trails with weight up to38 and Figure 8 schematically depicts them.
+In all three types of inherent trail, the nonlinear layerχ of the middle round acts as the
+identity. This means that we can replaceρearly ◦χ◦ρlate with ρearly ◦ρlate, and we denote
+it byρboth. Moreover, in the nominal case, all active bits in the threeχ layers appear in
+diﬀerent columns, hence each making one column active. So, we study trails(a0,a′
+0,a1,a′
+1)
+that propagate throughθ⋆◦ρboth ◦θ⋆ with a′
+0 = θ⋆(a0)), a1 = ρboth(a′
+0) and a′
+1 = θ⋆(a1):
+Q= a0
+θ⋆
+−→a′
+0
+ρboth
+−→a1
+θ⋆
+−→a′
+1 .
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 33
+6 6 6
+2 2 14
+5 3 11
+a0 q a
+′
+0
+reast
+◦rwest
+a1 q a
+′
+1
+Figure 8: Schematics of three types of inherent trails: vortex (top), single-orbital fan
+(middle) andθ2 glide (bottom).
+34 The design of Xoodoo and Xoofff
+The trail weight equals the sum of the Hamming weights ofa0, a′
+0 (or equivalentlya1 as
+ρboth is a mere bit transposition) anda′
+1 times 2. Note that the value ofa0 determines the
+full trail.
+In the ﬁrst inherent trail the input toθin both rounds is in the kernel making it vanish.
+In such trails,a′
+0 is called avortex in [DA12] and it is a state that is in the kernel and
+remains so after applyingρboth. Clearly, as all patterns in the trail have the same Hamming
+weight, the trail weight is 6 times the Hamming weight ofa0. Vortices are completely
+determined byρboth, and more speciﬁcally, by its (two-dimensional) translation oﬀsets for
+the planes 1 and 2. Let us denote these byu1 and u2. Due to the fact thatρboth treats the
+three planes as rigid structures, there exists a vortex consisting of 3 orbitals, thatρboth
+maps to 3 orbitals. In particular,a′
+0 and a1 have active bits in in the following positions:
+•Plane 0: in 0 and u1 −u2 before ρboth, then in0 and u1 −u2 after ρboth
+•Plane 1: in 0 and −u2 before ρboth, then inu1 and u1 −u2 after ρboth
+•Plane 2: in −u2 and u1 −u2 before ρboth, then in0 and u1 after ρboth
+Note that the existence of such a 3-orbital vortex is independent of the dimension of the
+rigid structures (in our case planes) and so is the weight of the corresponding3-round
+trails: 36.
+A single-orbital fanis a trail that has two active bits in the same column ina0. Sincea0
+is in the kernel,a′
+0 = a0. These bits propagate throughρboth, where they land in diﬀerent
+columns beforeθ⋆. They then expand to7 bits each afterθ⋆ in a′
+1, and these2 ×7 bits
+can land in14 diﬀerent columns. Sincea0 and a′
+0 contain 2 active bits anda′
+1 contain 14
+active bits, the total weight is thus36.
+A θ2-glide is a trail with the following structure:
+•In a0, the state is made of one active bit alone in a column and of two orbitals
+located in the aﬀected columns induced by the ﬁrst active bit.
+•In a′
+0, the two orbitals are replaced by a single active bit each, in addition to the
+ﬁrst active bit that remains. We choose the positions of the bits ina0 such that they
+all arrive in the same plane ina′
+0.
+•Since all the active bits are in the same plane,ρboth acts as a global shift of the
+whole state, which we can ignore in this discussion and consider thata1 = a′
+0.
+•Finally,a′
+1 = θ⋆(a1) = θ⋆(θ⋆(a0)) up to the global shift. The(θ⋆)2 operation applied
+to the single active bit ofa0 induces 4 aﬀected columns, two going from1 to 2 active
+bits, and two going from0 to 3 active bits, so with a total of1 + 4 + 6 = 11active
+bits.
+Since a0 contains 5 active bits,a′
+0 contains 3 active bits anda′
+1 contains 11 active bits, the
+total weight is thus38.
+8 Conclusions and perspectives
+In this paper, we have introduced a novel permutation calledXoodoo and a deck function
+called Xoofff for concrete encryption and authentication applications.
+From a cryptographic point of view, we think that the chosen structure and set of
+operations lead to a design with nice properties. It is easier to analyze the diﬀerential and
+linear trail propagation than onKeccak, and we could make sure that the chosen rotation
+constants avoid low-weight trails that are not inherent to the structure. Our permutation
+has a dispersion layer between every mixing and nonlinear layer, whereas inKeccak-p
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 35
+the mixing layer follows the nonlinear layer immediately, causing suboptimal intra-slice
+eﬀects. This may explain why the minimum weight over3-round trails is36 for Xoodoo,
+while it is24 for diﬀerential trails inKeccak-p[400] [MDA17]. Furthermore, there is no
+known bounding of linear trails inKeccak-p[400].
+From an implementation point of view, we expect thatXoodoo shares withKeccak-p
+highly eﬃcient hardware implementations (and much smaller thanKeccak-p[1600]) and
+eﬃcient protections against side-channel attacks. Looking back at Table 5, the performance
+of Xoofff on Skylake(X) processors is excellent, competing with that of the AES in
+counter mode although the latter beneﬁts from hardware acceleration and the former uses
+only general-purpose instructions. On32-bit processors,Xoofff is much faster than the
+AES in counter mode. As for the performance on ARM Cortex processors as reported in
+Table 4, we notice that the performance per round ofXoodoo on ARM Cortex-M3 is
+similar to that of Gimli, while Gimli is signiﬁcantly faster on Cortex-M0. However, these
+values have to be taken with care, as each permutation does not need the same number of
+rounds when used in a given mode to yield a secure scheme. For instance,Xoodoo needs
+6 rounds to guarantee the absence of trails with weight less than104, while Gimli would
+need 16 rounds as suggested by [BKL+17, Table 1].
+For future work, deﬁningXoodoo variants with other dimensions can be useful. For
+constrained platforms, it could be interesting to have permutations with smaller widths.
+If we take the birthday bound on the permutation width as the limiting factor and we
+consider the minimum processor word length to be 32 bits, two particular widths come
+to mind: 288 = 32 ×3 ×3 for targeting128-bit security and192 = 32 ×2 ×3 for 80-bit
+security. This can be realized by taking planes consisting of3 and 2 lanes respectively. On
+the other hand, one can also have “planes” consisting of only a single lane of length96
+and 64 respectively. Eﬃcient implementations on32-bit platform can then be derived by
+rewriting the operations using bit interleaving [BDP+12]. Towards larger permutations, a
+768-bit variant with planes consisting of4 lanes of64 bits each would be interesting for
+sponge-based hashing.
+Acknowledgements
+Joan Daemen is supported by the European Research Council under the ERC advanced
+grant agreement under grant ERC-2017-ADG Nr. 788980 ESCADA.
+References
+[BDH+17] G. Bertoni, J. Daemen, S. Hoﬀert, M. Peeters, G. Van Assche, and R. Van
+Keer, Farfalle: parallel permutation-based cryptography, IACR Trans. Sym-
+metric Cryptol.2017 (2017), no. 4, 1–38.
+[BDP+12] G. Bertoni, J. Daemen, M. Peeters, G. Van Assche, and R. Van Keer,Keccak
+implementation overview, May 2012,https://keccak.team/papers.html.
+[BDP+17] , KeccakTools software, December 2017, https://github.com/
+KeccakTeam/KeccakTools.
+[BDPA11a] G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche,On alignment in
+Keccak, ECRYPT II Hash Workshop 2011, 2011.
+[BDPA11b] , The Keccak reference, January 2011, https://keccak.team/
+papers.html.
+[Ber08a] D. J. Bernstein,Chacha, a variant of Salsa20, Workshop Record of SASC
+2008, 2008.
+36 The design of Xoodoo and Xoofff
+[Ber08b] , The Salsa20 family of stream ciphers, New Stream Cipher Designs -
+The eSTREAM Finalists (M. Robshaw and O. Billet, eds.), Lecture Notes in
+Computer Science, vol. 4986, Springer, 2008, pp. 84–97.
+[BHMT02] G. Brassard, P. Hoyer, M. Mosca, and A. Tapp,Quantum amplitude ampliﬁ-
+cation and estimation, Contemporary Mathematics305 (2002), 53–74.
+[BKL+17] D. J. Bernstein, S. Kölbl, S. Lucks, P. Maat Costa Massolino, F. Mendel,
+K. Nawaz, T. Schneider, P. Schwabe, F.-X. Standaert, Y. Todo, and B. Viguier,
+Gimli : A cross-platform permutation, Cryptographic Hardware and Embed-
+ded Systems - CHES 2017, Proceedings (W. Fischer and N. Homma, eds.),
+Lecture Notes in Computer Science, vol. 10529, Springer, 2017, pp. 299–320.
+[BW99] A. Biryukov and D. A. Wagner,Slide attacks, Fast Software Encryption, 6th
+International Workshop, FSE ’99, Rome, Italy, March 24-26, 1999, Proceed-
+ings (L. R. Knudsen, ed.), Lecture Notes in Computer Science, vol. 1636,
+Springer, 1999, pp. 245–259.
+[CFG+18] C. Chaigneau, T. Fuhr, H. Gilbert, J. Guo, J. Jean, J.-R. Reinhard, and
+L. Song, Key-recovery attacks on full Kravatte, IACR Trans. Symmetric
+Cryptol. 2018 (2018), no. 1, 5–28.
+[DA12] J. Daemen and G. Van Assche,Diﬀerential propagation analysis of Keccak,
+Fast Software Encryption (FSE) 2012. Revised Selected Papers (A. Canteaut,
+ed.), Lecture Notes in Computer Science, vol. 7549, Springer, 2012, pp. 422–
+441.
+[Dae95] J. Daemen,Cipher and hash function design strategies based on linear and
+diﬀerential cryptanalysis, PhD thesis, K.U.Leuven, 1995.
+[DHAK18a] J. Daemen, S. Hoﬀert, G. Van Assche, and R. Van Keer,Xoodoo cookbook,
+IACR Cryptology ePrint Archive2018 (2018), 767.
+[DHAK18b] , XooTools software, https://github.com/XoodooTeam/Xoodoo,
+2018.
+[DR02] J. Daemen and V. Rijmen,The design of Rijndael: AES - the advanced
+encryption standard, Information Security and Cryptography, Springer, 2002.
+[DR07] , Plateau characteristics, IET Information Security1 (2007), no. 1,
+11–17.
+[DR10] , Reﬁnements of the ALRED construction and MAC security claims,
+IET Information Security4 (2010), no. 3, 149–157.
+[DR14] , The MAC function Pelican 2.0, IACR Cryptology ePrint Archive
+2005 (2014), 8.
+[GJMN16] R. Granger, P. Jovanovic, B. Mennink, and S. Neves,Improved masking for
+tweakable blockciphers with applications to authenticated encryption, Advances
+in Cryptology - EUROCRYPT 2016 - 35th Annual International Conference on
+the Theory and Applications of Cryptographic Techniques, Vienna, Austria,
+May 8-12, 2016, Proceedings, Part I (Marc Fischlin and Jean-Sébastien
+Coron, eds.), Lecture Notes in Computer Science, vol. 9665, Springer, 2016,
+pp. 263–293.
+Joan Daemen, Seth Hoﬀert, Gilles Van Assche and Ronny Van Keer 37
+[Gro96] L. K. Grover, A fast quantum mechanical algorithm for database search,
+Proceedingsofthe28thAnnualACMSymposiumontheTheoryofComputing,
+May 1996 (Gary L. Miller, ed.), ACM, 1996, pp. 212–219.
+[JNP14] J. Jean, I. Nikolic, and T. Peyrin,Tweaks and keys for block ciphers: The
+TWEAKEY framework, Advances in Cryptology - ASIACRYPT 2014 - 20th
+International Conference on the Theory and Application of Cryptology and
+Information Security, Kaoshiung, Taiwan, R.O.C., December 7-11, 2014,
+Proceedings, PartII(P.SarkarandT.Iwata, eds.), LectureNotesinComputer
+Science, vol. 8874, Springer, 2014, pp. 274–288.
+[Knu94] L. R. Knudsen,Truncated and higher order diﬀerentials, Fast Software En-
+cryption, Proceedings (B. Preneel, ed.), Lecture Notes in Computer Science,
+vol. 1008, Springer, 1994, pp. 196–211.
+[LAAZ11] G. Leander, M. A. Abdelraheem, H. AlKhzaimi, and E. Zenner,A cryptanal-
+ysis of PRINTcipher: The invariant subspace attack, Advances in Cryptology
+- CRYPTO 2011 (P. Rogaway, ed.), Lecture Notes in Computer Science, vol.
+6841, Springer, 2011, pp. 206–221.
+[Log] Real Time Logic, SHARKSSL v2.3.3 crypto library – benchmarks
+with ARM Cortex-M0, https://realtimelogic.com/products/sharkssl/
+Cortex-M0/.
+[MDA17] S. Mella, J. Daemen, and G. Van Assche,New techniques for trail bounds and
+application to diﬀerential trails in Keccak, IACR Trans. Symmetric Cryptol.
+2017 (2017), no. 1, 329–357.
+[SD18] K. Stoﬀelen and J. Daemen,Column parity mixers, IACR Trans. Symmetric
+Cryptol. 2018 (2018), no. 1, 126–159.
+[SS] P. Schwabe and K. Stoﬀelen,AES on the ARM Cortex-M3 and M4, Early
+Symmetric Crypto (ESC), Canach, Luxembourg, January 2017,https://ko.
+stoffelen.nl/talks/20170119-esc.pdf.
+[SYY12] P. Schwabe, B.-Y. Yang, and S.-Y. Yang,SHA-3 on ARM11 processors,
+Progress in Cryptology - AFRICACRYPT 2012 (A. Mitrokotsa and S. Vau-
+denay, eds.), Lecture Notes in Computer Science, vol. 7374, Springer, 2012,
+pp. 324–341.
+[WT85] A. F. Webster and S. E. Tavares,On the design of S-boxes, Advances in
+Cryptology - CRYPTO ’85, Proceedings (H. C. Williams, ed.), Lecture Notes
+in Computer Science, vol. 218, Springer, 1985, pp. 523–534.
+A Constants for any number of rounds
+We here detail how the round constants are constructed and, following the formula, how
+to compute them for any number of rounds.
+The round constantsCi are planes with a single non-zero lane atx= 0. We specify
+the value of the lanes atx= 0 in the round constants as binary polynomialspi(t) where
+the coeﬃcient ofti denotes the bit of the lane with coordinatez= i. We deﬁnepi(t) in
+terms of a polynomialqi(t) and an integersi in the following way:
+pi(t) = tsi
+(
+qi(t) + t3)
+with qi(t) = ti mod 1 + t+ t3 and si = 3i mod 7 .
+38 The design of Xoodoo and Xoofff
+The sequence of polynomialsqi(t) has period7 and the sequence of oﬀsetssi has period
+6. It follows that the sequence of round constantsCi(t) have period42. An instance of
+Xoodoo with nr rounds uses the round constants with indices1 −r to 0. We list the
+round constants with indices−11 to 0 in Table 10.
+Table 10: The round constants with indices -11 to 0
+i q i si ci in hex
+−11 1 + t 3 t3 + t4 + t6 0x00000058
+−10 t+ t2 2 t3 + t4 + t5 0x00000038
+−9 1 + t+ t2 6 t6 + t7 + t8 + t9 0x000003C0
+−8 1 + t2 4 t4 + t6 + t7 0x000000D0
+−7 1 5 t5 + t8 0x00000120
+−6 t 1 t2 + t4 0x00000014
+−5 t2 3 t5 + t6 0x00000060
+−4 1 + t 2 t2 + t3 + t5 0x0000002C
+−3 t+ t2 6 t7 + t8 + t9 0x00000380
+−2 1 + t+ t2 4 t4 + t5 + t6 + t7 0x000000F0
+−1 1 + t2 5 t5 + t7 + t8 0x000001A0
+0 1 1 t1 + t4 0x00000012

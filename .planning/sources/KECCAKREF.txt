@@ -1,0 +1,2594 @@
+The Kђѐѐюј reference
+Guido Bђџѡќћі1
+Joan Dюђњђћ1
+Michaël PђђѡђџѠ2
+Gilles V юћ AѠѠѐѕђ1
+http://keccak.noekeon.org/
+Version 3.0
+January 14, 2011
+1STMicroelectronics
+2NXP Semiconductors
+The Kђѐѐюј reference
+2 /69
+Contents
+1 Kђѐѐюј speciﬁcations 7
+1.1 Conventions and notation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+1.1.1 Bitstrings . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+1.1.2 Padding rules . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+1.2 The Kђѐѐюј- f permutations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+1.3 The sponge construction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1.4 The Kђѐѐюј sponge functions . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+1.5 Security claim for theKђѐѐюј sponge functions . . . . . . . . . . . . . . . . . . 9
+1.6 Parts of the state . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+2 The Kђѐѐюј- f permutations 13
+2.1 Translation invariance . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.2 The Matryoshka structure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+2.3 The step mappings ofKђѐѐюј- f . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+2.3.1 Properties of c . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+2.3.2 Properties of q . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+2.3.3 Properties of p . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+2.3.4 Properties of r . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+2.3.5 Properties of i . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+2.3.6 The order of steps within a round. . . . . . . . . . . . . . . . . . . . . 23
+2.4 Diﬀerential and linear cryptanalysis . . . . . . . . . . . . . . . . . . . . . . . . 23
+2.4.1 A formalism for describing trails adapted toKђѐѐюј- f . . . . . . . . . 23
+2.4.2 The Matryoshka consequence . . . . . . . . . . . . . . . . . . . . . . . . 24
+2.4.3 The column parity kernel . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+2.4.4 One and two-round trails . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+2.4.5 Three-round trails: kernel vortices . . . . . . . . . . . . . . . . . . . . . 26
+2.4.6 Beyond three-round trails: choice ofp . . . . . . . . . . . . . . . . . . . 27
+2.4.7 Truncated trails and diﬀerentials . . . . . . . . . . . . . . . . . . . . . . 29
+2.4.8 Other group operations . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+2.4.9 Diﬀerential and linear cryptanalysis variants . . . . . . . . . . . . . . . 29
+2.5 Solving constrained-input constrained-output (CICO) problems. . . . . . . . 30
+2.6 Strength in keyed mode . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+2.7 Symmetry weaknesses . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+3 Trail propagation in Kђѐѐюј- f 33
+3.1 Relations between diﬀerent kinds of weight. . . . . . . . . . . . . . . . . . . . 33
+3.2 Propagation properties related to the linear stepq . . . . . . . . . . . . . . . . 35
+3.3 Exhaustive trail search . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
+3.3.1 Upper bound for the weight of two-round trails to scan. . . . . . . . . 36
+3 /69
+The Kђѐѐюј reference CONTENTS
+3.3.2 Constructing two-round trails . . . . . . . . . . . . . . . . . . . . . . . 37
+3.3.3 Extending trails . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39
+3.3.4 Linear and diﬀerential trail bounds forw ≤8 . . . . . . . . . . . . . . . 40
+3.4 Tame trails . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+3.4.1 Construction of tame trails . . . . . . . . . . . . . . . . . . . . . . . . . 41
+3.4.2 Bounds for three-round tame trails. . . . . . . . . . . . . . . . . . . . . 42
+3.4.3 Bounds for four-round tame trails . . . . . . . . . . . . . . . . . . . . . 44
+4 Analysis of Kђѐѐюј- f 45
+4.1 Algebraic normal form . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 45
+4.1.1 Statistical tests . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 45
+4.1.2 Symmetric trails . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 46
+4.1.3 Slide aĴacks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 48
+4.2 Solving CICO problems algebraically . . . . . . . . . . . . . . . . . . . . . . . 48
+4.2.1 The goal . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 48
+4.2.2 The supporting soĞware . . . . . . . . . . . . . . . . . . . . . . . . . . . 48
+4.2.3 The experiments . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 49
+4.2.4 Third-party analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 51
+4.3 Properties of Kђѐѐюј- f [25] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 51
+4.3.1 Algebraic normal statistics . . . . . . . . . . . . . . . . . . . . . . . . . 51
+4.3.2 Diﬀerential probability distributions . . . . . . . . . . . . . . . . . . . . 52
+4.3.3 Correlation distributions . . . . . . . . . . . . . . . . . . . . . . . . . . . 53
+4.3.4 Cycle distributions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 57
+4.4 Distinguishers exploiting low algebraic degree . . . . . . . . . . . . . . . . . . 59
+4.4.1 Zero-sum distinguishers . . . . . . . . . . . . . . . . . . . . . . . . . . . 60
+4.4.2 Pre-image aĴacks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 62
+5 Design rationale summary 63
+5.1 Choosing the sponge construction . . . . . . . . . . . . . . . . . . . . . . . . . 63
+5.2 Choosing an iterated permutation . . . . . . . . . . . . . . . . . . . . . . . . . 64
+5.3 Designing the Kђѐѐюј- f permutations . . . . . . . . . . . . . . . . . . . . . . . 64
+5.4 Strength estimation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 65
+4 /69
+Introduction
+In this document we specify, analyze and motivate the design of the cryptographic primitive
+Kђѐѐюј. Based on the sponge construction,Kђѐѐюј inherits many of its features. We gath-
+ered all our analysis on sponge functions in a separate document titledCryptographic sponge
+functions [8]. Reading it is a requisite for understanding the usability and security properties
+of Kђѐѐюј and the security requirements forKђѐѐюј- f , the permutation used inKђѐѐюј.
+Other documents and ﬁles are of interest to the readers of thisKђѐѐюј reference.
+• This document comes with a set of ﬁles containing results of tests and experiments,
+available fromhttp://keccak.noekeon.org/.
+• The implementation aspects are covered in a separate documentKђѐѐюј implementation
+overview, which treats soĞware and hardware techniques and results, with or without
+protection against side-channel aĴacks [10].
+• Also, KђѐѐюјTќќљѠ, an open-source soĞware aimed at helping analyzeKђѐѐюј [9].
+This document is organized as follows. Chapter1 contains the formal speciﬁcations of
+Kђѐѐюј. The subsequent three chapters are dedicated to theKђѐѐюј- f permutations:
+• Chapter 2 explains the properties of the building blocks ofKђѐѐюј- f and motivates the
+choices made in its design.
+• Chapter 3 is dedicated to trail propagation inKђѐѐюј- f .
+• Chapter 4 covers all other analysis ofKђѐѐюј- f .
+Finally, Chapter5 summarizes the design choices behindKђѐѐюј and contains our estimation
+of the safety margin ofKђѐѐюј.
+Acknowledgments
+We wish to thank (in no particular order) Charles Bouillaguet and Pierre-Alain Fouque for
+discussing their results later published in [13] with us, Dmitry Khovratovich for discussing
+with us the results published in [29] and for his analysis in [1], Jean-Philippe Aumasson for
+his analysis in [1] and [2], Joel Lathrop for his analysis in [34] and Willi Meier for his analysis
+in [2], Anne Canteaut and Christina Boura for their analysis in [15, 14, 16], Christophe De
+Cannière for his analysis in [16], Paweł Morawiecki and Marian Srebrny for their analysis
+in [36], Dan Bernstein for his analysis in [3], Ming Duan and Xuejia Lai for their analysis in
+[26], Yves Moulart, Bernard Kasser and all our colleagues at STMicroelectronics and NXP
+Semiconductors for creating the working environment in which we could work on this. Fi-
+nally we would like to thankAgentschap voor Innovatie door Wetenschap en Technologie(IWT)
+for funding two of the authors (Joan Daemen and Gilles Van Assche).
+5 /69
+The Kђѐѐюј reference CONTENTS
+6 /69
+Chapter 1
+Kђѐѐюј speciﬁcations
+Kђѐѐюј (pronounced [kɛtʃak]) is a family of sponge functions [8] that use as a building block a
+permutation from a set of 7 permutations. In this chapter, we introduce our conventions and
+notation, specify the 7 permutations underlyingKђѐѐюј and theKђѐѐюј sponge functions.
+We also give conventions for naming parts of theKђѐѐюј state.
+1.1 Conventions and notation
+We denote the absolute value of a real numberx is denoted by|x|.
+1.1.1 Bitstrings
+We denote the length in bits of a bitstringM by |M|. A bitstringM can be considered as a
+sequence of blocks of some ﬁxed lengthx, where the last block may be shorter. The number
+of blocks ofM is denoted by|M|x. The blocks ofM are denoted byMi and the index ranges
+from 0 to |M|x −1.
+We denote the set of all bitstrings including the empty string byZ∗
+2 and excluding the
+empty string byZ+
+2 . The set of inﬁnite-length bitstrings is denoted byZ¥
+2 .
+1.1.2 Padding rules
+For the padding rule we use the following notation: the padding of a messageM to a se-
+quence ofx-bit blocks is denoted byM||pad[x](|M|). This notation highlights that we only
+consider padding rules that append a bitstring that is fully determined by the bitlength ofM
+and the block lengthx. We may omit[x], (|M|) or both if their value is clear from the context.
+Kђѐѐюј makes use of themulti-rate padding.
+Deﬁnition 1. Multi-rate padding, denoted bypad10∗1, appends a single bit 1 followed by the
+minimum number of bits 0 followed by a single bit 1 such that the length of the result is a multiple of
+the block length.
+Multi-rate padding appends at least 2 bits and at most the number of bits in a block plus
+one.
+1.2 The Kђѐѐюј- f permutations
+There are 7Kђѐѐюј- f permutations, indicated by Kђѐѐюј- f [b], where b = 25 ×2ℓ and ℓ
+ranges from 0 to 6.Kђѐѐюј- f [b] is a permutation overZb
+2, where the bits ofs are numbered
+7 /69
+The Kђѐѐюј reference 1. Kђѐѐюј speciﬁcations
+from 0 to b −1. We callb the width of the permutation.
+The permutationKђѐѐюј- f [b] is described as a sequence of operations on a statea that
+is a three-dimensional array of elements ofGF(2), namely a[5][5][w], with w = 2ℓ. The
+expression a[x][y][z] with x, y ∈ Z5 and z ∈ Zw, denotes the bit in position(x, y, z). It
+follows that indexing starts from zero. The mapping between the bits ofs and those ofa is
+s[w(5y + x) +z] =a[x][y][z]. Expressions in thex and y coordinates should be taken modulo
+5 and expressions in thez coordinate modulow. We may sometimes omit the[z] index, both
+the [y][z] indices or all three indices, implying that the statement is valid for all values of the
+omiĴed indices.
+Kђѐѐюј- f [b] is an iterated permutation, consisting of a sequence ofnr rounds R, indexed
+with ir from 0 tonr −1. A round consists of ﬁve steps:
+R = i ◦c ◦p ◦r ◦q, with
+q : a[x][y][z] ←a[x][y][z] +
+4
+å
+y′=0
+a[x −1][y′][z] +
+4
+å
+y′=0
+a[x + 1][y′][z −1],
+r : a[x][y][z] ←a[x][y][z −(t + 1)(t + 2)/2],
+with t satisfying 0 ≤t < 24 and
+(0 1
+2 3
+)t (1
+0
+)
+=
+(x
+y
+)
+in GF(5)2×2,
+or t = −1 if x = y = 0,
+p : a[x][y] ←a[x′][y′], with
+(x
+y
+)
+=
+(0 1
+2 3
+)(x′
+y′
+)
+,
+c : a[x] ←a[x] + (a[x + 1] +1)a[x + 2],
+i : a ←a + RC[ir].
+The additions and multiplications between the terms are inGF(2). With the exception of
+the value of the round constantsRC[ir], these rounds are identical. The round constants are
+given by (with the ﬁrst index denoting the round number)
+RC[ir][0][0][2j −1] =rc[j + 7ir] for all0 ≤j ≤ℓ,
+and all other values ofRC[ir][x][y][z] are zero. The valuesrc[t] ∈GF(2) are deﬁned as the
+output of a binary linear feedback shiĞ register (LFSR):
+rc[t] =
+(
+xt mod x8 + x6 + x5 + x4 + 1
+)
+mod x in GF(2)[x].
+The number of roundsnr is determined by the width of the permutation, namely,
+nr = 12 + 2ℓ.
+1.3 The sponge construction
+The sponge construction [8] builds a functionѠѝќћєђ[ f , pad,r] with variable-length input
+and arbitrary output length using a ﬁxed-length permutation (or transformation)f , a padding
+rule “pad” and a parameterbitrate r. The permutationf operates on a ﬁxed number of bits,
+the width b. The valuec = b −r is called thecapacity.
+For the padding rule we use the following notation: the padding of a messageM to a
+sequence ofx-bit blocks is denoted byM||pad[x](|M|), where|M|is the length ofM in bits.
+Initially, the state has value0b, called theroot state. The root state has a ﬁxed value and
+shall never be considered as an input. This is crucial for the security of the sponge construc-
+tion.
+8 /69
+1. Kђѐѐюј speciﬁcations The Kђѐѐюј reference
+Algorithm 1The sponge constructionѠѝќћєђ[ f , pad,r]
+Require: r < b
+Interface: Z = sponge(M, ℓ) with M ∈Z∗
+2, integerℓ >0 and Z ∈Zℓ
+2
+P = M||pad[r](|M|)
+s = 0b
+for i = 0 to |P|r −1 do
+s = s ⊕(Pi||0b−r)
+s = f (s)
+end for
+Z = ⌊s⌋r
+while |Z|rr < ℓdo
+s = f (s)
+Z = Z||⌊s⌋r
+end while
+return ⌊Z⌋ℓ
+1.4 The Kђѐѐюј sponge functions
+We deﬁne the sponge function denoted byKђѐѐюј[r, c] by applying the sponge construction
+as speciﬁed in Algorithm1 with Kђѐѐюј- f [r + c], multi-rate padding and the bitrater.
+Kђѐѐюј[r, c] , Ѡѝќћєђ[Kђѐѐюј- f [r + c], pad10∗1, r].
+This speciﬁes Kђѐѐюј[r, c] for any combination ofr > 0 and c such that r + c is a width
+supported by theKђѐѐюј- f permutations.
+The default value forr is 1600 −c and the default value forc is 576:
+Kђѐѐюј[c] ,Kђѐѐюј[r = 1600 −c, c],
+Kђѐѐюј[] ,Kђѐѐюј[c = 576].
+1.5 Security claim for theKђѐѐюј sponge functions
+For each of the supported parameter values, we make aﬂat sponge claim[8, Section “The ﬂat
+sponge claim”].
+Claim 1. The expected success probability of any aĴack againstKђѐѐюј[r, c] with a workload equiv-
+alent toN calls toKђѐѐюј- f [r + c] or its inverse shall be smaller than or equal to that for a random
+oracle plus
+1 −exp
+(
+−N(N + 1)2−(c+1)
+)
+.
+We exclude hereweaknesses due to the mere fact thatKђѐѐюј- f [r + c] can be described com-
+pactly and can be eﬃciently executed, e.g., the so-called random oracle implementation impossibility
+[8, Section “The impossibility of implementing a random oracle”].
+Note that the claimed capacity is equal to the capacity used by the sponge construction.
+9 /69
+The Kђѐѐюј reference 1. Kђѐѐюј speciﬁcations
+1.6 Parts of the state
+In this subsection, we deﬁne names of parts of theKђѐѐюј- f state, as illustrated in Figure1.1.
+This naming convention may help use a common terminology when analyzing or describing
+properties ofKђѐѐюј- f .
+The one-dimensional parts are:
+• A row is a set of 5 bits with constanty and z coordinates.
+• A column is a set of 5 bits with constantx and z coordinates.
+• A lane is a set ofw bits with constantx and y coordinates.
+The two-dimensional parts are:
+• A sheet is a set of5w bits with constantx coordinate.
+• A plane is a set of5w bits with constanty coordinate.
+• A slice is a set of25 bits with constantz coordinate.
+10 /69
+1. Kђѐѐюј speciﬁcations The Kђѐѐюј reference
+Figure 1.1:Naming conventions for parts of theKђѐѐюј- f state
+11 /69
+The Kђѐѐюј reference 1. Kђѐѐюј speciﬁcations
+12 /69
+Chapter 2
+The Kђѐѐюј- f permutations
+This chapter discusses the properties of theKђѐѐюј- f permutations that are relevant for the
+security ofKђѐѐюј. AĞer discussing some structural properties, we treat the diﬀerent map-
+pings that make up the round function. This is followed by a discussion of diﬀerential and
+linear cryptanalysis to motivate certain design choices. Subsequently, we brieﬂy discuss the
+applicability of a number of cryptanalytic techniques toKђѐѐюј- f .
+2.1 Translation invariance
+Let b = t(a) with t a mapping that translates the state by 1 bit in the direction of thez
+axis. For 0 < z < w we haveb[x][y][z] = a[x][y][z −1] and forz = 0 we haveb[x][y][0] =
+a[x][y][w −1]. Translating overt bits givesb[x][y][z] = a[x][y][(z −t) mod w]. In general,
+a translationt[tx][ty][tz] can be characterized by a vector with three components(tx, ty, tz)
+and this gives:
+b[x][y][z] =a[(x −tx) mod 5][(y −ty) mod 5][(z −tz) mod w] .
+Now we can deﬁnetranslation-invariance.
+Deﬁnition 2. A mappinga is translation-invariant in direction(tx, ty, tz) if
+t[tx][ty][tz] ◦a = a ◦t[tx][ty][tz] .
+Let us now deﬁne thez-period of a state.
+Deﬁnition 3. The z-period of a statea is the smallest integerd > 0 such that:
+∀x, y ∈Z5 and ∀z ∈Zw : a[x][y][(z + d) mod w] =a[x][y][z] .
+13 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+It is easy to prove the following properties:
+• The z-period of a state dividesw.
+• A statea with z-period d can be represented by the lane sizew, itsz-period d, and itsd
+ﬁrst slicesa[.][.][z] with z < d. We call this thez-reduced representationof a.
+• For a givenw, thez-period deﬁnes a partition on the states.
+• The number of states withz-period d is zero ifd does not dividew and fully determined
+by d only, otherwise.
+• For w values that are a power of two (the only ones allowed inKђѐѐюј), the state space
+consists of the states withz-period 1, 2,22 up to2ℓ = w.
+• The number of states withz-period 1 is225. The number of states withz-period 2d for
+d ≥1 is 22d25 −22d−125.
+• There is a one-to-one mapping between the statesa′with z-period d for any lane length
+w that is a multiple ofd and the statesa with z-period d of lane lengthd: a′[.][.][z] =
+a[.][.][z mod d].
+• If a is translation-invariant in the direction of thez axis, the z-period of a(a) divides
+the z-period ofa. Moreover, thez-reduced state ofa(a) is independent ofw.
+• If a is injective and translation-invariant in the direction of thez axis, a preserves the
+z-period.
+2.2 The Matryoshka structure
+With the exception ofi, all step mappings of theKђѐѐюј- f round function are translation-
+invariant in the direction of thez axis. This allows the introduction of a size parameter that
+can easily be varied without having to re-specify the step mappings. As in several types
+of analysis abstraction can be made of the addition of constants, this allows the re-use of
+structures for small width versions as symmetric structures for large width versions. We
+refer to Section2.4.2 for an example. As the allowed lane lengths are all powers of two,
+every smaller lane length divides a larger lane length. So, as the propagation structures for
+smaller width version are embedded as symmetric structure in larger width versions, we call
+it Matryoshka, aĞer the well-known Russian dolls.
+2.3 The step mappings ofKђѐѐюј- f
+A round is composed from a sequence of dedicated mappings, each one with its particular
+task. The steps have a simple description leading to a speciﬁcation that is compact and in
+which no trapdoor can be hidden.
+Mapping thelanes of the state, i.e., the one-dimensional sub-arrays in the direction of the
+z axis, onto CPU words, results in simple and eﬃcient soĞware implementation for the step
+mappings. We start the discussion of each of the step mappings by pseudocode where the
+variables a[x, y] represent the old values of lanes andA[x, y] the new values. The operations
+on the lanes are limited to bitwise Boolean operations and rotations. In our pseudocode we
+denote byROT(a, d) a translation ofa over d bits where bit in positionz is mapped to position
+z + d mod w. If the CPU word length equals the lane length, the laĴer can be implemented
+14 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+Figure 2.1:c applied to a single row
+with rotate instructions. Otherwise a number of shiĞ and bitwise Boolean instructions must
+be combined or bit-interleaving can be applied [10].
+In this section we discuss the diﬀerence propagation and input-output correlation prop-
+erties of the diﬀerent mappings. We refer to [8, Sections “Diﬀerential cryptanalysis” and
+“Linear cryptanalysis”] for an introduction of the terminology and concepts.
+2.3.1 Properties of c
+Figure 2.1 contains a schematic representation ofc and Algorithm2 its pseudocode.
+Algorithm 2c
+for y = 0 to 4do
+for x = 0 to 4do
+A[x, y] =a[x, y] ⊕((NOT a[x + 1, y]) AND a[x + 2, y])
+end for
+end for
+c is the only nonlinear mapping inKђѐѐюј- f . Without it, theKђѐѐюј- f round function
+would be linear. It can be seen as the parallel application of5w S-boxes operating on5-
+bit rows. c is translation-invariant in all directions and has algebraic degree two. This has
+consequences for its diﬀerential propagation and correlation properties. We discuss these
+in short in Sections2.3.1.1 and Section 2.3.1.2 and refer to [20, Section 6.9] for an in-depth
+treatment of these aspects.
+c is invertible but its inverse is of a diﬀerent nature thanc itself. For example, it does not
+have algebraic degree 2. We refer to [20, Section 6.6.2] for an algorithm for computing the
+inverse ofc.
+c is simply the complement of the nonlinear function calledg, that is used inRюёіќGюѡҼћ
+[4], Pюћюњю [21] and several other ciphers [20]. We have chosen it for its simple nonlinear
+propagation properties, its simple algebraic expression and its low gate count: one XOR, one
+AND and one NOT operation per state bit.
+15 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+2.3.1.1 Diﬀerential propagation properties
+Thanks to the fact thatc has algebraic degree 2, for a given input diﬀerencea′, the space of
+possible output diﬀerences forms a linear aﬃne variety [19] with2wr(a′,b′) elements. More-
+over, the cardinality of a diﬀerential(a′, b′) over c is either zero or a power of two. The
+corresponding (restriction) weightwr(a′, b′) =wr(a′) is an integer that only depends on the
+input diﬀerence a′. A possible diﬀerential imposeswr(a′) linear conditions on the bits of
+input a.
+We now provide a recipe for constructing the aﬃne variety of output diﬀerences corre-
+sponding to an input diﬀerence, applied to a single row. Indices shall be taken modulo 5 (or
+in general, the length of the register). We denote byd(i) a paĴern with a single nonzero bit
+in positioni and d(i, j) a paĴern with only non-zero bits in positionsi and j.
+We can characterize the linear aﬃne variety of the possible output diﬀerences by an oﬀset
+A′and a basis⟨cj⟩. The oﬀset isA′= c(a′). We construct the basis⟨cj⟩by adding vectors to
+it while running over the bit positionsi:
+• If a′
+ia′
+i+1a′
+i+2a′
+i+3 ∈{·100, ·11·, 001·}, extend the basis withd(i).
+• If a′
+ia′
+i+1a′
+i+2a′
+i+3 = ·101, extend the basis withd(i, i + 1).
+This algorithm is implemented inKђѐѐюјTќќљѠ [9]. The (restriction) weight of a diﬀerence
+is equal to its Hamming weight plus the number of paĴerns 001. The all-1 input diﬀerence
+results in the aﬃne variety of odd-parity paĴerns and has weight 4 (or in general the length
+of the register minus 1). Among the 31 non-zero diﬀerences, 5 have weight 2, 15 weight 3
+and 11 weight 4.
+A diﬀerential(a′, b′) leads to a number of conditions on the bits of the absolute valuea.
+Let B = A′⊕b′= c(a′) ⊕b′, then we can construct the conditions ona by running over each
+bit positioni:
+• a′
+i+1a′
+i+2 = 10 imposes the conditionai+2 = Bi .
+• a′
+i+1a′
+i+2 = 11 imposes the conditionai+1 ⊕ai+2 = Bi .
+• a′
+i+1a′
+i+2 = 01 imposes the conditionai+1 = Bi .
+The generation of these conditions given a diﬀerential trail is implemented inKђѐѐюјTќќљѠ
+[9].
+2.3.1.2 Correlation properties
+Thanks to the fact thatc has algebraic degree 2, for a given output masku, the space of
+input mask v whose parities have a non-zero correlation with the parity determined byu
+form a linear aﬃne variety. This variety has2wc(v,u) elements, with wc(v, u) = wc(u) the
+(correlation) weight function, which is an even integer that only depends on the output mask
+u. Moreover, the magnitude of a correlation overc is either zero or equal to2−wc(u)/2.
+We now provide a recipe for constructing the aﬃne variety of input masks corresponding
+to an output mask, applied to a single row. Indices shall again be taken modulo 5 (or in
+general, the length of the register). We use the term1-run of lengthℓ to denote a sequence of
+ℓ 1-bits preceded and followed by a 0-bit.
+16 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+We characterize the linear aﬃne variety with an oﬀsetU′and a basis⟨cj⟩and build the
+oﬀset and basis by running over the output mask. First initialize the oﬀset to 0 and the basis
+to the empty set. Then for each of the 1-runsasas+1 . . .as+ℓ−1 do the following:
+• Add a 1 in positions of the oﬀsetU′.
+• Set i = s, the starting position of the 1-run.
+• As long asaiai+1 = 11 extend the basis withd(i + 1, i + 3) and d(i + 2), add 2 toi and
+continue.
+• If aiai+1 = 10 extend the basis withd(i + 1) and d(i + 2).
+This algorithm is implemented inKђѐѐюјTќќљѠ [9]. The (correlation) weight of a mask is
+equal to its Hamming weight plus the number of 1-runs of odd length. The all-1 output
+mask results in the aﬃne variety of odd-parity paĴerns and has weight 4 (or in general the
+length of the register minus 1). Of the 31 non-zero mask, 10 have weight 2 and 21 have weight
+4.
+2.3.2 Properties of q
+Figure 2.2 contains a schematic representation ofq and Algorithm3 its pseudocode.
+Algorithm 3q
+for x = 0 to 4do
+C[x] =a[x, 0]
+for y = 1 to 4do
+C[x] =C[x] ⊕a[x, y]
+end for
+end for
+for x = 0 to 4do
+D[x] =C[x −1] ⊕ROT(C[x + 1], 1)
+for y = 0 to 4do
+A[x, y] =a[x, y] ⊕D[x]
+end for
+end for
+The q mapping is linear and aimed at diﬀusion and is translation-invariant in all direc-
+tions. Its eﬀect can be described as follows: it adds to each bita[x][y][z] the bitwise sum of
+the parities of two columns: that ofa[x −1][·][z] and that ofa[x + 1][·][z −1]. Withoutq, the
+Kђѐѐюј- f round function would not provide diﬀusion of any signiﬁcance. Theq mapping
+has a branch number as low as 4 but provides a high level of diﬀusion on the average. We
+refer to Section2.4.3 for a more detailed treatment of this.
+In fact, we have chosenq for its high average diﬀusion and low gate count: two XORs
+per bit. Thanks to the interaction withc each bit at the input of a round potentially aﬀects 31
+bits at its output and each bit at the output of a round depends on 31 bits at its input. Note
+that without the translation of one of the two sheet parities this would only be 25 bits.
+2.3.2.1 The inverse mapping
+Computing the inverse ofq can be done by adopting a polynomial notation. The state can
+be represented by a polynomial in the three variablesx, y and z with binary coeﬃcients.
+17 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+x
+y z z
+Figure 2.2:q applied to a single bit
+Here the coeﬃcient of the monomialxiyjzk denotes the value of bita[i][j][k]. The exponents
+i and j range from 0 to 4 and the exponentk ranges from 0 to w −1. In this representa-
+tion a translationt[tx][ty][tz] corresponds with the multiplication by the monomialxtx yty ztz
+modulo the three polynomials1 + x5, 1 + y5 and 1 + zw. More exactly, the polynomial rep-
+resenting the state is an element of a polynomial quotient ring deﬁned by the polynomial
+ring overGF(2)[x, y, z] modulo the ideal generated by
+⟨
+1 + x5, 1+ y5, 1+ zw⟩
+. A translation
+corresponds with multiplication byxtx yty ztz in this quotient ring. Thez-period of a statea
+is d if d is the smallest nonzero integer such that1 + zd divides a. Let a′be the polynomial
+corresponding to thez-reduced state ofa, thena can be wriĴen as
+a = (1 + zd + z2d + . . .+ zw−d) ×a′= 1 + zw
+1 + zd ×a′.
+When the state is represented by a polynomial, the mappingq can be expressed as the
+multiplication (in the quotient ring deﬁned above) by the following polynomial :
+1 + ¯y
+(
+x + x4z
+)
+with ¯y =
+4
+å
+i=0
+yi = 1 + y5
+1 + y . (2.1)
+The inverse ofq corresponds with the multiplication by the polynomial that is the inverse
+of polynomial (2.1). For w = 64, we have computed this with the open source mathematics
+soĞware SAGE [38] aĞer doing a number of manipulations. First, we assume it is of the form
+1 + ¯yQ with Q a polynomial inx and z only:
+(
+1 + ¯y(x + x4z)
+)
+×(1 + ¯yQ) = 1 mod
+⟨
+1 + x5, 1+ y5, 1+ z64
+⟩
+.
+Working this out and using¯y2 = ¯y yields
+Q = 1 + (1 + x + x4z)
+−1
+mod
+⟨
+1 + x5, 1+ z64
+⟩
+.
+The inverse of1 + x + x4z can be computed with a variant of the extended Euclidian algo-
+rithm for polynomials in multiple variables. At the time of writing this was unfortunately
+18 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+not supported by SAGE. Therefore, we reduced the number of variables to one by using the
+change of variablest = x−2z. We havex = t192 and x4z = t193, yielding:
+Q = 1 + (1 + t192 + t193)
+−1
+mod (1 + t320) .
+By performing a change in variables fromt to x and z again, Q is obtained.
+For w < 64, the inverse can simply be found by reducingQ modulo 1 + zw. For w = 1,
+the inverse ofq reduces to1 + ¯y(x2 + x3).
+For all values ofw = 2ℓ, the Hamming weight of the polynomial ofq−1 is of the orderb/2.
+This implies that applyingq−1 to a diﬀerence with a single active bit results in a diﬀerence
+with about half of the bits active. Similarly, a mask at the output ofq−1 determines a mask
+at its input with about half of the bits active.
+2.3.2.2 Propagation of linear masks
+A linear Boolean function deﬁned by a masku at the output of a linear function has non-zero
+correlation to a single linear Boolean function at its input. Given the matrix representation
+of the linear function, it is easy to express the relation between the input and output mask.
+Given b = Ma, we have:
+uTb = uT Ma = (MTu)Ta .
+It follow thatuTb is correlated tovTa with v = MTu with correlation 1. We say that a mask
+u at the output of a linear mappingM propagates to v = MTu at its input. We denote the
+mapping deﬁned byMT the transpose of M.
+As q is linear, we havev = qT(u), withu a mask at the output ofq, v a mask at its input
+and whereqT the transpose ofq. We now determine the expression for the transpose ofq in
+the formalism of [5]. Letb = q(a) and
+å
+x,y,z
+u[x][y][z]b[x][y][z] = å
+x,y,z
+v[x][y][z]a[x][y][z] .
+Filling in the value ofb[x][y][z] from the speciﬁcation ofq in [5] and working this out yields:
+å
+x,y,z
+u[x][y][z]b[x][y][z] =
+å
+x,y,z
+(
+u[x][y][z] +å
+y′
+u[x + 1][y′][z] +å
+y′
+u[x −1][y′][z + 1]
+)
+a[x][y][z]
+It follows that:
+v = qT(u) ⇔v[x][y][z] =u[x][y][z] +å
+y′
+u[x + 1][y′][z] +å
+y′
+u[x −1][y′][z + 1] (2.2)
+In polynomial notation the application ofqT is a multiplication by
+1 + ¯y
+(
+x4 + xz4
+)
+.
+2.3.3 Properties of p
+Figure 2.3 contains a schematic representation ofp and Algorithm4 its pseudocode.
+Note that in an eﬃcient programp can be implemented implicitly by addressing.
+19 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+Algorithm 4p
+for x = 0 to 4do
+for y = 0 to 4do(X
+Y
+)
+=
+(0 1
+2 3
+)(x
+y
+)
+A[X, Y] =a[x, y]
+end for
+end for
+Figure 2.3:p applied to a slice. Note thatx = y = 0 is depicted at the center of the slice.
+20 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+The mapping p is a transposition of the lanes that provides dispersion aimed at long-
+term diﬀusion. Without it,Kђѐѐюј- f would exhibit periodic trails of low weight.p operates
+in a linear way on the coordinates(x, y): the lane in position(x, y) goes to position(x, y)MT,
+with M =
+(0 1
+2 3
+)
+a 2 by 2 matrix with elements inGF(5). It follows that the lane in the origin
+(0, 0) does not change position. Asp operates on the slices independently, it is translation-
+invariant in thez-direction. The inverse ofp is deﬁned byM−1.
+Within a slice, we can deﬁne 6 axes, where each axis deﬁnes adirection that partitions the
+25 positions of a slice in 5 sets:
+• x axis: rows or planes;
+• y axis: columns or sheets;
+• y = x axis: rising 1-slope;
+• y = −x axis: falling 1-slope;
+• y = 2x axis: rising 2-slope;
+• y = −2x axis: falling 2-slope;
+The x axis is just the row through the origin, they axis is the column through the origin, etc.
+There are many matrices that could be used forp. In fact, the invertible 2 by 2 matrices
+with elements inGF(5) with the matrix multiplication form a group with 480 elements con-
+taining elements of order 1, 2, 3, 4, 5, 6, 8, 10, 12, 20 and 24. Each of these matrices deﬁnes
+a permutation on the 6 axes, and equivalently, on the 6 directions. Thanks to its linearity,
+the 5 positions on an axis are mapped to 5 positions on an axis (not necessarily the same).
+Similarly, the 5 positions that are on a line parallel to an axis, are mapped to 5 positions on
+a line parallel to an axis.
+For p we have chosen a matrix that deﬁnes a permutation of the axes where they are in a
+single cycle of length 6 for reasons explained in Section2.4.6. Implementing p in hardware
+requires no gates but results in wiring.
+As p is a linear function, a masku at the output propagates to the maskv at the input
+with v = pT(u) (see Section2.3.2.2). Moreover, we havepT = p−1, yieldingu = p(v). This
+follows directly from the fact thatp is a bit transposition and that subsequently its matrix is
+orthogonal: MT M = I.
+2.3.4 Properties of r
+Figure 2.4 contains a schematic representation ofr, while Table2.1 lists its translation oﬀsets.
+Algorithm 5 gives pseudocode forr.
+Algorithm 5r
+A[0, 0] =a[0, 0](x
+y
+)
+=
+(1
+0
+)
+for t = 0 to 23do
+A[x, y] =ROT(a[x, y], (t + 1)(t + 2)/2)(x
+y
+)
+=
+(0 1
+2 3
+)(x
+y
+)
+end for
+21 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+Figure 2.4:r applied to the lanes. Note thatx = y = 0 is depicted at the center of the slices.
+x = 3 x = 4 x = 0 x = 1 x = 2
+y = 2 153 231 3 10 171
+y = 1 55 276 36 300 6
+y = 0 28 91 0 1 190
+y = 4 120 78 210 66 253
+y = 3 21 136 105 45 15
+Table 2.1: The oﬀsets ofr
+The mapping r consists of translations within the lanes aimed at providing inter-slice
+dispersion. Without it, diﬀusion between the slices would be very slow. It is translation-
+invariant in thez-direction. The inverse ofr is the set of lane translations where the constants
+are the same but the direction is reversed.
+The 25 translation constants are the values deﬁned byi(i + 1)/2 modulo the lane length.
+It can be proven that for anyℓ, the sequencei(i + 1)/2 mod 2ℓ has period2ℓ+1 and that any
+sub-sequence withn2ℓ ≤i < (n + 1)2ℓ runs through all values ofZ2ℓ . From this it follows
+that for lane lengths 64 and 32, all translation constants are diﬀerent. For lane length 16,
+9 translation constants occur twice and 7 once. For lane lengths 8, 4 and 2, all translation
+constants occur equally oĞen except the translation constant 0, that occurs one time more
+oĞen. For the mapping of the (one-dimensional) sequence of translation constants to the
+lanes arranged in two dimensionsx and y we make use of the matrix ofp. This groups
+the lanes in a cycle of length 24 on the one hand and the origin on the other. The non-zero
+translation constants are allocated to the lanes in the cycle, starting from(1, 0).
+r is very similar to the transpositions used inRюёіќGюѡҼћ[4], Pюћюњю [21] and Sѡђѝ-
+RієѕѡUѝ [20]. In hardware its computational cost corresponds to wiring.
+As r is a linear function, a masku at the output propagates to the maskv at the input
+with v = rT(u) (see Section2.3.2.2). Moreover, we haverT = r−1, yieldingu = r(v). This
+follows directly from the fact thatr is a bit transposition and that subsequently its matrix is
+orthogonal: MT M = I.
+2.3.5 Properties of i
+The mappingi consists of the addition of round constants and is aimed at disrupting sym-
+metry. Without it, the round function would be translation-invariant in thez direction and
+all rounds would be equal makingKђѐѐюј- f subject to aĴacks exploiting symmetry such as
+slide aĴacks. The number ofactive bit positionsof the round constants, i.e., the bit positions
+22 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+in which the round constant can diﬀer from 0, isℓ + 1. As ℓ increases, the round constants
+add more and more asymmetry.
+The bits of the round constants are diﬀerent from round to round and are taken as the
+output of a maximum-length LFSR. The constants are only added in a single lane of the state.
+Because of this, the disruption diﬀuses throughq and c to all lanes of the state aĞer a single
+round.
+In hardware, the computational cost ofi is a few XORs and some circuitry for the gener-
+ating LFSR. In soĞware, it is a single bitwise XOR instruction.
+2.3.6 The order of steps within a round
+The reason why the round function starts withq is due to the usage ofKђѐѐюј- f in the sponge
+construction. It provides a mixing between the inner and outer parts of the state. Typically,
+the inner part is the part that is unknown to, or not under the control of the adversary. The
+order of the other step mappings is arbitrary.
+2.4 Diﬀerential and linear cryptanalysis
+In this section we discuss the diﬀerential and linear cryptanalysis aspects that have deter-
+mined our choice of step mappings. For a more in-depth discussion on the propagation of
+diﬀerential and linear trails, we refer to Chapter3.
+2.4.1 A formalism for describing trails adapted toKђѐѐюј- f
+The propagation of diﬀerential and linear trails inKђѐѐюј- f is very similar. Therefore we
+introduce a formalism for the description of trails that is to a large extent common for both
+types of trails. Diﬀerential trails describe the propagation of diﬀerences through the rounds
+of Kђѐѐюј- f and linear trails the propagation of masks. We will address both with the term
+paĴerns.
+As explained in Section2.3.1, for a given diﬀerencea at the input ofc, the set of possible
+output diﬀerences is a linear aﬃne variety. For a given maska at the output of c, the set
+of input masks with non-zero correlation to the given output mask is also a linear aﬃne
+variety. Hence, to make the paĴern propagation similar, for diﬀerential trails we consider
+the propagation from input to output and for linear trails we consider the propagation from
+output to input.
+A diﬀerence at the input ofc is denoted byai and we call it a paĴernbefore c (in roundi).
+A diﬀerence at the output ofc is denoted bybi and we call it the paĴernaĞer c. Similarly, a
+mask at the output ofc is denoted byai and we call it a paĴernbefore c. A mask at the input
+of c is denoted bybi and we call it the paĴernaĞer c. In both cases we denote the linear
+aﬃne variety of possible paĴerns aĞerc compatible withai by B(ai).
+Thanks to the fact thatc is the only nonlinear step in the round, a diﬀerencebi aĞer c fully
+determines the diﬀerenceai+1 before c of the following round: we haveai = p(r(q(bi))).
+We denote the linear part of the round byl, so:
+l = p ◦r ◦q .
+Similarly, a maskbi aĞer c fully determines the maskai+1 before thec of the following round.
+Now we haveai = qT(rT(pT(bi))) = qT(r−1(p−1(bi))). Here again, we denote this linear
+transformation byl, so in this case we have:
+l = qT ◦r−1 ◦p−1 .
+23 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+Note that the wayB(ai) is formed depends on whether we consider diﬀerential or linear
+trails. Moreover, the meaning ofl depends on whether we consider diﬀerential or linear
+trails.
+Consider now the set obtained by applyingl to all elements ofB(ai). Thanks to the
+linearity ofl this is again a linear aﬃne variety and we denote it byA(ai).
+We now deﬁne aℓ-round trail Q by a sequence of state paĴernsai with 0 ≤i ≤ℓ. Every
+ai denotes a state paĴern beforec and ai must becompatible withai−1, i.e.,ai ∈A(ai−1). We
+use bi to denote the paĴerns aĞerc, i.e.,ai+1 = l(bi). So we have:
+a0
+c
+→b0
+l→a1
+c
+→b1
+l→a2
+c
+→b2
+l→. . .aℓ. (2.3)
+The restriction weight of a diﬀerential trailQ is the number of conditions it imposes on
+the absolute values on the members of a right pair. It is given by
+wr(Q) = å
+0≤i<ℓ
+wr(ai) .
+Note that the restriction weight of the last diﬀerenceaℓ does not contribute to that of the
+trail. Hence the weight of anyℓ-round trail is fully determined by itsℓ ﬁrst diﬀerences. For
+weight values well below the width of the permutation, a good approximation for the DP of
+a trail is given by DP(Q) ≈2−wr(Q). If wr(Q) is near the widthb, this approximation is no
+longer valid due to the fact that the cardinality of a trail is an integer. While the mappingi
+has no role in the existence of diﬀerential trails, it does in general impact their DP . For trails
+with weight above the width, it can make the diﬀerence between having cardinality zero or
+non-zero.
+The correlation weight of a linear trail over an iterative mapping determines its contri-
+bution to a correlation between output and input deﬁned by the masksa0 and aℓ. The corre-
+lation weight of a trail is given by
+wc(Q) = å
+0≤i<ℓ
+wc(ai) .
+Here also the correlation weight ofaℓ does not contribute and hence the weight of anyℓ-
+round trail is fully determined by itsℓ ﬁrst masks. The magnitude of the correlation contri-
+bution of a trail is given by2−wc(Q). The sign is the product of the correlations over thec and
+i steps in the trail. The sign of the correlation contribution of a linear trail hence depends on
+the round constants.
+In our analysis we focus on the weights of trails. As the weight of aℓ-round trail is
+determined by its ﬁrstℓ paĴerns, in the following we will ignore the last paĴern and describe
+ℓ-round trail with onlyℓ paĴerns ai, namelya0 to aℓ−1.
+2.4.2 The Matryoshka consequence
+The existence of trails (both diﬀerential and linear) and their weight is independent ofi.
+The fact that all other step mappings of the round function are translation-invariant in the
+direction of thez axis, makes that a trailQ implies w −1 other trails: those obtained by
+translating the paĴerns ofQ over any non-zero oﬀset in thez direction. If all paĴerns in a
+trail have az-period below or equal tod, this implies onlyd −1 other trails.
+Moreover, a trail for a given widthb implies a trail for all larger widthsb′. The paĴerns
+are just deﬁned by theirz-reduced representations and the weight must be multiplied by
+b′/b. Note that this is not true for the cardinality of diﬀerential trails and the sign of the
+correlation contribution of linear trails, as these do depend on the round constants.
+24 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+2.4.3 The column parity kernel
+The mappingq is there to provide diﬀusion. As said, it can be expressed as follows: add to
+each bit a[x][y][z] the bitwise sum of the parities of two columns: that ofa[x −1][·][z] and
+that ofa[x + 1][·][z −1]. From this we can see that for states in which all columns have even
+parity, q is the identity. We call this set of states thecolumn parity kernelor CP-kernel for short.
+The size of the CP-kernel is220w as there are in total2b = 225w states and there are25w
+independent parity conditions. The kernel contains states with Hamming weight values as
+low as 2: those with two active bits in a single column. Due to these states,q only has a
+branch number (expressed in Hamming weight) of 4.
+The low branch number is a consequence of the fact that only the column parities prop-
+agate. One could consider changingq to improve the worst-case diﬀusion, but this would
+signiﬁcantly increase the computational cost ofq as well. Instead, we have chosen to address
+the CP-kernel issue by carefully choosing the mappingp.
+We can compute from a25w-bit state its5w-bit column parity paĴern. These paĴerns par-
+tition the state space in25w subsets, called theparity classes, with each220w elements. We
+can now consider the branch number restricted to the states in a given parity class. As said,
+the minimum branch number that can occur is 4 for the CP-kernel, the parity class with the
+all-zero column parity paĴern. Over all other parity classes, the branch number is at least
+12.
+Note that for states whereall columns have odd parity,q adds 0 to every bit and also acts
+as the identity. However, the Hamming weight of states in the corresponding parity class is
+at least5w resulting in a branch number of10w.
+2.4.4 One and two-round trails
+Now we will have a look at minimum weights for trails with one and two rounds. The
+minimum weight for a one-round diﬀerential trail(a0) is obtained by taking a diﬀerencea0
+with a single active bit and has weight 2. For a linear trail this is obtained by a maska0 with
+a single active bit or two neighboring active bits in the same row, and the weight is also 2.
+This is independent of the width ofKђѐѐюј- f .
+For the minimum weight of two-round trails we use the following property ofc: if a
+diﬀerence beforec restricted to a row has a single active bit, the same diﬀerence is a possible
+diﬀerence aĞerc. Hence for diﬀerence with zero or one active bits per row,c can behave as
+the identity. Similarly, for masks with zero or one active bits per row,c can behave as the
+identity. We call such trails in which the paĴerns at the input and output ofc are the same,
+c-zero trails. Note that all paĴerns in ac-zero trail are fully determined by the ﬁrst paĴern
+a0.
+For all widths, the two-round trails with minimum weight arec-zero trails. For a diﬀer-
+ential trail, we choose fora0 a diﬀerence with two active bits that are in the same column. Af-
+ter c the diﬀerence has not changed and as it is in the CP-kernel, it goes unchanged through
+q as well. The mappingsp and r move the two active bits to diﬀerent columns, but in no
+case to the same row. This results in a value ofa1 with two active bits in diﬀerent rows. As
+the weight of botha0 and a1 is 4, the resulting trail has weight 8. For linear trails, the two
+active bits ina0 must be chosen such that aĞerr and p they are in the same column. with
+a similar reasoning it follows that the minimum trail weight is also 8. Note that the low
+weight of these trails is due to the fact that the diﬀerence at the input ofq in round 0 is in the
+CP-kernel.
+25 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+2.4.5 Three-round trails: kernel vortices
+From here on, we concentrate on diﬀerential trails as the explanation is very similar for linear
+trails. We can construct a three-roundc-zero trail where both diﬀerencesa0 and a1 are in the
+CP-kernel. As in ac-zero trailc behaves as the identity anda0 is in the CP-kernel, we have
+a1 = p(r(a0)). Hence, we can transfer the conditions thata0 is in the kernel to conditions on
+a1, or vice versa.
+We will now look for paĴernsa0 where both a0 and p(r(a0)) are in the CP-kernel.a0
+cannot be a paĴern with only two active bits in one column sincep ◦r maps these bits to
+two diﬀerent columns ina1.
+The minimum number of active bits ina0 is four, where botha0 and a1 have two active
+columns with two active bits each. We will denote these four active bits aspoints 0, 1, 2 and
+3. Without loss of generality, we assume these points are grouped two by two in columns
+in a0: {0, 1}in one column and{2, 3}in another one. Ina1 we assume they are grouped in
+columns as{1, 2}and {3, 0}.
+The mappingp maps sheets (containing the columns) to falling 2-slopes and maps planes
+to sheets. Hence the points{0, 1}and {2, 3}are in falling 2-slopes ina1 and the points{1, 2}
+and {3, 0}are in planes ina0. This implies that projected on the(x, y) plane, the four points
+of a0 form a rectangle with horizontal and vertical sides. Similarly, ina1 they form a paral-
+lelogram with vertical sides and sides that are falling 2-slopes.
+The (x, y) coordinates of the four points ina0 are completely determined by those of the
+two opposite corner points(x0, y0) and (x2, y2). The four points have coordinates:(x0, y0),
+(x0, y2), (x2, y2) and (x2, y0). The number of possible choices is(2
+5)
+2
+= 100. Now let us have
+a look at theirz coordinates. Points 0 and 1 should be in the same column and points 2 and
+3 too. Hencez1 = z0 and z3 = z2. Moreover,r shall map points 1 and 2 to the same slice and
+bits 3 and 0 too. This results in the following conditions for theirz-coordinates:
+z0 + r[x0][y2] = z2 + r[x2][y2] modw ,
+z2 + r[x2][y0] = z0 + r[x0][y0] modw , (2.4)
+with r[x][y] denoting the translation oﬀset ofr in position(x, y). They can be converted to
+the following two conditions:
+z2 = z0 + r[x0][y2] −r[x2][y2] modw ,
+z2 = z0 + r[x0][y0] −r[x2][y0] modw .
+In any casez0 can be freely chosen, and this determinesz2. Subtracting these two equations
+eliminates z0 and z2 and results in:
+r[x0][y0] −r[x0][y2] +r[x2][y2] −r[x2][y0] =0 modw . (2.5)
+If this equation is not satisﬁed, the equations (2.4) have no solution.
+Consider noww = 1. In that case Equation (2.5) is always satisﬁed. However, in order
+to bec-zero, the points must be in diﬀerent rows, and hence in diﬀerent planes, both ina0
+and a1, and this is not possible for a rectangle.
+If ℓ ≥1, Equation (2.5) has a priori a probability of2−ℓ of being satisﬁed. Hence, we
+can expect about2−ℓ100 rectangles to deﬁne a statea0 with botha0 and p(r(a0)) in the CP-
+kernel. So it is not inconceivable that such paĴerns exists forw = 64. This would result in
+a 3-round trail with weight of 8 per round and hence a total weight of 24. However, for our
+choice ofp and r, there are no such trails forw > 16.
+Note that here also the Matryoshka principle plays. First, thez-coordinate of one of the
+points can be freely chosen and determines all others. So, given a rectangle that has a solution
+26 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+for Equation (2.5), there are2ℓ paĴerns a0, one for each choice ofz0. Second, if Equation (2.5)
+is not satisﬁed forℓ but it is for someℓ′< ℓ, it implies a paĴerna0 with 2ℓ−ℓ′
+4 points rather
+than 4 for which botha0 and p(r(a0)) are in the kernel.
+These paĴerns can be generalized by extending the number of active bits: a paĴerna0
+with botha0 and p(r(a0)) in the kernel can be constructed by arranging2e points in a cycle in
+the (x, y) plane and giving the appropriatez-coordinates. In such a cycle each combination
+of points{2i, 2i + 1}are in the same sheet and each combination of points{2i + 1, 2i + 2}
+are in the same plane. We call such a cycle of2e (x, y) positions akernel vortexV.
+For thez coordinates, the conditions that the points{2i, 2i + 1}are in the same column
+in a0 and the points{2i + 1, 2i + 2}are in the same column ina1 results in 2e conditions.
+Similar to the rectangle case, these conditions only have a solution if ther rotation constants
+in the lanes of the cycle satisfy a condition. For a given kernel vortexV, we deﬁne its depth
+d(V) as:
+d(V) =
+2e−1
+å
+i=0
+(−1)ir[point i]. (2.6)
+Now, the vortex results in a valid paĴerna0 if d(V) mod w = 0. We call the largest power
+of 2 dividing d(V) the character of the vortexc(V). If d(V) = 0, we say its character is
+c(V) = ¥. Summarizing, a vortexV deﬁnes a valid paĴerna0 with 2e active bits for lane
+length w ≤c(V). For constructing low-weight 3-round trails, it suﬃces to ﬁnd vortices with
+small e and large character: given a vortexV it results in a 3-round trail with weight12e
+for all values of2ℓ ≤c(V) and with weight12e2ℓ/c(V) for all values of2ℓ > c(V) (using
+symmetric trails of periodc(V)).
+As the length of vortices grows, so does their number. There are 600 vortices of length
+6, 8400 of length 8 and 104040 of length 10. The characterc(V) over these vortices has an
+exponential distribution: about half of them has character 1,1/4 have character 2,1/8 have
+character 4 and so on. It follows that as their length2e grows, there are more and more
+vortices that result in valid paĴerna0 with 2e active bits, even for lane length 64.
+Moreover, one can construct paĴernsa0 containing two or more vortices, provided that
+they do not result in a row with two active bits in eithera0 or a1. The character of such a
+combination is just the minimum of the characters of its component vortices. Clearly, due
+the large number of kernel vortices, it is likely that there are three-round trails with low
+weight for any choice ofr and p. For our choice ofp and r, the vortex that leads to the
+3-round trail with the smallest weight forKђѐѐюј- f is one of length 6 and character 64. It
+results in a 3-round trail with weight 36.
+2.4.6 Beyond three-round trails: choice ofp
+We will now try to extend this to four-round trails: we try to ﬁnd paĴernsa0 such thata0, a1
+and a2 are in the CP-kernel.
+A vortex of length 4, i.e., withe = 2 cannot do the job with our choice ofp: a rectangle
+in a0 with sheets and planes as sides results in a parallelogram ina1 with falling 2-slopes
+and columns as sides and in a parallelogram ina2 with rising 2-slopes and falling 2-slopes
+as sides. Hence the four points ina2 cannot group in columns 2 by 2 and therefore it cannot
+be in the kernel.
+Consider now a vortex of length 6. We choose the points such that the grouping in
+columns is {0, 1}, {2, 3}, {4, 5}in a0, it is{1, 2}, {3, 4}, {5, 0}in a1 and {1, 4}, {2, 5}, {3, 0}
+in a2. The grouping ina1 simply implies that{1, 2}, {3, 4}, {5, 0}are grouped in planes ina0.
+Actually, the ﬁrst two groupings are similar to the three-round trail case: they determine a
+27 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+character c(V) and ﬁx thez coordinates of all points but one. We will now study the impli-
+cations of the grouping ina2 on the(x, y) coordinates. Grouping in columns (sheets) ina2
+implies grouping in planes ina1 and subsequently grouping in rising 1-slopes ina0.
+For thez-coordinates this results in 3 additional conditions: points 1 and 4, points 2 and
+5 and points 3 and 0 must have the samez-coordinate ina2. Similar to Equation (2.4) these
+conditions are equalities modulo2ℓ. For each of the equations, the a priori probability that it
+is satisﬁed for a given value of2ℓ is 2−ℓ. With each of these equations we can again associate
+a character: the largest valuew that is a power of two for which the equation is satisﬁed. The
+4-round character (i.e. leading toa0, a1 and a2 all three in the kernel) of the vortex in this
+context is now the minimum of the 3-round character (i.e. leading to botha0 and a1 in the
+kernel) of the vortex and the characters of the three additional equations. The probability
+that the 4-round character is larger than2ℓ is approximately 2−4(ℓ+1). It turns out that for
+our choice ofp and r, 8 of the 50 candidate vortices have 4-round character 2 and the others
+have all 4-round character 1.
+The conditions on the(x, y) coordinates imply that only vortices are suited that have an
+even number of active points in each sheet, each plane and each rising 1-slope. This limits
+the number of suitable vortices of length 6 to 50, of length 8 to 300, of length 10 to 4180 and
+of length 12 to 53750. To illustrate this, let us now study the number of activity paĴerns in
+the (x, y) coordinates of a0 assuming there is only a single active bit in each lane. In total
+there are225 −1 nonzero paĴerns. If we impose the paĴern to be in the CP-kernel, the parity
+of each sheet must be even, resulting in 5 independent linear equations. Hence there are
+220 −1 paĴerns in the kernel. Additionally requiringa1 to be in the kernel imposes that the
+number of points in each plane ofa0 must be even. This adds 5 parity conditions. However,
+one is redundant with the ones due toa0 as the total parity of the activity paĴern over the
+state is even. Hence there are216 −1 such paĴerns. Additionally requiringa2 to be in the
+kernel imposes that the number of points in each rising 1-slope ofa0 must be even. This
+adds again 5 new parity condition, with one of them redundant and reduces the number of
+possible paĴerns to212 −1. Sincep runs through all directions, adding more rounds results
+in 28 −1, and 24 −1 and ﬁnally 0 paĴerns. It follows that the range of possible activity
+paĴerns shrinks exponentially as the number of rounds grows.
+This is the main reason for choosing ap that runs through all axes in a single cycle.
+Consider ap that would map sheets to rising 1-slopes and rising 1-slopes back to sheets. For
+such ap there would be216 −1 activity paĴerns witha0, a1 and a2 in the kernel. Moreover,
+this number would not decrease for more rounds and periodicc-zero trails of low weight
+might appear.
+When trying vortices with length above 6, the conditions on thez coordinates can be more
+involved. If in a particular sheet ofa2 the number of active points is 2, the condition is the
+same as for the case described above: theirz coordinates should match. However, if there
+are 4, 6 or any even number of active points, there are several ways for them to be grouped in
+diﬀerent columns. In general a character can be computed per sheet and the character of the
+complete structure is the minimum of all these characters. The character for a given sheet
+can be computed in a recursive way. The probability that an active sheet has character 1 is
+1/2. For larger characters, the probability decreases faster with growing number of active
+bits in the character.
+We have done tests for vortex lengths up to 14 and for constructions making use of two
+vortices totaling to about 1 million valida0 paĴerns. The vast majority have character 1, less
+than 13000 have character 2, 103 have character 4 and one has character 8. This last one is
+based on vortex of length 8 and it results in a 4-round trail with weight 512 inKђѐѐюј- f [1600].
+28 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+2.4.7 Truncated trails and diﬀerentials
+Truncated trails deal with the propagation of activity paĴerns rather than diﬀerences [30]. A
+partition of the state in sub-blocks is deﬁned where the activity paĴerns describe whether a
+sub-block has no active bits (passive or 0) or has at least one active bit (active or 1). The struc-
+ture of the state inKђѐѐюј- f suggests several bundlings. In a ﬁrst order, one may take rows,
+columns, lanes, sheets, planes or slices as sub-blocks. We have gone through an exercise of
+aĴempting this but got stuck very soon for each of the choices. The problem is that for every
+choice, at least one of the step mappings completely tears apart the sub-blocks. We have also
+considered hybrid state deﬁnitions, such as the combination of row activities with column
+parities. However, in the cases that could be interesting, i.e., states with low weight (with
+respect to the truncation considered), this soon lead to the full speciﬁcation of the diﬀerence.
+In [29] truncated cryptanalysis was applied toRюёіќGюѡҼћ [4], where the truncation was
+deﬁned by a linear subspaces of the word vectors. In the aĴack it made sense as part of the
+RюёіќGюѡҼћ state (the belt) is updated in a linear way. InKђѐѐюј- f the round function is
+uniformly non-linear and we do not believe that this approach can work.
+2.4.8 Other group operations
+We have considered diﬀerential and linear cryptanalysis while assuming the bitwise addi-
+tion as the group operation. One may equivalently consider diﬀerential and linear properties
+with respect to a wide range of other group operations that can be deﬁned on the state. How-
+ever, for any other choice than the bitwise addition,q becomes a nonlinear function and for
+most choices alsoi, p and r become nonlinear. We do not expect this to lead to beĴer results.
+2.4.9 Diﬀerential and linear cryptanalysis variants
+There are many aĴacks that use elements from diﬀerential cryptanalysis and/or linear crypt-
+analysis. Most are applied to block ciphers to extract the key. We have considered a number
+of techniques:
+• Higher-order diﬀerentials [30]: the algebraic order of theKђѐѐюј- f round function is
+only two and therefore constructing higher-order diﬀerentials seems like an interesting
+route to structural distinguishers. We believed and still believe that due to the high
+average diﬀusion it is very diﬃcult to construct higher-order diﬀerentials of practical
+signiﬁcance forKђѐѐюј- f . However, the low degree ofKђѐѐюј- f is indeed the cause
+for the distinguishers covering the highest number of rounds ofKђѐѐюј- f to date. We
+discuss these in Section4.4.
+• Impossible diﬀerentials [41]: we expect theKђѐѐюј- f permutations to behave as ran-
+dom permutations. If so, the cardinality of diﬀerentials has a Poisson distribution with
+l = 1/2 [25] and hence about 60 % of the diﬀerentials inKђѐѐюј- f will have cardinal-
+ity 0, and so are impossible. However, given a diﬀerential(a, b), it is a priori hard to
+predict whether it is impossible. SeĴings in which one could exploit impossible diﬀer-
+entials are keyed modes, where part of the input is ﬁxed and unknown. In this case one
+would need truncated impossible diﬀerentials. If the number of rounds is suﬃcient to
+avoid low-weight diﬀerential trails, we believe this can pose no problem.
+• Diﬀerential-linear aĴacks [33]: in these aĴacks one concatenates a diﬀerential over a
+number of rounds and a correlation over a number of subsequent rounds. We think that
+for reduced-round versions ofKђѐѐюј- f diﬀerential-linear distinguishers are a candi-
+date for the most powerful structural distinguisher. The required number of pairs
+29 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+is of the orderDP−2LP−2 with DP the diﬀerential probability of the distinguisher’s
+diﬀerential and LP the square of the distinguisher’s correlation. If we assume the
+diﬀerentials are dominated by a single low-weight diﬀerential trail, we haveDP ≈
+2−wr(Qd). Additionally, if we assume the correlation is dominated by a single low-
+weight linear trail, we haveDP ≈ 2−wc(Ql ). This gives for the number of required
+pairs: 22(wr(Qd)+wc(Ql )). The number of required pairs to exploit a trail in a simple dif-
+ferential or linear aĴack is of the order2wc(Q). Hence, over a number of rounds, the
+diﬀerential-linear distinguisher is more powerful than a simple diﬀerential or linear
+distinguisher ifwr(Qd) +wc(Ql) < wc(Q)/2. Where Q is a trail over all rounds,Qd
+a trail of the ﬁrstn rounds andQl a trail over the remaining rounds. As we expect in
+the Kђѐѐюј- f variants with large width and a low number of rounds, the minimum
+trail weight tends to grow exponentially, and the chaining of two half-length trails is
+favored over a single full-length trail.
+• (Ampliﬁed) Boomerang [39, 28] and rectangle aĴacks [11]: These aĴacks chain (sets of)
+diﬀerentials over a small number of rounds to construct distinguishers over a larger
+number of rounds. These are also likely candidates for good structural distinguishers,
+for the same reason as diﬀerential-linear ones.
+• Integral cryptanalysis (Square aĴacks) [22]: this type of cryptanalysis lends itself very
+well to ciphers that treat the state in blocks. It was applied to bit-oriented ciphers in
+[42]. Based on the ﬁndings of that paper we estimate that it will only work on reduced-
+round versions ofKђѐѐюј- f with three to four rounds.
+In this section we have limited ourselves to the construction of structural distinguishers.
+We have not discussed how these distinguishers can be used to aĴack the sponge function
+making use of the permutation. In [8, Section “Some structural distinguishers”], we discuss
+the applicability of structural distinguishers when aĴacking sponge functions.
+2.5 Solving constrained-input constrained-output (CICO) problems
+In [8, Section “The constrained-input constrained output problem”] we introduce CICO
+problems for permutations and show that the resistance of a sponge function against many
+aĴacks is determined by the hardness of solving these problems for their underlying permu-
+tation.
+There are several approaches to solving a CICO problem forKђѐѐюј- f . The most straight-
+forward way is to use theKђѐѐюј- f speciﬁcation to construct a set of algebraic equations in
+a number of unknowns that represents the CICO problem and try to solve it. Thanks to
+the simple algebraic structure ofKђѐѐюј- f , constructing the algebraic equations is straight-
+forward. As a maĴer of fact, this is supported byKђѐѐюјTќќљѠ [9]. A single instance of
+Kђѐѐюј- f results in (nr −1)b intermediate variables and about as many equations. Each
+equation has algebraic degree 2 and involves about 31 variables. Solving these sets of equa-
+tions is however not an easy task. This is even the case for the toy versionKђѐѐюј- f [25] with
+lane length w = 1. We refer to Section4.2 for the results of some experiments for solving
+CICO-solving algebraically.
+2.6 Strength in keyed mode
+In keyed modes we must consider aĴack scenario’s such as explained in [8, Section “Keyed
+modes”]. Here we see two main approaches to cryptanalysis. The ﬁrst one is the exploita-
+30 /69
+2. TheKђѐѐюј- f permutations The Kђѐѐюј reference
+tion of structural distinguishers and the second one is an algebraic approach, similar to the
+one presented in Section2.5. A possible third approach is the intelligent combination of ex-
+ploiting a structural distinguisher and algebraic techniques. In our opinion, the strength in
+keyed modes depends on the absence of good structural distinguishers and the diﬃculty of
+algebraically solving sets of equations.
+2.7 Symmetry weaknesses
+Symmetry in the state could lead to properties similar to the complementation property of
+DES [35]. Symmetry between the rounds could lead to slide aĴacks. We believe that the
+asymmetry introduced byi is suﬃcient to remove all exploitable symmetry fromKђѐѐюј- f .
+We refer to Section4.1.2 for some experimentally obtained evidence of this.
+31 /69
+The Kђѐѐюј reference 2. TheKђѐѐюј- f permutations
+32 /69
+Chapter 3
+Trail propagation inKђѐѐюј- f
+As explained in [8, Section “Some structural distinguishers”], the existence of diﬀerential or
+linear trails inKђѐѐюј- f with a weight below the width ofKђѐѐюј- f may result in a structural
+distinguisher ofKђѐѐюј- f . In this chapter we report on our investigations related to lower
+bounds for weights of such trails.
+In Section3.1 we deﬁne diﬀerent types of weight and in Section3.2 we discuss the relevant
+properties of q. In Section 3.3 we discuss the techniques used to come up with the lower
+bounds on trail weights and report on the results obtained. Finally, in Section3.4 we report
+on experiments that allows us to get an idea what to expect for higher width values.
+3.1 Relations between diﬀerent kinds of weight
+In this section, we recall or deﬁne the various kinds of weight we use in our treatment of trail
+propagation. We speak of paĴerns that may have the shape of a state, slice, plane, sheet, row,
+column, lane or even a single bit. Some types of weight are only deﬁned for certain shapes
+and we will indicate it when this is the case.
+We call a bit equal to 1 in a paĴern anactive bit and a bit equal to zero apassive bit.
+Deﬁnition 4. The Hamming weightof a paĴerna is the number of active bits in the paĴern and
+is denoted by||a||.
+For a generic deﬁnition of the restriction weight and the correlation weight we refer to [8,
+Sections “Diﬀerential cryptanalysis” and “Linear cryptanalysis”]. These two weights relate
+to the properties ofc, which are detailed in Section2.3.1. Since c operates on each row
+independently, the restriction and correlation weights of a paĴern can be computed row per
+row and the results are summed. The weights for all row paĴerns are listed explicitly in
+Tables 3.1 and 3.2.
+Deﬁnition 5. The (propagation)weight of a paĴerna, denoted byw(a), is a generic term for either
+the restriction weight or the correlation weight of a paĴern beforec. Since c operates on rows, the
+paĴern a must consist of full rows implying that the weight is only deﬁned for states, slices, planes
+and rows.
+Note that the size of the linear aﬃne varietiesB(ai) and A(ai) (see Section2.3.1) is deter-
+mined by the propagation weight ofai:
+|B(ai)|= |A(ai)|= 2w(ai) .
+33 /69
+The Kђѐѐюј reference 3. Trail propagation inKђѐѐюј- f
+Diﬀerence a wr(a) wrev
+r (a) ||a|| ∥a∥row
+00000 0 0 0 0
+10000 2 2 1 1
+11000 3 2 2 1
+10100 3 2 2 1
+11100 4 2 3 1
+11010 3 3 3 1
+11110 4 3 4 1
+11111 4 3 5 1
+Table 3.1:Weights of all row diﬀerences (up to cyclic shiĞs)
+Mask a wc(a) wrev
+c (a) ||a|| ∥a∥row
+00000 0 0 0 0
+10000 2 2 1 1
+11000 2 2 2 1
+10100 4 2 2 1
+11100 4 2 3 1
+11010 4 2 3 1
+11110 4 2 4 1
+11111 4 4 5 1
+Table 3.2:Weights of all row masks (up to cyclic shiĞs)
+Deﬁnition 6. For a paĴernb aĞer c, we deﬁne theminimum reverse weightwrev(b) as the min-
+imum weight over all compatiblea. Namely,
+wrev(b) = min
+a : b∈B(a)
+w(a).
+This weight applies to states, slices, planes and rows.
+Given an ℓ-round trail Q = ( a1 . . .aℓ), it is easy to ﬁnd theℓ + 1-round trail Q′ =
+(a′
+0, a′
+1 . . .a′
+ℓ) with minimum weight such thatai = a′
+i for 1 ≤i ≤ℓ. In this case,w(Q′) =
+w(Q) +wrev(l−1(a1)).
+It may also be useful to express thenumber of active rowsin a given paĴern.
+Deﬁnition 7. For a paĴerna before (or aĞer)c, the number of active rows, denoted by∥a∥row is
+simply the number of rows whose value is non-zero. This weight applies to states, slices, planes and
+rows.
+The diﬀerent kinds of weight for all row paĴerns are given in Tables3.1 and 3.2. We now
+give some relations between the various kinds of weights. The following bounds relate the
+Hamming weight to the weight:
+ˆw(||a||) , ||a||−
+⌊||a||
+5
+⌋
++ [1 if ||a||= 1 (mod 5)] ≤w(a) ≤2||a||,
+⌈w(a)
+2
+⌉
+≤||a||≤
+⌊5w(a)
+4
+⌋
+.
+34 /69
+3. Trail propagation inKђѐѐюј- f The Kђѐѐюј reference
+The following bounds relate the number of active rows to the weight:
+2∥a∥row ≤w(a) ≤4∥a∥row,⌈w(a)
+4
+⌉
+≤∥a∥row ≤
+⌊w(a)
+2
+⌋
+.
+Given the Hamming weight, the minimum reverse restriction weight can be lower bounded
+as follows:
+wrev
+r (a) ≥ ˆwrev
+r (||a||) , 3
+⌊||a||
+5
+⌋
++
+
+
+
+0 if ||a||= 0 (mod 5),
+1 if ||a||= 1 (mod 5),
+2 if ||a||= 2 (mod 5),
+2 if ||a||= 3 (mod 5),
+3 if ||a||= 4 (mod 5).
+Given the Hamming weight, the minimum reverse correlation weight can be lower bounded
+as follows:
+wrev
+c (a) ≥ ˆwrev
+c (||a||) , 2
+⌈||a||
+4
+⌉
+.
+Other relations on the minimum reverse weight follow:
+wrev(b) ≤2||b||,⌈wrev(b)
+2
+⌉
+≤||b||≤
+⌊5wrev(b)
+4
+⌋
+,
+2∥b∥row ≤wrev(b) ≤4∥(∥rowb),⌈wrev(b)
+4
+⌉
+≤∥b∥row ≤
+⌊wrev(b)
+2
+⌋
+.
+And ﬁnally,
+wrev(b) ≤w(b).
+Deﬁnition 8. A weight functionf (a) is said to bemonotonous if seĴing a passive bit of a paĴern
+a to active does not decreasef (a). More formally, let the partial orderinga ≤ a′ be deﬁned as
+a[x][y][z] = 1 ⇒a′[x][y][z] = 1. Then, f is a monotonous weight if∀a, a′ : a ≤a′, we have
+f (a) ≤f (a′).
+All weights deﬁned in this section are monotonous. This follows directly from Tables3.1
+and 3.2.
+3.2 Propagation properties related to the linear stepq
+Deﬁnition 9.The column parity(or parity for short)P(a) of a paĴerna is a paĴernP(a) = p[x][z]
+deﬁned as the parity of the columns ofa, namely p[x][z] = åy a[x][y][z]. The parity is deﬁned for
+states, slices, sheets and columns. The parity of a state has the shape of a plane, the parity of a slice
+has the shape of a row, the parity of a sheet has the shape of a lane and the parity of a column is a bit.
+Equivalently, the parity is the result of applying the operator¯y (see Section2.3.2), and the
+value C in Algorithm3 is the parity of a state. A column iseven (resp. odd) if its parity is 0
+(resp. 1). When the parity of a paĴern is zero (i.e., all its columns are even), we say it is in
+the CP-kernel, as in Section2.4.3. Note that the column parity deﬁnes a partition on the set
+of possible states.
+35 /69
+The Kђѐѐюј reference 3. Trail propagation inKђѐѐюј- f
+Deﬁnition 10.The q-eﬀect of a statea before q is a paĴernE(a)[x][z] deﬁned as the result of applying
+the operator ¯y(x + x4z) to the state, or equivalently by applying the operator(x + x4z) to its parity,
+i.e., E(a)[x][z] =P(a)[x −1][z] +P(a)[x + 1][z −1].
+In diﬀerence propagation, theq-eﬀect is also the value ofD in Algorithm 3. In mask
+propagation, the q-eﬀect is deﬁned byqT rather than q itself and the expression becomes
+E(a)[x][z] =P(a)[x + 1][z] +P(a)[x −1][z + 1] (see Section2.3.2.2). Note that theq-eﬀect al-
+ways has an even Hamming weight. A column of coordinates(x, z) is aﬀected iﬀ E(a)[x][z] =
+1; otherwise, it isunaﬀected.
+The q-eﬀect entirely determines the eﬀect of applyingq to a statea. For a ﬁxedq-eﬀect
+e[x][z], q just adds a constant paĴerne[x][y][z] of bits to the state, constant in each column,
+namely e[x][y][z] = e[x][z] for ally. Since theq-eﬀect has even Hamming weight, it means
+that the number of aﬀected columns is even.
+Deﬁnition 11. The q-gap is deﬁned as the Hamming weight of theq-eﬀect divided by two.
+Hence, if theq-gap of a state at the input ofq is g, the number of aﬀected columns is2g
+and applyingq to it results in10g bits being ﬂipped.
+When a state is in the CP-kernel, theq-gap is zero. However, theq-gap is also zero when
+the parity is all-one, i.e., when all columns have odd parity beforeq.
+We have deﬁned theq-gap using theq-eﬀect, but it can also be deﬁned using the parity
+itself. For this, we need to represent the parityp[x][z] diﬀerently. We map the(x, z) coor-
+dinates to a single coordinatet as speciﬁed in Section2.3.2.1 (i.e., t goes to(x, z) = (−2t, t))
+and denote the result byp[t].
+In this representation, arun is deﬁned as a sequenceR of consecutivet-coordinates, R =
+{s, s + 1, . . ., s + n −1}, such that p[s −1] = 0, p[t] = 1∀t ∈ R and p[s + n] = 0. The
+following lemma links the number of runs to theq-gap.
+Lemma 1. The parityp has q-gap g iﬀ p[t] has g distinct runs.
+3.3 Exhaustive trail search
+In Section3.3.2 we will show an eﬃcient method for generating all two-round trails up to a
+given propagation weightT2. We will then show in section Section3.3.3 how these trails can
+be extended to more rounds. In general, we want to generate allℓ-round trails up to some
+propagation weightTℓ. We start with Section3.3.1 deriving the minimum value ofT2 given
+ℓ and Tℓ. Finally, we report on our bounds obtained in Section3.3.4
+3.3.1 Upper bound for the weight of two-round trails to scan
+The idea is have bounds onℓ-round trails by starting from all two-round trails of weight up
+to T2 and extending them both forwards and backwards. More precisely, each two-round
+trail is extendedn rounds backwards andℓ −2 −n rounds forwards, for each value ofn ∈
+{0, . . ., ℓ −2}. This way, we cover all trails that have a two-round subtrail with weight up to
+T2.
+Lemma 2. To list allℓ-round trails of weight not higher thanTℓ exhaustively, it is necessary to
+start from all 2-round trails with weight up to (and including)T2, withT2 =
+⌊
+2Tℓ
+ℓ
+⌋
+if ℓ is even, or
+T2 =
+⌊
+2(Tℓ−2)
+ℓ−1
+⌋
+if ℓ is odd.
+36 /69
+3. Trail propagation inKђѐѐюј- f The Kђѐѐюј reference
+Proof. For a sequence of weightsW = w1, w2, . . ., wℓ, letd(W) =mini=1...ℓ−1(wi + wi+1). We
+want to make sure thatd(W) ≤T2 for allW such thatåi wi ≤Tℓ.
+If ℓ is even,Tℓ ≥åℓ
+i=1 wi = åℓ/2
+j=1(w2j−1 + w2j) ≥ ℓ
+2 d(W) and thusd(W) ≤2Tℓ
+ℓ . SeĴing
+T2 =
+⌊
+2Tℓ
+ℓ
+⌋
+satisﬁes the condition.
+If ℓ is odd, we can always assume thatwℓ ≥2 (as in any non-trivial trail) and thus we
+can consider the same problem with sequences ofℓ −1 weights andTℓ−1 = Tℓ −2. ⊓ ⊔
+So we have all the necessary ingredients to make exhaustive search of trails up to a given
+weight, within the limits of a reasonable computation time, and we can use that to ﬁnd trails
+with minimum weight.
+3.3.2 Constructing two-round trails
+In this section we describe an eﬃcient method for constructing all two-round trails(a0, a1)
+with w(a0) +w(a1) ≤T2 for a given valueT2. For any such trail, we know that there exists a
+trail (a′
+0, a1) with w(a′
+0) = wrev(l−1(a1)) ≤w(a0). The quantitywrev(l−1(a)) +w(a) ≤T2
+imposes a lower bound on the weight of a 2-round trail trail that hasa as its state beforec of
+the second round and we give it the following name.
+Deﬁnition 12. The propagation branch numberof a statea before c is denoted byBp(a) and
+given by:
+Bp(a) =wrev(l−1(a)) +w(a) .
+Hence, rather than explicitly constructing all two-round trails, we can generate the set of
+states a such that Bp(a) ≤T2. We call this seta(T2). It contains the second membersa1 of
+all two-round trailsQ with w(Q) ≤T2. Each state in this seta(T2) then serves as a starting
+point for trail extension. For the resulting trails, we know that the subtrail(ai−1, ai) with
+ai = a has a weight of at leastBp(a).
+In generatinga(T2) we use a strategy that exploits the monotonicity of the propagation
+weight and the properties ofq in terms of the Hamming weight of its input/output. In Sec-
+tion 3.1 we listed equations providing lower bounds on the weight and reverse minimum
+weight of a state as a function of its Hamming weight. Hence,||a||and ||l−1(a)||gives a
+lower bound onBp(a).
+Deﬁnition 13. The Hamming branch numberof a statea before c is denoted byBh(a) and given
+by:
+Bh(a) =||l−1(a)||+ ||a||.
+We can now just generate all states up to some given propagation branch number by
+generating all states up to a suﬃciently high Hamming branch number value.
+Now let a′ be the state beforeq corresponding with a. In diﬀerence propagation, we
+have a′= l−1(a) and in mask propagation this isa′= qT−1
+(a). It follows that in diﬀerence
+propagation, we have||a′|| = ||l−1(a)||and ||q(a′)|| = ||a||and hence Bh(a) = ||a′||+
+||q(a′)||. In mask propagation we can similarly deriveBh(a) = ||a′||+ ||qT(a′)||. Hence we
+can instead move our reference froma to a′and just compute the value ofa from a′. With a
+slight abuse of notation we will writeBh(a′) and Bp(a′) to denoteBh(a) and Bp(a).
+Consider now the set of statesa′with a given parityp, i.e.,P(a′) = p. As theq-eﬀect e is
+fully determined by the parity, all these states have the same parity eﬀect. It follows thatq
+is reduced to the addition of a constant value, facilitating the computation ofBh(a′) and the
+deduction of lower bounds onBp(a′).
+Similar to the Hamming branch number of a state, we can deﬁne the Hamming branch
+number of a parity.
+37 /69
+The Kђѐѐюј reference 3. Trail propagation inKђѐѐюј- f
+Deﬁnition 14. The Hamming branch number of a parityp before q is deﬁned as the minimum Ham-
+ming branch number over all states with the given parity:
+Bh(p) = min
+a′ :P(a′)=p
+Bh(a′) .
+In a statea′ we can use its parityp to partition its columnsa′[x][z] in four kinds: odd
+(P(a′)[x][z] = 1) and even (P(a′)[x][z] = 0), combined with aﬀected (E(a′)[x][z] = 1) and
+unaﬀected (E(a′)[x][z] =0). We can use this to easily computeBh(p) for any parityp.
+• An unaﬀected odd column has at least one active bit beforeq and is preserved aĞer it.
+Hence, it contributes at least 2 toBh(a′). As this minimal case can be constructed, the
+contribution toBh(p) is strictly equal to 2.
+• An aﬀected (odd or even) column havingn active bits beforeq has 5 −n bits aĞerwards,
+hence contributes exactly 5 toBh(a′) and toBh(p).
+• An unaﬀected even column can have zero active bits, hence does not contribute to
+Bh(p).
+Hence, it turns out that
+Bh(p) =5||E(p)||+ 2||p ·(¯0 + E(p))||= 10g + 2uo,
+with g the q-gap of p, ·the componentwise product,¯0 the all-1 state anduo the number of
+unaﬀected odd columns.
+We can now generate all statesa′up to some given propagation branch number and with
+given parityp in two phases.
+• In a ﬁrst phase we generate all statesa′ with Bh(a′) = Bh(p). We call those states
+branch-parity-minimal.
+• In a second phase, we can generate statesa′ that are not branch-parity-minimal by
+taking branch-parity-minimal states and adding pairs of active bits in columns such
+that the parity is unchanged.
+38 /69
+3. Trail propagation inKђѐѐюј- f The Kђѐѐюј reference
+The generation of branch-parity-minimal states is done as follows:
+• For each unaﬀected odd column, put a single active bit. There are 5 possibilities: one
+for each positionsy.
+• For each aﬀected even column, put an even number of active bits. There are24 possi-
+bilities.
+• For each aﬀected odd column, put an odd number of active bits. There are in24 possi-
+bilities.
+The number of branch-parity-minimal statesa′with given parityp is thus28g5|p(1+e)|.
+From the monotonicity of the weights it follows that in the set of statesa′ with given
+parity p, the subset of branch-parity-minimal states contain the states that minimizeBp(a′).
+Adding a pair of active bits in a single column ofa′leaves its parity intact and thanks to the
+monotonicity cannot decreaseBp(a′). From this, we devise the following strategy to generate
+all statesa′with given parityp with Bp(a′) ≤T2.
+For each branch-parity-minimal statea′with Bp(a′) ≤T2 do the following:
+• Output a′.
+• Iteratively construct statesa′by adding pairs of active bits in each column, as long as
+Bp(a′) ≤T2. To avoid duplicates the active bits shall havey coordinates with larger
+values than any active bits in the columns.
+To generate all statesa′for whichBp(a′) ≤T2 we must do this for all parities with a small
+enough q-gap. Actually, we can compute a lower bound onBp(a′) given onlyP(a′). We then
+have to consider only those parities for which this bound is lower than or equal toT2. We
+compute it in the following way. First, we consider the Hamming branch numberBh(p) and
+assume that|l−1(a)|= Bh(p) −n and |a|= n for some valuen. Then, we use the bounds
+found in Section3.1 and minimize overn. Note that we have checked that the minimum is
+always atn = 1, hence:
+Bp(a′) ≥ min
+n∈{1...Bh(p)−1}
+ˆwrev(Bh(p) −n) + ˆw(n)
+= ˆwrev(Bh(p) −1) +2
+= ˆwrev(10g + 2uo −1) +2.
+Hence theq-gap of the parityp imposes a lower bound to the propagation branch number
+of a state.
+Then, it is possible to determine the maximumq-gap gmax above which the lower bound
+is aboveT2. If we further relategmax to the number of runs in the parity, as in Lemma1, we
+can generate all possible parities we need to consider by generating those with up togmax
+runs.
+Notice that bothc and l are invariant by translation alongz. It is thus necessary to keep
+only a single member of the states (or parities) ina(T2) that are equal modulo the translations
+along z.
+3.3.3 Extending trails
+We can now use the elements ina(T2) to recursively generate longer and longer trails up
+to some given length and some given weight. We can extend the trails in two directions:
+forward and backward. Given a trailQ, extending the trail forward (resp. backward) means
+39 /69
+The Kђѐѐюј reference 3. Trail propagation inKђѐѐюј- f
+constructing trailsQ′of whichQ is a preﬁx (resp. suﬃx). It can also be in both directions,
+i.e., adding a number of steps as a preﬁx and another number of steps as a suﬃx ofQ.
+In the forward direction, the general idea is the following. Given the last stateaℓ−1 of the
+trail Q, we characterize the aﬃne spaceA(aℓ−1) as an oﬀset and a basis, i.e.,
+A(aℓ) =s + ⟨t1, t2, . . ., tw(aℓ)⟩.
+We can then loop through the aﬃne space, produce the state valuesaℓ and check the weight
+w(aℓ). If the weight is low enough for the extended trail to be interesting in the search, we
+can appendaℓ to Q and recursively continue the search from there if necessary.
+In the backward direction, we cannot use an aﬃne space representation ofa−1 as a func-
+tion of a0. As the weight is determined by the to-be-found statea−1, we can list, for each
+active row ofb0, the possible input rows and their corresponding weight in increasing or-
+der. The weight ofa−1 is the sum of the weights of each individual row, and we can take
+advantage of this to choose input rows such that the weight stays below or equal to a given
+threshold. We set each active row to the input row with lowest weight, the total weight
+w(a−1) being equal towrev(b0) for the output stateb0. Then, we can generate all other input
+states a−1 by looping through the input rows, locally knowing up to which weight we can
+go.
+3.3.4 Linear and diﬀerential trail bounds forw ≤8
+We have investigated the diﬀerent instances ofKђѐѐюј- f [b] starting from the smallest widths
+b = 25w, resulting in the lower bounds for trail weights listed in Table3.3. Thanks to
+the Matryoshka structure, a lower bound on trails forKђѐѐюј- f [b] implies a lower bound
+on symmetric trails for all larger widths. More speciﬁcally, a diﬀerential or linear trail for
+Kђѐѐюј- f [25w] with weightW corresponds with aw-symmetric trail forKђѐѐюј- f [25w′] with
+weight W′= W w′
+w . For instance, in Table3.3 the column DC,w = 8 expresses a lower bound
+of 46 on the weight of 4-round trails inKђѐѐюј- f [200]. This also expresses a lower bound for
+4-round symmetric trails inKђѐѐюј- f versions with larger width:92 for 2-symmetric trails
+in Kђѐѐюј- f [400], 184 for 4-symmetric trails inKђѐѐюј- f [800] and 268 for 8-symmetric trails
+in Kђѐѐюј- f [1600].
+For w = 1, ﬁve rounds are suﬃcient to have no trails with weight below 25, the width of
+the permutation. Forw = 2, six rounds are suﬃcient to have no diﬀerential trails with weight
+below the width. It can be observed that as the number of rounds grows, the diﬀerence
+between the bounds for width 25 and those for width 50 grows. We expect this eﬀect to be
+similar for larger widths.
+For w = 4, the search was complete up to weight 36 and 38 for 4 rounds, for diﬀerential
+and linear trails respectively:
+• For 4 rounds, the diﬀerential trail with minimum weight has weight 30. For the small
+number of trails found up to weight 36, we checked that these trails cannot be chained
+together. Hence, this guarantees that a 8-round diﬀerential trail has at least weight36 +
+37 = 73. For 5 and 6 rounds, the best trails we have found so far have weight 54 and 85,
+respectively (but these do not provide bounds). For the 16 rounds ofKђѐѐюј- f [100],
+we can guarantee that there are no diﬀerential trails of weight below2 ×73 = 146.
+• For 4 rounds, the linear trail with minimum weight has weight 38. For 5 and 6 rounds,
+the best trails we have found so far have weight 66 and 94, respectively (but these do
+not provide bounds). For the 16 rounds ofKђѐѐюј- f [100], we can guarantee that there
+are no linear trails of weight below4 ×38 = 152.
+40 /69
+3. Trail propagation inKђѐѐюј- f The Kђѐѐюј reference
+Number DC LC
+of rounds w = 1 w = 2 w = 4 w = 8 w = 1 w = 2 w = 4 w = 8
+2 8 8 8 8 8 8 8 8
+3 16 18 19 20 16 16 20 20
+4 23 29 30 46 24 30 38 46
+5 30 42 ≤54 30 40 ≤66
+6 37 54 ≤85 38 52 ≤94
+Table 3.3:Minimum weight ofw-symmetric trails
+For w = 8, the search was complete up to weight 49 and 48 for 4 rounds, for diﬀerential
+and linear trails respectively:
+• For 4 rounds, the diﬀerential trail with minimum weight has weight 46. For the small
+number of trails found up to weight 49, we checked that these trails cannot be chained
+together. Hence, this guarantees that a 8-round diﬀerential trail has at least weight
+49 + 50 = 99. For the 18 rounds ofKђѐѐюј- f [200], we can guarantee that there are no
+diﬀerential trails of weight below2 ×99 + 8 = 206.
+• For 4 rounds, the linear trail with minimum weight has weight 46. For the small num-
+ber of trails found up to weight 48, we checked that these trails cannot be chained
+together. Hence, this guarantees that a 8-round diﬀerential trail has at least weight
+48 + 50 = 98. For the 18 rounds ofKђѐѐюј- f [200], we can guarantee that there are no
+linear trails of weight below8 ×98 + 8 = 204.
+3.4 Tame trails
+In this section we report on our investigations related to the search for 3-round and 4-round
+diﬀerential trails with low weight and for high width. In this context, we consider diﬀerential
+trails for which the intermediate statesbi are in the CP-kernel and call such trailstame. Linear
+trails are expected to behave in qualitatively the same way.
+This is a generalization of the kernel vortices introduced in Section2.4.5 where only pat-
+terns are considered for which bothc and q behave as the identity. In kernel vortices only
+intermediate paĴerns at the input ofc where considered with a single active bit per row. In
+the trails considered in this section, this restriction is no longer present.
+3.4.1 Construction of tame trails
+Let us start with 3-round diﬀerential trails. The weight of such a trail is deﬁned by three
+states: (a0, a1, a2). This trail is tame ifb0 = l−1(a1) and b1 = l−1(a2) are both in the CP-
+kernel. We have wriĴen a program that generates all values ofa1 of a given Hamming weight,
+such thatb0 is in the CP-kernel and there is at least one three-round diﬀerential trail(a0, a1, a2)
+that is tame, i.e., withb1 in the CP-kernel. The laĴer condition imposes thata1 must be such
+that the intersection ofA(a1) and the CP-kernel is not empty. Asc operates on rows and the
+CP-kernel is determined by individual columns, this can be treated slice by slice. In other
+words, every slice ofa1 must be such that its linear aﬃne variety of possible output paĴerns
+contains paĴerns in the CP-kernel.
+41 /69
+The Kђѐѐюј reference 3. Trail propagation inKђѐѐюј- f
+We call such a slicetame and a state with only tame slices also tame. For slice paĴerns
+with few active bits it can be easily veriﬁed whether it is tame. A slice with no active bits is
+tame, a slice with a single active bit can never be tame and a slice with two active bits is tame
+iﬀ the active bits are in the same column. As the number of active bits grows, the proportion
+of slice paĴerns that are not tame decreases exponentially. As there are only225 diﬀerent
+slice paĴerns, the tameness check can be precomputed and implemented by a simple table-
+lookup. Generating all statesa1 of a given (small) Hamming weight, that are tame and for
+which b0 is in the CP-kernel can be done eﬃciently.
+We can now construct all valid statesa1 as the combination of a number ofkernel chains.
+A kernel chain is set of active bits determined by a sequence of bit positionsci in a1. A kernel
+chain forms a set of active bits with the following properties:
+• When moved to positionb0 the kernel chain it is in the CP-kernel.
+• In positiona1 every slice contains exactly two bits of the kernel chain and is tame, except
+the slice containing the initial bitc0 and the slice containing the ﬁnal bitc2n+1, that each
+just contain a single slice and are not tame.
+Actually, a kernel chain is a generalization of a kernel vortex. It follows that inb0, the bitsc2i
+and c2i+1 are in the same column and ina1, the bitsc2i+1 and c2i+2 are in the same column.
+This implies that the total number of kernel chains of a given length2n starting from a given
+position is only42n−1. Clearly, any combination of kernel chains is in the CP-kernel inb0.
+Likewise, all slices ina1 that contain only two kernel chain bits (excluding the initial and
+ﬁnal bits) are tame. Now we must arrange the initial and ﬁnal kernel chain bits such that the
+slides ina1 that contain them are tame. The ﬁrst possibility is that the bitsc0 and c2n−1 are in
+the same column ina1: this kernel chain forms a kernel vortex. The second possibility is to
+group the initial and ﬁnal bits of kernel chains intame knots. We call a slice ina1 with more
+than 2 active bits aknot. We construct statesa1 by combining kernel chains such that their
+initial and ﬁnal bits are grouped in a set of knots. If all knots are tame, the state is tame. For
+a given Hamming weightx, valid states may exist with 0 up to⌊x/3⌋knots.
+In our program we ﬁrst ﬁx the number of knots and their slice positions and then eﬃ-
+ciently search for all valid states. Table3.4 lists the number of valid statesa1 (modulo transla-
+tion over thez-axis) for allKђѐѐюј- f widths and up to a Hamming weight of 14. The question
+marks mark the limitations of our search algorithm: we have not yet been able to compute
+those values due to time constraints. It can be seen that for a given Hamming weight, overall
+the number of valid states decreases with increasing width. For a given width, the number
+of valid states increases with increasing Hamming weight.
+3.4.2 Bounds for three-round tame trails
+Starting from the valid paĴernsa1 we have for each one searched for the 3-round tame trail
+with the smallest (restriction) weight. This was done in the following way. Givena1 we
+compute the minimum weight ofa0 by takingwrev(l−1(a1)). In the forward direction, we
+iterate over all statesa2 for whichb1 is in the CP-kernel. The results are given in Table3.5.
+Cases containing a dash indicate that there are no tame 3-round trails for the given width
+and Hamming weight. Entries of the form “≤ n” indicate that not all the paĴerns were
+investigated. It can be seen that increasing the width results only in a limited growth of
+the (restriction) weight. Clearly, the limited diﬀusion due to the existence of the CP-kernel
+results in low-weight trails.
+42 /69
+3. Trail propagation inKђѐѐюј- f The Kђѐѐюј reference
+Width Hamming weight
+4 6 8 10 12 14
+25 825 12100 95600 465690 1456725 ?
+50 150 13835 905135 22392676 ? ?
+100 48 2712 137078 6953033 ? ?
+200 10 481 24037 1143550 56824109 ?
+400 4 83 4006 164806 7290847 ?
+800 0 28 918 30771 1154855 44788752
+1600 0 10 304 8231 259567 8399589
+Table 3.4: The number of valid diﬀerence paĴernsa1 per Kђѐѐюј- f width and Hamming
+weight
+Width Hamming weight
+4 6 8 10 12 14
+25 18 20 22 ≤22 ? ?
+50 18 22 25 28 ? ?
+100 19 24 29 ≤36 ? ?
+200 20 29 33 38 ? ?
+400 24 30 35 40 47 ?
+800 - 35 41 47 53 58
+1600 - 35 41 48 56 62
+Table 3.5: Minimum diﬀerential trail weight values of tame 3-round trails perKђѐѐюј- f
+width and Hamming weight ofa1.
+43 /69
+The Kђѐѐюј reference 3. Trail propagation inKђѐѐюј- f
+Width Hamming weight
+4 6 8 10 12 14
+25 25 28 29 ≤31 ? ?
+50 30 31 34 38 ? ?
+100 30 36 41 ≤48 ? ?
+200 - 56 56 61 ? ?
+400 - - - - 90 ?
+800 - - - - - -
+1600 - - - - - -
+Table 3.6: Minimum diﬀerential trail weight values of tame 4-round trails perKђѐѐюј- f
+width and Hamming weight of paĴern aĞer ﬁrstc
+3.4.3 Bounds for four-round tame trails
+We have conducted the a similar search for the 4-round tame trails with the smallest (re-
+striction) weight. This was done in the same way as for 3-round trails with this diﬀerence:
+rather than stopping ata2, we iterate over all statesa3 ∈A(a2) in the CP-kernel and compute
+its restriction weight. To speed up the search we apply pruning if the restriction weight of
+(a0, a1, a2) is such thata3 cannot result in a trail with a lower restriction weight than one found
+for the given category. The results are given in Table3.6. While for small widths the increase
+in width does not substantially increase the restriction weights, for higher widths it can be
+observed that the minimum Hamming weight ofa1 for which there exist tame 4-round dif-
+ferential trails increases dramatically. For width 400 we have to go up to a Hamming weight
+of 12 to ﬁnd a tame 4-round trail and for 800 and 1600 no tame 4-round trails exist fora1
+paĴerns with Hamming weight below 16. As for the minimum restriction weights of the
+4-round tame trails found, the increase in 30 to 56 from width 100 to 200 and to 90 for width
+400 suggests that the CP-kernel plays a much smaller role than for 3-round trails.
+44 /69
+Chapter 4
+Analysis ofKђѐѐюј- f
+In this chapter we report on analysis and experiments performed on reduced-round versions
+of Kђѐѐюј- f , either by the designers or third parties. In Section4.1 we describe our experi-
+ments based on the algebraic normal form representations. In Section4.2 we report on the
+outcome of aĴempts to solve CICO problem instances. In Section4.3 we describe statisti-
+cal properties of reduced-round versions ofKђѐѐюј- f [25]. Finally, in Section4.4 we discuss
+distinguishers that exploit the low algebraic degree of the round function and its inverse.
+4.1 Algebraic normal form
+In this section, we explain how the algebraic normal form can be used to evaluate the pseudo-
+randomness ofKђѐѐюј- f in diﬀerent aspects.
+4.1.1 Statistical tests
+There are several ways to describeKђѐѐюј- f algebraically. One could compute the algebraic
+normal form (ANF) [8, Section “ Algebraic expressions”] with elements inGF(2), GF(25),
+GF(225) or GF(2w), but given the bit-oriented structure and matchingq, r, p, i and c as
+operations inGF(2), the ANF inGF(2) seems like a natural way to represent theKђѐѐюј- f
+permutation. For instance, one could take the rows as variables inGF(25). This way, the
+c operation applies independently per variable. However, the other operations will have a
+complex expression.
+We performed several statistical tests based on the ANF ofKђѐѐюј- f [b, nr = n], fromb =
+25 to b = 1600 and their inverses inGF(2). The number of roundsn is also varied from 1
+to its nominal value, although in practice we can limit ourselves to a reasonable number of
+rounds aĞer which no signiﬁcant statistical deviation can be found.
+In general, the test consists in varying 25 bits of input and counting the number of mono-
+mials of degreed of allb output bits. The statistical test is performed per degree indepen-
+dently. The number of monomials of degreed should be present in a ratio of about one half.
+The test fails when the observed number of monomials is more than two standard deviations
+away from the theoretical average. We look for the highest degree that passes the test.
+The diﬀerent tests determine which input bits are varied and/or which variant of the
+Kђѐѐюј- f permutation is used.
+• Bits in slice (BIS)In this test, the 25 bits of the slicez = 0 are varied. Forb > 25, the
+remaining b −25 bits are set to zero.
+45 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+Rounds Maximum degree Monomials exist
+to pass test up to degree
+f f −1 f f −1
+1 (none) (none) 2 3
+2 (none) 3 3 9
+3 (none) 10 5 17
+4 5 25 9 25
+5 16 25 17 25
+6-24 25 25 25 25
+Table 4.1:The BIS ANF statistical test onKђѐѐюј- f [1600] and its inverse
+• Bits in lane (BIL)In this test, the ﬁrst 25 bits of lanex = y = 0 are varied. This test
+applies only tob ≥800. The remainingb −25 bits are set to zero.
+• Bits in two lanes, kernelIn this test, the ﬁrst 25 bits of lanex = y = 0 and of lane
+(x, y) = (0, 1) are varied simultaneously. The remainingb −50 bits are set to zero. The
+idea behind this test is thatq will behave like the identity in the ﬁrst round since the
+input state is always in the column-parity kernel (see2.4.3).
+• BIS, symmetry in lanesIn this test, the 25 bits of the slicez = 0 are varied. Theb −25
+other bits are set asa[x][y][z] =a[x][y][0] so that all lanes contain either all zeroes or all
+ones. The output bitsa[x][y][0] are xored intoa[x][y][z] for allz > 0. Only theb −25
+output bits withz > 0 are considered for the test—this test applies only whenb > 25.
+The purpose of this test is discussed in Section4.1.2.
+• BIS, slide This test is like the ﬁrst BIS test, except that the function tested is diﬀer-
+ent. Instead of testing it againstKђѐѐюј- f [b, nr = n] itself, we test it against the func-
+tion slide[b, n] deﬁned in Equation (4.1). The purpose of this test is discussed in Sec-
+tion 4.1.3.
+The results forKђѐѐюј- f [1600] are summarized in Tables4.1 and 4.2. All results of the
+tests can be found in the ﬁleANF-Keccak-f.ods. It is interesting to observe the fast increase of
+degree of the monomials that are densely present in the algebraic description of theKђѐѐюј- f
+permutations. Note that the round function has only degree two and thus no monomial of
+degree higher than2i can appear aĞer aĞeri rounds. The degree of the inverse of the round
+function is three and thus no monomial of degree higher than3i can appear aĞer aĞeri
+inverse rounds.
+Taking the worst case among all these tests, theKђѐѐюј- f permutations and their inverses
+pass the test for the maximum degree tested here (i.e.,max(25, b −1)) aĞer 6 to 8 rounds,
+depending on the width.
+4.1.2 Symmetric trails
+The design ofKђѐѐюј- f has a high level of symmetry. Due to this, the weight of symmetric
+trails may no longer be relevant for the security. (See Section2.4.2 for more details.) We
+investigate how an aĴacker may be able to exploit the symmetry in his advantage.
+The weight and existence of trails (both diﬀerential and linear) is independent ofi. The
+fact that all other step mappings of the round function are translation-invariant in the direc-
+tion of thez axis, makes that a trailQ implies w −1 other trails: those obtained by translating
+46 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+Rounds Maximum degree Monomials exist
+to pass test up to degree
+f f −1 f f −1
+1 (none) (none) 2 1
+2 (none) 3 4 3
+3 (none) 8 8 9
+4 8 25 15 25
+5 25 25 25 25
+6 24 25 25 25
+7-24 25 25 25 25
+Table 4.2:The BIL ANF statistical test onKђѐѐюј- f [1600] and its inverse
+the paĴerns ofQ over any non-zero oﬀset in thez direction. If all paĴerns in a trail have a
+z-period below or equal tod, this implies onlyd −1 other trails.
+Moreover, a trail for a given widthb implies a trail for all larger widthsb′. The paĴerns
+are just deﬁned by theirz-reduced representations and the weight must be multiplied by
+b′/b. Note that this is not true for the cardinality of diﬀerential trails and the sign of the
+correlation contribution of linear trails, as these do depend on the round constants.
+To ﬁnd a pair in a diﬀerential trail of weightW requires the aĴacker to fulﬁllW conditions
+on the absolute values when following that trail. In the case of ab′-symmetric case, the
+conditions are repeatedb′/b times on translated sets of bits. The question is to determine
+whether the symmetry induced by this duplication can be exploited by the aĴacker, even
+with the asymmetry introduced byi.
+In the absence ofi, Kђѐѐюј- f [b] presented with a symmetric input behaves asb parallel
+identical instances ofKђѐѐюј- f [25]. In such a modiﬁed permutation, a symmetric trail with
+weight eb would only imposee conditions (on the symmetric absolute values) rather thaneb.
+To determine how much asymmetryi introduces on the absolute values, we express the
+Kђѐѐюј- f [b] permutation on a diﬀerent set of variables and compute the ANF on it. The
+change of variables is deﬁned as:
+a′[x][y][0] =a[x][y][0],
+a′[x][y][z] =a[x][y][z] ⊕a[x][y][0], z > 0.
+In the absence of asymmetry (i.e., withouti), a′[x][y][z], z > 0 remains zero if the input
+of the permutation is 1-symmetric, i.e., ifa[x][y][z] depends only onx and y.
+The aĴacker can try to introduce a symmetric diﬀerence and to keep it symmetric through
+the rounds. In these new variables, it is equivalent to keepinga′[x][y][z] = 0 for z > 0. By
+analyzing the ANF in these new variables, it gives the degree of the equations to solve to
+keep the symmetry in the state at a given round by adjusting the input.
+The results of these tests can be found in the ﬁleANF-Keccak-f.ods. The maximum degree
+to pass test is indicated in theBIS, sym lanecolumns. To impose dense non-linear equations
+to the aĴacker,Kђѐѐюј- f [50] to Kђѐѐюј- f [400] need at least 3 rounds, whileKђѐѐюј- f [800]
+and Kђѐѐюј- f [1600] need at least 4 rounds. A dense number of monomials with maximum
+degree tested here (i.e.,max(25, b −1)) is reached aĞer 6 rounds for all widths. Similar con-
+clusions apply to the inverse ofKђѐѐюј- f : The maximum degree tested is reached aĞer 6
+rounds for the inverse ofKђѐѐюј- f [50], 5 rounds for the inverse ofKђѐѐюј- f [100] and of
+Kђѐѐюј- f [200] and 4 rounds for the other inverses. According to this test, the aĴacker should
+have a very diﬃcult time to keep the diﬀerences symmetric aĞer such a number of rounds.
+47 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+4.1.3 Slide aĴacks
+Slide aĴacks [12, 27] are aĴacks that exploit symmetry in a primitive that consists of the
+iteration of a number of identical rounds. We investigate how much asymmetry must be
+applied for these aĴacks to be non-eﬀective.
+In the absence ofi, all rounds are identical. In such a case, this allows for distinguishing
+properties of Kђѐѐюј- f : the distribution of the cycle lengths will be signiﬁcantly diﬀerent
+from that of a typical randomly-chosen permutation.
+To evaluate the amount of inter-round asymmetry brought byi, we performed a speciﬁc
+test based on ANF. We compute the ANF of the functionslide[b, n], which is obtained by
+XORing together the output of the ﬁrstn rounds ofKђѐѐюј- f [b] and the output ofn rounds
+starting from the second one. Alternatively, it is deﬁned as
+slide[b, n] = (roundn−1 ◦···◦ round0) ⊕(roundn ◦···◦ round1), (4.1)
+where roundi is the round permutation numberi. In the absence ofi, theslide[b, n] function
+would constantly return zeroes. Withi, it returns the diﬀerence between two sets ofn rounds
+slid by one round.
+The results of these tests can be found in the ﬁleANF-Keccak-f.ods. The maximum degree
+to pass test is indicated in theBIS, slidecolumns. The degree increases more slowly than for
+other tests such asbits in slice. However, the maximum degree tested here (i.e.,max(25, b −
+1)) is reached aĞer 8 rounds forKђѐѐюј- f [25] and aĞer 6 rounds for all other widths. For the
+inverse ofKђѐѐюј- f [25], the maximum degree tested is reached aĞer 7 rounds and, for the
+other inverses, aĞer 4 rounds.
+4.2 Solving CICO problems algebraically
+4.2.1 The goal
+As explained in [8, Section “Conducting primary aĴacks using structural distinguishers”]
+the security of a sponge function relies critically on the infeasibility of solving non-trivial
+CICO problems for its underlying permutation. The resistance ofKђѐѐюј- f against solving
+non-trivial CICO problems is hence critical for the security ofKђѐѐюј. We have developed
+soĞware to generate the sets of equations in a form that they can be fed to mathematics
+soĞware such as MAGMA or SAGE, and subsequently using this soĞware to solve instances
+of the CICO problem for diﬀerent sets of parameters.
+4.2.2 The supporting soĞware
+KђѐѐюјTќќљѠ [9] supports the generation of round equations of all supported width values,
+compatible with SAGE or other computer algebra tools. It can generate the equations for all
+operations within a round,q, r, p, c and i, or a sequence of them. The functions that generate
+the equations are based on the same code that actually evaluates theKђѐѐюј- f permutations.
+Using C++ template classes, the evaluation of the operations is made symbolically, hence
+producing equations. This way of working reduces the chances of making mistakes, as it
+avoids to duplicate the description ofKђѐѐюј- f in C++.
+The format of the generated equations has been chosen to match the syntax of SAGE [38].
+Also, the bits inside the state are named in such a way that their alphabetical order matches
+the bit numbering deﬁned at the level of the sponge construction. This feature comes in
+handy when deﬁning a concrete problem to solve, e.g., ﬁnding a pre-image or a collision.
+One needs to separate bits that are known and ﬁxed from those that are the unknowns of the
+48 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+problem instance. This separation is deﬁned at the sponge level and can be done alphabeti-
+cally on the bit names.
+We have installed a SAGE server version 1.4 [38] and automated the tests using Python
+scripts [18] interpreted by the SAGE server.
+4.2.3 The experiments
+In our experiments we have used SAGE to solve a wide range of CICO problems applied
+to the Kђѐѐюј- f permutations. In all problems a subset of the input bits and output bits
+are ﬁxed to randomly generated values. More particularly, the range of CICO problems we
+investigated can be characterized with the following parameters:
+• Number of roundsnr: the number of rounds ofKђѐѐюј- f
+• Width b: the width ofKђѐѐюј- f
+• Rate r: the number of unknown input bits
+• Output lengthn: the number of known output bits
+There is a variable for every bit at the input of each round and for the output bits, totalling to
+b(nr + 1) variables. There is a round equation for each output bit of every round, expressing
+the output bit as a Boolean expression of the input bits. Additionally there is an equation for
+each input or output bit that is ﬁxed, simply expressing the equality of the corresponding
+variable with a binary constant. Hence in total the number of equations isbnr + (b −r) +n =
+b(nr + 1) +n −r.
+We use SAGE to solve the CICO problems using Ideals and Gröbner bases [19]. We pro-
+vide a short intuitive explanation here and refer to [19] for thorough treatment of Ideals and
+Gröbner bases. To solve a CICO problem we do the following:
+• Deﬁne a ringR of Boolean polynomials, providing theb(nr + 1) variable names and
+specifying the so-called term ordering [19].
+• Deﬁne an ideal over the ring, providing theb(nr + 1) +n −r equations as generator
+polynomials.
+• Compute a Gröbner basis for this ideal.
+The generated Gröbner basis consists of a sequence of polynomials (equivalent to equations)
+that allows to easily generate all solutions of the set of equations generating the ideal. If there
+is no solution, it simply consists of the polynomial 1 (implying the equation1 = 0 that has no
+solution). If there is one solution, it simply consists of a sequence of equations of typex + 1
+(implying x = 1) orx (implying x = 0). The order of the variable names and term ordering
+provided in the deﬁnition of the ringR have an impact on the Gröbner basis. The sequence
+of polynomials in the Gröbner basis satisfy an ordering that is determined by the order of
+variable names and the term ordering. This is not just the way the basis is presented but has
+an impact on the way it is generated and hence may impact its computational and memory
+complexity.
+For executing these functions, SAGE calls an underlying library dedicated to Boolean
+polynomials and monomials. This library is called PolyBoRi [17] and is part of the SAGE
+distribution. As opposed to the generic polynomial ideal oriented functions in SAGE, it
+heavily exploits the fact that Boolean polynomials can be modelled in a very simple way,
+with both coeﬃcients and degree per variable in{0, 1}. The ring of Boolean polynomials
+49 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+is not a polynomial ring, but rather the quotient ring of the polynomial ring over the ﬁeld
+with two elements modulo the ﬁeld equationsx2 = x for each variablex. Therefore, the
+usual polynomial data structures seem not to be appropriate for fast Gröbner basis com-
+putations. The PolyBoRi authors state that they introduces a specialised data structure for
+Boolean polynomials, capable of handling these polynomials more eﬃciently with respect
+to memory consumption and also computational speed.
+If the number of equation is smaller than the number of variables, we expect there to be
+multiple solutions. If the number of equations is larger than the number of variables, chances
+are that there is no solution at all. A priori, the expected number of solutions of a CICO
+problem is2r−n. In our experiments we have focused on the caser = n where we expect to
+have one solution on the average and across experiments we expect the number of solutions
+to have a Poisson distribution withl = 1. This is an interesting case as it corresponds with
+the CICO problems encountered when searching a (second) pre-image.
+We investigated the casen = r for values ofr up to 12, values ofnr up to 8 and widths
+from 25 to 400. We used lexicographical order with the output variables declared ﬁrst and
+the input variables declared last, as from preliminary experiments this turned out to be the
+most eﬃcient choice. For each set of parameters, a number of CICO problems was solved
+with at least 5 problems resulting in a solution and 5 problems resulting in the absence of a
+solution. We arranged the output of SAGE for analysis in the ﬁleKeccak-CICO-results.ods.
+Analysing this data, we can make the following observations:
+• For small values ofr PolyBoRi is eﬃcient in computing the Gröbner basis, and this for
+all values ofnr and widthb.
+• For certain parameter choices, solving CICO problems that have no solution takes sig-
+niﬁcantly less time than CICO problems that have a solution. The diﬀerence is espe-
+cially large for large widths and small rate values. When the rate increases, the com-
+putation times for the two cases (solution and no solution) converge.
+• Doubling the width, keeping all other parameters constant also roughly doubles the
+computation time. Hence the computation time appears to grows roughly linearly in
+the width.
+• Increasing the number of rounds fromnr to nr + 1, keeping all other parameters con-
+stant, results in an increase roughly independent from the value ofnr. Hence the com-
+putation time appears to grow linearly in the number of rounds.
+• The eﬀect of increasing bitrate by 1 fromr to r + 1, keeping all other parameters con-
+stant, appears to increase the computation time by a factor that weakly increases with
+r and the number of rounds. Atr = 12 its value is around 3. If we may extrapolate this
+behaviour, solving a CICO problem quickly becomes infeasible with this method asr
+grows.
+Hence for this class of CICO problems the case of a small rate and small output length can be
+relatively easily solved. Although surprising at ﬁrst sight, this poses no threat to the security
+of Kђѐѐюј- f as such a CICO problem can be eﬃciently solved by exhaustive search for any
+permutation. It suﬃces to try all2r possible values of ther unknown input bits, apply the
+permutation and verify whether the generated output has the correct value in the known bit
+positions.
+50 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+Rounds Maximum degree Monomials exist
+to pass test up to degree
+f f −1 f f −1
+1 (none) (none) 2 3
+2 1 2 4 9
+3 6 10 8 17
+4 14 18 16 21
+5 22 23 22 23
+6 23 23 24 24
+7-12 24 24 24 24
+Table 4.3:The ANF statistical test onKђѐѐюј- f [25] and its inverse
+4.2.4 Third-party analysis
+Aumasson and Khovratovich report in [1] on aĴempts of solving instances of the CICO prob-
+lem for diﬀerent widths ofKђѐѐюј- f using a so-called triangulation tool. Solutions were
+found for Kђѐѐюј- f [1600] reduced to three rounds. For more rounds the fast backwards
+diﬀusion inq apparently prevented solving the CICO problems.
+Morawiecki and Srebrny report in [36] on aĴempts of solving instances of the CICO
+problem for diﬀerent widths ofKђѐѐюј- f by ﬁrst expressing the round equations in con-
+junctive normal form (CNF) and then run SAT solvers on the resulting set of equations. The
+SAT solver performed beĴer than exhaustive search for some CICO problem instances of
+Kђѐѐюј- f [1600], Kђѐѐюј- f [200] andKђѐѐюј- f [50] reduced to three rounds. For more rounds
+the SAT solvers were less eﬃcient than exhaustive search.
+4.3 Properties of Kђѐѐюј- f [25]
+The Kђѐѐюј- f permutations should have no propagation properties signiﬁcantly diﬀerent
+from that of a random permutation. For the smallestKђѐѐюј- f version, Kђѐѐюј- f [25], it is
+possible to experimentally verify certain properties.
+First, we report on the algebraic normal form investigations, applied toKђѐѐюј- f [25].
+Second, we have reconstructed signiﬁcant parts of the distribution of diﬀerential probabil-
+ities and input-output correlation ofKђѐѐюј- f [25] and its reduced-round versions. Third,
+we have determined the cycle structure ofKђѐѐюј- f [25] and all its reduced-round versions.
+As a reference for the distributions, we have generated a pseudorandom permutation
+operating on 25 bits using a simple algorithm from [32] taking input from a pseudorandom
+bit generator based on a cipher that is remote fromKђѐѐюј and its inventors: RC6 [37]. We
+denote this permutation by the term Perm-R.
+4.3.1 Algebraic normal statistics
+The results of the ANF analysis ofKђѐѐюј- f [25] are displayed in Table4.3. Starting from 7
+rounds, all monomials up to order 24 exist and appear with a fraction close to one half. Since
+Kђѐѐюј- f [25] is a permutation, the monomial of order 25 does not appear.
+51 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+1.E+11
+1.E+12
+1.E+13
+02468 1 0 1 2 1 4
+Figure 4.1:Cardinality histogram of sampling of Perm-R
+4.3.2 Diﬀerential probability distributions
+We have investigated the distribution of the cardinality of diﬀerentials forKђѐѐюј- f [25],
+several reduced-round versions ofKђѐѐюј- f [25] and of Perm-R. For these permutations, we
+have computed the cardinalities of241 diﬀerentials of type(a′, b′) where a′ranges over216
+diﬀerent non-zero input paĴerns andb′ over all 225 paĴerns. For Perm-R we just tested
+the ﬁrst (when considered as an integer)216 non-zero input paĴerns. For theKђѐѐюј- f [25]
+variants we tested as input paĴerns the ﬁrst216 non-zero entries in the lookup table of Perm-
+R.
+In a random permutation the cardinality of diﬀerentials has a Poisson distribution with
+l = 1/2. This is studied and described among others in [25]. Moreover, [25] also determines
+the distribution of the maximum cardinality of a large number of diﬀerentials over a random
+permutation. According to [25, Section 5.2], the expected value of the maximum cardinality
+over the241 samples is 12 and the expected value of the maximum cardinality over all250 −1
+non-trivial diﬀerentials(a′, b′) is 14.
+We provide in a sequence of diagrams the histograms obtained from these samplings,
+indicating the envelope of the theoretical Poisson distribution for a random permutation
+as a continuous line and the results of the measurements as diamond-shaped dots. We have
+adopted a logarithmic scale in they axis to make the deviations stand out as much as possible.
+Figure 4.1 shows that Perm-R exhibits a distribution that follows quite closely the theo-
+retically predicted one. The maximum observed cardinality is 11.
+Figure 4.2 shows the distribution for the two-round version ofKђѐѐюј- f [25]: the distri-
+bution deviates signiﬁcantly from the theoretical Poisson distribution. Note that here also
+the x axis has a logarithmic scale. The largest cardinality encountered is 32768. It turns out
+that the pairs of this diﬀerential are all in a single trail with weight 9. The number of pairs
+is equal to the number of pairs predicted by the weight:224−9 = 215. Note that there are
+2-round trails with weight 8 (see Table3.3) but apparently no such trail was encountered in
+our sampling.
+Figure 4.3 shows the distribution for the three-round version ofKђѐѐюј- f [25]. The devia-
+tion from the theoretical Poisson distribution is smaller. The largest cardinality encountered
+is now 146. The pairs of this diﬀerential are all in a single trail with weight 17. The number
+52 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+1.E+11
+1.E+12
+1 10 100 1000 10000 100000
+Figure 4.2:Cardinality histogram of sampling of 2-round version ofKђѐѐюј- f [25]
+of pairs is slightly higher than the number of pairs predicted by the weight:224−17 = 27. The
+3-round trails with weight 16 (see Table3.3) were not encountered in our sampling.
+Figure 4.4 shows the distribution for the four-round version ofKђѐѐюј- f [25]. The sam-
+pling does no longer allow to distinguish the distribution from that of a random permutation.
+The largest cardinality encountered is now 12. The pairs of this diﬀerential are in 12 diﬀerent
+trails with weight ranging from 56 to 64. For the 4-round trails with weight 23 (see Table3.3)
+it is not clear whether they were encountered in our sampling: the expected number of pairs
+is only 2 and this may have gone unnoticed.
+Finally, Figure4.5 shows the distribution for the 12-round version ofKђѐѐюј- f [25]. As
+expected, the distribution is typical of a random permutation. The maximum cardinality
+observed is 12.
+4.3.3 Correlation distributions
+We have investigated the distribution of the correlations forKђѐѐюј- f [25], several reduced-
+round versions ofKђѐѐюј- f [25] and Perm-R. For these permutations, we have computed the
+correlations of239 couples (v, u) where u ranges over214 diﬀerent non-zero output masks
+and v over all225 paĴerns. For Perm-R we just tested the ﬁrst (when considered as an integer)
+214 non-zero output masks. For theKђѐѐюј- f [25] variants we tested as output masks the ﬁrst
+214 non-zero entries in the lookup table of Perm-R.
+In a random permutation with widthb the input-output correlations have a discrete dis-
+tribution enveloped by a normal distribution withs2 = 2−b. This is studied and described
+in [25]. Moreover, [25] also determines the distribution of the maximum correlation mag-
+nitude of a large number of couples(v, u) over a random permutation. According to [25,
+Section 5.4], the expected value of the maximum correlation magnitude over the239 samples
+is 0.00123 and the expected value of the maximum correlation magnitude over all250 −1
+non-trivial correlations(v, u) is 0.0017.
+We provide in a sequence of diagrams the histograms obtained from these samplings,
+indicating the envelope of the theoretical normal distribution for a random permutation as
+a continuous line and the results of the measurements as diamond-shaped dots. We have
+53 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+1.E+11
+1.E+12
+0 20 40 60 80 100 120 140 160
+Figure 4.3:Cardinality histogram of sampling of 3-round version ofKђѐѐюј- f [25]
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+1.E+11
+1.E+12
+1.E+13
+02468 1 0 1 2 1 4
+Figure 4.4:Cardinality histogram of sampling of 4-round version ofKђѐѐюј- f [25]
+54 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+1.E+11
+1.E+12
+1.E+13
+02468 1 0 1 2 1 4
+Figure 4.5:Cardinality histogram of sampling ofKђѐѐюј- f [25]
+adopted a logarithmic scale in they axis to make the deviations stand out as much as possible.
+Figure 4.6 shows that Perm-R exhibits a distribution that follows quite closely the normal
+envelope. At its tails the experimental distribution exhibits its discrete nature. Because it is
+a permutation, the correlation can only be non-zero in values that are a multiple of22−b. For
+a given correlation valuec that is a multiple of22−b, the a priori distribution of the corre-
+sponding value in the histogram is a Poisson distribution withl given by the value of the
+normal envelope in that point. The largest correlation magnitude observed is 0.001226, quite
+close to the theoretically predicted value.
+Figure 4.7 shows the distribution for the two-round version ofKђѐѐюј- f [25]: the distri-
+bution deviates signiﬁcantly from the theoretical normal envelope. Additionally, it is zero
+for all values that are not a multiple of2−15 (rather than2−23). This is due to the fact that the
+Boolean component functions ofKђѐѐюј- f [25] have only reached degree 4 aĞer two rounds,
+rather than full degree 24. The largest correlation magnitude encountered is 0.03125 (outside
+the scale of the ﬁgure). This is the correlation magnitude2−5 one would obtain by a single
+linear trail with weight 10. By measuring the correlation of the same pair of masks for vari-
+ants of the two-round version ofKђѐѐюј- f [25] where diﬀerent constant vectors are XORed
+in between the two rounds, it turns out that the correlation value is either25 or −2−5. This
+implies that the correlation is the result of a single trail. The 2-round linear trails with weight
+8 (see Table3.3) were apparently not encountered in our sampling.
+Figure 4.8 shows the distribution for the three-round version ofKђѐѐюј- f [25]: the devi-
+ation from the theoretical normal envelope becomes smaller. This distribution is zero for all
+values that are not a multiple of2−18 due to the fact that the Boolean component functions
+of Kђѐѐюј- f [25] have only reached degree 8 aĞer three rounds. The largest correlation mag-
+nitude encountered is 0.003479. This is a correlation magnitude that cannot be obtained by
+a single linear trail. 3-round linear trails with weight 16 would give correlation magnitude
+2−8 ≈0.0039. It is quite possible that the observed correlation value is the sum of the (signed)
+correlation contributions of some trails, including one with weight 16 and some with higher
+weight. By measuring the correlation of this pair of masks in variants of the three-round
+version ofKђѐѐюј- f [25] where diﬀerent constant vectors are XORed in between the rounds,
+we obtain 491 diﬀerent values. This implies that this correlation has contributions from at
+55 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+-0.0014 -0.0012 -0.001 -0.0008 -0.0006 -0.0004 -0.0002 0 0.0002 0.0004 0.0006 0.0008 0.001 0.0012 0.0014
+Figure 4.6:Correlation histogram of sampling of Perm-R
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+1.E+11
+-0.01 -0.008 -0.006 -0.004 -0.002 0 0.002 0.004 0.006 0.008 0.01
+Figure 4.7:Correlation histogram of sampling of 2-round version ofKђѐѐюј- f [25]
+56 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+-0.004 -0.003 -0.002 -0.001 0 0.001 0.002 0.003 0.004
+Figure 4.8:Correlation histogram of sampling of 3-round version ofKђѐѐюј- f [25]
+least 9 trails.
+Figure 4.9 shows the distribution for the four-round version ofKђѐѐюј- f [25]. The shape
+of the distribution and the maximum values do no longer allow to distinguish the distribu-
+tion from that of a random permutation. The largest correlation magnitude encountered is
+0.001196. However, this distribution diﬀers from that of a random permutation because it is
+zero for all values that are not a multiple of2−20 due to the fact that the Boolean component
+functions ofKђѐѐюј- f [25] have only reached degree 16 aĞer four rounds. By measuring the
+correlation of this pair of masks in variants of the four-round version ofKђѐѐюј- f [25] where
+diﬀerent constant vectors are XORed in between the rounds, we obtain many diﬀerent val-
+ues implying that this correlation is the result of a large amount of trails. Moreover, the value
+of the correlation exhibits a normal distribution.
+AĞer 5 rounds the distribution is zero for values that are not a multiple of2−22 and only
+aĞer 6 rounds this becomes2−23.
+Finally, Figure4.10 shows the distribution for the 12-round version ofKђѐѐюј- f [25]. As
+expected, the distribution is typical of a random permutation. The maximum correlation
+magnitude observed is 0.001226.
+4.3.4 Cycle distributions
+We have determined the cycle structure ofKђѐѐюј- f [25] and all its reduced-round versions.
+Table 4.4 lists all cycles forKђѐѐюј- f [25] and Table4.5 the number of cycles for all reduced-
+round versions. For a random permutation, the expected value of the number of cycles is
+ln(225) =25 ln 2≈17.3. The average of Table4.5 is 16.3.
+It can be observed thatKђѐѐюј- f [25] and all its reduced-round versions have an even
+number of cycles. For a permutation operating on a domain with an even number of ele-
+ments, an even number of cycles implies that it is an even permutation [40], hence they are
+all even permutations. Actually, it is easy to demonstrate that all members of theKђѐѐюј- f
+family are even permutations. We do however not think this property can be exploited in an
+aĴack or to build a usable distinguisher.
+The members of theKђѐѐюј- f family are even permutations because the composition of
+57 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+1.E+10
+-0.0014 -0.0012 -0.001 -0.0008 -0.0006 -0.0004 -0.0002 0 0.0002 0.0004 0.0006 0.0008 0.001 0.0012 0.0014
+Figure 4.9:Correlation histogram of sampling of 4-round version ofKђѐѐюј- f [25]
+1.E-01
+1.E+00
+1.E+01
+1.E+02
+1.E+03
+1.E+04
+1.E+05
+1.E+06
+1.E+07
+1.E+08
+1.E+09
+-0.0014 -0.0012 -0.001 -0.0008 -0.0006 -0.0004 -0.0002 0 0.0002 0.0004 0.0006 0.0008 0.001 0.0012 0.0014
+Figure 4.10:Correlation histogram of sampling ofKђѐѐюј- f [25]
+58 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+18447749 147821 168 12
+13104259 40365 27 3
+1811878 2134 14 2
+Table 4.4: Cycle lengths inKђѐѐюј- f [25]
+rounds cycles rounds cycles rounds cycles
+1 14 5 18 9 14
+2 12 6 20 10 20
+3 16 7 18 11 18
+4 16 8 18 12 12
+Table 4.5:Number of cycles in reduced-round versions ofKђѐѐюј- f [25]
+two even permutation is an even permutation and that all step mappings ofKђѐѐюј- f are
+even permutations. We cite here a number of arguments we found in [40, Lemma 2]:
+• The mappingsq, p and r are linear. In fact all invertible linear transformations overZb
+2
+with b > 2 are even permutations. This follows from the fact that each invertible binary
+matrix can be obtained from the identity matrix by elementary row transformations
+(binary addition of one row to another row), and that these elementary row transfor-
+mations (considered as linear mappings) are permutations with2b−1 ﬁxed points and
+2b−2 cycles of length 2.
+• The mappingi consists of the addition of a constant. Addition of a constant inZb
+2 is
+the identity mapping if the constant is all-zero and has2b−1 cycles of length 2 if the
+constant is not all-zero.
+• The mappingc is an even permutation because it can be represented as a composition
+of 5w permutations that carry out thec mapping for one row and leave the other5w −1
+rows ﬁxed. The cycle representation of each such permutation contains a number of
+cycles that is a multiple of225w−5 and hence even.
+4.4 Distinguishers exploiting low algebraic degree
+The Kђѐѐюј- f round function and its inverse have low algebraic degrees, 2 and 3 respectively.
+This has been exploited in third-party cryptanalysis to construct a number of distinguishers.
+Aumasson and Khovratovich report in [1] on observations showing thatKђѐѐюј- f [1600]
+reduced to 3 and 4 rounds does not have an ideal algebraic structure and conjectures that
+this can be observed up to reduced-round versions of ten rounds, for which the algebraic
+degree is at most 1024 and hence not maximal.
+In [34] Lathrop tested the resistance ofKђѐѐюј against cube aĴacks by executing eﬃcient
+cube aĴack against the 224-bit output-length version ofKђѐѐюј conﬁgured as a MAC and
+calling a version ofKђѐѐюј- f [1600] reduced to 4 rounds or less. Based on his analysis, the au-
+thor suggests that a cube aĴack against such a conﬁguration would only be practical against
+reduced-round versions up to 7 rounds.
+59 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+4.4.1 Zero-sum distinguishers
+In [2] Aumasson and Meier introduced very simple and elegant distinguishers against reduced-
+round versions ofKђѐѐюј- f [1600]. They are based on the simple observation that the degree
+of n Kђѐѐюј- f rounds is at most2n and that the degree ofn inverse rounds is at most3n. We
+cite [2]:
+Suppose one ﬁxes1600 −513 = 1087 bits of the initial state to some arbitrary value, and consider
+the 2513 states obtained by varying the 513 bits leĞ. Our main observation is that applying the 9-round
+Kђѐѐюј- f to each of those states and xoring the2513 1600-bit ﬁnal states obtained yields the zero state.
+This is because, for each of the 1600 Boolean components, the value obtained is the order-513 derivative
+of a degree-512 polynomial, which by deﬁnition is null.
+If these states are chosen in some intermediate round and one computes the correspond-
+ing inputs and outputs, this is also the case for those inputs as long as the polynomials ex-
+pressing the inputs in terms of the intermediate state bits have small enough degree. Hence
+one has a systematic way to construct a set of inputs that XOR to zero and for which the cor-
+responding outputs XOR to zero, which is qualitatively diﬀerent from the generic method
+[7]. Additionally, if the positions of the free bits in the intermediate round are chosen care-
+fully, one may even reduce the degree of the forward and/or backward polynomials. Using
+these simple elements, Aumasson and Meier constructs distinguishers for up to 16 rounds of
+Kђѐѐюј- f [1600] [2]. This last one makes use of 6 backward rounds and 10 forward rounds.
+Given an upper bound ofN free bits one can construct a zero-sum distinguisher with
+log2 N forward rounds andlog3 N backward rounds. While in a distinguisher using only
+the forward direction maximum degree cannot be reached before 11 rounds, the start-in-
+the-middle technique allows going up to 16 rounds.
+This was further reﬁned by Boura and Canteaut in two papers [15, 14] extending the
+distinguishers to 18 rounds forKђѐѐюј- f [1600] in [15] and up to 20 rounds in [14]. The new
+ideas are the following. First, the Walsh spectrum ofc allows one to bound the degree of
+the inverse rounds more tightly. In particular, while 7 inverse rounds are expected to be
+of maximal degree (as37 > 1599), they show that it cannot be higher than1369. Second,
+by aligning the bits that are varied and those that are ﬁxed on row boundaries,c works
+independently and bĳectively row per row. This can be generalized to cover several rounds.
+Boura and Canteaut were joined by De Cannière in [16] and they extended the distin-
+guisher to the full 24 rounds ofKђѐѐюј- f [1600]. The novel idea that allowed this is the dis-
+covery of a saturation eﬀect imposing an upper bound on the degree of iterated permuta-
+tions. They showed this eﬀect for round functions in which the nonlinear step consists of
+the parallel application of S-boxes with a very elegant and simple argument. The eﬀect is
+strongest for small S-boxes but can also be observed for large S-boxes. While initially the
+algebraic degree D increases exponentially by a factord (with d the algebraic degree of the
+round function) per round, above some degree it onlyconverges exponentially tob.
+Finally, Duan and Lai further considered the evolution of the degree of the inverse per-
+mutation [26]. They noticed that the product of two output bits ofc−1 yields degree-3 poly-
+nomials, and this leads to beĴer bounds on the degree of the inverse rounds. In Table4.6, we
+list the bounds on the algebraic degrees of reduced-round versions ofKђѐѐюј- f [1600] and
+its inverse, based on this property and our own analysis.
+Triggered by the initial publication on zero-sums by Aumasson and Meier in [2], we
+decided to increase the number of rounds inKђѐѐюј- f from 12 + ℓ to 12 + 2ℓ. The motivation
+behind this was the following. The applicability of the zero-sum distinguishers is limited by
+the maximum number of free bitsN, namely the width. Doubling the width allows to add a
+forward round in the distinguisher and possibly a backward round. So when doubling the
+width, roughly two additional rounds are required to provide resistance against zero-zum
+60 /69
+4. Analysis ofKђѐѐюј- f The Kђѐѐюј reference
+# Rounds Degree f 1600−Degree f Degree f −1 1600−Degree f −1
+1 2 3
+2 4 9
+3 8 27
+4 16 81
+5 32 243
+6 64 729 871
+7 128 1164 432
+8 256 1382 218
+9 512 1491 109
+10 1024 576 1545 55
+11 1408 192 1572 28
+12 1536 64 1586 14
+13 1578 22 1593 7
+14 1592 8 1596 4
+15 1597 3 1598 2
+16 1599 1 1599 1
+Table 4.6: Bounds on the algebraic degrees of reduced-round versions ofKђѐѐюј- f [1600]
+and its inverse.
+distinguishers. This may be the case for other distinguishers too and so we felt it would be
+more appropriate to increase the number of rounds by 2 when doubling the width.
+The zero-sum partitions distinguish the 24 rounds ofKђѐѐюј- f [1600] from a randomly-
+chosen permutation, although without implying a distinguisher onKђѐѐюј itself [16, 26].
+Not increasing the number of rounds, strictly speaking, contradicts the hermetic sponge
+strategy. Still, we decided to stick the number of rounds speciﬁed by12 + 2ℓ due to the fact
+that these distinguishers can in no way be used to aĴackKђѐѐюј for many reasons, of which
+the following two are the most important (see also [8, Section “The usability of structural
+distinguishers”]).
+First, the advantage of a zero-sum distinguisher (or partition) is 0 for any number of
+queries N to f or f −1 with N smaller than the size of the partition. This means that using
+a permutation f that has zero-sum distinguishers has no impact on theROdiﬀerentiating
+advantage for N below the size of the partition. In the ﬂat sponge claim, no resistance is
+claimed for aĴacks requiring a workload of more than2c/2 queries to f and the maximum
+value for the capacity isc = b −1. So distinguishers that have zero advantage forN below
+2b/2 do not compromise the ﬂat sponge claim. The zero-sum distinguishers for the full 24
+rounds of Kђѐѐюј- f [1600] have zero advantage below something like21575 queries. Only
+structural distinguishers onf that have non-zero advantage below2800 queries can possibly
+qualify as a threat for the security of a sponge function that uses it.
+Second, exploiting zero-sum distinguishers would require the adversary to apply inputs
+to the sponge function such that the input tof has the values of her choice, for many diﬀerent
+inputs. In the sponge construction, an aĴacker can not choose the value of bits in the inner
+part of the input tof directly, but onlyinﬂuence their value in an indirect way by injecting
+bits in the previous iteration off .
+Further discussions about the applicability of the zero-sum distinguishers can be found
+in [7].
+61 /69
+The Kђѐѐюј reference 4. Analysis ofKђѐѐюј- f
+4.4.2 Pre-image aĴacks
+The ﬁrst exploitation of the low algebraic degree of theKђѐѐюј- f round function in an actual
+aĴack on Kђѐѐюј was published by Bernstein in [3]. It is a pre-image aĴack that, making
+abstraction of the cost of memory access, would be able to break the claimed security level
+for reduced-round versions ofKђѐѐюј- f [1600] up to 8 rounds. When counting the cost of
+memory access, these aĴacks are much less eﬃcient than generic pre-image aĴacks.
+The aĴack exploits the fact thatKђѐѐюј- f reduced to 6, 7 and 8 rounds has an algebraic
+degree of only 64, 128 and 256 respectively. This allows evaluating a subset of the output bits
+for large sets of inputs more eﬃciently than computingKђѐѐюј- f [1600] for the same sets of
+inputs. This can be used as a ﬁlter for second pre-image candidates, reducing the number of
+candidates for whichKђѐѐюј- f [1600] must be computed to only a fraction.
+We give here short summary of what the aĴack can do.
+Consider a hash function with anm-bit digest and consider messages of a certain ﬁxed
+length L. Let there be:
+• Subset A (with |A|= n) of the message bit positions and
+• Subset B (with |B|= m) of the digest bit positions, such that for any ﬁxed value of the
+message bits not inA, the bits inB have algebraic degreed < n as functions of bits in
+A.
+If this degreed is suﬃciently small, the computation eﬀort of ﬁnding (second) pre-images
+can be reduced.
+This aĴack can be applied to a hash function (possibly round-reduced) where a subset
+B of the digest bits have a low algebraic degree in a subsetA of the message bits of the last
+block. The bits inB are only separated from the bits inA by a single compression function
+(or permutation) call.
+The downside of the aĴack is that this workload reduction comes at the cost of memory.
+For it to be a reduction, one considers the computational eﬀort not including the cost of mem-
+ory access. The memory required for the aĴack ism2n bits. This may be reduced somewhat
+by some clever programming techniques at the cost of increasing the computational eﬀort.
+For Kђѐѐюј with Kђѐѐюј- f [1600] reduced to 6, 7 or 8 rounds, the length of the messageL
+plays no role. The active bits must all be in the last block, son is limited by the bitrate (minus
+the padding). One can tunem and n resulting in diﬀerent memory-time trade-oﬀs. The ones
+reported in [3] are:
+• 6 rounds:2176 bits of memory give a workload reduction by a factor 50 (≈6 bits)
+• 7 rounds:2320 bits of memory give a workload reduction by a factor 37 (≈5 bits)
+• 8 rounds:2508 bits of memory give a workload reduction by a factor 1.4 (half a bit)
+62 /69
+Chapter 5
+Design rationale summary
+The purpose of this chapter is to list the design choices and to brieﬂy motivate them, although
+further analysis is provided in the subsequent chapters.
+5.1 Choosing the sponge construction
+The Kђѐѐюј hash function makes use of the sponge construction, following the deﬁnition of
+[8]. This results in the following property:
+Provability It has a proven upper bound for the success probability, and hence also a lower
+bound for the expected workload, of generic aĴacks. We refer to [8, Chapter “Security
+proofs”] for a more in-depth discussion.
+The design philosophy underlyingKђѐѐюј is thehermetic sponge strategy. This consists
+of using the sponge construction for having provable security against all generic aĴacks and
+calling a permutation (or transformation) that should not have structural properties with the
+exception of a compact description [8, Section “The philosophy”].
+Additionally, the sponge construction has the following advantages over constructions
+that make use of a compression function:
+Simplicity Compared to the other constructions for which upper bounds have been proven
+for the success of generic aĴacks, the sponge construction is very simple, and it also
+provides a bound that can be expressed in a simple way.
+Variable-length output It can generate outputs of any length and hence a single function
+can be used for diﬀerent output lengths.
+Flexibility Security level can be incremented at the cost of speed by trading in bitrate for
+capacity, using the same permutation (or transformation).
+Functionality Thanks to its long outputs and proven security bounds with respect to generic
+aĴacks, a sponge function can be used in a straightforward way as a MAC function,
+stream cipher and a mask generating function. Thanks to the duplex construction,
+a sponge function can be used as a reseedable pseudorandom bit generator and for
+eﬃcient authenticated encryption (see [8, Section “ Authenticated encryption”]).
+To support arbitrary bit strings as input, the sponge construction requires a padding func-
+tion. We have chosen the simplest padding rule that allows to use the same permutation in
+combination with diﬀerent bitrate values [8, Section “Optimum security of multi-rate sponge
+functions”] without loss of security.
+63 /69
+The Kђѐѐюј reference 5. Design rationale summary
+5.2 Choosing an iterated permutation
+The sponge construction requires an underlying functionf , either a transformation or a per-
+mutation. Informally speaking,f should be such thatit does not have speciﬁc properties that can
+be exploited in aĴacks. We have chosen a permutation, constructed as a sequence of (almost)
+identical rounds because of the following advantages:
+Block cipher experienceAn iterated permutation is an iterated block cipher with a ﬁxed
+key. In its design one can build on knowledge obtained from block cipher design and
+cryptanalysis (see Chapter2).
+Memory eﬃciency OĞen a transformation is built by taking a permutation and adding a
+feedforward loop. This implies that (at least part of) the input must be kept during the
+complete computation. This is not the case for a permutation, leading to a relatively
+small RAM footprint.
+Compactness Iteration of a single round leads to a compact speciﬁcation and potentially
+compact code and hardware circuits.
+5.3 Designing the Kђѐѐюј- f permutations
+The design criterion for theKђѐѐюј- f permutations is to have no speciﬁc properties that can
+be exploited in an aĴack when being used in the sponge construction. It is constructed as
+an iterated block cipher similar toNќђјђќћ [23] and RӒћёюђљ [24], with the key schedule
+replaced by some simple round constants. Here we give a rationale for its features:
+Bit-oriented structure AĴacks where the bits are grouped (e.g., in bytes), such as integral
+cryptanalysis and truncated trails or diﬀerentials, are unsuitable against theKђѐѐюј- f
+structure.
+Bitwise logical operations and ﬁxed rotationsDependence on CPU word length is only due
+to rotations, leading to an eﬃcient use of CPU resources on a wide range of processors.
+Implementation requires no large tables, removing the risk of table-lookup based cache
+miss aĴacks. They can be programmed as a ﬁxed sequence of instructions, providing
+protection against timing aĴacks.
+Symmetry This allows to have very compact code in soĞware and a very compact co-processor
+circuit suitable for constrained environments [10] .
+Parallelism Thanks to its symmetry and the chosen operations, the design is well-suited for
+ultra-fast hardware implementations and the exploitation of SIMD instructions and
+pipelining in CPUs.
+Round degree 2This makes the analysis with respect to diﬀerential and linear cryptanal-
+ysis easier, leads to relatively simple (albeit large) systems of algebraic equations and
+allows the usage of very powerful protection measures against diﬀerential power anal-
+ysis (DPA) both in soĞware and hardware that are not suited for most other nonlinear
+functions [6].
+Matryoshka structure The analysis of small versions is relevant for larger versions (see Sec-
+tion 2.2).
+Number of roundsnr = 12 + 2ℓ: The value ofnr has been chosen to have a good safety
+margin and still have good performance. See Section5.4.
+64 /69
+5. Design rationale summary The Kђѐѐюј reference
+AĴack Number of rounds
+Kђѐѐюј- f distinguisher below2b/2 9 + 2ℓ
+Kђѐѐюј distinguisher 7 + ℓ
+Inner collision 5 + ℓ
+State recovery 5 + ℓ
+Table 5.1: Suﬃcient number of rounds ofKђѐѐюј- f to resist to diﬀerent types of aĴack or
+distinguisher
+5.4 Strength estimation
+We here provide our estimates of how many rounds inKђѐѐюј- f are suﬃcient to provide
+resistance against two types of distinguisher and two types of aĴack. These estimations cover
+all instances ofKђѐѐюј[r, c].
+Kђѐѐюј- f distinguisher below2b/2 A structural distinguisher forKђѐѐюј- f [b] requiring less
+than 2b/2 queries, for any supported width.
+Kђѐѐюј distinguisher A structural distinguisher forKђѐѐюј[r, c].
+Inner collision The generation of an inner collision with success probability aboveN22−(c+1),
+with a workload equivalent toN calls toKђѐѐюј- f [r + c].
+State recovery State recovery from a keyed sponge with success probability aboveNM2−c
+with a workload equivalent toN calls toKђѐѐюј- f [r + c] and a sequence of queries to
+the keyed sponge requiring it to make in totalM calls to the permutation.
+We list the number of rounds that we estimate to be suﬃcient to resist these aĴacks in
+Table 5.1. These estimates are based on the results of our preliminary analysis that is treated
+in this document and the third-party analysis in [1, 34, 2, 15, 14, 36, 16, 3].
+65 /69
+The Kђѐѐюј reference 5. Design rationale summary
+66 /69
+Bibliography
+[1] J.-P . Aumasson and D. Khovratovich,First analysis of Keccak, Available online, 2009,
+http://131002.net/data/papers/AK09.pdf.
+[2] J.-P . Aumasson and W. Meier,Zero-sum distinguishers for reduced Keccak-f and for the core
+functions of Luﬀa and Hamsi, Available online, 2009,http://131002.net/data/papers/
+AM09.pdf.
+[3] D. J. Bernstein, Second preimages for 6 (7? (8??)) rounds of keccak? , 2010,
+hĴp://cr.yp.to/hash/keccak-20101127.txt.
+[4] G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche,RюёіќGюѡҼћ, a belt-and-mill hash
+function, Second Cryptographic Hash Workshop, Santa Barbara, August 2006,http://
+radiogatun.noekeon.org/.
+[5] , Kђѐѐюј speciﬁcations, version 2, NIST SHA-3 Submission, September 2009,http:
+//keccak.noekeon.org/.
+[6] , Note on side-channel aĴacks and their countermeasures , Comment on
+the NIST Hash Competition Forum, May 2009, http://keccak.noekeon.org/
+NoteSideChannelAttacks.pdf.
+[7] , Note on zero-sum distinguishers ofKђѐѐюј- f , Comment on the NIST Hash Com-
+petition Forum, January 2010,http://keccak.noekeon.org/NoteZeroSum.pdf.
+[8] , Cryptographic sponge functions, January 2011,http://sponge.noekeon.org/.
+[9] , KђѐѐюјTќќљѠ soĞware, January 2011,http://keccak.noekeon.org/.
+[10] G. Bertoni, J. Daemen, M. Peeters, G. Van Assche, and R. Van Keer,Kђѐѐюј implementa-
+tion overview, January 2011,http://keccak.noekeon.org/.
+[11] E. Biham, O. Dunkelman, and N. Keller,The rectangle aĴack - rectangling the serpent, Ad-
+vances in Cryptology – Eurocrypt 2001 (B. Pﬁtzmann, ed.), Lecture Notes in Computer
+Science, vol. 2045, Springer, 2001, pp. 340–357.
+[12] A. Biryukov and D. Wagner,Slide aĴacks, in Knudsen [31], pp. 245–259.
+[13] C. Bouillaguet and P .-A. Fouque,Analysis of the collision resistance of RadioGatún using al-
+gebraic techniques, Selected Areas in Cryptography, Lecture Notes in Computer Science,
+vol. 4876, Springer, 2008.
+[14] C. Boura and A. Canteaut,Zero-sum distinguishers on the Keccak-f permutation with 20
+rounds (working draĞ), private communication, 2010.
+67 /69
+The Kђѐѐюј reference BIBLIOGRAPHY
+[15] , A zero-sum property for the Keccak-f permutation with 18 rounds, Available online,
+2010, http://www-roc.inria.fr/secret/Anne.Canteaut/Publications/zero_sum.pdf.
+[16] C. Boura, A. Canteaut, and C. De Cannière,Higher-order diﬀerential properties of Keccak
+and Luﬀa, Fast SoĞware Encryption 2011, 2011, to appear, draĞ available from Cryptol-
+ogy ePrint Archive, Report 2010/589.
+[17] M. Brickenstein and A. Dreyer,PolyBoRi: A framework for Gröbner-basis computations with
+Boolean polynomials, Journal of Symbolic Computation44 (2009), no. 9, 1326–1345, Eﬀec-
+tive Methods in Algebraic Geometry.
+[18] The Python community,Python Programming Language, Python SoĞware Foundation,
+2009, http://www.python.org/.
+[19] D. A. Cox, J. B. LiĴle, and D. O’Shea,Ideals, varieties, and algorithms, third ed., Springer,
+2007.
+[20] J. Daemen,Cipher and hash function design strategies based on linear and diﬀerential crypt-
+analysis, PhD thesis, K.U.Leuven, 1995.
+[21] J. Daemen and C. S. K. Clapp,Fast hashing and stream encryption with P ANAMA, Fast
+SoĞware Encryption 1998 (S. Vaudenay, ed.), LNCS, no. 1372, Springer-Verlag, 1998,
+pp. 60–74.
+[22] J. Daemen, L. R. Knudsen, and V . Rĳmen,The block cipher Square, Fast SoĞware Encryp-
+tion 1997 (E. Biham, ed.), Lecture Notes in Computer Science, vol. 1267, Springer, 1997,
+pp. 149–165.
+[23] J. Daemen, M. Peeters, G. Van Assche, and V . Rĳmen,Nessie proposal: the block cipher
+ћќђјђќћ, Nessie submission, 2000,http://gro.noekeon.org/.
+[24] J. Daemen and V . Rĳmen,The design of Rĳndael — AES, the advanced encryption standard,
+Springer-Verlag, 2002.
+[25] , Probability distributions of correlation and diﬀerentials in block ciphers, Journal of
+Mathematical Cryptology1 (2007), no. 3, 221–242.
+[26] M. Duan and X. Lai,Improved zero-sum distinguisher for full round keccak-f permutation,
+Cryptology ePrint Archive, Report 2011/023, 2011,http://eprint.iacr.org/.
+[27] M. Gorski, S. Lucks, and T. Peyrin, Slide aĴacks on a class of hash functions, Asi-
+acrypt (J. Pieprzyk, ed.), Lecture Notes in Computer Science, vol. 5350, Springer, 2008,
+pp. 143–160.
+[28] J. Kelsey, T. Kohno, and B. Schneier,Ampliﬁed boomerang aĴacks against reduced-round
+mars and serpent, Fast SoĞware Encryption 2000 (B. Schneier, ed.), Lecture Notes in Com-
+puter Science, vol. 1978, Springer, 2000, pp. 75–93.
+[29] D. Khovratovich,Two aĴacks on RadioGatún, 9th International Conference on Cryptology
+in India, 2008.
+[30] L. R. Knudsen, Truncated and higher order diﬀerentials, Fast SoĞware Encryption 1994
+(B. Preneel, ed.), Lecture Notes in Computer Science, vol. 1008, Springer, 1994,
+pp. 196–211.
+68 /69
+BIBLIOGRAPHY The Kђѐѐюј reference
+[31] L. R. Knudsen (ed.),Fast soĞware encryption, 6th international workshop, fse ’99, rome, italy,
+march 24-26, 1999, proceedings, Lecture Notes in Computer Science, vol. 1636, Springer,
+1999.
+[32] D. E. Knuth,The art of computer programming, vol. 2, third edition, Addison-Wesley Pub-
+lishing Company, 1998.
+[33] S. K. Langford and M. E. Hellman,Diﬀerential-linear cryptanalysis, Advances in Cryp-
+tology – Crypto ’94 (Y. Desmedt, ed.), Lecture Notes in Computer Science, vol. 839,
+Springer, 1994, pp. 17–25.
+[34] J. Lathrop,Cube aĴacks on cryptographic hash functions, Master’s thesis, Available online,
+2009, http://www.cs.rit.edu/~jal6806/thesis/.
+[35] A. J. Menezes, P . C. van Oorschot, and S. A. Vanstone,Handbook of applied cryptography,
+CRC Press, 1997.
+[36] P . Morawiecki and M. Srebrny,A sat-based preimage analysis of reduced KECCAK hash
+functions, Cryptology ePrint Archive, Report 2010/285, 2010,http://eprint.iacr.org/.
+[37] R. L. Rivest, M. J. B. Robshaw, R. Sidney, and Y. L. Yin,The RC6 block cipher, AES pro-
+posal, August 1998.
+[38] W. A. Stein et al.,Sage Mathematics SoĞware, The Sage Development Team, 2009,http:
+//www.sagemath.org/.
+[39] D. Wagner,The boomerang aĴack, in Knudsen [31], pp. 156–170.
+[40] R. Wernsdorf,The round functions of Rĳndael generate the alternating group, Fast SoĞware
+Encryption 2002 (J. Daemen and V . Rĳmen, eds.), Lecture Notes in Computer Science,
+vol. 2365, Springer, 2002, pp. 143–148.
+[41] Wikipedia, Impossible diﬀerential cryptanalysis, 2008, http://en.wikipedia.org/wiki/
+Miss_in_the_middle_attack.
+[42] M. R. Z’aba, H. Raddum, M. Henricksen, and E. Dawson,Bit-paĴern based integral aĴack,
+Fast SoĞware Encryption 2008 (K. Nyberg, ed.), Lecture Notes in Computer Science,
+vol. 5086, Springer, 2008, pp. 363–381.
+69 /69

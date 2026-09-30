@@ -1,0 +1,1382 @@
+IACR Transactions on Symmetric Cryptology
+ISSN 2519-173X, Vol. 2017, No. 1, pp. 329–357. DOI:10.13154/tosc.v2017.i1.329-357
+New techniques for trail bounds and application
+to diﬀerential trails in Keccak
+Silvia Mella2,3, Joan Daemen1,4 and Gilles Van Assche1
+1 STMicroelectronics, Diegem, Belgium
+joan@cs.ru.nl,gilles-tosc@noekeon.org
+2 STMicroelectronics, Agrate Brianza, Italy
+silvia.mella@st.com
+3 University of Milan, Milan, Italy
+4 Radboud University, Nijmegen, The Netherlands
+Abstract. We present new techniques to eﬃciently scan the space of high-probability
+diﬀerential trails in bit-oriented ciphers. Diﬀerential trails consist in sequences of state
+patterns that we represent as ordered lists of basic components in order to arrange
+them in a tree. The task of generating trails with probability above some threshold
+starts with the traversal of the tree. Our choice of basic components allows us to
+eﬃciently prune the tree based on the fact that we can tightly bound the probability
+of all descendants for any node. Then we extend the state patterns resulting from
+the tree traversal into longer trails using similar bounding techniques.
+We apply these techniques to the 4 largestKeccak-f permutations, for which we
+are able to scan the space of trails with weight per round of 15. This space is orders
+of magnitude larger than previously best result published onKeccak-f[1600] that
+reached 12, which in turn is orders of magnitude larger than any published results
+achieved with standard tools, that reached at most 9. As a result we provide new
+and improved bounds for the minimum weight of diﬀerential trails on3, 4, 5 and 6
+rounds. We also report on new trails that are, to the best of our knowledge, the ones
+with the highest known probability.
+Keywords: diﬀerential cryptanalysis·Keccak ·trail weight bounds
+1 Introduction
+Diﬀerential cryptanalysis (DC) exploits predictable diﬀerence propagation in iterative
+cryptographic primitives [BS90]. The basic version makes use of diﬀerential trails (also
+called characteristics or diﬀerential paths) that consist of a sequence of diﬀerences through
+the rounds of the primitive. Given such a trail, one can estimate its diﬀerential probability
+(DP), namely, the fraction of all possible input pairs with the initial trail diﬀerence that
+also exhibit all intermediate and ﬁnal diﬀerence when going through the rounds.
+The potential of trails in attacks can be characterized by their weightw. For the round
+function ofKeccak-f (but also of, e.g., the AES), the weight equals the number of binary
+equations that a pair must satisfy to follow the speciﬁed diﬀerences [BDPV11, DR02]. In
+particular, a trail is a sequence of round diﬀerentials and each round diﬀerential imposes a
+number of conditions on the pair at its input. This number is the weight of that round
+diﬀerential, and the weight of the trail is simply the sum of that of its round diﬀerentials.
+Assuming that these conditions are independent, the weight of the trail relates to its DP
+as DP = 2−w. In iterated permutations, the existence of low-weight trails over all but a
+few rounds would imply a low resistance with respect to DC. For estimating the safety
+margin of a primitive, it is therefore important to understand the distributions of trail
+Licensed under Creative Commons License CC-BY 4.0.
+Received: 2016-06-01, Revised: 2016-11-23, Accepted: 2017-01-24, Published: 2017-03-08
+
+330 New techniques for trail bounds and application to diﬀerential trails in Keccak
+weights. One of the goals of this paper is to improve the understanding of diﬀerential trails
+in theKeccak-f permutations.
+For some primitives there exist compact and powerful proofs lower bounding the weight
+of trails over multiple rounds. The best known example is the AES with its solid bound
+of weight150 over 4 rounds [DR02]. Such compact proofs are out of reach for primitives
+with weak alignment such asKeccak-f or ARX-based primitives. For such primitives,
+the best results can be obtained by computer-assisted proofs, where a program scans the
+space of all possiblen-round trails with weight below some target weightT.
+Computer-assisted proofs (and bounds) can be obtained by using standard tools such
+as (mixed) integer linear programming ((M)ILP) or SAT solvers. MILP has been used by
+Sun, Hu, Wang, Wang, Qiao, Ma, Shi and Song to prove a lower bound of weight 19 in the
+ﬁrst 3 rounds of Serpent, and to ﬁnd the best 4-round trail in PRESENT that turns out
+to have weight 12 [SHW+14]. The highest weight per round using standard tools we know
+of is due to Mouha and Preneel, who used a SAT solver to scan all 3-round characteristics
+up to weight 26 in the ARX primitive Salsa20 [MP13]. Other examples using (M)ILP do
+not achieve numerically better results [BFL10, MWGP11].
+Better results can be obtained by writing dedicated programs that make use of structural
+properties of the primitive. For instance, Daemen, Peeters, Van Assche and Rijmen used
+a dedicated program to scan the full space of trails with less than 24 active S-boxes in
+Noekeon, andshowedthatthebest4-roundtrailshaveweight48[ DPVR00]. ForKeccak-f,
+Daemen and Van Assche used dedicated programs for lower bounding diﬀerential trails in
+Keccak-f[1600], by generating all 3-round diﬀerential trails with weight up to 36, and
+showed that the best 3-round trails have weight 32 [DV12].
+Results obtained with standard tools cited above never reached a weight per round
+above 9. The dedicated eﬀorts for Noekeon in [DPVR00] andKeccak-f[1600] in [DV12]
+both reached a weight per round of12. Compared to a naive approach (where the space of
+all n-round trails with weight up toT is covered starting from round diﬀerentials with
+weight up to⌊T/n⌋), the result obtained forKeccak-f[1600] would be equivalent to
+investigate trails starting from248.8 round diﬀerentials.
+Our contributions One of the goals of this work is to extend the space of trails in
+Keccak-f that can be scanned with given computation resources. A number of bottlenecks
+in [DV12] has motivated us to investigate alternative approaches to generate trails more
+eﬃciently in order to increase the target weight. Thanks to their abstraction level, some
+of these techniques are actually more widely applicable than toKeccak-f. So, we have
+formalized them in a generic way.
+Like in [DV12], we ﬁrst generate 2-round trails and then extend them in the forward
+and backward direction. Trails over 2 rounds are generated by constructing state patterns
+a up to a given cost, where the cost measures the contribution ofa to the weight of the
+trail. We propose a representation of state patterns by elementary components calledunits
+so that patterns are incrementally generated by adding units. We select cost bounding
+functions that allow to eﬃciently bound the cost of any state pattern obtained by the
+addition of new units. By imposing an order relation on units, a state pattern can be
+coded as an ordered list of units. This arranges all possible state patterns in a tree, where
+the parent of a node is the state pattern with the last unit of its list removed. Generating
+all state patterns with cost up to some budget can be achieved by traversing this tree and
+pruning when the cost bounding function of a state pattern exceeds the budget.
+Thanks to its abstraction level, the tree traversal approach can be applied to primitives
+with round functions consisting of a bit-oriented mixing layer, a bit transposition layer
+and relatively lightweight non-linear layer. Of course, the speciﬁc deﬁnition of units, order
+relations and cost bounding functions depends on the targeted primitive and its properties.
+We ﬁnally introduce a number of new techniques to improve the forward and backward
+Silvia Mella, Joan Daemen and Gilles Van Assche 331
+extension of trails inKeccak-f. These techniques exploit the properties of the mixing
+layer to reduce the number of patterns to investigate and thus the computational eﬀort.
+We apply our techniques to scan the space of all3-round diﬀerential trails with weight
+up to 45 for Keccak-f with widths of 200 to 1600, thereby also covering CAESAR
+candidates Ketje and Keyak [BDP+14, BDP+15]. As this gives a weight of 15 per round
+for Keccak-f[1600] doing this the naive way would imply investigating260.7 round
+diﬀerentials. From this perspective, our new techniques allow us to cover a space that is a
+factor 260.7/248.8 ≈4000 times larger than in [DV12].
+The most direct consequence is an extension and an improvement over known bounds
+for diﬀerential trails inKeccak-f as summarized in Table 1. Additionally, scanning a
+bigger space of trails for diﬀerent variants ofKeccak-f allows to compare results and
+trends among widths and it gives insight in how weight distributions of low-weight trails
+scale with the permutation width ofKeccak-f. As a by-product of the trail search, we
+also report on new trails with the lowest known weight (Table 3).
+Table 1:Minimum weight or range for the minimum weight of trails for diﬀerent variants
+of Keccak-f per instance ofKeccak-f[b] and number of rounds. A range[x,y] means
+that x is a lower bound andy is the lowest known weight.
+rounds b= 200 b= 400 b= 800 b= 1600
+2 8 [BDPV11] 8 [BDPV11] 8 [BDPV11] 8 [BDPV11]
+3 20 [BDPV11] 24 [this work] 32 [this work] 32 [DV12]
+4 46 [BDPV11] [48,63] [this work] [48,104] [this work] [48,134] [this work]
+5 [50,89] [this work] [50,147] [this work] [50,247] [this work] [50,372] [this work]
+6 [92,142] [this work] [92,278] [this work] [92,556] [this work] [92,1112] [this work]
+Paper structure The paper is structured as follows. In Section 2 we recall some basics
+about diﬀerential trails and how to scan the space of trails up to a given weight. In
+Section 3 we present our strategy to generate diﬀerential patterns as a tree traversal and
+in Sections 4, 5 and 6 we show how to cover the space of6-round trails inKeccak-f.
+Finally, in Section 7 we provide experimental results. For the interested reader, in the
+Appendix we provide more details about experimental results, as the number of trails
+generated and the execution time. Finally, we compare our method with previous work.
+2 Scanning the space of trails
+In this Section we recall some facts about diﬀerential trails and how to cover the space of
+trails up to a given weight.
+2.1 Trails and trails extension
+For a transformationf operating onZN
+2 , a diﬀerential pattern is an element ofGF(2)N
+representing the diﬀerence between two statesa1 ⊕a2. A bit in a diﬀerential pattern is
+active if it has value 1 and passive otherwise.
+The diﬀerential probability of a diﬀerential(u′,v′) is deﬁned as
+DP(u′f
+→ v′) = # {u : f(u) ⊕f(u⊕u′) = v′}
+# {u}
+and the weight is deﬁned as the negative logarithm of its probability [DR01].
+A trail over n rounds of an iterative permutation is speciﬁed by the input diﬀerence,
+the output diﬀerence and the intermediate diﬀerences, i.e. the diﬀerences after each round.
+332 New techniques for trail bounds and application to diﬀerential trails in Keccak
+For a primitivef with linear layerλ and non-linear layerχ, we specify diﬀerential trails
+by the diﬀerences before and after each layer of each round:
+Q= a1
+λ
+−→b1
+χ
+−→a2
+λ
+−→b2
+χ
+−→a3
+λ
+−→ ...
+χ
+−→an+1
+and we denote it asQ= (a1,b1,...,an+1).
+The weight of a trail is the sum of the weight of the round diﬀerentials that compose the
+trail. Since λ is linear andbi = λ(ai), the weight can be expressed asw(Q) = ∑
+iw(bi
+χ
+→
+ai+1).
+Since χ is not linear, given a sequence of patterns˜Q= (a1,b1,a2,b2,...,bn) there are
+several n-round trails with ˜Q as leading part, which diﬀer from each other for the pattern
+an+1. The sequence ˜Q is called an-round trail preﬁx.
+Given an-round trail preﬁx, it is possible to extend it ton+ 1 rounds. The extension
+can be done in both the forward and backward direction. Forward extension consists in
+building all diﬀerencesan+1 that are compatible withbn through χ and then compute the
+corresponding bn+1 = λ(an+1).
+Backward extension consists in building all diﬀerencesb0 compatible witha1 through
+χ−1. The minimum weight over all these compatible diﬀerencesb0 is called theminimum
+reverse weight and denoted bywrev(a1). Hence a trail preﬁx ˜Q deﬁnes a set of trails
+with ˜Q as trailing part, withb0 compatible witha1 through χ−1 and with weight at least
+w( ˜Q) + wrev(a1). This set of trails is calledtrail core[DV12]. Hence the search of trails
+can be limited to such trail cores.
+In many round functions there is a lot of symmetry and this symmetry is only broken
+by round constants or round keys. However, the weight of trails is independent of round
+constants or keys and hence it may be the case that there are large classes of equivalent
+trails. Therefore it is suﬃcient to generate one representative trail for class.
+2.2 The naive method: trails from extending round diﬀerentials
+An n-round trail with weightW has at least one round diﬀerential with weight below or
+equal toL =
+⌊W
+n
+⌋
+. So we can ﬁnd alln-round trails with weightW with a ﬁrst-order
+approach that consists of the following two phases:
+1. Generate all round diﬀerentials of weight below or equal toL.
+2. Build for each of these round diﬀerentials alln-round trails that contain them by:
+•extending forward byn−1 rounds,
+•extending backward by 1 round and forward byn−2 rounds,
+•...
+•extending backward byn−2 rounds and forward by 1 rounds,
+•extending backward byn−1 rounds.
+The problem of this method is that the number of round diﬀerentials increases very
+steeply with the weight and the value ofW we can achieve is limited by the mere quantity
+of round diﬀerentials with weight belowL.
+2.3 The second-order method: trails from extending two-round trails
+In modern ciphers the round function has a relatively powerful mixing layer and the
+number of two-round trails with weight below2L is much smaller than the number of
+round diﬀerentials with weight belowL.
+For example, AES has16 ×255 ×127 +
+(16
+2
+)
+×2552 ×1272 >1011 round diﬀerentials
+with weight below 15 while the mixing layer ensures that there are no two-round trails
+Silvia Mella, Joan Daemen and Gilles Van Assche 333
+2 3 4 5 6 7 8 9 10 11 12 13
+1
+103
+106
+109
+1012
+1015
+T1
+# trail cores
+1-round: Keccak-f[200] Keccak-f[400] Keccak-f[800] Keccak-f[1600]
+2-round: Keccak-f[200] Keccak-f[400] Keccak-f[800] Keccak-f[1600]
+Figure 1: Number of 1-round and 2-round trail cores inKeccak-f modulo z-symmetry
+with weightT1 per round.
+with weight below 30. In fact, the mixing layer and the byte-aligned layout of AES allows
+demonstrating that there are no four-round trails with weight below 150 without the need
+for scanning the space. The price paid for this is a relatively costly mixing layer and
+the vulnerability of the cipher with respect to attacks that exploit the strong alignment.
+However, most weakly aligned ciphers and permutations have a mixing layer that has a
+similar eﬀect.
+We depict in Figure 1 the number of round diﬀerentials and2-round trails ofKeccak-f
+for several widths, already taking into account the symmetry alongz (and hence reducing
+the search space by a factor equal to the length of the lane, see Deﬁnition 1). As can be
+seen, the number of1-round trails below weightL is much bigger than the number of
+2-round trails below2L.
+Instead of building trails from round diﬀerentials, we can build them from two-round
+trails. Forneven, ann-round trail of weightW always contains a two-round trail of weight
+below or equal to2L+ 1 with L=
+⌊W
+n
+⌋
+. So now the two phases become:
+1. Generate all two-round trails of weight below or equal to2L.
+2. Build for each of these round diﬀerentials alln-round trails that contain them by
+forward and backward extension.
+This allows to target much higher values ofW for the same number of roundsn. For this
+reason, this approach was used in [DV12] and we will use it, too.
+3 Generating two-round trail cores as a tree traversal
+The weight of a 2-round trail core(a,b) is fully determined bya (or b= λ(a)). We call
+the function that gives the weight of the two-round trail core as a function ofa, thecost
+of a. It now suﬃces to generate all patternsa with cost below2L.
+To do this in an eﬃcient way, we introduce a new approach where we arrange all possible
+patterns a in a tree, where the root of the tree is the all-zero (or empty) pattern. In its
+simplest and most intuitive form, the idea is to consider descendants by monotonically
+adding active bits both ina and in b, in a way that depends on the properties ofλ.
+Monotonicity is actually not required, yet what we need is a lower bound on the cost of a
+334 New techniques for trail bounds and application to diﬀerential trails in Keccak
+pattern and of all its descendants. Finding all patterns with cost below2L now simply
+corresponds to traverse the tree and prune any node (and all its descendants) whose lower
+bound on the cost is higher than2L.
+3.1 Units and unit-lists
+To exhaustively scan all the possible patterns up to a given budgetW, we represent
+a pattern as a set of elements calledunits. These units are groups of active bits with
+particular properties. State patterns are hence incrementally generated by incrementally
+adding units. This arranges all patterns in a tree, where the children of a node are obtained
+by adding a new unit to it.
+When building patterns, we do not want to generate them more than once. For example,
+we want to avoid generating a pattern with unitss1 and s2 by ﬁrst addings1 then s2 and
+then again by ﬁrst addings2 then s1. A straightforward way to implement it is to deﬁne a
+total ordering≺on units.
+Equipped with this ordering, a pattern can be represented as an ordered list of units,
+called unit-list, s= (si)i=1,...,nthat satisﬁess1 ≺s2 ≺···≺sn. Namely, the children of
+a nodes are s∪{sn+1}for allsn+1 such thatsn ≺sn+1. Equivalently, theparent of a
+pattern is deﬁned as the pattern with its last unit removed. This entirely deﬁnes the tree
+structure: the root is the empty state and the list of units of a node deﬁnes the path from
+the node to the root. Traversing the tree simply consists of recursively generating the
+children of a given node by iterating over all units that come after the last unit of that
+node.
+To eﬃciently traverse the tree, we deﬁne a function that gives a lower bound on the
+cost of a node and all its descendants. Letγdenote the cost function of a pattern. Let the
+set of descendants ofs, includings itself, be denoted by△(s). Let L(s) be a lower bound
+on the cost of the elements of△(s), that is,L(s) satisﬁes γ(s′) ≥L(s) for alls′∈△(s).
+Then, any subtree starting froms can be safely ignored whenL(s) >W . In other words,
+as soon as the search encounters a patternssuch thatL(s) >W , sand all its descendants
+can be ignored.
+In the tree traversal, the move from a nodes= (si)i=1,...,nto the next one is deﬁned
+following Algorithm 1. In particular, if possible we try to add a new unitsn+1 after sn.
+This is done by the functiontoChild(), which returns true if a new unit has been added
+and false otherwise. If it is not possible, either because of the budget or because there are
+no units left, we iterate the value of unitsn. This is done by functiontoSibling(), which
+returns true if a new valid value forsn is found, false otherwise. If neither this action is
+possible, we removesn from the unit-list (using functiontoParent()) and iteratesn−1.
+And so on. The search ends when there are no more units left in the unit-list. This check
+is performed by the functiontoParent(), which returns true if the last unit has been
+popped from the unit-list, false if the unit-list is empty.
+This method of generating state patterns as a tree traversal can be applied to all round
+functions that have a linear and a non-linear layer. However, the deﬁnition of units and
+lower bound functions depends on the details of these layers and thus it is speciﬁc of the
+target cryptographic primitive. We will deﬁne them forKeccak-f in the next sections.
+3.2 Searching by canonicity
+The tree traversal approach can be extended when there are symmetry properties that
+we wish to take into account. We use these symmetry properties to reduce our eﬀort, by
+visiting only those nodes that are the representative of their equivalence class. To this end,
+we deﬁne a property that we callcanonicity: a pattern is canonical if it is thesmallest
+representative of its class.
+Silvia Mella, Joan Daemen and Gilles Van Assche 335
+Algorithm 1Next move in the tree traversal
+1: if toChild() then . adds a new unit to the list
+2: return true
+3: do
+4: if toSibling() then . iterates the highest unit of the list
+5: return true
+6: if !toParent() then . pops the highest unit of the list
+7: return false
+8: while (true)
+At ﬁrst, we need to deﬁne a total order relation among patterns. LetT = {τ}be a
+set of transformations s.t.f is symmetric with respect to eachτ∈T (i.e., f ◦τ= τ◦f).
+Given a total order relations≺s′among patterns, we say thats is canonical if it is the
+minimum among all the transformed variants ofs, i.e., the smallest one in its equivalence
+class:
+s is canonical iﬀs= min
+≺
+{τ(s) : τ∈T}.
+We use for this the unit list: the order of the units naturally establishes an order of
+unit lists and the representative with the smallest unit list is the canonical one. For two
+patterns s and s′represented as unit-listss= (si)i=1,...,nand s′= (s′j)j=1,...,m, we deﬁne
+the lexicographic order relations≺lex s′using the relation≺on their units as
+s≺lex s′iﬀ
+{ ∃k such thatsi = s′
+i ∀i<k and sk ≺s′
+k, or
+n<m and si = s′
+i ∀i≤n. (1)
+In other words, eithers′and s are in two diﬀerent branches of the tree with the same
+ancestor at heightk−1 and sk ≺s′
+k, ors′is a descendant ofs.
+The following lemma gives an interesting property of this ordering in the context of
+canonicity.
+Lemma 1. Using the lexicographic order, the parent of a canonical pattern is canonical.
+Proof. Let s be a canonical pattern. Then for each s′̸= s in the equivalence class
+of s, Eq. (1) holds. The parent of s is s with its highest unit sn removed. In s′=
+τ(s) = (s′
+i)i=1,...,n, s′
+Π( n) is not necessarily the highest unit. Say thatΠ( n) = j, so that
+τ(parent(s)) = (s′
+1,...,s′
+j−1,s′
+j+1,...,s′
+n). Then, there are two possible cases:
+⋄j >k: then the right hand of (1) still holds;
+⋄j ≤ k: then in (1) s′
+j is replaced by s′
+j+1, which is higher than s′
+j, and we have
+si = s′
+i ∀i<j and sj ≺s′
+j+1.
+In all cases, the parent ofs is canonical. ⊓ ⊔
+A direct consequence of Lemma 1 is that a pattern that is not canonical cannot have
+a canonical descendant. So when we encounter non canonical patterns during our tree
+traversal, we can safely exclude them and all their descendants.
+Therefore, there are two ways to prune entire subtrees. One when we encounter a node
+that is not canonical and the other when we encounter a node whose cost (and that of its
+descendants) is above the budget.
+336 New techniques for trail bounds and application to diﬀerential trails in Keccak
+4 Scanning the space of trails in Keccak
+We apply the approach described in previous sections to scan the space of6-round trail
+cores inKeccak-f up to a given weight. We start from3-round trail cores and extend
+them by 3 rounds in the backward and forward direction. Three-round trail cores are in
+turn generated by extending2-round trail cores. To generate them, we deﬁne units and
+cost-bounding functions to apply the tree-traversal method. Then we perform optimized
+extensions based on the properties of the mixing layer ofKeccak-f.
+4.1 Keccak- f
+Keccak-f is a family of seven permutations denoted byKeccak-f[b] [BDPV11], with
+b∈{25,50,100,200,400,800,1600}. The state ofKeccak-f is organized as an array of
+5 ×5 ×w elements ofGF(2) called bits, withw∈{1,2,4,8,16,32,64}. A bit of the state
+is speciﬁed by(x,y,z ) coordinates considered modulo5 for x and y and modulow for z.
+A row is a set of5 bits with given(y,z) coordinates, acolumn is a set of5 bits with given
+(x,z) coordinates and aslice is a set of25 bits with givenz coordinate.
+Each permutation consists in the repetition of a round function, which is composed of
+ﬁve invertible steps:θis the linear mixing layer;ρis a bit-wise cyclic shift operation within
+the lanes with diﬀerent oﬀsets;π is a transposition of lanes;χ is a non-linear mapping of
+algebraic degree2; ιadds a round constant to lane(0,0).
+Since ιhas no eﬀect on the compatibility of diﬀerential patterns, the linear layer reduces
+to λ = π◦ρ◦θwhen working with diﬀerentials. When we refer to state patterns, we
+always imply it to be at the input ofθ, unless explicitly stated otherwise. When a property
+is veriﬁed at the input ofθwe use the terminologyat a. Similarly, we speak ofafter θand
+at b.
+All the steps ofKeccak-f involved in diﬀerence propagation, i.e.λand χ, are invariant
+with respect to translation alongz-axis [BDPV11]. When generating trails we must take
+into account this symmetry property and hence consider only so calledz-canonical trails.
+Deﬁnition 1. A patterns is z-canonical if and only if
+s= min
+≺
+{τz(s) : z∈N},
+where τz(s) is the patterns translated byz positions along thez axis.
+The weight of a diﬀerential(bi,ai+1) in Keccak-f depends only onbi [DV12]. Hence
+all n-round trailsQ that share the sequence of patterns˜Q = (a1,b1,a2,b2,...,bn) and
+with an+1 compatible withbn have the same weight and this depends only onbi.
+4.1.1 Properties of θ
+Since our deﬁnition of units forKeccak-f is determined by the properties ofθ, we brieﬂy
+recall them here.
+Given a state patterna, itsparity p(a) is deﬁned byp[x,z] = ∑
+ya[x,y,z ]. A column
+[x,z] is even if p[x,z] = 0, otherwise it isodd. If all columns ofa are even we say thata is
+in the(parity) kernel, otherwise we say it is outside the (parity) kernel [BDPV11]. We
+denote the set of states in the kernel with|K|and the set of states outside the kernel with
+|N|, where the vertical lines symbolize theχ steps.
+The θmap adds a pattern, that depends on the parity, to the state. This pattern is
+called θ-eﬀect and is deﬁned byE[x,z] = p[x−1,z] +p[x+ 1,z −1]. Hence θ(a)[x,y,z ] =
+a[x,y,z ] + E[x,z]. A column (x,z) is called aﬀected if E(x,z) = 1 , otherwise it is
+unaﬀected. We thus distinguish four diﬀerent types of columns: unaﬀected even, unaﬀected
+odd, aﬀected even and aﬀected odd. A state in the kernel has only unaﬀected even columns.
+Silvia Mella, Joan Daemen and Gilles Van Assche 337
+x−2−10 1 2z01234567
+x−2−10 1 2z01234567
+Figure 2: Example of parity patterns andθ-eﬀect superimposed. A circle represents an
+odd column, a dot represents an aﬀected column. The odd columns of a run are connected
+through a line. There are three runs in the ﬁrst pattern: one of length1 starting at(0,5),
+one of length2 starting at(1,0) and one of length3 starting at(0,3). Note that(1,5) is
+an odd column belonging to the run of length3 and aﬀected by the run of length1. The
+second is an example of a symmetric parity pattern with period 2.
+Given a parity pattern, aparity-barestate is a state with the minimum possible number
+of active bits ata and b over all states with the given parity. Such a state has zero active
+bits in unaﬀected even columns and one active bit in each unaﬀected odd column, while
+each aﬀected column has5 active bits, where each bit appears either ataor atb[BDPV11].
+Given a parity pattern, we can group its odd columns intoruns [BDPV11]. Two odd
+columns belong to the same run if their(x,z) coordinates diﬀer by(−2,1). A run is fully
+speciﬁed by its starting point(x0,z0) and its lengthℓ. Each run containsℓodd columns
+and aﬀects two columns:
+•starting aﬀected column: the right neighbor of its initial point at(x0 + 1,z0) and
+•ending aﬀected column: the top-left neighbor of its ﬁnal point at(x0 + 1−2ℓ,z0 + ℓ).
+An odd column of a run might be aﬀected by another run. Figure 2 gives two examples of
+parity patterns as a set of runs indicating their odd columns and the aﬀected columns. A
+parity pattern is symmetric if there exists an integer¯z such thatτ¯z(s) = s. The integer¯z
+is called theperiod of s.
+4.2 Scanning the space of 6-round trails
+We can generate all6-round trail cores up to weight2T3 + 1 by doing forward extension
+by 3 rounds, or backward extension by3 rounds, of all3-round trail cores with weight
+up toT3. Indeed, any such 6-round trail satisﬁes eitherw(b0) + w(b1) + w(b2) ≤T3 or
+w(b3) + w(b4) + w(b5) ≤T3. If a trail of weight2T3 + 1 or less is found, then it yields a
+lower bound on6-round trail weights. Otherwise, the bound is2T3 + 2, not necessarily
+tight.
+Scanning the space of 3-round trail cores up to weightT3 gives bounds also on4
+and 5 rounds. Indeed, any 4-round trail satisﬁes eitherw(b0) + w(b1) + w(b2) ≤T3 or
+w(b1) + w(b2) + w(b3) ≤T3 and the weight over a single round is at least2. If no trail is
+found below the limit, then we can say that the lower bound on the weight of4-round trail
+cores isT3 + 3. Any 5-round trail may satisfy the conditionw(b1) + w(b2) + w(b3) ≤T3
+and w(b0) = w(b4) = 2. If no trail core with such a weight proﬁle is found, we can say
+that a lower bound on the weight of5-round trail cores isT3 + 5.
+338 New techniques for trail bounds and application to diﬀerential trails in Keccak
+4.3 Scanning the space of 3-round trail cores
+To scan the space of 3-round trail cores(a1,b1,a2,b2) up to some limit weightT3, we
+distinguish between diﬀerent sets depending ona1 and a2 being in the kernel. In fact, for
+any given limit, the number of trail cores in|K|is much higher than those in|N|. This
+calls for diﬀerent approaches and it is reﬂected in our strategy.
+Thus there are four classes:|K|K|, |K|N|, |N|K|and |N|N|. Any 3-round trail belongs
+to one and only one of these classes. For brevity we denote the weights of the three round
+diﬀerentials by shortcut notations:wrev(a1) = w0, w(b1) = w1 and w(b2) = w2.
+To cover the diﬀerent sets, we extend2-round trail cores(a,b) by one round in the
+forward or backward direction. Extension is limited to compatible patterns in the kernel
+or outside the kernel, depending on the set we are targeting.
+For |K|K|we use the method of [DV12, Section 7]. This consists in generating all
+2-round trail cores witha in the kernel for which there exists a compatible stateχ(b) in
+the kernel. Then, forward extension (in the kernel) of these trails is performed.
+For |K|N|, we partition the space based on the value ofw0.
+Lemma 2.All trail cores in|K|N|up to weightT3 can be generated by forward extending
+by one round outside the kernel all trail cores in|K|with wrev(a) ≤T1 and backward
+extending by one round in the kernel all trail cores in|N|with wrev(a) + w(b) <T3 −T1.
+Proof. For a givenT1, any trail coreQ in |K|N|satisﬁes eitherw0 ≤T1 or w0 >T1.
+If w0 ≤T1, then the trailQstarts with a two-round trail core in|K|with wrev(a) ≤T1
+and hence can be built by forward extending this by one round outside the kernel.
+If w0 >T1, thenw1 + w2 <T3 −T1. So, the trail coreQ ends with a two-round trail
+core in|N|with wrev(a) + w(b) <T3 −T1 and hence can be built by backward extending
+this by one round in the kernel. ⊓ ⊔
+The optimal value ofT1 is determined by the ratio of 2-round trails in|K|and |N|for
+the relevant weight functions and the cost of extension.
+For |N|K|, we apply the same partitioning technique, but based on the weight ofw2.
+Lemma 3.All trail cores in|N|K|up to weightT3 can be generated by backward extending
+by one round outside the kernel all trail cores in|K|with w(b) ≤T1 and forward extending
+by one round in the kernel all trail cores in|N|with wrev(a) + w(b) <T3 −T1.
+Proof. For a givenT1, any trail coreQ in |N|K|satisﬁes eitherw2 ≤T1 or w2 >T1.
+If w2 ≤T1, then the trailQ ends with a two-round trail core in|K|with w(b) ≤T1
+and hence can be built by backward extending this by one round outside the kernel.
+If w2 >T1, thenw0 + w1 <T3 −T1. So, the trail coreQ starts with a two-round trail
+core in|N|with wrev(a) + w(b) <T3 −T1 and hence can be built by forward extending
+this by one round in the kernel. ⊓ ⊔
+Lemma 4.All trail cores in|N|N|up to weightT3 can be generated by forward extending
+by one round outside the kernel all trail cores in|N|with 2wrev(a)+w(b) <T3 and backward
+extending by one round outside the kernel all trail cores in|N|with wrev(a) + 2w(b) ≤T3.
+Proof. Any trail coreQ in |N|N|satisﬁes eitherw2 >w0 or w2 ≤w0.
+If w2 > w0, combination withw0 + w1 + w2 ≤T3 gives 2w0 + w1 < T3. It follows
+that all trail coresQ in |N|N|with w2 >w0 start with a two-round trail core in|N|with
+2w0 + w1 <T3 and hence can be built by forward extending these by one round outside
+the kernel.
+If w2 ≤w0, combination withw0 + w1 + w2 ≤T3 gives w1 + 2w2 ≤T3. It follows
+that all trail coresQ in |N|N|with w2 ≤w0 end with a two-round trail core in|N|with
+Silvia Mella, Joan Daemen and Gilles Van Assche 339
+w1 + 2w2 ≤T3 and hence can be built by backward extending these by one round outside
+the kernel. ⊓ ⊔
+5 Generating two-round trail cores in Keccak-f
+We generate 2-round trail cores applying the tree-traversal method described in Section 3.
+In order to do this, we need to deﬁne units, order relations among units and cost-bounding
+functions.
+5.1 Generating trail cores in the kernel
+In this section, we deal with the generation of2-round trail cores in the kernel with either
+wrev(a) or w(b) at mostW.
+State patterns a in the kernel have an even number of active bits in each column,
+namely zero, two or four. A pair of active bits in the same column is called anorbital. A
+column can thus have either zero, one or two orbitals.
+An orbital is determined by the coordinates of its active bits and we represent it as a
+4-tuple (x,{y1,y2},z) with the convention thaty1 <y2.
+We deﬁne an order relation on orbitals as the lexicographic order on[z,x,y 1,y2]. To
+represent a column containing two orbitals in a unique way, we take the convention that
+(x,{y1,y2},z) and (x,{y′
+1,y′
+2},z) satisfy y2 <y′
+1, namely, the ﬁrst bit of the second orbital
+is higher than the second bit of the ﬁrst orbital.
+Any state pattern in the kernel can thus be represented as an ordered list of orbitals.
+This allows us to arrange states in the kernel in a tree where the parent of a node is the
+state pattern with the last orbital removed. At the root of the tree there is the empty
+state. Therefore, to concretely build state patterns in the kernel we start from the empty
+state and iteratively add orbitals after the last orbital already in the state.
+To bound the cost of all descendants of a given pattern, we can use the cost of the
+pattern itself.
+Lemma 5. The cost function of a pattern lower bounds the weight of all its descendants.
+Proof. Given a2-round trail core(a,b), adding an orbital toa adds two active bits ata
+and two active bits atb. This is a consequence of the fact that theθmapping acts as
+the identity in the kernel, so bits active ata are also active atb but in diﬀerent positions
+due to theρand π mappings. Hence, whether we considerwrev(a) or w(b), the cost is
+monotonic with respect to addition of orbitals, because both these weights are monotonic
+when adding active bits [DV12]. ⊓ ⊔
+From Lemma Lemma 5 it follows that we can avoid to add new orbitals to a pattern
+when it has weight already above the budget.
+Remark onz-canonicity When generating trail cores in the kernel, az-canonical pattern
+must have an orbital in the ﬁrst slice. In fact, for any pattern consider the ﬁrst orbital
+in its orbital-list, say(x,{y1,y2},¯z). If we translate the pattern by¯z positions along the
+z-axis, we obtain an orbital-list whose ﬁrst orbital is(x,{y1,y2},0) that is smaller than
+(x,{y1,y2},¯z) if ¯z̸= 0, using the lexicographic order deﬁned above.
+5.2 Generating trail cores outside the kernel
+In this section, we deal with the generation of2-round trail cores in|N|with the cost
+function of the formαwrev(a) + βw(b) with α,β ∈{1,2}.
+340 New techniques for trail bounds and application to diﬀerential trails in Keccak
+5.2.1 Parity-bare states and orbital trees
+Removing an orbital from an unaﬀected column of a state pattern ata also removes two
+bits atb. We call an orbital in an unaﬀected column afree orbital. So the removal of a
+free orbital to a state cannot increase the cost.
+We can use parity-bare states and free orbitals as building blocks.
+Lemma 6. Each state can be decomposed in a unique way in a parity-bare state and a
+list of free orbitals, where the active bits of the parity-bare state do not overlap with those
+of the orbitals, the active bits of the orbitals do not overlap mutually and the parity-bare
+state and the original state have the same parity.
+Proof. We describe a recursive procedure for performing the decomposition by removing
+free orbitals from the state one by one in a unique way.
+We start from the state and an empty list of free orbitals. Over all unaﬀected columns
+with more than a single active bit, choose the one with the highest(x,z) coordinates,
+where the order among column positions is the lexicographic order[z,x]. Remove the two
+active bits in this column with the highesty coordinates from the state and add them as a
+free orbital at the beginning of the list of free orbitals. Repeat this step operation until
+there are no unaﬀected columns left in the state with more than a single active bit.
+This procedure ends as the number of active bits in a state is ﬁnite. The resulting
+state is parity-bare as any unaﬀected column has either 0 (even) or 1 (odd) aﬀected bits.
+That parity-bare state has the same parity as the original state as removing an orbital
+does not aﬀect the parity. Finally, the active bits of the free orbitals and parity-bare state
+do not overlap as every free orbital is taken from an unaﬀected column and hence removes
+bits ata and atb. ⊓ ⊔
+The list of orbitals deﬁnes a tree that we call anorbital tree. In this tree the parent of
+a node is the state with the highest free orbital removed and at its root is a parity-bare
+state. The tree of state patterns in the kernel is a special case of this: the orbital tree with
+the empty state at its root. All nodes in a orbital tree have the same parity as adding
+orbitals does not modify the parity. The children of a node have cost at least that of their
+parent, as explained in Subsection 5.1.
+It remains to explain how to generate parity-bare states.
+5.2.2 Column assignments and the run tree
+In a parity-bare state an aﬀected column can assume 16 possible values and an unaﬀected
+odd column can assume 5 possible values. Fixing the value of a column is calledcolumn
+assignment.
+For our purposes, it is natural to represent a parity-bare state as a list of column
+assignments. Furthermore, we group them in runs. For each runr, a state pattern consists
+of the column assignments of the unaﬀected odd columns ofr and of the two aﬀected even
+columns ofr.
+When there is more than one run, the odd column of a run can be aﬀected by another
+run, resulting in an aﬀected odd column. In such a case, to preserve the grouping into runs,
+we express the column assignment of an aﬀected odd column as the bitwise sum of two
+column assignments: the unaﬀected odd column of one run, and the aﬀected even column
+of the other run. To make this representation unique, we choose as a convention that the
+unaﬀected odd column must be an odd-0 column, where we deﬁne anodd-0 column as an
+unaﬀected odd column with a single active bit iny= 0.
+We deﬁne an order relation over column assignments based on their type and on the
+associated runs. In a run starting at(x,z), the starting aﬀected column in(x+ 1,z)
+Silvia Mella, Joan Daemen and Gilles Van Assche 341
+comes before the ﬁrst odd column in(x,z), which comes before the second odd column
+in (x−2,z + 1) and so on until the ending aﬀected column in(x0 + 1 −2ℓ,z0 + ℓ) which
+comes at the end. When comparing two columns belonging to two diﬀerent runs, the one
+corresponding to the smallest run comes before, where the smallest run is given by the
+lexicographic order[z,x,ℓ]. It follows that in the incremental generation of state patterns,
+a new run is not started until the previous one has been completed.
+A parity-bare state pattern can thus be represented as a list of column assignments.
+This naturally deﬁnes a tree containing all parity-bare states that we call therun tree. In
+this tree the parent of a node is the state with the last column assignment removed and
+its root is the empty state. Clearly, not all nodes of the tree deﬁne a valid state pattern.
+Indeed a state is valid if its last run is complete, i.e. if the last column in the column-list
+is an ending aﬀected column. Only such patterns are concretely output.
+Therefore, building all state patterns outside the kernel can be done by traversing the
+run tree and then for each parity-bare state traverse its orbital tree.
+Bounding the cost Adding an aﬀected even column assignment toain a column position
+where there is already an unaﬀected odd column assignment (or vice versa) is not monotonic
+in the weight. For that reason we cannot use the cost of a pattern to prune the tree, but
+must deﬁne a lower bound for the cost of all its descendants. It turns out that we can
+deﬁne such a lower bound that is reasonable tight.
+By taking into account the worst-case loss due to the addition of overlapping column
+assignments, we can lower bound the cost of all descendants of a parity-bare state:
+1. Adding an odd-0 column assignment to an aﬀected even column moves the active bit
+at y= 0 from a to b or vice versa.
+2. Adding an aﬀected even column to an odd-0 column makes either its active bit ata
+or its active bit atb passive, but never both. It depends on the particular aﬀected
+even assignment and hence is not known in advance. As a special case, if the bit
+of the odd-0 column is the only active bits in its slice ata, adding an even column
+assignment cannot reduce the number of active bits in that slice to 0 as it adds an
+even number of bits and the contribution of the bit ata remains the same.
+Deﬁnition 2.The bound on the descendants of a pattern is deﬁned as follows. Given the
+parity-bare stateaand its corresponding statebcompute reduced states¯aand ¯bas follows.
+For each aﬀected even column remove the active bit iny= 0 at a or in the corresponding
+position atb. For every odd-0 column, if it is in a slice whose only active row isy= 0, then
+remove the active bit in the corresponding position atb. Let N0 be the set of unaﬀected
+odd-0 columns whose slices ata contain at least one active row diﬀerent fromy= 0. The
+bound on the descendants ofa is L(a) = α·wrev(¯a) + β·w(¯b) −2 ·max(α,β) ·#N0.
+Lemma 7. The boundL(a) lower bounds the weight of the parity-bare statea and all its
+descendants.
+A proof of the Lemma above is given in the appendix.
+Note on z-canonicity Verifyingz-canonicity in the run tree requires comparing lists of
+column assignments. Similar to the case in the kernel with orbitals, also in this case the
+ﬁrst column assignment must be restricted to the ﬁrst slice.
+For state patterns in an orbital tree, verifyingz-canonicity is only required if the
+parity-bare state at its root exhibits symmetry. In that case it just requires comparing
+lists of orbitals. Note that this is a rare case, except for the orbital tree with zero parity.
+342 New techniques for trail bounds and application to diﬀerential trails in Keccak
+6 Extension of trails in Keccak-f
+In this section we present techniques for speeding up extension of trails inKeccak-f and
+so increasing the size of the trail space we are able to scan.
+The general principles are similar to those for two-round trail core generation. We make
+use of the linearity ofλ, grouping of state patterns by their parity and we use monotonic
+weight bounding functions.
+6.1 Forward extension
+Given a trail coreQ ending in patternb, forward extension up to some weightT by one
+round can be seen as scanning the space of all state patternsathat areχ-compatible with
+b and checking whether the weight of the extended trail(Q,a,λ (a)) is belowT.
+As shown in [BDPV11], the set of valuesathat are compatible withbthrough χ forms
+an aﬃne space that we denote asU(b) (or justU if b is clear from the context). This
+aﬃne space U can be described asU = V + e with V a vector space of dimensionw(b)
+and e a state pattern that forms the oﬀset. Oﬀsets and bases for constructing the aﬃne
+space are given in [BDPV11]. Ifbhas large weight, brute-force scanning alla∈U becomes
+prohibitively expensive and therefore we seek for more eﬃcient methods.
+First of all, recall from Section 4.3 that we treat extension witha inside the kernel or
+a outside the kernel separately. The former can be made eﬃcient in a particularly simple
+way, the latter requires some more sophistication.
+6.1.1 Forward extension inside the kernel
+The kernel is a vector space and we will denote it byK. The set of state patterns that
+are χ-compatible withb and are in the kernel is given by(V + e) \K. The intersection is
+either empty, or it is an aﬃne spaceU′= V′+ e′, withV′the vector spaceV′= V \K
+and e′an oﬀset in the kernel.
+We use the structure ofχ to construct an eﬃcient algorithm that, givenb, returns an
+oﬀset e′∈U(b) \K or a message stating thatU(b) \K is empty.
+This algorithm operates slice by slice, where it makes use of the fact thatχ operates
+on individual rows andK is computed over individual columns.
+In particular, each active row deﬁnes an aﬃne space covering all row-patterns that are
+χ-compatible with it (for the explicit deﬁnition of oﬀsets and bases see [DV12, Table 3]).
+The active rows in a sliceb[z] thus deﬁne an aﬃne spaceU[z] covering all slice-patterns
+that areχ-compatible withb[z]. To generate its oﬀset we take an empty slice and add the
+oﬀsets of all active rows to it. We denote this action bye[z] = ∑
+ye[y,z]. Then we take a
+basis vector of an active row and add it to an empty slice. The obtained slice is added to
+the set of basis vectors forU[z]. We repeat the process for all basis vectors of all active
+rows. We denote this action byV[z] = ⋃
+yV[y,z].
+The aﬃne spaceU is deﬁned by the set of basis vectors of all active slices and an oﬀset
+that is the sum of oﬀsets of all active slices. Using notation introduced above, we say
+e= ∑
+ze[z] and V = ⋃
+zV[z].
+For e to be in the kernel, alle[z] must be in the kernel so this can be handled slice
+by slice. For allz we can compute parities of oﬀset and of basis vectors. These in turn
+generate the space of parity patterns that areχ-compatible withb. We denote this space
+as Up = ep + Vp.
+If ep[z] /∈Span(Vp[z]), then all elements inU[z] will have at least one odd column and
+so will not be in the kernel. This is the case for instance whene[z] has a single active row
+or has two active bits in diﬀerent columns. Therefore, slices with single active row and
+slices with two non-orbital active bits allow eliminating in a very eﬃcient way the vast
+majority of candidatesb for extension. A non-trivial example is given in Figure 3.
+Silvia Mella, Joan Daemen and Gilles Van Assche 343
+x−2−10 1 2y
+−2−1012
+b[z]
+e[0,z] +{ v0[0,z] , v1[0,z] , v2[0,z] }e[2,z] +{ v0[2,z] , v1[2,z] }
+Figure 3: Example of pattern that cannot be forward extended in the kernel. For each
+active row of sliceb[z], oﬀset and basis vectors for the space ofχ-compatible rows are
+depicted in the format “oﬀset+ {basis vectors}”. Basis for rowy= 2 has no basis vector
+with active bit inx= 1 to complement the oﬀset at rowy= 0. Thus, since no oﬀset in
+the kernel can be constructed, the pattern cannot be extended in the kernel.
+x−2−1012y
+−2−1012
+b[z]
+e[0,z] +{v0[0,z] , v1[0,z] , v2[0,z] }e[2,z] +{v0[2,z] , v1[2,z] }
+e′[z]
++{
+v0[z]
+,
+v1[z]
+,
+v2[z]
+,
+v3[z]
+,
+v4[z]
+}
+Figure 4: Example of pattern that can be forward extended in the kernel. Above, oﬀset
+and basis vectors for the space ofχ-compatible rows are depicted. Below, oﬀset and basis
+vectors for the space ofχ-compatible slices are depicted, with separation between basis
+vectors in the kernel (in green) and outside the kernel (in blue). The oﬀset in the kernel
+can be built ase′[z] = e[0,z] + e[2,z] + v0[2,z] + v2[0,z], thus the pattern can be forward
+extended in the kernel. Vectorv0[z] = v1[0,z] + v2[2,z] forms the basis forVK[z], while
+v1[z],v2[z],v3[z],v4[z] form a basis forVN[z].
+If ep[z] ∈Span(Vp[z]), then we generatee′[z] by adding toe[z] a number of basis vectors
+such that the sum of their parities is equal toep[z]. A non-trivial example is given in
+Figure 4.
+For state patternsb having an oﬀsete′in the kernel, we construct the basis ofV(b).
+Then we do a basis transformation resulting in basis vectors in the kernel and outside
+the kernel. This basis transformation simply consists of taking linear combinations of
+basis vectors yielding vectors containing one or more orbitals. We can thus partition
+the basis vectors ofV in a set of in-kernel basis vectors generatingVK = V \K and a
+set of outside-kernel basis vectors orthogonal generatingVN with V = VK + VN. This
+can be done again slice by slice. Speciﬁcally, for eachz, let w = dim(Span(V[z])) and
+d= dim(Span(Vp[z])). We add toVN[z] d vectors ofV[z] whose corresponding parities
+are linearly independent. Then, for each of thew−dvectors v∈V[z] \VN[z] we add to it
+a number of basis vectors ofVN[z] to make it in the kernel. We add the obtained vectors
+to VK[z]. An example is given in Figure 4.
+The procedure described above to generatee in the kernel and a basis forV, with
+separation betweenVK and VN, is reported in Algorithm 2.
+Scanning all elements ofU(b) \K then simply corresponds to scanning all elements of
+344 New techniques for trail bounds and application to diﬀerential trails in Keccak
+e′+ VK.
+In Table 2 we report some experimental results on the extension in the kernel of2-round
+trail cores in|N|with weight below33. We give the number of trails with non-empty
+intersection with the kernel among all the trails to extend and the dimension of the basis
+of the aﬃne space and of its intersection with the kernel.
+Summarizing, thanks to the fact that most trails cannot be extended in the kernel and
+that for the remaining onesVK has low dimension, the cost of forward extension in the
+kernel is dramatically reduced.
+Algorithm 2Oﬀset and basis creation with separation between in-kernel and outside-
+kernel vectors
+1: Initialize ﬂagin_kernel_oﬀset = true
+2: for Slices [z= 0] to [z= w−1] do
+3: Initialize slice oﬀsete[z] = 0 and slice basisV[z] = ∅
+4: for Rows [y= 0] to [y= 4] do
+5: e[z] ← e[z] + e[y,z]
+6: V[z] ← V[z] ∪V[y,z]
+7: end for
+8: Compute ep[z] and Vp[z]
+9: if ep[z] ∈Span(Vp[z]) then
+10: e[z] ← e[z] + ∑
+ivi such thate[z] ∈K . where vi ∈V[z]
+11: else
+12: Set ﬂagin_kernel_oﬀset = false
+13: end if
+14: Initialize VK[k] = ∅and VN[z] = ∅
+15: Add toVN[z] d vectors ofV[z] with linearly independent parities
+16: for All w−d vectors v∈V[z] \VN[z] do
+17: v← v+ ∑
+ivi such thatv∈K . where vi ∈VN[z]
+18: end for
+19: end for
+20: e← ∑
+ze[z], VN ← ⋃
+zVN[z], VK ← ⋃
+zVK[z]
+Table 2:Results on extension in the kernel. Column two gives the total number of trail
+cores to extend (both in the forward and backward direction). For both the directions we
+report the number of trail cores for whichVK is not empty and for such trails the average
+dimension ofV and VK.
+b
+# trails
+to
+extend
+Forward Extension Backward Extension
+# trails
+s.t VK ̸= ∅
+dim V dim VK # trails
+s.t VK ̸= ∅
+dim V dim VK
+avg stdev avg stdev avg stdev avg stdev
+200 37 ·106 9 ·103 14.66 2.95 4.72 1.73 4 ·106 33.29 5.98 8.37 3.37
+400 30 ·106 2 ·102 12.19 2.23 4.46 1.43 5 ·105 33.33 6.07 4.16 2.10
+800 28 ·106 6 9.75 2.24 3.70 0.90 2 ·105 32.67 6.22 2.61 1.58
+1600 38 ·106 0 0 0 0 0 2 ·105 32.08 6.25 1.35 1.12
+6.1.2 Forward extension outside the kernel
+Every elementa∈U can be expressed as the sum of the oﬀsete and a subset of the basis
+vectors, sayA = {vi}. In particular, a = e+ ∑
+vi∈Avi. This allows us to arrange the
+elements ofU(b) in a tree in the following way.
+First of all, we index the basis vectors ofV, establishing an order. Hence a state pattern
+a ∈U is fully determined by the set of indices of the basis vectors inA. If we denote
+Silvia Mella, Joan Daemen and Gilles Van Assche 345
+this set byIa we havea = e+ ∑
+i∈Ia vi. Now, the parent of an elementa is obtained
+by removing the largest element ofIa. In other words, the parent of a state pattern is
+obtained byremoving its last basis vector. Or alternatively, the children of a state pattern
+a are the patterns obtained by adding a basis vector with index larger than the largest
+included inIa. The root of the tree is the pattern consisting only of the oﬀsete.
+Adding base vectors is not monotonous: adding a basis vector may decrease the weight
+of λ(a). However, the potential weight loss can be bound and this potential weight loss
+depends on the type of basis vector and its relation witha. Moreover, if the weight ofa is
+high, the worst-case total weight loss (due to the contribution of all base vectors that can
+still be added toa) may still give a weight above the limit and the full subtree ofaand its
+descendants can be discarded.
+Note that basis vectors outside the kernel either only have a single active bit, or consist
+of two neighboring active bits in the same row [DV12, Table 3]. The former implies 2
+aﬀected columns, the latter 4 aﬀected columns.
+As for the worst-case weight loss we can say the following:
+•A basis vector in the kernel consisting ofn orbitals has a weight loss of at most4n.
+An orbital in a column that is unaﬀected and that does not overlap witha has no
+weight loss, an orbital that overlaps witha has a weight loss of at most 2.
+•For a basis vector outside the kernel we consider the number of aﬀected columns
+overlapping with aﬀected columns ofa. If this isn, the weight loss is at most10n+2q
+with q the Hamming weight of the basis vector.
+Clearly, in-kernel basis vectors and basis vectors with aﬀected columns not overlapping with
+those ofahave the smallest potential weight loss. We take this into account when deciding
+the ordering of the basis vectors, putting them last. This leads to a great improvement in
+forward extension outside the kernel.
+6.2 Backward extension
+Given a trail coreQstarting with statea, backward extension up to some weightT by one
+round is a scan over all state patternsb such thata is χ-compatible withb and checking
+whether the weight of the extended trail is belowT.
+Unlike for forward extension, the set of patternsb that are χ−1-compatible with a
+do not form an aﬃne space. However, we can deﬁne and compute an aﬃne space that
+contains all such patterns. We call this space theχ−1-envelope spaceof a. As in forward
+extension, the oﬀset and basis vectors of this space can be generated at row level. For the
+oﬀset we make use of the property ofχ that for an active row ina with a single active bit,
+the corresponding bit will be active in all statesbthat areχ−1-compatible witha. Say the
+active bit ina is in position(x,y,z ). Then the oﬀset for this row inb will have a single
+active bit in position(x,y,z ) and there will be four basis vectors each with a single active
+bit of coordinates(x′,y,z ), withx′̸= x. If the active row ina has more than a single
+active bit, we consider the 5-dimensional vector space where each basis vector has a single
+active bit. The resultingχ−1-envelope space ofahas an oﬀset with Hamming weight equal
+to the number of single-bit active rows ina and dimension equal to5n−HW(oﬀset) with
+n the number of active rows ina. An example is given in Figure 5a.
+6.2.1 Backward extension in the kernel
+As kernel membership is deﬁned at the input and output ofθ, we map theχ−1-envelope
+space of a through π−1 and ρ−1 to the output ofθ. We call the resulting space the
+envelope space ofa and denote it asU = V + e. Since ρand π are transpositions, the
+Hamming weight of the oﬀsete remains the same and the number of active bits in each
+346 New techniques for trail bounds and application to diﬀerential trails in Keccak
+basis vector remains the same, too. We use techniques similar to those of forward extension
+to determine whetherU \K is empty or not. In particular, ife has a slice with odd
+columns and there are no basis vectors with active bits in that column, then all elements
+of U will have at least an odd column, disqualifyinga for backward extension inside the
+kernel. An example is given in Figure 5b.
+In Table 2 we report the number of trails whose envelope space has non-empty in-
+tersection with the kernel. For these trails we report the dimension of the basis of the
+envelope space and of the intersection with the kernel. As shown, the envelope space is
+much larger, but the space we concretely investigate is the intersection with the kernel
+that is signiﬁcantly smaller, making the search eﬀort feasible.
+x−2−1012y
+−2−1012
+a[0] e[−2,0] +{v0[−2,0], v1[−2,0], v2[−2,0], v3[−2,0]}e[−1,0] +{v0[−1,0], v1[−1,0], v2[−1,0], v3[−1,0]}{v0[0,0] , v1[0,0] , v2[0,0] , v3[0,0] , v4[0,0] }
+(a) oﬀsets and basis vectors forχ−1-envelope space
+z= 0z= 1z= 2z= 3z= 4z= 5z= 6z= 7
+(b) oﬀsets and basis vectors at the output ofθ
+x−2−1012
+z01234567
+p′
+θ−→
+p
+guessp′[0] = 0p=oﬀset
+p′
+θ−→
+p
+bound0818283848580
+(c) oﬀset and basis vectors for parity at output ofθ
+Figure 5: Example on backward extension. In (a) the active rows ofa deﬁne oﬀset and
+basis vectors for theχ−1-envelope space. In (b) oﬀset and basis vectors are mapped
+through π−1 ·ρ−1. For the sake of compactness, oﬀset and basis vectors are grouped by
+slices. This representation allows immediately noticing that there are no basis vectors
+in slicez = 1 with an active bit in columnx= −2 to complement the oﬀset bit in that
+column. It follows thata cannot be backward extended in the kernel. In (c) on the left,
+we derive oﬀset and basis vectors for the space of parity patternsp after θ. In (c) on the
+right, parity patternsp′and p are incrementally generated and the bound is incrementally
+computed in the case guess onp′[0] is 0 andp is the oﬀset. The computed value ofp′[1]
+will imply value11010 for p′[0], which is inconsistent with the guess.
+6.2.2 Backward extension outside the kernel
+We limit our search of values by restricting the set of parity patterns forλ−1(b), that
+we will denote bya′, to investigate. To this end we iteratively construct them, limiting
+the generation by lower bounding the minimum reverse weight ofa′. We start from the
+envelope spaceU at the output ofθas in Section 6.2.1. The oﬀset and basis vectors of
+Silvia Mella, Joan Daemen and Gilles Van Assche 347
+U deﬁne oﬀset and basis vectors for the space of parity patterns at the output ofθ. We
+denote it byUp = ep + Vp.
+Let p be the parity afterθand p′the parity before. Thenp[x,z] = p′[x,z] + p′[x−
+1,z] + p′[x+ 1,z −1] or, equivalently,
+p′[x+ 1,z −1] = p[x,z] + p′[x,z] + p′[x−1,z] . (2)
+Equation 2 allows computing the parity in rowz−1 of p′from the parity in rowz of p
+and p′. This can be done recursively. So making an assumption for the value of the parity
+in some slice ofp′allows computingp′completely, for a givenp. There are 32 possible
+assumptions and due to the injectivity ofθ, only one of them can be correct.
+The knowledge ofp[z] and p′[z] allows lower bounding the contribution of slicea′[z]
+to the minimum reverse weight ofa′. Indeed, given the positions of the aﬀected columns
+determined byp[z] + p′[z] and the oﬀset and basis ofU, we can determine a lower bound
+for the number of active rows ina′[z] and each active row contributes at least 2 to the
+minimum reverse weight ofa′. We build the parity patternp′incrementally slice by slice
+using Equation 2 and keep track of the resulting bound on the minimum reverse weight.
+For each bit of a basis vector encountered inp[z] we have to consider two possibilities,
+one with the basis vector present and one with the basis vector absent. So this results
+again in a tree search where children have a higher cost (lower bound on the minimum
+reverse weight) than its parent. Hence, we truncate as soon as our partially reconstructed
+parity exceeds the limit weight. When the scan reaches the value ofz where it started and
+the initial assumption turns out to be correct, it has constructed a valid parity pattern.
+In that case, we generate all possible states inU that havep as parity and that can be
+generated by the basis ofU. An example on the incremental construction ofpand p′(with
+bound on the minimum reverse weight ofa′at each step) is given in Figure 5c and the
+procedure is translated in Algorithm 3 and Algorithm 4.
+Algorithm 3Generation of valid parity patterns
+1: Initialize p= ep, p′= 0
+2: Initialize L= ∅
+3: for 32 possible row valuesv do
+4: p′[0] ← v
+5: Call addRow(w−1,p,p ′,L) . see Algorithm 4
+6: end for
+Algorithm 4addRow
+1: if bound on minimum reverse weight is above limitthen
+2: return
+3: end if
+4: if z= w then
+5: if (p,p′) is consistentthen
+6: L← L∪{p}
+7: end if
+8: else
+9: for all p[z] ∈ep[z] + Vp[z] do
+10: p′← p′+ p′[z−1] where p′[z−1] is computed as in Equation 2
+11: Call addRow(z−1,p,p ′,L)
+12: end for
+13: end if
+348 New techniques for trail bounds and application to diﬀerential trails in Keccak
+7 Experimental results
+We have written new software to implement the techniques described in previous sections
+and the new code is available as part of the KeccakTools project [BDPV15].
+To check correctness of our algorithm, we have tested it against [BDPV15] by generating
+all 3-round trail cores up to weight 36, i.e. by covering the same space covered in [DV12].
+We have found the same number of trails using both codes and thus the same bounds.
+A comparison between the execution time of our code and the [BDPV15] is given in
+Appendix D.2.
+We have then used our code to cover the space of all6-round trail cores up to weight
+T6 = 91, for the widths ofKeccak-f between 200 and 1600. To this end, we covered the
+space of all3-round trail cores up to weight45.
+7.1 2-round trail cores
+To generate2-round trail cores, we apply Lemma 2 and Lemma 3 settingW = 11. This
+implies the generation of2-round trail cores in the kernel with eitherw0 or w1 smaller than
+11 and the generation of all outside-kernel trail cores withwrev(a) + w(b) ≤33. Finally, we
+generated all2-round trail cores with either2wrev(a) + w(b) ≤44 or wrev(a) + 2w(b) ≤45
+as stated in Lemma 4. Execution times are reported in Appendix A. In Figure 6 we
+depict the number of2-round trail cores per weight and per parity proﬁle, to show the
+trend among the diﬀerent variants ofKeccak-f. The total number of2-round trail cores
+generated is reported in Table 7 in the appendix for each parity proﬁle.
+7.2 3-round trail cores
+For all2-round trail cores generated, we performed extension in the kernel or outside the
+kernel, in the backward or forward direction.
+In Figure 7 we depict the number of3-round trail cores per weight and per parity
+proﬁle, to show the trend among the diﬀerent variants ofKeccak-f. The total number of
+3-round trail cores generated is reported in the appendix in Table 8 for each parity proﬁle.
+In Figure 8 we then accumulate them and give the total number of3-round trail cores
+per weight. Note that each such trail core represents a class ofw trail cores that can be
+obtained by translation alongz. In the Appendix (Table 6) we report the execution time
+for each extension we performed.
+Even though Figure 7 only gives a limited view on the number of trail cores up to
+some weight, it allows us to detect some trends. First, for the number of trails with the
+smallest weight the pattern appears irregular, but as the weight increases, the number of
+trails seems to increase exponentially with the weight. Second, we see a dependence on
+the width. As the width increases, the minimum weight of 3-round trail cores increases,
+but not in a smooth way. However, the exponent by which the number of trails grows,
+decreases with the width.
+7.3 Extension to 6-rounds
+We extended the3-round trail cores found to6 rounds up to limit weight2T3 + 1 = 91.
+We found no6-round trail cores with weight below or equal to the limit weight. This
+means that 92 is a lower bound for the weight of6-round diﬀerential trails inKeccak-f
+for widths higher than 100. ForKeccak-f[1600] this results is an improvement of the
+bound found in [DV12], which was74. For the other variants it is a new result.
+Scanning the space of 3-round trail cores up to weight 45, gives bounds for 4 and
+5-round trail cores up to weight47 and 49 respectively. ForKeccak-f[200] there exists a
+4-round trail of weight 46, which is thus the lightest trail. ForKeccak-f above 200 no
+Silvia Mella, Joan Daemen and Gilles Van Assche 349
+4 5 6 7 8 9 10 11
+1
+10
+102
+103
+104
+105
+106
+107
+108
+T1
+# cores
+Number of 2-round trail cores(a,b) in the Kernel withwrev(a) ≤T1
+4 5 6 7 8 9 10 11
+1
+10
+102
+103
+104
+105
+106
+107
+T1
+# cores
+Number of 2-round trail cores(a,b) in the Kernel withw(b) ≤T1
+19 20 21 22 23 24 25 26 27 28 29 30 31 32 33
+1
+10102103104105106107108
+T2
+#cores
+Number of 2-round trail cores(a,b) outside the Kernel withwrev(a) + w(b) ≤T2
+23 25 27 29 31 33 35 37 39 41 43 45
+1
+10
+102
+103
+104
+105
+106
+107
+T2
+#cores
+Number of 2-round trail cores(a,b) outside the Kernel with2wrev(a) + w(b) ≤T2
+24 26 28 30 32 34 36 38 40 42 44 46
+1
+10
+102
+103
+104
+105
+106
+107
+T2
+#cores
+Number of 2-round trail cores(a,b) outside the Kernel withwrev(a) + 2w(b) ≤T2
+Keccak-f[200] Keccak-f[400] Keccak-f[800] Keccak-f[1600]
+Figure 6: Number of 2-round trail cores for diﬀerent cost functions.
+350 New techniques for trail bounds and application to diﬀerential trails in Keccak
+20 22 24 26 28 30 32 34 36 38 40 42 44
+1
+10
+102
+103
+104
+T3
+# cores
+Number of 3-round trail cores of weightT3 and parity proﬁle|K|K|
+28 30 32 34 36 38 40 42 44
+1
+10
+102
+103
+104
+T3
+# cores
+Number of 3-round trail cores of weightT3 and parity proﬁle|K|N|
+27 29 31 33 35 37 39 41 43 45
+1
+10
+102
+103
+104
+T3
+# cores
+Number of 3-round trail cores of weightT3 and parity proﬁle|N|K|
+38 39 40 41 42 43 44 45
+1
+10
+102
+103
+T3
+# cores
+Number of 3-round trail cores of weightT3 and parity proﬁle|N|N|
+Keccak-f[200] Keccak-f[400] Keccak-f[800] Keccak-f[1600]
+Figure 7: Number of 3-round trail cores with weightT3 for diﬀerent parity proﬁles.
+Silvia Mella, Joan Daemen and Gilles Van Assche 351
+20 22 24 26 28 30 32 34 36 38 40 42 44
+1
+10
+102
+103
+104
+T3
+# cores
+Keccak-f[200] Keccak-f[400] Keccak-f[800] Keccak-f[1600]
+Figure 8: Number of all 3-round trail cores with weightT3.
+Table 3:Lightest trails found for diﬀerent variants ofKeccak-f.
+rounds proﬁles b = 200 b = 400 b = 800 b = 1600
+3 weight 4 8 8 8 8 8 4 4 24 4 4 24
+parity |K|K| |K|K| |K|N| |K|N|
+4 weight 21 9 8 8 29 6 4 24 20 9 8 67 16 13 12 93
+parity |N|K|K| |N|K|N| |N|K|N| |K|K|N|
+5 weight 36 13 9 15 16 67 14 12 16 38 124 21 14 11 77 166 22 16 16 152
+parity |N|N|K|K| |N|K|K|N| |N|K|K|N| |N|K|K|N|
+6 weight 45 44 13 9 15 1681 35 6 4 24 128192 17 12 12 73 438166 22 16 16 152 841
+parity |N|N|N|K|K| |N|N|K|N|N| |N|K|K|N|N| |N|K|K|N|N|
+trail is found below the limit, therefore we can say that the lower bound on the weight of
+4-round trail cores for these variants is48. As for5-rounds, for allKeccak-f from 200 to
+1600 no trail core with weight smaller or equal to 49 is found, therefore we can say that a
+lower bound on the weight of5-round trail cores is50.
+During our search we have found some interesting trail cores exceeding the limit weight,
+but that are, to the best of our knowledge, the lightest trails found up to now with no
+particular symmetry properties. We report them in Table 3 giving their weight and parity
+proﬁles. These trails allow to deﬁne upper bounds for the minimum weight of trails. In
+the deﬁnition of these upper bounds, we must take into account the Matryoshka structure
+[BDPV11]. For instance, for the6-round trail of weight 278 inKeccak-f[400] there will
+be a corresponding trail inKeccak-f[800] of weight2 ·278 and inKeccak-f[1600] of
+weight 2 ·556. In this case, the upper bound is given by this trail and not by the trail
+reported in Table 3.
+We recap the obtained results in Table 1 reporting the minimum weight of trails or the
+range where the minimum weight lives, for the variants ofKeccak-f from 200 to 800.
+7.4 Bounds on nr-rounds
+From the bounds we have found, we can derive lower bounds on the total number of rounds
+for each variant ofKeccak. We report them in Table 4. Each bound is derived considering
+the worst case scenario when extending6-round trails tonr rounds. For instance, for
+Keccak-f[400], the total number of round is20. A 20-round trail can be obtained by ﬁrst
+combining three6-round trails that in the worst case contribute only3 ·92 = 276. Then,
+for the two rounds left, the worst case is when they are one a the beginning and one at the
+352 New techniques for trail bounds and application to diﬀerential trails in Keccak
+Table 4:Bounds on the weight of trails over the total number of rounds.
+b=200 b=400 b=800 b=1600
+nr 18 20 22 24
+bound 276 280 292 368
+end of the trail, thus contributing only 2 to the weight. This gives a lower bound of280.
+The obtained results conﬁrm that the security ofKeccak relies not on the diﬃculty
+of ﬁnding exploitable trails, but rather on their absence.
+From the lower bound on6 rounds we can also infer a lower bound of184 for 12 rounds,
+which is the number of iterations used in Keyak.
+8 Conclusions
+We presented new techniques to scan the whole space of3-round diﬀerential trails in
+Keccak-f up to a given weight. At ﬁrst, we introduced a general formalism that allows
+to generate diﬀerential patterns as a simple and eﬃcient tree traversal. This technique
+is of independent interest and could be applied to those primitives with a linear and a
+non-linear mixing layers.
+For the speciﬁc case ofKeccak-f, we instantiated the tree traversal method exploiting
+the propagation properties of the step mappings and their translation-invariance along
+the z-axis. Finally, we presented new techniques that exploit the parity proﬁle of trails to
+extend them eﬃciently.
+We implemented these methods and used them to ﬁnd lower bounds for diﬀerential trail
+weights forKeccak-f[200] to Keccak-f[1600]. The result obtained forKeccak-f[1600]
+over 6 rounds improves known results, whereas the results forKeccak-f[b] for b ∈
+{200,400,800}are new.
+Furthermore, the results provide insight in how the number of exploitable3-round
+trails scales with the width of the permutation. It appears that low-weight trails over
+more than4 rounds become sparser with increasing width. This makes sense as the sheer
+number of3-round trails to be extended decreases with the width and the probability that
+a given3-round trail can be extended with a low-weight pattern decreases with the width.
+As rounds are combined, the number of trails up to a given weight per round decreases
+signiﬁcantly. As shown in Figure 1, for Keccak-f[1600] the number of single-round
+diﬀerentials with weight up to15 is 260.7. The number of2-round trails with weight up to
+30 is 223.6, whereas the number of3-round trails up to weight45 is just28. After extending
+to 6 rounds, we see that there are no such trails.
+References
+[BDP+14] G. Bertoni, J. Daemen, M. Peeters, G. Van Assche, and R. Van Keer. CAESAR
+submission: Ketje v1, March 2014.http://ketje.noekeon.org/.
+[BDP+15] G. Bertoni, J. Daemen, M. Peeters, G. Van Assche, and R. Van Keer. CAESAR
+submission: Keyak v2, August 2015.http://keyak.noekeon.org/.
+[BDPV11] G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche. TheKeccak reference,
+January 2011.http://keccak.noekeon.org/.
+[BDPV15] G. Bertoni, J. Daemen, M. Peeters, and G. Van Assche.KeccakTools
+software, October 2015.http://keccak.noekeon.org/.
+Silvia Mella, Joan Daemen and Gilles Van Assche 353
+[BFL10] C. Bouillaguet, P.-A. Fouque, and G. Leurent. Security analysis of SIMD.
+In A. Biryukov, G. Gong, and D. R. Stinson, editors, Selected Areas in
+Cryptography - 17th International Workshop, SAC 2010, Waterloo, Ontario,
+Canada, August 12-13, 2010, Revised Selected Papers, volume 6544 ofLecture
+Notes in Computer Science, pages 351–368. Springer, 2010.
+[BS90] E. Biham and A. Shamir. Diﬀerential cryptanalysis of DES-like cryptosystems.
+In A. Menezes and S. Vanstone, editors,CRYPTO, volume 537 ofLecture
+Notes in Computer Science, pages 2–21. Springer, 1990.
+[DPVR00] J. Daemen, M. Peeters, G. Van Assche, and V. Rijmen. Nessie proposal: the
+block cipherNoekeon. Nessie submission, 2000.http://gro.noekeon.org/.
+[DR01] Joan Daemen and Vincent Rijmen. The wide trail design strategy. In Bahram
+Honary, editor,Cryptography and Coding, 8th IMA International Conference,
+Cirencester, UK, December 17-19, 2001, Proceedings, volume 2260 ofLecture
+Notes in Computer Science, pages 222–238. Springer, 2001.
+[DR02] J. Daemen and V. Rijmen.The design of Rijndael — AES, The Advanced
+Encryption Standard. Springer-Verlag, 2002.
+[DV12] J. Daemen and G. Van Assche. Diﬀerential propagation analysis of Keccak. In
+A. Canteaut, editor,Fast Software Encryption - 19th International Workshop,
+FSE 2012, Washington, DC, USA, March 19-21, 2012. Revised Selected Papers,
+volume 7549 ofLecture Notes in Computer Science, pages 422–441. Springer,
+2012.
+[MP13] N. Mouha and B. Preneel. Towards ﬁnding optimal diﬀerential characteristics
+for ARX: Application to Salsa20.IACR Cryptology ePrint Archive, 2013:328,
+2013.
+[MWGP11] N. Mouha, Q. Wang, D. Gu, and B. Preneel. Diﬀerential and linear cryptanal-
+ysis using mixed-integer linear programming. In C. Wu, M. Yung, and D. Lin,
+editors, Information Security and Cryptology - 7th International Conference,
+Inscrypt 2011, Beijing, China, November 30 - December 3, 2011. Revised
+Selected Papers, volume 7537 ofLecture Notes in Computer Science, pages
+57–76. Springer, 2011.
+[SHW+14] S. Sun, L. Hu, M. Wang, P. Wang, K. Qiao, X. Ma, D. Shi, and L. Song.
+Towards ﬁnding the best characteristics of some bit-oriented block ciphers and
+automatic enumeration of (related-key) diﬀerential and linear characteristics
+with predeﬁned properties.IACR Cryptology ePrint Archive, 2014:747, 2014.
+354 New techniques for trail bounds and application to diﬀerential trails in Keccak
+A Execution times
+In Table 5 we report the execution time needed to generate the diﬀerent sets of 2-round
+trail cores, while in Table 6 we report the time required to extend those trails in the
+backward or forward direction inside or outside the kernel. Experimental results have been
+obtained running the code on an Intel Xeon X5660 processor running at 2.8GHz, using a
+single core for each experiment.
+Table 5:Execution time for the generation of 2-round trail cores. Last line refers to the
+technique of [DV12].
+2-round trail cores b= 200 b= 400 b= 800 b= 1600
+|K|wrev(a) ≤11 2m20s 6m37s 19m50s 6h06m10s
+|K|w(b) ≤11 5s 14s 44s 2m27s
+|N|wrev(a) + w(b) ≤33 1h36m51s 1h22m45s 1h42m27s 2h58m43s
+|N|wrev(a) + 2w(b) ≤45 4h09m18s 2h50m14s 3h46m41s 6h44m40s
+|N|2wrev(a) + w(b) ≤44 12h19m54s 25m36s 37m14s 1h12m48s
+|K|with χ(b) in |K| 37h26m17s 12h38m33s 11h29m54s 16h11m16s
+Total 55h34m45s 17h23m59s 17h56m06s 33h16m04s
+Table6: Executiontime fortheextensionof 2-roundtrailcores to3 rounds. Symbols →|K|
+and→|N|denote forward extension in the kernel and outside the kernel respectively;←|K|
+and ←|N|denote backward extension in the kernel and outside the kernel respectively.
+2-round trail cores extension b= 200 b= 400 b= 800 b= 1600
+|K|wrev(a) ≤11 →|N| 18h03m01s 1h40m36s 19h11m45s 136h01m47s
+|K|w(b) ≤11 ←|N| 17m57s 5m55s 31m13s 2h36m01s
+|N|wrev(a) + w(b) ≤33 →|K| 2m51s 2m25s 3m17s 6m32s
+←|K| 18h17m07s 2h16m52s 17h40m33s 33h28m14s
+|N|wrev(a) + 2w(b) ≤45 ←|N| 8h54m39s 39m34s 4h19m50s 45h52m52s
+|N|2wrev(a) + w(b) ≤44 →|N| 1h00m39s 24m37s 2h14m51s 10h06m26s
+|K|with χ(b) in |K| →|K| 3s 1s 2s 5s
+Total 46h36m17s 5h10m00s 43h30m18s 225h35m56s
+B Number of 2 and 3-round trail cores generated
+We report here the total number of trails generated per parity proﬁle. The same information
+can be extracted from Figures 6, 7 and 8.
+Table 7:Number of 2-round trail cores generated for each parity proﬁle.
+2-round trail cores b= 200 b= 400 b= 800 b= 1600
+|K|wrev(a) ≤11 1.0 ·107 2.1 ·107 4.3 ·107 8.6 ·107
+|K|w(b) ≤11 3.0 ·105 6.3 ·105 1.3 ·106 2.6 ·106
+|N|wrev(a) + w(b) ≤33 3.7 ·107 3.0 ·107 2.8 ·107 3.8 ·107
+|N|wrev(a) + 2w(b) ≤45 3.9 ·106 3.6 ·106 4.8 ·106 8.2 ·106
+|N|2wrev(a) + w(b) ≤44 7.6 ·106 5.4 ·106 6.8 ·106 1.1 ·107
+|K|with χ(b) in |K| 3.6 ·104 3.1 ·103 5.2 ·102 1.3 ·102
+Total 5.9 ·107 6.0 ·107 8.4 ·107 1.5 ·108
+Silvia Mella, Joan Daemen and Gilles Van Assche 355
+Table 8:Number of 3-round trail cores up to weight45.
+3-round trail cores b= 200 b= 400 b= 800 b= 1600
+|K|K| 2.0 ·104 2.0 ·103 5.6 ·102 233
+|K|N| 4.9 ·103 3.4 ·102 28 11
+|N|K| 4.3 ·103 3.0 ·102 23 0
+|N|N| 2.8 ·102 2 0 0
+Total 2.9 ·104 2.7 ·103 6.1 ·102 244
+C Proof of Lemma Lemma 7
+Proof. First of all, it cannot overestimate the cost of a parity-bare state. This follows
+from the fact that ¯a and ¯b are obtained by removing bits at a and/or at b, so the
+weight of reduced states is smaller than the weight of original states, since the weight
+functions wrev(a) and w(b) are monotonic in the addition of bits [BDPV11]. It follows
+that L(a) ≤α·wrev(¯a) + β·w(¯b) ≤α·wrev(a) + β·w(b).
+It remains to prove, that the cost function lower bounds the weight of descendants.
+For those descendants obtained by adding column assignments that do not remove bits
+from a and b, the weight is lower bounded by the weight of the reduced states, since they
+have less active bits. For descendants obtained by adding an odd-0 column to an aﬀected
+even column, the active bit iny= 0 at a can be moved tob or vice versa. The reduced
+states don’t have these bits, so again the weight of reduced states lower bounds the weight
+of such descendants.
+The only cases where bits can be removed from reduce states are when aﬀected even
+columns are added to odd-0 columns.
+For those columns not inN0: if the bit iny= 0 of the aﬀected even column is passive,
+then the bit remains active ata and become passive atb. The weight of such states is
+lower bounded by the weight of reduced states because they don’t have such bits atb. If
+the bit iny= 0 of the aﬀected even column is active, then the bit atb remains active and
+the bit ata is moved to another row, not changing its contribution to the weight.
+For those columns inN0: if the bit iny = 0 of the aﬀected even column is passive,
+then the bit remains active ata and become passive atb. This may reduce the weight
+by a factor2β. If the bit iny= 0 of the aﬀected even column is active, then the bit atb
+remains active and the bit ata is moved to another row, possibly reducing the weight by
+at most a factor of2α. The maximum weight reduction is thus by a factor of2 max(α,β).
+This can happen at most#N0 times and hence the weight can never become smaller than
+the weight of the reduced states minus2 ·max(α,β) ·#N0. ⊓ ⊔
+D Comparison with previous work
+One may wonder why we didn’t just use the techniques described in [DV12] and imple-
+mented in the [BDPV15] to cover the space of3-round trails up to weight45. This is
+actually what we tried to do as our ﬁrst step. But we encountered a number of obstacles,
+which motivated us to develop new and more eﬃcient techniques. We describe them here
+and report the execution time needed to cover the space of3-round trails up to weight 36 in
+Keccak-f[1600] using both approaches. These results will show how the new techniques
+presented in this work allow to scan the space of trails more eﬃciently, thus allowing to
+push the target weight to higher values.
+356 New techniques for trail bounds and application to diﬀerential trails in Keccak
+Table 9:Ratio between the number of parity patterns that give rise to trails with weight
+below T2 and the number of parity patterns with bound belowT2, according to [DV12].
+T2 b= 200 b= 400 b= 800 b= 1600
+26 22/181 18/61 15/37 15/35
+28 30/534 27/127 24/48 22/41
+30 42/1505 34/364 31/99 31/87
+32 66/4028 45/938 36/342 35/277
+D.1 Limitations of the previous techniques
+In [DV12], the space of 3-round trail cores(a1,b1,a2,b2) up to weight36 is covered by
+splitting it into subspaces that are scanned using diﬀerent techniques:
+1. all 3-round trail cores with botha1 and a2 in the kernel. This is covered by ﬁrst
+generating all 2-round trail cores with a in the kernel for which there exists a
+compatible stateχ(b) in the kernel. Then, forward extension (in the kernel) of these
+trails is performed.
+2. all 3-round trail cores such thatwrev(a1) <8 or w(b1) <8 or w(b2) <8. This set is
+covered by ﬁrst generating all 2-round trail cores such thata or b has three or less
+active rows. In fact, a weight up to 7 implies at most 3 active rows, since each row
+contributes at least 2 to the weight. Then, forward and backward extension of these
+trails is performed.
+3. all 2-round trail cores such thatwrev(a1) ≥8, w(b1) ≥8 and w(b2) ≥8 and not both
+a1 and a2 in the kernel. This is covered by ﬁrst generating all 2-round trail cores
+outside the kernel with weight up to28 and then extending them in forward and
+backward direction.
+While trying to use these methods with a limit weight above 36, we have faced the
+following bottlenecks:
+1. in point 2 above: going for weight 8 or more explodes the number of cases to
+investigate and to extend. In fact, inKeccak-f[1600] the number of states with up
+to 3 active rows is about230. Considering 8 or more implies to generate all states
+with up to 4 or more active rows, and thus to build more than240 states.
+2. in point 3 above: the generation of 2-round trail cores outside the kernel is performed
+in two steps. In the ﬁrst step parity patterns are incrementally generated by adding
+runs and computing a lower bound on the weight of trails with given parities. Only
+those parity patterns with small lower bound (namely, below 28) are kept. Namely,
+only those parity patterns that might give rise to a trail core with weight smaller
+than 28. In the second step, state patterns are concretely built for those parities
+generated during the ﬁrst step. Lemma 3 in [DV12] is tailored to the initial target
+weight of 36; aiming for a bigger target gives rise to thousands of parity patterns to
+investigate, most of which do not actually give rise to valid 2-round trail cores. In
+fact, the lower bound computed in the ﬁrst step is loose and the result is that many
+of the parity patterns generated in the ﬁrst step do not actually give rise to trails
+whose weight is below the limit. In Table 9 we report the ratio between the number
+of parity patterns that really give rise to trails with weight belowT2 and the number
+of parity patterns with bound belowT2, for diﬀerent values ofT2.
+The gap between the lower bound and the actual minimum weight of trails per given
+parity, suggests the need for better techniques to lower bound the weight. We decided
+Silvia Mella, Joan Daemen and Gilles Van Assche 357
+to incrementally generate state patterns making use of the run structure of parity
+patterns. This allows us to get better bounds on the weight of resulting trails, since
+the new bound is computed from the actual weight of the current trail instead of
+being computed only from lower bounds on runs as in [DV12].
+3. in general, increasing the target weight results in the generation of a bigger amount of
+2-round trails which must be extended to3 rounds. Moreover, the bigger the weight
+of a state is, the bigger the number of (χ or χ−1) compatible states is. Therefore,
+increasing the target weight makes extension much more expensive because the
+number of trails to investigate and the number of compatible states for each trail
+grows. This motivated us to optimize extension, in order to avoid the investigation
+of patterns that will not give rise to valid trails (i.e. below the target weight).
+D.2 Covering the space of 3-round trails up to weight 36
+In order to compare our new techniques to previous work, we repeated the experiments
+described in [DV12]. In particular, we generated all 3-round trail cores forKeccak-f[1600]
+up to weight 36 using the routines available in [BDPV15]. Then, we covered the same
+space using our code, by settingT1 = 8, T2 = 27 and T3 = 36.
+In Table 10 and Table 11 we reported the execution time for both the approaches.
+Table 10:Execution time for the generation of 3-round trail cores up to weight36 using
+the techniques of [DV12] and theKeccakTools.
+generation of 2-round trail cores extension to 3 rounds
+type time type time
+∥a∥row ≤3 34h38m14s → 2h07m13s
+← 32m28s
+∥b∥row ≤3 14h55m43s → 7s
+← more than 10 days
+|N|wrev(a) + w(b) ≤28 3m28s → 2h00m50s
+← more than 10 days
+|K|with χ(b) in |K| 4m50s → 4s
+Total 49h42m15s Total more than 20 days
+Table 11:Execution time for the generation of 3-round trail cores up to weight36 using
+the new techniques presented in this work. Last line refers to the technique of [DV12].
+generation of 2-round trail cores extension to 3 rounds
+type time type time
+|K|wrev(a) ≤8 53s →|N| 39m53s
+|K|w(b) ≤8 9s ←|N| 3m56s
+|N|wrev(a) + w(b) ≤27 1m23s →|K| 2m36s
+←|K| 5m06s
+|N|wrev(a) + 2w(b) ≤36 4m27s ←|N| 2m56s
+|N|2wrev(a) + w(b) ≤35 32s →|N| 48s
+|K|with χ(b) in |K| 4m50s →|K| 4s
+Total 12m14s Total 55m19s

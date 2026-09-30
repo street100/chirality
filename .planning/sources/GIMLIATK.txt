@@ -1,0 +1,2027 @@
+Internal Symmetries and Linear Properties:
+Full-permutation Distinguishers and Improved
+Collisions onGimli *
+Antonio Flórez Gutiérrez1, Gaëtan Leurent1, María Naya-Plasencia1, Léo
+Perrin1, André Schrottenloher2†Ferdinand Sibleyras1
+1 Inria, Paris, France (firstname.lastname@inria.fr)
+2 Cryptology Group, CWI, Amsterdam, The Netherlands
+(firstname.lastname@m4x.org)
+Abstract. Gimli is a family of cryptographic primitives (both a hash
+function and an AEAD scheme) that has been selected for the second
+round of the NIST competition for standardizing new lightweight de-
+signs. The candidateGimli is based on the permutationGimli, which was
+presented at CHES 2017. In this paper, we study the security of both
+the permutation and the constructions that are based on it. We exploit
+the slow diffusion inGimli and its internal symmetries to build, for the
+first time, a distinguisher on the full permutation of complexity264. We
+also provide a practical distinguisher on 23 out of the full 24 rounds of
+Gimli that has been implemented.
+Next, we give (full state) collision and semi-free-start collision attacks on
+Gimli-Hash, reaching respectively up to 12 and 18 rounds. On the practi-
+cal side, we compute a collision on 8-roundGimli-Hash. In the quantum
+setting, these attacks reach 2 more rounds. Finally, we perform the first
+study of linear trails inGimli, and we find a linear distinguisher on the
+full permutation.
+Keywords: Gimli,symmetries,symmetriccryptanalysis,full-rounddistinguisher,
+collision attacks, linear approximations
+1 Introduction
+Gimli is a cryptographic permutation that was published at CHES 2017 [4]. It
+is also the core primitive of a submission to the NIST lightweight cryptography
+project [5] which is part of the 32 candidates that made it to the second round. It
+is intended to run well on a vast variety of platforms and contexts, from powerful
+processors supporting vector instructions to side-channel protected hardware.
+* This article is an extended version of the paper “New Results on Gimli: Full-
+Permutation Distinguishers and Improved Collisions” which appeared in the pro-
+ceedings of ASIACRYPT 2020 [18].
+†This work was carried out while André Schrottenloher was at Inria.
+A cryptographic permutation is a versatile primitive which is easily used to
+construct a hash function (as originally intended for this type of object [7]). It
+was later shown that they can also be used to build authenticated ciphers [10],
+pseudo-random number generators [9], etc. In all such structures, the security
+of the cryptographic function relies on the properties of the permutation. In
+particular, it is assumed in the underlying security proofs that the permutation
+used behaves like a permutation picked uniformly at random—apart of course
+from the existence of a compact implementation, a property which should not
+be expected from a random object.
+By definition, a cryptographic permutation does not have a key. Thus, we
+cannot define its security level using a game that relies on distinguishing a ran-
+dom permutation from a keyed instance with a random key. Still, since it should
+behave like a permutation picked uniformly at random, we can assess its secu-
+rity level by trying to identify properties that hold for the permutation studied
+but which should not be expected for one picked uniformly at random. In this
+context, cryptanalysts can re-use approaches originally intended for block cipher
+cryptanalysis (e.g. differential attacks [11]). In fact, given that no key material is
+involved, we can also borrow techniques from hash function cryptanalysis such
+as rebound attacks [29].
+The aim is usually then to obtain inputs of the permutation satisfying a
+certain property using an algorithm which is more efficient than the generic one,
+i.e. the one that would work on a random permutation.
+Our Contributions. In this paper, we complete the original security analysis of
+the designers of Gimli by targeting both the permutation on its own, and the
+NIST candidateGimli-Hash. Our results on the permutation are summarized in
+Figure 1 (plain lines). In order to account for the different costs of the generic
+attacks, we divided the logarithm of the time complexity of our distinguishers by
+the logarithm of the time complexity of the corresponding generic distinguisher.
+In Figure 1, a distinguisher is valid if the ratio is under 1.0. Previous attacks
+from the literature are represented with dotted lines. The complexities of all our
+attacks (included those against the hash function) are given in Table 1, along
+with all the results from the literature we are aware of.
+Our main result is a distinguisher of the full 24-round permutation with
+a cost of 264, while a similar generic distinguisher has a cost of296. We also
+propose a distinguisher on23 rounds that is practical, with a cost of232, and has
+been successfully implemented. These distinguishers exploit internal symmetries
+that are encouraged by the round function. The 23-round distinguisher could be
+extended by 1 round for free if the rounds were shifted.3
+Using similar guess-and-determine ideas, we increase to 12 the number of
+rounds susceptible to collision attacks onGimli-Hash. A reduced-round version of
+thisattackhasbeenimplemented.Inthequantumsetting,weobtaincollisionsup
+to 14 rounds. We also build semi-free start collisions, i.e. we show how to find one
+internal state value and two different messages (thus not affecting the capacity
+part) that provide a collision on the capacity after applying the permutation.
+3 This behaviour appears because the linear layer ofGimli is round dependent.
+2
+0 2 4 6 8 10 12 14 16 18 20 22 24 26 28
+Number of rounds that can be distinguished
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+log(time complexity) / log(generic complexity)
+Integral/0-sum
+Diﬀerential
+(Hybrid) ZID
+Key-recovery
+Linear
+Diﬀerential-linear
+Internal symmetry
+Fig.1. Comparison of various cryptanalysis techniques. Note that we may consider
+“shifted” variants ofGimli that do not start at round 24. Dotted lines correspond to
+results from the literature.
+This attack is more efficient than a generic one for 18 rounds classically, and
+up to 20 quantumly. As a side note, these results provide a new example where
+quantum attacks reach more rounds than classical ones, much like in [25]. We
+also find a state-recovery attack on the authenticated encryptionGimli-Cipher
+(which leads to a key-recovery) up to 12 rounds, with only 3 blocks of data.
+In addition, we provide the first extensive study of the linear properties of the
+round function ofGimli. We design a full-round linear distinguisher and study
+faster differential-linear distinguishers on reduced-round variants.
+Ourimplementations(23-rounddistinguisher,reduced-roundcollisionattack,
+search for linear trails) are available at this URL4.
+Differences with [18].This article is an extended version of the paper “New Re-
+sults on Gimli: Full-Permutation Distinguishers and Improved Collisions” which
+appeared in the proceedings of ASIACRYPT 2020 [18]. Our new contributions
+are the state-recovery attacks explored in Section 6 and the full-round linear
+distinguisher onGimli in Section 7. The rest of the paper (e.g., the distinguishers
+of Section 3 and the collision attacks of Section 4) is unchanged with respect to
+the ASIACRYPT version.
+Organization of the paper. The organization of the paper is as follows. In Sec-
+tion 2 we provide the description of theGimli permutation and primitive, as well
+as previous known results. Section 3 provides the new distinguishers exploit-
+ing the internal symmetries that allow to distinguish the full permutation, and
+4 https://project.inria.fr/quasymodo/files/2020/05/gimli_
+cryptanalysis_eprint.tar.gz
+3
+Table 1. Results against algorithms of theGimli family (including quantum attacks).
+Time is counted in evaluations ofGimli, and memory in 128-bit blocks. Attacks that
+were actually implemented are written inbold. 𝜖 is a term that we only estimated
+experimentally (𝜖 ≈10, see Section 4). In rounds attacked,𝑟1 →𝑟2 means rounds𝑟1
+to 𝑟2 included.
+Technique Rounds Time Memory Generic Reference
+Distinguishers
+on the
+permutation
+(real rounds:
+24 →1)
+Key-recovery
+on Gimli-PRF
+25 →2.5 138.5 128 192 [24]
+15.5 64 64 192 [24]
+Zero-sum 14 351 negl. 384 [15]
+ZID 18 2 negl. 4 [34]
+Linear 16 238.8 negl. 384 Sec. 7.1
+Linear 24 367.6 negl. 384 Sec. 7.1
+Differential-Linear 15 87.4 negl. 192 Sec. 7.2
+Differential-Linear 16 110.8 negl. 192 Sec. 7.2
+Differential-Linear 17 154.8 negl. 192 Sec. 7.2
+Symmetry 23 →0 32 negl. 96 Sec. 3
+Symmetry 27 →0 64 negl. 96 Sec. 3
+Preimages on
+Gimli-Hash
+Divide-and-
+conquer
+2 42.4 32 128 [34]
+5 96 65.6 128 [34]
+Preimages on
+Gimli-XOF-128 9 104 70 128 [34]
+Collisions on
+Gimli-Hash
+Divide-and-
+conquer
+5 65 – 128 [32]
+3 practical – 128 [32]
+6 64 64 128 [33]
+Symmetry 21 →14 32 +𝜖 negl. 128 Sec. 4
+Symmetry 12 96 + 𝜖 negl. 128 Sec. 4
+Quantum 14 64 + 𝜖 negl. 85.3 Sec. 4
+Semi-free start
+collisions on
+Gimli-Hash
+Symmetry 8 64 negl. 128 [33]
+Symmetry 12 32 + 𝜖 negl. 128 Sec. 4
+Symmetry 16 96 + 𝜖 negl. 128 Sec. 4
+Symmetry 18 96 + 𝜖 64 128 Sec. 4
+Quantum 20 64 + 𝜖 64 85.3 Sec. 4
+State-recovery
+on Gimli-Cipher
+D & C 9 192 190 256 [33]
+Symmetry 8 128 128 256 Sec. 6
+Symmetry 12 192 192 256 Sec. 6
+to build practical distinguishers up to 23 rounds. Section 4 presents improved
+collision and semi-free start collision attacks, and Section 5 their quantum coun-
+terpart. In Section 6, we use similar methods to perform state-recovery attacks
+on reduced-round versions of the AE schemeGimli-Cipher. Section 7 presents
+our new results regarding statistical distinguishers, with new linear trails and
+differential-linear attacks. We conclude the paper in Section 8 with a summary,
+a discussion on the impact of our results and a proposal of tweak that would
+mitigate their reach.
+4
+2 Preliminaries
+In this section we describe theGimli permutation and we provide an overview of
+previous cryptanalysis results. TheGimli-Hash function is described directly in
+Section 4.
+We adopt the following notations in this paper:≪, ≫, ≪, ≫ represent re-
+spectively shift left, shift right,rotate leftand rotate right operations.𝑥, 𝑦, 𝑧will
+denote elements ofF32
+2 . SP is the 96-bit SP-Box. We denote𝑥𝑖 the (𝑖 mod 32)𝑡ℎ
+bit of𝑥 (𝑥33 = 𝑥1) with 𝑥0 least significant (right-most). We denote the output
+of the SP box asSP(𝑥, 𝑦, 𝑧) = (𝑥′, 𝑦′, 𝑧′) and SP2(𝑥, 𝑦, 𝑧) = (𝑥′′, 𝑦′′, 𝑧′′).
+2.1 The Gimli Permutation
+State Structure.We denote by𝑆 the 384-bitGimli state, which is the concatena-
+tion of 4columns of 96-bit, that we denote𝐴, 𝐵, 𝐶, 𝐷, where𝐴 is column number
+0, and𝐷 is column number 3. Each column is cut into three 32-bitwords 𝑥, 𝑦, 𝑧
+which are denotede.g. 𝐴𝑥, 𝐴𝑦, 𝐴𝑧. Thus, the state is a4 ×3 ×32 parallelepiped.
+We will speak of the𝑥 lane to denote the sequence or concatenation of words
+𝐴𝑥, 𝐵𝑥, 𝐶𝑥, 𝐷𝑥.
+SP-Box. The only non-linear operation inGimli is the SP-Box, which is applied
+columnwise. On input𝑥, 𝑦, 𝑧, it updates the three words as follows:
+1. Rotate 𝑥 and 𝑦: 𝑥 ←𝑥 ≪24, 𝑦←𝑦 ≪9.
+2. Perform the following non-linear operations in parallel (shifts are used rather
+than rotations):
+𝑥 ←𝑥 ⊕(𝑧 ≪1) ⊕((𝑦 ∧𝑧) ≪2),
+𝑦 ←𝑦 ⊕𝑥 ⊕((𝑥 ∨𝑧) ≪1),
+𝑧 ←𝑧 ⊕𝑦 ⊕((𝑥 ∧𝑦) ≪3).
+3. Swap 𝑥 and 𝑧: (𝑥, 𝑧) ←(𝑧, 𝑥).
+Rounds. Gimli applies a sequence of 24 rounds numbered from 24 downto 1
+inclusively. Each round applies an SP-Box layer, then performs aswap (every
+two rounds, either a “big swap” or a small “small swap” as shown in Algorithm 1)
+and a constant addition (every four rounds). The constant at round𝑖, if there is
+one, will be denotedrc𝑖 in what follows. InGimli we have:rc𝑖 = 0x9e377900 ⊕𝑖.
+Note that all the attacks studied in this paper are independent of the choice of
+round constants.
+An algorithmic depiction of fullGimli is given in Algorithm 1and it is depicted
+in Figure 10, where each wire represents a word.
+Boolean Description of the SP-BoxNow we give a full description of the
+SP box using Boolean functions:
+– for 𝑥′: ⎧
+⎪⎪⎪⎨
+⎪⎪⎪⎩
+𝑥′
+0 = 𝑦23 + 𝑧0
+𝑥′
+1 = 𝑦24 + 𝑧1
+𝑥′
+2 = 𝑦25 + 𝑧2
+𝑥′
+𝑖 = 𝑦𝑖−9 + 𝑧𝑖 + 𝑥𝑖+5𝑦𝑖−12, 3 ≤𝑖 ≤32 ,
+(1)
+5
+Algorithm 1The fullGimli permutation.
+Input: State 𝑆 = 𝐴, 𝐵, 𝐶, 𝐷
+Output: Gimli(𝑆)
+1: for 𝑟 = 24downto 1 inclusive do
+2: 𝐴, 𝐵, 𝐶, 𝐷←𝑆𝑃 (𝐴), 𝑆𝑃(𝐵), 𝑆𝑃(𝐶), 𝑆𝑃(𝐷) ◁ SP-Box layer
+3: if 𝑟 mod 4 = 0then
+4: Swap 𝐴𝑥 and 𝐵𝑥, swap𝐶𝑥 and 𝐷𝑥 ◁ small swap
+5: 𝐴𝑥 ←𝐴𝑥 ⊕rc𝑟 ◁ Constant addition
+6: else if𝑟 mod 2 = 0then
+7: Swap 𝐴𝑥 and 𝐶𝑥, swap𝐵𝑥 and 𝐷𝑥 ◁ big swap
+8: end if
+9: end for
+Return 𝑆
+– for 𝑦′:
+{︃
+𝑦′
+0 = 𝑥8 + 𝑦23
+𝑦′
+𝑖 = 𝑥𝑖+8 + 𝑦𝑖−9 + 𝑥𝑖+7 + 𝑧𝑖−1 + 𝑥𝑖+7𝑧𝑖−1, 1 ≤𝑖 ≤32 , (2)
+– and for𝑧′:
+⎧
+⎪⎨
+⎪⎩
+𝑧′
+0 = 𝑥8
+𝑧′
+1 = 𝑥9 + 𝑧0
+𝑧′
+𝑖 = 𝑥𝑖+8 + 𝑧𝑖−1 + 𝑦𝑖−11𝑧𝑖−2, 2 ≤𝑖 ≤32 .
+(3)
+Description of the SP2 Box. If 𝑥′
+0 = 𝑦23 + 𝑧0 as in Equation (1) then it
+naturally holds that𝑥′′
+0 = 𝑦′
+23 + 𝑧′
+0 and thus we can use Equations (2) and (3)
+to get the full formula. Here we write some of them:
+𝑥′′
+⎧
+⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎨
+⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎪⎩
+𝑥′′
+0 = 𝑥8 + 𝑥30 + 𝑥31 + 𝑦14 + 𝑧22 + 𝑥30𝑧22
+𝑥′′
+1 = 𝑥9 + 𝑥31 + 𝑥0 + 𝑦15 + 𝑧0 + 𝑧23 + 𝑥31𝑧23
+𝑥′′
+2 = 𝑥10 + 𝑥0 + 𝑥1 + 𝑦16 + 𝑧1 + 𝑧24 + 𝑦23𝑧0 + 𝑥0𝑧24
+𝑥′′
+𝑖 = 𝑥𝑖−2 + 𝑥𝑖−1 + 𝑥𝑖+8 + 𝑦𝑖−18 + 𝑧𝑖−10 + 𝑧𝑖−1 + 𝑥𝑖−2𝑧𝑖−10 + 𝑦𝑖−11𝑧𝑖−2
++𝑥𝑖−4𝑦𝑖−4 + 𝑥𝑖−4𝑧𝑖+5 + 𝑦𝑖−4𝑦𝑖+11 + 𝑦𝑖+11𝑧𝑖+5 + 𝑥𝑖−5𝑧𝑖+5 + 𝑥𝑖−5𝑦𝑖−4
++𝑦𝑖−4𝑧𝑖−13 + 𝑧𝑖−13𝑧𝑖+5 + 𝑥𝑖−4𝑥𝑖+10𝑦𝑖−7 + 𝑥𝑖+10𝑦𝑖−7𝑦𝑖+11
++𝑥𝑖−5𝑦𝑖−4𝑧𝑖−13 + 𝑥𝑖−5𝑧𝑖−13𝑧𝑖+5 + 𝑥𝑖−5𝑥𝑖+10𝑦𝑖−7 + 𝑥𝑖+10𝑦𝑖−7𝑧𝑖−13
++𝑥𝑖−5𝑥𝑖+10𝑦𝑖−7𝑧𝑖−13, 𝑖̸= 0, 1, 2, 9, 12, 27, 28, 29 mod 32
+(4)
+𝑦′′
+{︁
+𝑦′′
+0 = 𝑥30 + 𝑥31 + 𝑦14 + 𝑦31 + 𝑧8 + 𝑧22 + 𝑥13𝑦28 + 𝑥30𝑧22 (5)
+𝑧′′
+{︃
+𝑧′′
+0 = 𝑦31 + 𝑧8 + 𝑥13𝑦28
+𝑧′′
+1 = 𝑥8 + 𝑦0 + 𝑧9 + 𝑥14𝑦29
+(6)
+The 2-round probability 1 linear relation𝑥′′
+0 + 𝑦′′
+0 + 𝑧′′
+0 = 𝑥8 follows.
+6
+2.2 Previous work
+We provide here a brief overview of the main previous third-party results of
+cryptanalysis against either the permutation or the NIST candidateGimli. Notice
+that all the cryptanalysis previously considered were classical attacks, while in
+this paper, we will also give quantum attacks on reduced-roundGimli-Hash. Let
+us point out that no search of linear trails was done prior to our work.
+Zero-sum permutation distinguishers on 14 rounds.In [15], Cai, Wei, Zhang,
+Sun and Hu present a zero-sum distinguisher on 14 rounds ofGimli. This dis-
+tinguisher uses the inside-out technique and improves by one round the integral
+distinguishers given by the designers.
+Structural permutation distinguisher on 22.5 rounds.In [24], Hamburg proposed
+the first third-party cryptanalysis of theGimli permutation, providing distin-
+guishers on reduced-round versions of the permutation. This analysis does not
+depend on the details of the SP-Box, and is based only on the slow diffusion of
+Gimli. Thus, it follows a similar path as the distinguishers of Section 3. In his
+work, Hamburg defines a PRF with 192-bit input𝑥 and 192-bit key𝑘 that com-
+putes 𝐹(𝑘, 𝑥) = trunc192(Gimli(𝑘‖𝑥)). He gives a distinguishing attack in time
+264 for 15.5 rounds (omitting the final swap), and a key-recovery attack on𝐹
+when using 22.5 rounds ofGimli, precisely rounds 25 to 2.5 (omitting again the
+final swap). This attack runs in time2138.5 with a memory requirement of2129,
+which is faster than the expected2192, and thus shows that 22.5-roundGimli
+behaves differently than what could be expected from a random permutation.
+Hamburg’s attacks are based on a meet-in-the-middle approach, exploiting
+the slow diffusion by tabulating some of the values that are passed from an SP-
+Box to another. The 15.5-round distinguisher relies on a table of size264, and
+the 22.5-round attack on a table of size2128. None of these attacks are practical.
+ZID Permutation Distinguishers. In an independent and simultaneous work
+posted on ePrint [34], Liu, Isobe, and Meier present a “hybrid zero-internal dif-
+ferential” (ZID) distinguisher on fullGimli, which extends a ZID distinguisher
+of previous unpublished work. The basic ZID distinguisher happens to be what
+we call an internal symmetry distinguisher, where states with symmetries are
+produced in the input and in the output of a reduced-round variant ofGimli.
+A “hybrid” one adds a limited birthday-like property (which is absent from our
+distinguishers). The steps that they take are however different from ours, as this
+distinguisher only spans 14 rounds. Compared with our analysis in Section 3,
+they will actually start from a much more constrained middle state, which lim-
+its the number of rounds by which one can extend the distinguisher afterwards
+(or significantly increases the complexity). In contrast, we complete the middle
+state in multiple successive steps, each step ensuring that more rounds will be
+later covered. The ZID distinguisher targets 18 rounds ofGimli with a negligible
+complexity. After the publication of our results, and personal communications,
+the authors updated their ePrint report [34]. They proposed to modify our dis-
+tinguisher of Section 3 to reduce the complexity from264 to 252.
+7
+Collisions and Preimages on Gimli-Hash.In [39], Zong, Dong and Wang study
+Gimli among other candidates of the competition. They present a 6-round colli-
+sion attack onGimli-Hash of complexity2113, using a 6-round differential char-
+acteristic where the input and output differences are active only in the rate. This
+differential characteristic was invalidated in [33].
+In [32], [34] and [33] Liu, Isobe and Meier give collision and preimage attacks
+onreduced-round Gimli-Hash.Theirattacksrelyondivide-and-conquermethods,
+exploiting the lack of diffusion between the columns, as did Hamburg, but they
+also rely on SP-Box equations in order to attack the hash function itself. These
+equations are different from those that we will solve in Section 4, and they mostly
+relate the input and outputs of a single SP-Box, whereas we study directly two
+SP-Boxes. Their analysis is also much more precise, since they prove running
+times of solving these equations.
+After giving a meet-in-the-middle generic preimage attack of time and mem-
+ory complexity 2128, which sets a bound against the sponge construction used
+in Gimli-Hash, they give practical preimage attacks on 2-roundGimli-Hash and
+practical collision attacks on 3-roundGimli-Hash. They give a collision attack
+on 5-round Gimli-Hash with a time complexity265 and a second preimage at-
+tack with time complexity296. They give in [34] a preimage attack on 5-round
+Gimli-Hash. In [33], they give a semi-free start collision attack on 8 rounds and
+a state-recovery attack on the AE scheme for 9 rounds.
+2.3 On the Notion of Distinguisher
+Some of our results are “distinguishers” targeting theGimli permutation itself.
+However, as there is a unique instance of this permutation, what is the meaning
+of “distinguishing” it from a random permutation?
+As far as primitives are concerned, distinguishers are normally defined for
+keyed algorithms, and work as follows (in the case of a block cipher). First, an
+𝑛-bit block cipher𝐸𝑘 is instantiated with a key𝑘 picked uniformly at random
+from the relevant set, and a permutation𝑃 of F𝑛
+2 is picked uniformly at random
+from the set of such permutations. Then, the attacker is given black-box access
+to both algorithms and their task is to figure out which is which with a success
+probability greater than1/2.
+This notion of distinguisher breaks down when we look at cryptographic
+permutations. Indeed, since there is no key, the permutation𝜋 used is picked
+from a set of size 1, and thus the attacker could simply query for instance𝑃(0)
+and, if it is equal to𝜋(0), win the game with overwhelming probability.
+At the same time, it is also obvious that cryptographic permutations must
+satisfy specific requirements in order for them to be valid building blocks for
+secure hashing or AEAD. To take a trivial example: using the notion of dis-
+tinguisher outlined above, it is not much harder to distinguish the Keccak per-
+mutations from random than it is to distinguish the identity from random. And
+yet, instantiating a sponge with each of these permutations yields hash functions
+with vastly different security levels.
+8
+As we can see, the problem of defining a distinguisher for a fixed permutation
+is in fact close to that of defining one for an open key cipher,i.e. a block cipher
+instantiation for which the key is known. A first notion to capture the meaning
+of “distinguisher” in this context was proposed by Gilbert in [19], namely that
+of T-intractable relation. Informally, a T-intractable relationℛis such that it
+is infeasible to find a set𝑋 = (𝑥0, . . . , 𝑥𝑖) of inputs and a corresponding set
+𝑌 = (𝑃(𝑥0), . . . , 𝑃(𝑥𝑖)) of outputs such that𝑋 ℛ𝑌 in time less than𝑇 if 𝑃
+is a permutation picked uniformly at random. Of course, the definition ofℛ
+cannot be chosen arbitrarily—otherwise, we could simply defineℛto be such
+that 𝑥 ℛ𝐸𝑘(𝑥). For a keyed primitive, the relation should not depend on the
+key.
+As a consequence, it is natural to rely on linear structures to define a relation-
+shipℛthatmaybeofinterestwhenassessingthesecuritylevelofacryptographic
+permutation. Thelimited birthday[20,26], originally intended for hash functions,
+is an approach in this direction. The idea is to find pairs of inputs(𝑥, 𝑥′) such
+that the pair(𝑥 ⊕𝑥′, 𝐻(𝑥) ⊕𝐻(𝑥)) lives in a vector space of a high dimension.
+If these pairs can be found faster than with a classical birthday search, then it
+is a distinguisher.
+In this paper, we propose another type of distinguisher whereby we generate
+an input𝑥 such that(𝑥, 𝑃(𝑥)) lives in a specific affine space. As with the limited
+birthday, if this can be done faster than with a brute-force approach, then it can
+be seen as a distinguisher.
+More generally, we consider that a distinguisher for a permutation is an
+algorithm that can return (tuples of) input/output pairs in a specificaffine space
+that is more efficient than the generic algorithm. As the aim of a cryptographic
+permutation is to yield complex and non-linear relations between its input and
+output, we claim that this approach is the correct one to assess the security of
+a keyless cryptographic permutation.
+3 Internal Symmetry Distinguishers againstGimli
+In this section we present new distinguishers on theGimli permutation. Our
+distinguishers improve upon the best previously known ones, reaching the full 24-
+round permutation. They are practical on 23 rounds and have been implemented.
+The results presented in this section do not exploit the specifics of the SP-Box:
+they would work equally well if the SP-Box was replaced with a permutation
+picked uniformly at random. Like all the other analyses presented in this paper,
+they do not depend on the values of the round constants.
+Our distinguishers rely on internal symmetries. The general idea consists
+in identifying a specific form of symmetry (formally, a vector space) that is
+preserved by the round function under some circumstances, and then trying to
+craft an input for the permutation such that this symmetry traverses all the
+rounds so that the output has the same type of property.
+In our case, we formalize the symmetry using the notion of2-identical states.
+9
+Definition 1 (2-identical states).A state𝑆 is 2-identical if 𝐵 = 𝐷, if𝐴 =
+𝐶, or if one of these properties holds up to a swap and a constant addition.
+Our internal symmetries distinguisheraims at finding a 2-identical input that is
+mapped to a 2-identical output. Since there are 96 bits of constraint, a generic
+algorithm returning such an input should run in time 296 by evaluating the
+permutation on a set of inputs satisfying the property until the output matches
+it by chance. Our aim is to find more efficient algorithms in the case ofGimli.
+This definition is similar to the one used in [16]. In fact, an internal symmetry
+distinguisher can be seen as a stronger variant of alimited birthday distinguisher
+of the type used in [16]. Indeed, we can build a limited birthday pair using our
+distinguisher:byproducingapairofinputs 𝑆, 𝑆′satisfyingtheinternalsymmetry
+property, we obtain𝑆 ⊕𝑆′∈𝑉𝑖𝑛 and 𝛱(𝑆) ⊕𝛱(𝑆′) ∈𝑉𝑜𝑢𝑡. Further, since the
+converse is not true, an internal symmetry distinguisher isstrictly stronger.
+From now on,𝑆𝑖 denotes theGimli state before round𝑖.
+3.1 23-round Practical Distinguisher
+We design an internal symmetry distinguisher on 23 rounds ofGimli, that is
+represented in Figure 2, running in time equivalent to232 evaluations ofGimli on
+average. Algorithm 2 starts from a symmetric state in the middle and completes
+the state𝑆11 in three steps. Each step assigns a value to more words of the state,
+and ensures that the 2-identical symmetry property traverses more rounds.
+EachstepofAlgorithm2requirestoevaluateafewSP-Boxes 232 times(wedo
+notevenneedtoevaluatetheinverseSP-Box).Thetotalamountofcomputations
+is smaller than232 evaluations of 23-roundGimli. Notice also that the algorithm
+uses only a small amount of memory. Our implementation of Algorithm 2 ran in
+less than one hour on a regular laptop.
+The time complexity of the algorithm can be computed as follows:8 ×232
+SP-Box evaluations for the first step,8 ×232 for the second and16 ×232 for the
+third, meaning a total of8 ×232 + 8×232 + 16×232 = 40×232 which is less
+than 232 evaluations of 23-roundGimli (each of them consisting essentially of92
+SP-Box evaluations). This complexity is to be compared to that of the generic
+algorithm for obtaining our internal symmetry property, which costs296.
+Below, we provide an example of input-output pair that we obtained, with a
+2-identical input𝑆 that remains 2-identical afterGimli(23, 1):
+7f9fcf70 6aedf7e6 7f9fcf70 cb2f0e6a
+Input: 0ba2f1f9 f339b619 0ba2f1f9 f70cf15c
+b2ee8259 df0b4801 b2ee8259 3856106d
+a8ef848d 8c17b743 9615b3bc 8c17b743
+Output: 541122c5 30530879 8d9d5d30 30530879
+74b6dbe6 18885a6e 744b55c1 18885a6e
+3.2 Distinguisher on full Gimli and Extensions
+Here we will describe how to extend the 23-round distinguisher to the fullGimli
+permutation, and even to more rounds. All these results are summarized in
+10
+23232323
+22222222
+21212121
+20202020
+⊕rc20
+19191919
+18181818
+17171717
+16161616
+⊕rc16
+15151515
+14141414
+13131313
+12121212
+⊕rc12
+11111111
+10101010
+9999
+8888
+⊕rc8
+7777
+6666
+5555
+4444
+⊕rc4
+3333
+2222
+1111
+Step 1
+Step 2
+Step 3
+Fig.2. Distinguisher on 23 rounds. The same color for symmetric branches or columns
+at a given round means that they are equal.
+11
+Algorithm 223-round internal symmetry distinguisher.
+Output: a 2-identical state𝑆 such thatGimli(23, 1)(𝑆) is 2-identical
+We start from the middle. We will be interested in the state𝑆11.
+1. Select 𝐴15
+𝑥 , 𝐴15
+𝑦 , 𝐴15
+𝑧 and 𝐶15
+𝑥 = 𝐴15
+𝑥 ⊕rc16, 𝐶15
+𝑦 = 𝐴15
+𝑦 , 𝐶15
+𝑧 = 𝐴15
+𝑧 such that
+𝐵11
+𝑥 = 𝐷11
+𝑥 .
+Notice that due to the small swap operation, the values𝐵11
+𝑥 and 𝐷11
+𝑥 actually come
+from 𝐴 and 𝐶 and depend only on𝐴15 and 𝐶15. At this point, we have ensured
+that for any values of𝐵15 = 𝐷15:
+– 𝑆23 is 2-identical: indeed,𝐴 and 𝐶 will remain identical from rounds16 to 19
+backwards. Then, the small swap backwards injects the same value in𝐴 and
+𝐶 since 𝐵 and 𝐷 are also identical. Thus,𝐴23 = 𝐶23.
+– 𝑆7 is 2-identical: indeed, since𝐵11
+𝑥 = 𝐷11
+𝑥 , 𝐵 and 𝐷 remain equal until the
+SP-Box layer of round8, and the 2-identical property remains after the small
+swap of round8.
+Once good values have been found, we can compute part of the state𝑆11: 𝐴11
+𝑦,𝑧,
+𝐶11
+𝑦,𝑧, and𝐵11
+𝑥 = 𝐷11
+𝑥 are fixed. The rest remains free.
+2. Select 𝐴11
+𝑥 = 𝐶11
+𝑥 ⊕rc12 such that𝐵7
+𝑥 = 𝐶7
+𝑥. At this point, the two-identicality of
+the output state is preserved through 4 more rounds (until round 4 included):𝑆3
+is 2-identical.
+In the state𝑆11, 𝐵11
+𝑦,𝑧 = 𝐷11
+𝑦,𝑧 remain free.
+3. Select 𝐵11
+𝑦,𝑧 = 𝐷11
+𝑦,𝑧 such that𝐵3
+𝑥 = 𝐶3
+𝑥. Thus, the output𝑆0 is 2-identical.
+Figure 1 from Section 1. An extension of our distinguisher to the fullGimli is a
+trivial matter. Indeed, after running Algorithm 2, we obtain a 2-identical input
+state 𝑆23 = 𝐴23, 𝐵23, 𝐶23, 𝐷23 with 𝐴23 = 𝐶23. Then, if 𝐵23
+𝑥 = 𝐷23
+𝑥 , which
+is a 32-bit condition, the state remains 2-identical after the inverse round 24.
+By repeating the previous procedure232 times, we should find an input value
+that verifies the output property. The generic complexity of finding a 2-identical
+input that generates a 2-identical output is still296. Thus, full Gimli can be
+distinguished in time less than232+32 = 264 full Gimli evaluations, and constant
+memory.
+An interesting question is: how many rounds of a Gimli-like permutation
+can we target? The distinguisher works mainly because the diffusion inGimli is
+somewhat slow. Thus, a possible fix would be to increase the number of swaps,
+for example by having one in each round instead of every two rounds. An attack
+exploiting this behaviour that worked previously for𝑟 rounds would now a priori
+work for𝑟/2 rounds only. Of course, the details of the SP-box could allow further
+improvement of these results given that a single iteration would now separate
+the swaps rather than a double.
+Extending to 28 Rounds.It is trivial to adapt this distinguisher to an extended
+version ofGimli with more rounds. The 2-identicality of𝑆0 is preserved after one
+round since the next round would apply only an SP-Box layer and a small swap.
+Similarly, the 2-identicality of𝑆24 is preserved after 3 more inverse rounds since
+the next swap operation is a big swap which exchanges data between𝐴 and
+12
+Table 2.Collision attacks on round-reducedGimli
+Type Nbr of rounds Time complexity Memory complexity
+Standard 8 8 ×232 ×𝑡𝑒 (practical) negl.
+Standard 12 8 ×296 ×𝑡𝑒 negl.
+Quantum 14 ≃8 ×264 ×𝑡𝑒 negl.
+Semi-free start 12 10 ×232 ×𝑡𝑒 negl.
+Semi-free start 16 10 ×296 ×𝑡𝑒 negl.
+Semi-free start 18 7 ×296 ×𝑡𝑒 264
+Semi-free start 18 296 296
+Semi-free start, quantum 20 ≃264 ×10 ×𝑡𝑒 264
+𝐶 only. Thus, our practical distinguisher works againstGimli(23, 0) (a 24-round
+version of Gimli shifted by one round), and our extended distinguisher works
+against Gimli(27, 0) (a 28-round version ofGimli).
+4 Classical Collisions on Reduced-RoundGimli-Hash
+In this section, we describe collision attacks onGimli-Hash when it is instantiated
+with a round-reduced variant ofGimli. Table 2 summarizes our results.
+4.1 The Gimli-Hash Function
+This function is built using theGimli permutation in a sponge construction [8],
+represented in Figure 3.
+Gimli-Hash (Algorithm 5) initializes theGimli state to the all-zero value. The
+message is padded and separated into blocks of size𝑟 = 128, which corresponds
+to the rate𝑟, introducing message blocks of 128 bits between two permutation
+applications by XORing them to the first 128 bits of the state. Once all the
+padded message blocks are processed, a 32-byte hash is generated by outputting
+16 bytes of the internal state, applying once more the permutation, and out-
+putting 16 additional ones. InGimli-Hash, the rate part is formed of the words
+𝐴𝑥, 𝐵𝑥, 𝐶𝑥, 𝐷𝑥 and the capacity part of𝐴𝑦,𝑧, 𝐵𝑦,𝑧, 𝐶𝑦,𝑧, 𝐷𝑦,𝑧.
+We will consider two kinds of collision attacks:
+– Full-state collision attacks: we will build pairs of two-block messages𝑀0, 𝑀1
+and 𝑀0, 𝑀′
+1 such that the state after absorbing these pairs becomes again
+equal. Thus, one can append any sequence of message blocks after this and
+obtain the same hash.
+– Semi-freestart collision attacks: we will build pairs of (384-bit) states𝑆, 𝑆′
+such that𝑆 differs from 𝑆′ only in a single𝑥, and after𝑟 rounds of Gimli,
+𝜋(𝑆) and 𝜋(𝑆′) differ only in a single𝑥 as well. This does not yield a collision
+on the hash function as we would need to choose the value of the same initial
+state; however, it represents a vulnerability that may be used in the context
+of theGimli modes of operation. For example, inGimli-cipher, the initial state
+13
+𝑃
+0
+0
+𝑟
+𝑐
+128
+𝑚1
+𝑃
+256
+...
+...
+𝑃
+𝑚𝑡
+0x01
+𝑃
+ℎ1
+𝑃
+ℎ2
+Fig.3. Gimli-Hash (𝑃 stands for theGimli permutation). The rate part is formed of
+the words𝐴𝑥, 𝐵𝑥, 𝐶𝑥, 𝐷𝑥 and the capacity part of𝐴𝑦,𝑧, 𝐵𝑦,𝑧, 𝐶𝑦,𝑧, 𝐷𝑦,𝑧.
+contains a key of 256 bits and a nonce of 128 bits which is put in the𝑥 values.
+Then each block of plaintext is handled in the same way asGimli-hash. Thus,
+by XORing the right values before and after𝜋, one can create a key, a nonce
+and a pair of messages which yield the same tags.
+4.2 SP-Box Equations and How to Solve Them
+All collision attacks in this section exploit the slow diffusion ofGimli and the
+simplicity of the SP-Box (contrary to the distinguishers on the permutation,
+which worked regardless of the SP-Box used). In this section, we describe a series
+of “double SP-Box equations”; solving them will be the main building block of
+our attacks. We define the following equations.
+Given 𝑦, 𝑧,find 𝑥 ̸= 𝑥′such that𝑆𝑃 2(𝑥, 𝑦, 𝑧)𝑥 = 𝑆𝑃 2(𝑥′, 𝑦, 𝑧)𝑥 . (7)
+Given 𝑦, 𝑧, 𝑦′, 𝑧′, find 𝑥 such that𝑆𝑃 2(𝑥, 𝑦, 𝑧)𝑥 = 𝑆𝑃 2(𝑥, 𝑦′, 𝑧′)𝑥 . (8)
+Given 𝑦, 𝑧, 𝑦′, 𝑧′, find 𝑥 such that𝑆𝑃 2(𝑥, 𝑦, 𝑧)𝑧 = 𝑆𝑃 2(𝑥, 𝑦′, 𝑧′)𝑧 . (9)
+Given 𝑦, 𝑧, 𝑥′, find 𝑥 such that𝑆𝑃 2(𝑥, 𝑦, 𝑧)𝑥 = 𝑥′ . (10)
+Number of Solutions.Except Equation (7), all these equations haveon average,
+when the inputs are drawn uniformly at random, a single solution. However,
+the variance on the number of solutions depends on the equation considered.
+For example, only approx.6.2% of inputs to Equation (8) have a solution, and
+they have on average82.4 solutions each. Equation (10) gives a little more than
+1.5 solutions. This variance is not a problem for us, as long as we can produce
+efficiently all solutions of the equations, which remains the case. In order to
+simplify our presentation, we will do as if equations (8), (9) and (10) always
+gave exactly a single solution for each input.
+Solving the Equations. We use an off-the-shelf SAT solver [38]. In some cases,
+more time seems spent building the SAT instance rather than solving it, and we
+believe that our current implementation is highly unoptimized.
+14
+The solver allows us to retrieve all solutions of a given equation (we treat
+Equation (7) differently because it has on average232 of them). Let us consider
+the average time to produce a solution when random inputs are given. On a stan-
+dard laptop, this time varies between approximately0.1 milliseconds (Equation
+(8)) and 1 millisecond (Equation (10)). This difference mainly stems from the
+fact that Equation (8) often has no solutions, and that the solver quickly finds a
+counterexample, while Equation (10) practically always has solutions that must
+be found.
+On the same computer, an evaluation of the full Gimli permutation (not
+reduced-round) takes about 1 microsecond, so there is approximately a factor
+1000 between computingGimli and solving a double SP-Box equation.
+We consider that all equations have approximately the same complexity and
+introduce a factor𝑡𝑒 that expresses the time taken to solve them in number of
+evaluations ofGimli or a reduced-round version (depending on the studied case).
+4.3 Practical 8-round Collision Attack
+We consider 8 rounds ofGimli, e.g. rounds 21 to 14 included, and nameGimli(21,
+14) this reduced-round permutation. We omit the last swap, because it has no
+incidence (it only swaps𝑥 values). The situation is represented on Figure 4. As
+before, we name𝑆𝑖 the partial state immediately before round𝑖.
+Algorithm 3 finds on average a single solution, with any input state. There
+is some variance on the number of solutions, that is induced by the SP-Box
+equations, but it is small in practice. Furthermore, we can eliminate the memory
+requirementbysolvingEquation(7)formanyinputrandomstates.Startingfrom
+a given state, it suffices to apply one moreGimli permutation with a random
+message block, in order to re-randomize the input.
+Remark that if we omit the second step then we already have a semi-free-start
+collision attack, because we can reconstruct the inputs𝐶21 and 𝐷21 immediately
+from the middle.
+Practical Application: first step.In our practical computations, we considered
+rounds 21 to 14 included. We solved step 1, starting from0, 0, 0, 0 and using a
+random message 𝑚1, 0, 0, 0 to randomize the first block. We also solved at the
+same time the two Equations (10) that enabled us to go back to𝐴17
+𝑥 , 𝐵17
+𝑥 .
+We had to produce15582838652 ≃233.86 solutions for Equation (7) until we
+found a solution for Step 1and for both equations. We verified experimentally
+that each solution for Equation (7) yielded on average a solution for the final
+equation. We obtained in total 5 solutions (Table 3). There are two different
+solutions for𝐴15
+𝑥 ⊕rc16, which yield two and three solutions respectively for𝐵17
+𝑥 .
+The total computation ran in less than 5000 core-hours. It was easy to run on
+many concurrent processes as this algorithm is trivial to parallelize.
+Practical Application: second step.We solved step 2, that is, looking for𝐶21
+𝑥 ,
+𝐷21
+𝑥 that lead to one of the pairs𝐴17
+𝑥 , 𝐵17
+𝑥 . This step was much faster than the
+previous one, although it ought to have the same complexity: this is because we
+paid in step 1 the probability to find a solution (twice) in Equation (10), while
+15
+21212121
+20202020
+⊕rc20
+19191919
+18181818
+17171717
+16161616
+⊕rc16
+15151515
+14141414
+13131313
+12121212
+⊕rc12
+11111111
+10101010
+Step 1
+fix branches
+Step 2.1:
+find 𝐵21
+𝑥
+Step 2.2:
+find 𝐵17
+𝑥
+Step 2.3:
+match 𝐴17
+𝑥
+and 𝐶17
+𝑥
+Fig.4. Collision attack on 8 rounds ofGimli, extended to 12 rounds. The first step
+fixes the branches in red, which have equal values for the two inputs𝐴21
+𝑥 , 𝐴′21
+𝑥 . Then
+we find values of𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 that will conform to these branches. Then, the whole
+states are deduced. The branches𝐴13
+𝑥 and 𝐴11
+𝑥 remain to match.
+in step 2 we benefited from having 5 different possible solutions. We found two
+solutions: 𝐶21
+𝑥 , 𝐷21
+𝑥 = 819b1392, 9f4d3233 and 𝐶21
+𝑥 , 𝐷21
+𝑥 = aa9f6f2d, 3a6e613a.
+Putting both Steps Together.With these solutions, we built two collisions on 8-
+round Gimli(21, 14). We start from𝑚1, 0, 0, 0, then after one round, we inject the
+values 𝐴21
+𝑥 , 𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 and 𝐴′21
+𝑥 , 𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 respectively in the rate; then
+we obtain two states that differ only on the𝑥-coordinate of the third column
+(not the first, due to a big swap), and we inject two different blocks to cancel
+out this difference, obtaining the same state. The full state then collides, and
+we can append any message block that we want. The two collisions are given in
+Table 4.
+Extending the Attack.Remark that the first step can be extended to span any
+number of𝑆𝑃 2-boxes. However, each time we add two more rounds, there is one
+more branch coming from the𝐵, 𝐶, 𝐷states which has to match an expected
+value, so we add a factor232 in complexity. Since𝑡𝑒 ≪232, we can do that twice
+before meeting the bound2128. Thus, a collision on 12-roundGimli-Hash can be
+built in time296 ×4 ×𝑡𝑒.
+16
+Algorithm 38-round collision attack.
+Input: an input state𝐴21, 𝐵21, 𝐶21, 𝐷21.
+Output: values 𝐴21
+𝑥 , 𝐴′21
+𝑥 , 𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 such that by putting𝐴21
+𝑥 , 𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 and
+𝐴′21
+𝑥 , 𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 respectively in the rate, afterGimli(21, 14) (without the last swap),
+the state differs only on𝐴𝑥.
+Complexity: 7×232 ×𝑡𝑒 time and232 memory or 8×232 ×𝑡𝑒 and negligible memory.
+The attack runs in two main steps, both of which must solve232 times a sequence of
+SP-Box equations.
+Step 1: find good𝐴21
+𝑥 , 𝐴′21
+𝑥 .
+1. Find all pairs𝐴21
+𝑥 , 𝐴′21
+𝑥 such that the branch𝐵19
+𝑥 collides (there are232 such
+pairs, that can be found in time232).
+2. For each pair, compute𝐴19
+𝑦 , 𝐴19
+𝑧 , 𝐴′19
+𝑦 , 𝐴′19
+𝑧 and solve the SP-Box equation (8):
+find 𝐴19
+𝑥 such that the branch𝐶17
+𝑥 collides (there is on average one solution)
+3. Given this value, compute𝐴17
+𝑦 , 𝐴17
+𝑧 , 𝐴′17
+𝑦 , 𝐴′17
+𝑧 and solve the SP-Box equation
+(8) again: find𝐴17
+𝑥 such that the branch𝐵15
+𝑥 collides (there is on average one
+solution)
+4. Given these values, compute𝐴15
+𝑦 , 𝐴15
+𝑧 , 𝐴′15
+𝑦 , 𝐴′15
+𝑧 and solve Equation (9): find
+𝐴15
+𝑥 such that𝐴13
+𝑧 and 𝐴′13
+𝑧 collide.
+Since we do that232 times, we expect on average a single solution such that𝐴13
+𝑦
+and 𝐴′13
+𝑦 also collide.
+Now that we have found𝐴21
+𝑥 , 𝐴′21
+𝑥 , it remains to find𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 that give the
+wanted 𝐴19
+𝑥 , 𝐴17
+𝑥 , 𝐴15
+𝑥 (in red on Figure 4). We expect on average a single solution,
+and little variation on the number of solutions, as only Equation (10) is involved.
+Step 2: find 𝐵21
+𝑥 , 𝐶21
+𝑥 , 𝐷21
+𝑥 .
+1. Find 𝐵21
+𝑥 by solving Equation (10), given the input𝑦 and 𝑧, and the output𝑥
+wanted. Deduce the values of𝐵17
+𝑦 , 𝐵17
+𝑧
+2. Given 𝐵17
+𝑦 , 𝐵17
+𝑧 , and𝐴15
+𝑥 , solve Equation (10) again to get𝐵17
+𝑥 .
+3. Now find𝐶21
+𝑥 , 𝐷21
+𝑥 that lead to the wanted𝐴17
+𝑥 , 𝐵17
+𝑥 . First guess the value of
+𝐶21
+𝑥 , deduce 𝐶19
+𝑦 , 𝐶19
+𝑧 and with 𝐶19
+𝑦 , 𝐶19
+𝑧 , 𝐴17
+𝑥 , solve Equation (10) to obtain
+𝐶19
+𝑥 . Next, given𝐷21
+𝑦 , 𝐷21
+𝑧 and 𝐶19
+𝑥 , solve Equation (10) to obtain𝐷21
+𝑥 . Deduce
+a value for𝐵17
+𝑥 and check if it matches what we want; we expect to find a match
+after trying all232 guesses for𝐶21
+𝑥 .
+4.4 Semi-free Start Collisions on Reduced-round Gimli
+We will now design semi-free start collision attacks based on the same principle.
+This time, our goal is to obtain two input states𝑆, 𝑆′that differ only in the rate
+(in practice, only in𝐴𝑥) and such that after applying a reduced-roundGimli,
+the output states differ only in the rate (the𝑥 values). They can also be seen
+as finding one state and two pairs of 2-block messages such that after inserting
+both messages we obtain a collision. The previous “first step” remains the same,
+with an extension to whichever number of rounds we are targeting. The “second
+step” is changed, because we can now choose completely the columns𝐵, 𝐶, 𝐷,
+e.g. by starting from the middle instead of having to choose only the input rate.
+17
+Table 3.Results of the first step
+𝑚1 𝐴21
+𝑥 𝐴′21
+𝑥 𝐴19
+𝑥 ⊕rc20 𝐴17
+𝑥 𝐵21
+𝑥
+dc84bf38 bbdb41f3 1b1da6e4 07f25303 f793fb5f aae48b72
+𝐴15
+𝑥 ⊕rc16 𝐵17
+𝑥 𝐴15
+𝑥 ⊕rc16 𝐵17
+𝑥
+ddfbc88b 92f536b6 ddfbc803 f72044db
+ddfbc88b 0d9605fe ddfbc803 b1c91a60
+ddfbc803 55d2252a
+Table 4.Two 8-round collisions onGimli-Hash
+Starting state (first message block)
+dc84bf38 00000000 00000000 00000000 dc84bf38 00000000 00000000 00000000
+Second message block
+bbdb41f3 4333192c bc17e444 8a9d06c7 1b1da6e4 4333192c bc17e444 8a9d06c7
+Third message block
+00000000 00000000 00000000 00000000 00000000 00000000 afad801e 00000000
+Starting state (first message block)
+dc84bf38 00000000 00000000 00000000 dc84bf38 00000000 00000000 00000000
+Second message block
+bbdb41f3 4333192c 971398fb 2fbe55ce 1b1da6e4 4333192c 971398fb 2fbe55ce
+Third message block
+00000000 00000000 00000000 00000000 00000000 00000000 afad801e 00000000
+Doing this allows us to reach 4 rounds more for the same cost as before,
+as outlined on Figure 5 and Algorithm 4. We can then append new rounds as
+before, reaching 16 rounds classically in time296 ×10 ×𝑡𝑒.
+Another Improvement using Precomputations.We are going to win a factor232
+using 264 ×𝑡𝑒 precomputations and a table of size264. This way, we can attack
+two more rounds. Indeed, once we have computed the first step, the two branches
+𝐶17
+𝑥 and 𝐴13
+𝑥 contain arbitrary fixed values. Then, when we try to find the right
+𝐶, we could have a table that for all𝐶15
+𝑦 , 𝐶15
+𝑧 , gives all input-output values for
+𝐶17 and 𝐶14, and we could directly use this table to match the values𝐶15
+𝑥 and
+𝐷15
+𝑥 that come from𝐷 (instead of having to make a guess of𝐶15
+𝑧 .
+Let us fix𝐶17
+𝑥 = 𝐴13
+𝑥 = 0. Thus, we repeat step 1 in Algorithm 4 a total of
+264 times in order to have𝐶17
+𝑥 = 𝐴13
+𝑥 = 0. Step 1 now costs296 ×𝑡𝑒.
+The table that we precompute shall contain: for each𝑥′, 𝑥′′, all values (on
+average 1) of𝑦′, 𝑧′such that𝑆𝑃 2(0, *, *) =𝑥′, 𝑦′, 𝑧′and 𝑆𝑃 2(𝑥′′, 𝑦′, 𝑧′) = 0, *, *.
+Now, in Algorithm 4, for each guess of𝐵19
+𝑦,𝑧, and for each guess of𝐷19
+𝑦,𝑧, we
+can find the value of𝐶 that matches all the fixed branches in time1, using this
+table. Thus, we can repeat this296 times, extending the attack by 6 rounds.
+– Step 1 costs2 ×296 ×𝑡𝑒 (we solve only 2 equations most of the time, before
+aborting if the wanted “0” do not appear).
+– The table costs264 ×𝑡𝑒, which is negligible
+– Step 2 costs296 ×5 ×𝑡𝑒, since it is the same as before, and we only need
+forwards computation of SP-Boxes to check if the full path is correct.
+Note that we can get rid of the term𝑡𝑒 if we use a memory of size296 to store
+the solutions of the SP-Box equations. In that case, the overall time complexity
+18
+21212121
+20202020
+⊕rc20
+19191919
+18181818
+17171717
+16161616
+⊕rc16
+15151515
+14141414
+13131313
+12121212
+⊕rc12
+11111111
+10101010
+Step 1
+fix branches
+Step 2.1:
+guess 𝐵19
+𝑦 , 𝐵19
+𝑧 ,
+find all𝐵𝑖
+Step 2.2:
+guess 𝐷19
+𝑦 , 𝐷19
+𝑧 ,
+find all𝐷𝑖
+Step 2.3:
+guess 𝐶15
+𝑧
+deduce all
+Fig.5. Semi-free start collision attack on 12 rounds ofGimli (see Algorithm 4).
+is slightly below296 evaluations ofGimli, since fewer SP-Boxes are evaluated in
+each step than in the full primitive.
+5 Better Quantum Collision Attacks
+In this section, we explain how our attacks can be extended in the quantum
+setting, where even more rounds can be broken. We want to emphasize that, as
+our goal is simply to determine a security margin, we will not go into the details
+of the implementation of these attacks as quantum algorithms. We will only show
+how to use well-known building blocks of quantum computing in order to build
+these new attacks, and show why they perform better than the corresponding
+generic quantum attacks. At this point, we assume that the reader is familiar
+with the basics of quantum computing that are covered in textbooks such as [36].
+We define quantum algorithms in thequantum circuit model. The circuit starts
+with a set of qubits (elementary quantum systems) initialized to a basis state
+and applies quantum operations. The state of the system lies in a Hilbert space
+of dimension2𝑛 if there are𝑛 qubits. Quantum operations are linear operators
+of this space, and a quantum circuit is built from such elementary operators
+19
+Algorithm 412-round semi-free start collision attack (see Figure 5).
+Input: an initial𝐴 (can be given)
+Output 𝐴𝑥, 𝐴′
+𝑥, 𝐵, 𝐶, 𝐷such that afterGimli(21, 10), only the rate differs.
+As before, we don’t write the last swapping step.
+Step 1: Same step as in Algorithm 3, extended to 12 rounds. It gives a total of 10
+32-bit branches (input values) that are required, that are represented in red on
+Figure 5.
+Step 2: we will start from the middle.
+1. We take an arbitrary value for𝐵19
+𝑦,𝑧. This guess enables to deduce all values of
+the column𝐵, from𝐵21 to 𝐵10, either by simply computing the SP-Box, or
+by solving Equation (10) (given two input branches𝑦, 𝑧, given the output𝑥,
+deduce the input𝑥). From this, we deduce the value in all branches that go
+from 𝐵 to 𝐷 on the figure, hence 4 branches. They are represented in orange
+on Figure 5.
+2. We take an arbitrary value for𝐷19
+𝑦,𝑧. Again, this enables to deduce the whole
+sequence of states from𝐷20 to 𝐷10, either by computing the SP-Box when
+possible, or by finding the input𝑥 value corresponding to a given output. We
+also obtain the values of branches that are transmitted from𝐷 to 𝐶.
+3. We now guess𝐶15
+𝑧 . Given this, and𝐶15
+𝑥 , and the output𝐴13
+𝑥 that must be met,
+we obtain the whole state by solving another simple SP-Box equation (which
+is not Equation (10), but has a similar form).
+4. Having deduced𝐶15, we have only2−32 chances of obtaining the right𝐶17
+𝑥 , so
+we have to repeat all of this232 times.
+In total, we have to solve 5 SP-Box equations,232 times, in both steps, so the time
+complexity is232 ×10 ×𝑡𝑒.
+coined quantum gates. The result of a quantum computation is accessed through
+measurement of the qubits, which destroys their state.
+The cryptanalytic algorithms that we consider in this section do not require
+any form of query to a black-box, since we want only to build a collision on the
+hash function. Thus, they do not require any more specific model (e.g. the Q2
+model used in some works in quantum cryptanalysis).
+5.1 Tools, Model and Complexity Estimates
+Most of the collision attacks presented in this section rely on an exhaustive
+search. For example, consider the 8-round attack of Algorithm 3. Both steps are
+exhaustive searches in spaces of size232 that contain on average a single solution:
+– In the first step, we find𝐴21
+𝑥 such that, after solving a sequence of SP-Box
+equations, a 32-bit condition is met: the first equation finds𝐴′21
+𝑥 such that
+there is a collision in𝑥 after two SP-Boxes, the second equation finds𝐴19
+𝑥
+such that there is a collision in𝑥 after two SP-Boxes, etc., and the final
+32-bit condition is that𝐴′13
+𝑧 and 𝐴13
+𝑧 must collide.
+20
+– In the second step, we find the good𝐶21
+𝑥 by guessing it and trying to match
+with a 32-bit condition.
+Quantumly, Grover’s algorithm [23] speeds up exhaustive search quadrati-
+cally. Amplitude Amplification [13] is a powerful generalization which applies to
+any pair𝒜, 𝜒such that:
+– 𝒜is a quantum algorithm without measurements (a unitary and reversible
+operation), that takes no input and produces an output𝑥 ∈𝑋.
+– 𝜒 : 𝑋 →{0, 1}is a function that decides whether𝑥 ∈𝑋 is a “good” output
+of 𝒜(𝜒(𝑥) = 1) or a “failure” of𝒜, such that𝜒 can also be implemented as
+a quantum algorithm.
+Theorem 1 (Amplitude Amplification [13], informal).Let 𝒜be a quan-
+tum algorithm without measurements that succeeds with probability𝑝 and 𝑂𝜒 be
+a quantum algorithm that tests whether an output of𝒜is a failure or not. Then
+there exists a quantum algorithm that finds a good output of𝒜using 𝑂(
+√︀
+1/𝑝)
+calls to𝒜and 𝑂𝜒.
+Quantum Embeddings. Any classical algorithm admits aquantum embedding,
+that is, a quantum algorithm that returns the same results. Note that this is not
+a trivial fact, because a quantum algorithm without measurement is reversible.
+Definition 2. Let 𝒜be a randomized algorithm with no input. Aquantum em-
+bedding for 𝒜is a quantum algorithm𝒜′that has no input, and the distribution
+over the possible outcomes of𝒜′ (after measurement) is the same as the distri-
+bution over possible outcomes of𝒜.
+This quantum embedding admits similar time and space complexities, where
+classical elementary operations (logic gates) are replaced by quantum gates
+and classical bits by qubits. Generic time-space trade-offs have been studied
+in [3,31,28], but precise optimizations are required in practice, where the bulk
+of the work comes from making the computation reversible. As we just want to
+compare costs with quantum generic attacks, the following fact will be useful.
+Remark 1. The ratio in time complexities is approximately preserved when em-
+bedding classical algorithms into quantum algorithms.
+For example, if a classical algorithm has a time complexity equivalent to1000
+evaluations ofGimli, we can consider that the corresponding quantum embed-
+ding has a time complexity equivalent to1000 quantum evaluations ofGimli. In
+all quantum attacks, we will give quantum time complexities relatively to quan-
+tumly evaluating Gimli. In order to use Amplitude Amplification (Theorem 1
+above), we simply need to define classical randomized algorithms for𝒜and 𝑂𝜒.
+21
+5.2 Example
+We take the example of the classical 8-round collision attack. Both steps run in
+classicaltime 232×4×𝑡𝑒 byrunning 232 iteratesofarandomizedalgorithmoftime
+complexity 4 ×𝑡𝑒. Using Amplitude Amplification, we obtain a corresponding
+quantum algorithm with time complexityapproximately 216 ×4 ×𝑡𝑞𝑒, where𝑡𝑞𝑒
+is the time to solve quantumly an SP-Box equation, relative to the cost of a
+quantum implementation ofGimli. As we remarked above, we can approximate
+𝑡𝑞𝑒 ≃𝑡𝑒.
+This approximation comes from different factors:
+– a small constant factor𝜋
+2 which is inherent to quantum search.
+– the trade-offs between time and space in the detailed implementations of the
+primitive and its components. Let us simply notice thatGimli, compared to
+other primitives that have been studied in this setting,e.g. AES [27], seems
+fairly easy to implement using basic quantum computing operations. In the
+example of AES, the most costly component is the S-Box [27], andGimli
+does not have such.
+We are mainly interested in the security margin, and these approximations
+will be sufficient for us to determine whether a given algorithm runs faster or
+slower than the corresponding quantum generic attack. Thus, we will write that
+the quantum 8-round attack onGimli-Hash runs in time≃216 ×4 ×𝑡𝑒.
+5.3 Quantum Collision Bounds and Quantum Attacks
+The best quantum generic attack for finding collisions depends on the computa-
+tionalmodel,more precisely,onthe costassignedto quantum-accessiblememory.
+Different choices are possible, which are detailede.g. in [25]. In short, the overall
+cost of quantum collision search depends on the cost that is assigned to quantum
+hardware.
+In this paper, we will simply consider the most conservative setting, where
+quantum memory is free. Note that this actually makes our attacks overallless
+efficient, since the generic algorithm is the most efficient possible (and they’ll also
+work in the other settings). In this situation, the best collision search algorithm
+is by Brassard, Høyer and Tapp [14]. It will find a collision onGimli-Hash in
+approximately 2256/3 ≃285.3 quantum evaluations ofGimli, using a quantum-
+accessible memory of size285.3.
+Quantum collision attacks reaching more rounds than classical ones.In [25],
+Hosoyamada and Sasaki initiated the study ofdedicated quantum attacks on
+hash functions. They remarked that quantum collision search does not benefit
+from a square-root speedup (it goes from roughly2𝑛/2 to 2𝑛/3 with the BHT
+algorithm, and the gain is even smaller in more constrained models of quantum
+hardware), while some collision-finding procedures may have a better speedup,
+say, quadratic. Thus:
+– there may exist quantum collision attacks such that the corresponding clas-
+sical algorithm isnot an attack (it gets worse than the generic bound);
+22
+– the quantum security margin of hash functions for collision attacks is likely
+to be smaller than theclassical one.
+Hosoyamada and Sasaki studied differential trails in the hash functions AES-
+MMO and Whirlpool. Although our attacks are based on a different framework,
+we show that similar findings apply forGimli.
+5.4 Quantum Collision Attacks onGimli
+We assume that𝑡𝑒 < 220, hence solving an equation costs less than evaluating
+reduced-round Gimli 220 times, which is suggested by our computations, and
+should hold in the quantum setting as well.
+Full-state collisions. By adding another 32-bit condition in the classical 12-
+round collision attack, we obtain a procedure which runs classically in time
+4 ×2128 ×𝑡𝑒, which is too high. However, using Amplitude Amplification, we
+obtain a procedure that runs in quantum time≃4 ×264 ×𝑡𝑒 and reaches 14
+rounds, with less complexity than the quantum collision bound.
+Semi-free start collisions. We can extend the 18-round semi-free start collision
+attack in the same way. Building the table will still cost a time264. This table
+must be stored in a classical memory with quantum random access. The first
+step goes from2 ×296 ×𝑡𝑒 classically to approximately2 ×248 ×𝑡𝑒 quantumly.
+The second step does as well. Thus, adding a 32-bit condition enables us to
+attack 20 rounds in quantum time264 ×4 ×𝑡𝑒.
+6 State-recovery Attacks on Gimli-Cipher
+In this section, we study state-recovery attacks onGimli-Cipher. Gimli-Cipher
+uses the Duplex mode, where message blocks are XORed in the same place as
+in Gimli-Hash. The goal of a state-recovery attack is to recover the complete
+internal state, including the capacity. Once this is done, the Duplex is invertible
+and the key can also be recovered.
+Since there are 256 bits of key inGimli-Cipher, a meaningful state-recovery
+attack can have a complexity up to2256, although it will not necessarily contra-
+dict the security claims of [5], which go only up to 128 bits of security.
+The current best attack is from [33], targeting 9 rounds in time2192 and
+memory 2190.
+Generic Principle. We will target reduced-round variants of the permutation,
+starting, as before, from an intermediate round in order to leverage the round-
+dependent linear layer. Due to the Duplex mode, the value of the rate (the𝑥
+words 𝐴𝑥, 𝐵𝑥, 𝐶𝑥, 𝐷𝑥) is known before and after each call to the permutation.
+Startingfromanynonce,weinjectzeromessagesandobservetheresults.Let 𝑆 =
+(𝐴, 𝐵, 𝐶, 𝐷) be the current state. Let𝛱 be the reduced-round permutation. Let
+𝑆′= 𝛱(𝑆) and 𝑆′′= 𝛱(𝑆′). This means that we know𝑆𝑥 = (𝐴𝑥, 𝐵𝑥, 𝐶𝑥, 𝐷𝑥),
+𝑆′
+𝑥 and 𝑆′′
+𝑥.
+23
+Given 𝑆𝑥 and 𝑆′
+𝑥, there are on average2128 possibilities for𝑆′. Given𝑆′
+𝑥 and
+𝑆′′
+𝑥, there are also2128 possibilities for𝑆′′. Thus our goal is to produce these two
+lists of (at least)2128 values and to find a collision between them. We expect a
+single collision to occur.
+𝐴 𝐵 𝐶 𝐷
+2 2 2 2
+3 3 3 3
+3 3 3 3
+2 2 2 2
+Fig.6. Synthesis of 8 rounds ofGimli, with 4 double SP-Boxes. We write in each double
+SP-Box the number of word-degrees of freedom.
+Strategy for 8 rounds. As we have seen before, the double SP-Box equations
+allow to relate the input and outputs of a double SP-Box. Thus, it makes sense
+to consider each double SP-Box individually, and to focus on the number of
+values that it can take. Without any constraint, it can take296 values. If we
+constrain a word in input or output, it can take264 values, and so on.
+We write 8 rounds ofGimli as on Figure 6, where single-word constraints
+are put on the beginning and the end. Since each double SP-Box takes at most
+296 values, we can start by writing down a list of these values for each double
+SP-Box. We will then merge these lists together progressively. If we merge two
+lists of size 2ℓ and 2ℓ′
+, and if the double SP-Boxes have 2 words in common,
+then we obtain a list of size2ℓ+ℓ′−2×32.
+The goal is to obtain a list of states that will match all the input and output
+constraints. This is graphically intuitive: on Figure 6, we will progressively merge
+the nodes. When we merge two nodes of labels𝑖 and 𝑗, we obtain a node of label
+max(𝑖 + 𝑗 −𝑚, 0) where 𝑚 is the number of edges between them. All outgoing
+edges of 𝑖 and 𝑗 are copied to the new node. We will end with a single node,
+that represents a list of possible states. The time and memory complexities of
+this procedure are roughly equal to the biggest list size encountered, that is, in
+log2, 32 times the biggest label that was put on a node during the process.
+Starting from Figure 6, our strategy for 8 rounds is to first merge the nodes
+pairwise, obtaining Figure 7.
+24
+𝐴 𝐵 𝐶 𝐷
+3 3 3 3
+3 3 3 3
+Fig.7. 8-round merging process, step 2.
+Next, we merge𝐴, 𝐵, 𝐶, 𝐷into single nodes, and obtain a label 4. That is,
+thanks to the input and output constraints, we have only2128 choices for each
+column separately. Next, there are 4 edges between𝐴 abd 𝐵, 4 edges between𝐶
+and 𝐷, so we merge into2128 choices for𝐴, 𝐵and 𝐶, 𝐷separately. There are 4
+edges between the remaining two nodes, so we merge into a list of2128 possible
+states.
+This gives a state-recovery attack of time and memory complexity2128 (up to
+a small constant factor). Note that at this point, we can assume that the double
+SP-Box has been tabulated, and so, we don’t need to solve equations anymore.
+More Rounds. The complexity rapidly increases with the number of rounds.
+Once we represent them as on Figure 6 and Figure 7, we find that our merging
+strategies are rather limited.
+As soon as we move to 10 rounds, the merging process produces nodes of
+label 6, that is, lists of size2192 (see Figure 8). This seems to correspond to the
+9-round attack of [33], written differently (note that [33] starts from the first
+round ofGimli, and thus, there is a swap immediately after the first SP-box).
+With a minor modification in the merging process, we obtain the same com-
+plexity for 12 rounds, where the final step gives Figure 9.
+With more rounds, that is, adding another layer of double SP-Boxes, all the
+merging strategies that we tried produced nodes of label at least 8 (that is, a
+complexity 2256). We conjecture that this method cannot perform better.
+7 Statistical Analyses of Gimli
+7.1 Linear cryptanalysis
+This section aims to provide the first analysis of the linear properties of theGimli
+permutation and its components. For this purpose, we used a bit-oriented Mixed
+Integer Linear Programming (MILP) modelization of the state transformations
+of Gimli constructed according to [1]. The resulting optimization problems were
+then solved with the SCIP solver [21,22] to search for linear trails with optimal
+correlation.
+Using this tool, we provide a rudimentary analysis of the linear approxima-
+tion table of the doubleGimli SP-box, as well as constructing effective linear
+distinguishers for up to the full 24 rounds of theGimli permutation.
+25
+𝐴 𝐵 𝐶 𝐷
+2 2 2 2
+3 3 3 3
+3 3 3 3
+3 3 3 3
+2 2 2 2
+𝐴 𝐵 𝐶 𝐷
+3 3 3 3
+3 3 3 3
+3 3 3 3
+𝐴 𝐵 𝐶 𝐷
+4 4 4 4
+3 3 3 3
+𝐴 𝐵 𝐶 𝐷
+5 5 5 54 4 4
+4
+Fig.8. 10-round merging process. Nodes merged at the next step are displayed with
+the same colors.
+26
+𝐴 𝐵 𝐶 𝐷
+6 6 6 66 4 6
+4
+Fig.9. Merging with 12 rounds, final step.
+Linear trails of the (double) SP-boxWe begin by studying the linear trails
+of the SP-Box. Since theGimli permutation mainly uses the composition of the
+SP-Box with itself, we focus on the “double" SP-Box SP2.
+Let us consider that we apply the double SP-box to𝐴 = (𝑥, 𝑦, 𝑧) to obtain
+𝐴′′= (𝑥′′, 𝑦′′, 𝑧′′) =𝑆𝑃 2(𝑥, 𝑦, 𝑧). We are interested in correlated linear approxi-
+mations, that is, masks𝛼 = (𝛼𝑥, 𝛼𝑦, 𝛼𝑧) and 𝛽 = (𝛽𝑥, 𝛽𝑦, 𝛽𝑧) for which
+𝑐(𝑆𝑃 2, 𝛼, 𝛽) = 2−96
+(︁⃒⃒{𝐴 : 𝛼 ·𝐴 ⊕𝛽 ·𝐴′′= 0}
+⃒⃒ −
+⃒⃒{𝐴 : 𝛼 ·𝐴 ⊕𝛽 ·𝐴′′= 1}
+⃒⃒
+)︁
+is as large (in absolute value) as possible. From Section 2.1 we already know that
+the relationship𝑥8 + 𝑥′′
+0 + 𝑦′′
+0 + 𝑧′′
+0 = 0always holds. This is a linear trail of the
+double SP-box with correlation 1, and it is the only one.
+An automated MILP-based search for linear trails of correlation2−1 and 2−2
+shows that there exist at least 41 trails of the former kind and 572 of the latter,
+but this is not an exhaustive count. Although these approximations probably
+only account for a very small fraction of the possible ones, a more thorough
+study of the distribution of the different correlation values among all the trails
+would be of interest.
+We have found no signs of significant linear-hull effects (that is, of different
+highly-biased linear trails with the same input and output masks, as shown in
+[37]) within these linear approximations of the double SP-box, although since
+we have not considered every interesting linear trail, they might still exist for
+trails of lower correlation.
+Some linear trails of round-reducedGimli. In order to provide some linear
+trails for reduced-roundGimli, we first focus on trails with only one active SP-
+Box in each round, or more specifically, with masks which only cover one column
+in each round. They do not provide an upper bound on the correlation of more
+general trails, but we still think they could be of interest, and this restriction
+greatly limits the search space.
+More specifically, we consider linear trails on powers of the SP-box such that
+the mask for the𝑥 word is zero every two rounds. This means that the mask
+is unaffected by the big and small swaps, and these trails easily translate into
+trails for the reduced-roundGimli construction with the same correlation.
+We first look at iterative linear trails for the double SP-box so that both the
+input and output masks have the𝑥 word set to zero, which means they can be
+easily extended and the correlation is computed using the piling-up lemma from
+27
+[35]. We find that the optimal correlation is2−26, and this is the (maybe not
+unique) associated trail:
+𝛤1 :
+00000000
+0a064e03
+0c08e406
+SP
+−→
+2−14
+0c8b0507
+01040322
+00054302
+SP
+−→
+2−12
+00000000
+0a064e03
+0c08e406
+.
+As this trail is iterative, we can construct2𝑙-round trails with correlation2−26𝑙.
+Next, we provide a similar iterative trail for four rounds with correlation
+2−47, though we were unable to check optimality and other trails with larger
+correlation might exist within the same restrictions:
+𝛤2 :
+00000000
+02060000
+00020541
+SP
+−→
+2−19
+06422511
+088a8131
+08828111
+SP
+−→
+2−11
+00000000
+15024215
+0405003a
+SP
+−→
+2−10
+04054102
+00010280
+000182a0
+SP
+−→
+2 −7
+00000000
+02060000
+00020541
+.
+With this, we can construct trails of4𝑙 rounds with correlation2−47𝑙.
+We have also been able to construct an eight-round iterative trail with corre-
+lation 2−67, which allows to construct trails of8𝑙 rounds with correlation2−67𝑙:
+𝛤3 :
+00000000
+20202020
+20202020
+SP
+−→
+2 −8
+00000000
+40404040
+40404040
+SP
+−→
+2−10
+00000000
+80c08080
+80e08080
+SP
+−→
+2 −9
+80000000
+01810101
+01c10101
+SP
+−→
+2 −8
+00000000
+03020203
+03020203
+SP
+−→
+2 −8
+00000000
+04040404
+04040404
+SP
+−→
+2 −8
+00000000
+08080808
+08080808
+SP
+−→
+2 −8
+00000000
+10101010
+10101010
+SP
+−→
+2 −8
+00000000
+20202020
+20202020
+.
+We also performed some additional experiments to see whether there linear hull
+of the linear approximation based on these input and output masks has a larger
+linear potential than the one suggested by this single linear trail. We found that,
+in fact, there are 8 trails with correlation2−67, 32 trails with correlation2−68,
+128 trails with correlation2−69, 466 trails with correlation2−70, and 1527 trails
+with correlation2−71. This gives the linear approximation an Estimated Linear
+Potential (ELP, see [37]) of at least
+8 ·2−67·2 + 32·2−68·2 + 128·2−69·2 + 466·2−70·2 + 1527·2−71·2 ≃2−128.8 .
+For comparison, the ELP if we consider a single trail would be2−67·2 = 2−134.
+Additionally, when we consider iterations of this approximation, it is possible
+that even more trails appear.
+For a small number of rounds, iterative trails are far from optimal. We now
+construct some nice trails for up to six rounds. We start with an optimal four-
+round trail with correlation2−16:
+𝛤4 :
+00000000
+90002000
+00400110
+SP
+−→
+2 −3
+00400100
+00000020
+00000000
+SP
+−→
+2 −1
+00000000
+00004000
+00000001
+SP
+−→
+2 −2
+00000001
+00800001
+00800001
+SP
+−→
+2−10
+00000000
+000002aa
+010002aa
+.
+We attempt to extend this trail at the top. There are no approximations for
+the double SP-box for which the output mask is the input mask of𝛤4 and so
+28
+Table 5.Linear trails forGimli. Some of them apply to shifted versions of the algorithm
+starting with two consective SP-box substitutions instead of one.
+# Rounds Correlation Construction Shift
+2 1 Probability 1 trail from 2.1 Yes
+6 2−32 𝛤5, 𝛤4 Yes
+8 2−55 Rounds 24 to 17 of𝛤6 No
+16 2−122 Rounds 24 to 9 of𝛤6 No
+24 2−189 𝛤6 (ELP ≥2−367.6) No
+that the input mask has the𝑥 word set to zero. However, by removing the last
+condition we can add two rounds with a2−16 correlation:
+𝛤5 :
+68009800
+40202088
+403510d4
+SP
+−→
+2−10
+40211090
+00480010
+00200088
+SP
+−→
+2 −6
+00000000
+90002000
+00400110
+.
+This gives us a six round linear trail with correlation2−32.
+We now aim to construct an effective 24-round distinguisher for the full
+permutation based on the 8-round iterative linear trail. To this end, we find a
+prolongation of this linear trail by seven rounds at the top, which includes a
+swap. We obtain a 24-round linear trail with correlation2−189. Furthermore,
+because of the linear hull properties of the iterative linear trail, we know that
+the ELP of the linear approximation using the same input and output linear
+masks is at least2−367.6.
+𝛤6 :
+80860280
+01404060
+00000200
+00004000
+00800001
+00000201
+SP
+−→
+2 −6
+SP
+−→
+2 −1
+00000000
+80808003
+00000601
+00000201
+00000000
+00000000
+Swap
+↘
+↗
+00000201
+80808003
+00000601
+SP
+−→
+2 −3
+00000600
+01000101
+00000103
+SP
+−→
+2 −5
+00000000
+00020203
+00020205
+SP
+−→
+2 −8
+00000006
+04040404
+04040404
+SP
+−→
+2 −8
+00000000
+0c080808
+08080808
+SP
+−→
+2 −8
+00000000
+10101010
+10101010
+SP
+−→
+2 −8
+00000000
+20202020
+20202020
+𝛤3
+−→
+2−67
+00000000
+20202020
+20202020
+𝛤3
+−→
+2−67
+00000000
+20202020
+20202020
+SP
+−→
+2 −8
+00000000
+40404040
+40404040
+.
+In general, we provide the linear trails for up to 24 rounds ofGimli shown in
+Table 5. We should note that we have not proven the optimality of these trails
+(in fact we consider it quite likely that they are not), as we have focused on a
+very specific subfamily of trails and we haven’t even shown optimality within
+that family for more than four rounds.
+Our 24-round linear approximation can be used to mount a distinguishing
+attack on the Gimli permutation, which also works for the block cipher built
+29
+with the Even-Mansour construction. It is possible to reduce the complexity
+slightly by using multiple linear cryptanalysis, as in [12]. The time complexity is
+equal to the data complexity, which is a number of known plaintext-ciphertext
+pairs inversely proportional to the ELP of 2−367.6. By considering the same
+approximation but in the four columns we can mount a multiple attack with an
+increase in the capacity by a factor of four.
+The problem of finding a linear approximation whose input and output masks
+lie on the𝑥 lane (that is, on the rate of theGimli-Hash and Gimli-Cipher con-
+structions) remains open.
+7.2 Differential-Linear Cryptanalysis
+We now consider differential-linear cryptanalysis, a technique that combines a
+differential trail and a linear trail built independently. The differential-linear
+distinguishers of this section have the advantage of smaller complexities than
+the linear distinguishers presented above.
+We use the approach of Leurent [30] where we actually split the cipher in
+three parts𝐸 = 𝐸⊥∘𝐸⊥ ⊤∘𝐸⊤, with a differential trail in𝐸⊤, a linear trail in𝐸⊥,
+and an experimental evaluation of the bias in𝐸⊥ ⊤. This gives a more accurate
+evaluation of the complexity. More precisely, we consider
+– a differential trail𝛿in →𝛿out for 𝐸⊤ with probability 𝑝 = Pr𝑋
+(︀
+𝐸⊤(𝑋) ⊕
+𝐸⊤(𝑋 ⊕𝛿in) =𝛿out
+)︀
+.
+– an experimental bias𝑏 from 𝛿out to 𝛽 for 𝐸⊥ ⊤:
+𝑏 = 𝑐(𝛼 ·𝐸⊥ ⊤(𝑊), 𝛼·𝐸⊥ ⊤(𝑊 ⊕𝛿out))
+= 2 Pr
+𝑊
+(𝛼 ·𝐸⊥ ⊤(𝑊) =𝛼 ·𝐸⊥ ⊤(𝑊 ⊕𝛿out)) −1
+– a linear trail𝛼 →𝛽 for 𝐸⊥with correlation𝑐 = 2 Pr𝑌 (𝛼·𝑌 = 𝛽·𝐸⊥(𝑌 ))−1.
+Ifthethreepartsareindependentthenwecanestimatethebiasofthedifferential-
+linear distinguisher as:
+𝑐(𝛽 ·𝐸(𝑋), 𝛽·𝐸(𝑋 ⊕𝛿in)) = 2 Pr
+𝑋
+(𝛽 ·𝐸(𝑋) =𝛽 ·𝐸(𝑋 ⊕𝛿in)) −1 ≈𝑝𝑏𝑐2
+Therefore, the complexity of the distinguisher is about2/𝑝2𝑏2𝑐4.
+In Gimli, there are no keys, so the assumption of independence does not hold,
+but experiments show that the computed bias is close to the reality. In practice,
+the best results are obtained when𝛿out and 𝛼 have a low hamming weight [30].
+Differential Trail. We start by picking a trail that mainly follows the one
+given by the designers [4] with slight changes to optimize it for for our number
+of rounds. We chose a trail with a difference pattern𝛿out with two active bits.
+A differential trail over5 rounds with probability𝑝 = 2−28 is given in Table 6.
+We considered trade-offs between the different phases, and it never seems to be
+worth it to propagate the trail any further.
+30
+Table 6.A 5-round differential trail.
+40418080 02010000 00000000 00000000
+𝛿in 40400010 00000000 00000000 00000000
+80002080 80010080 00000000 00000000
+80010080 00000000 00000000 00000000
+Round 24 00402000 00000000 00000000 00000000
+𝑝 = 2−18 80400080 00000000 00000000 00000000
+00000080 00000000 00000000 00000000
+Round 23 00400000 00000000 00000000 00000000
+𝑝 = 2−8 80000000 00000000 00000000 00000000
+00000000 00000000 00000000 00000000
+Round 22 00000000 00000000 00000000 00000000
+𝑝 = 1 80000000 00000000 00000000 00000000
+80000000 00000000 00000000 00000000
+Round 21 00000000 00000000 00000000 00000000
+𝑝 = 1 00000000 00000000 00000000 00000000
+𝛿out 00000000 00000000 00000000 00000000
+Round 20 00800000 00000000 00000000 00000000
+𝑝 = 2−2 00800000 00000000 00000000 00000000
+Experimental Bias.Starting from the target difference pattern𝛿out at round
+19, we experimentally evaluate the bias after a few rounds with all possible masks
+𝛼 with a single active bit. Concretely, we choose the state at random, build the
+second state by adding𝛿out and observe the bias a few rounds later.
+The most useful results are on the least significant bit𝑧0 of the last word,
+where the probability of having a difference is smaller than1/2. After computing
+8 round, the probability of having an active difference on this bit in round 12 is
+1
+2 −2−6.2, a correlation of𝑏 = −2−5.2. After 9 rounds, at the end of round 11,
+there is a correlation of𝑏 = −2−16.9. These probabilities are large enough to be
+experimentally significant after the240 trials we have made.
+Linear Trail.We use assisted tools to find good linear trails, starting from the
+mask corresponding to𝑧0. The diffusion is not the same depending whether we
+start after round 12 or 11 so we show the best 3 rounds linear approximation for
+both case. We find a correlation𝑐 of 2−17 and 2−16 respectively, see Table 7.
+Complexity of the distinguishers. We can combine the trails in different
+way to obtain distinguishers on 15, 16 or 17 rounds (starting from round 24).
+15 rounds We use 5 rounds for𝐸⊤, 8 rounds for𝐸⊥ ⊤, 2 rounds for𝐸⊥. The
+corresponding complexity is2/𝑝𝑏𝑐2 = 2×22×28 ×22×5.2 ×24×5 = 287.4.
+16 rounds We use 5 rounds for𝐸⊤, 9 rounds for𝐸⊥ ⊤, 2 rounds for𝐸⊥. The
+corresponding complexity is2/𝑝𝑏𝑐2 = 2×22×28 ×22×16.9 ×24×5 = 2110.8.
+17 rounds We use 5 rounds for𝐸⊤, 9 rounds for𝐸⊥ ⊤, 3 rounds for𝐸⊥. The
+corresponding complexity is2/𝑝𝑏𝑐2 = 2×22×28 ×22×16.9 ×24×16 = 2154.8.
+Those distinguishers can be used when theGimli permutation is used to build
+a block cipher with the Even-Mansour construction. Such a cipher should ensure
+31
+Table 7.Diffusion of𝑧0 starting at the end of round 12.
+Round 12 00000000 00000000 00000000 00000000
+00000000 00000000 00000000 00000000
+00000000 00000000 00000000 00000001
+Round 11 00000000 00000000 00000000 00000001
+corr =2−0 00000000 00000000 00000000 00000001
+00000000 00000000 00000000 00000001
+Round 10 00000000 00800001 00000000 00000000
+corr =2−5 00000000 00000000 00000000 00800201
+00000000 00000000 00000000 01c00201
+Round 9 00000000 00880000 00000000 01000201
+corr =2−12 00000000 00f10000 00000000 01040000
+00000000 01e00000 00000000 01840000
+Table 8.Diffusion of𝑧0 starting at the end of round 11.
+Round 11 00000000 00000000 00000000 00000000
+00000000 00000000 00000000 00000000
+00000001 00000000 00000000 00000000
+Round 10 00000000 00000000 00000001 00000000
+corr =2−0 00000001 00000000 00000000 00000000
+00000001 00000000 00000000 00000000
+Round 9 00000001 00000000 00800000 00000000
+corr =2−5 00000201 00000000 00800000 00000000
+00000201 00000000 01c00000 00000000
+Round 8 00000000 00200201 00000000 01004000
+corr =2−11 00000001 00000000 01004001 00000000
+01000001 00000000 0180e001 00000000
+a birthday bound security of up to2192 query, which is less efficient than our
+differential-linear distinguisher if the number of roundsGimli is reduced to 17 (or
+fewer). Further improvement should be possible with the partitioning technique
+of [30], but we leave this to future work.
+8 Conclusion
+A common point of the results presented in this paper is that they exploit the
+relatively slow diffusion between the columns of theGimli state. This issue has
+trivial causes: swaps are effectively the identity for 256 out of the 384 bits of
+the internal state, and occur only every second round. Thus, theGimli SP-Box
+is always applied twice, except at the first and last rounds. This means that
+the permutation can be viewed as an SPN with only 12 rounds, and with very
+simple linear layers. Meanwhile, the double SP-Box is a rather simple function,
+and some of our attacks rely crucially on solving efficiently equations that relate
+its inputs and outputs.
+32
+Though our results do not pose a direct threat to theGimli NIST candidate,
+low-complexity full-round distinguishers on the permutation or reduced-round
+attacks for a high proportion of the rounds (specially when not predicted by the
+designers) have been considered in some cases as an issue worth countering by
+proposing a tweak, as can be seen for instance in the modification proposed by
+the Spook team [2] to protect against the cryptanalysis results from [16]. In
+September 2020, after the results of [18] were made public, the NIST offered the
+submitters of second-round algorithms to propose status updates. In their doc-
+ument [6], the designers ofGimli acknowledged the collision attacks of Section 4
+but dismissed the distinguishers of Section 3, and did not introduce any change
+to their specification. Later on,Gimli was not accepted among the finalists of the
+competition.
+The Gimli designers studied other linear layers instead of the swaps, like using
+an MDS or the linear transformation from SPARX [17], and they found some
+advantages in proving security against various types of attacks. On the other
+hand, they also found it unclear whether these advantages would outweight the
+costs. We believe our results show some light in this direction: the other variants
+that were considered seem a priori to be stronger regarding our analysis, though
+an extensive study should be performed.
+We believe the symmetry distinguishers might still be improved by exploiting
+the properties of the SP-Box, which we have not done yet.
+In order to mitigate the attacks based on internal symmetries and guess-and-
+determine methods (including our distinguishers on the permutation) a simple
+fix would be to perform a swap at each round instead of every second round.
+This would however imply a renewed cryptanalysis effort.
+Acknowledgments. The authors would like to thank all the members of the
+cryptanalysis partymeetings, for many useful comments and discussions, in par-
+ticular many thanks to Anne Canteaut, Virginie Lallemand and Thomas Fuhr
+for many interesting discussions over previous versions of this work. Thanks to
+Donghoon Chang for finding some mistakes and inaccuracies, including an error
+in a 32-round version of our distinguisher. This project has received funding
+from the European Research Council (ERC) under the European Union’s Hori-
+zon 2020 research and innovation programme (grant agreement no. 714294 -
+acronym QUASYModo).
+References
+1. Abdelkhalek, A., Sasaki, Y., Todo, Y., Tolba, M., Youssef, A.M.: MILP model-
+ing for (large) s-boxes to optimize probability of differential characteristics. IACR
+Trans. Symm. Cryptol. 2017(4), 99–129 (2017)
+2. Bellizia, D., Berti, F., Bronchain, O., Cassiers, G., Duval, S., Guo, C., Leander,
+G., Leurent, G., Levi, I., Momin, C., Pereira, O., Peters, T., Standaert, F.X.,
+Udvarhelyi, B., Wiemer, F.: Spook: Sponge-based leakage-resistant authenticated
+encryption with a masked tweakable block cipher. IACR Trans. Symm. Cryptol.
+2020(S1), 295–349 (2020)
+33
+3. Bennett,C.H.:Time/spacetrade-offsforreversiblecomputation.SIAMJ.Comput.
+18(4), 766–776 (1989)
+4. Bernstein, D.J., Kölbl, S., Lucks, S., Massolino, P.M.C., Mendel, F., Nawaz, K.,
+Schneider, T., Schwabe, P., Standaert, F.X., Todo, Y., Viguier, B.: Gimli : A cross-
+platform permutation. In: Fischer, W., Homma, N. (eds.) CHES 2017. LNCS, vol.
+10529, pp. 299–320. Springer, Heidelberg (Sep 2017)
+5. Bernstein, D.J., Kölbl, S., Lucks, S., Massolino, P.M.C., Mendel, F., Nawaz, K.,
+Schneider, T., Schwabe, P., Standaert, F.X., Todo, Y., Viguier, B.: Gimli. Sub-
+mission to the NIST Lightweight Cryptography project. Available onlinehttps:
+//csrc.nist.gov/CSRC/media/Projects/Lightweight-Cryptography/
+documents/round-1/spec-doc/gimli-spec.pdf . (2019)
+6. Bernstein, D.J., Kölbl, S., Lucks, S., Massolino, P.M.C., Mendel, F., Nawaz,
+K., Schneider, T., Schwabe, P., Standaert, F.X., Todo, Y., Viguier, B.: Gimli:
+NIST LWC second-round candidate status update. Available online https:
+//csrc.nist.gov/CSRC/media/Projects/lightweight-cryptography/
+documents/round-2/status-update-sep2020/gimli_update.pdf .
+(2020)
+7. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: Sponge functions. In:
+ECRYPT hash workshop (2007)
+8. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: On the indifferentiability
+of the sponge construction. In: Smart, N.P. (ed.) EUROCRYPT 2008. LNCS, vol.
+4965, pp. 181–197. Springer, Heidelberg (Apr 2008)
+9. Bertoni, G., Daemen, J., Peeters, M., Van Assche, G.: Sponge-based pseudo-
+random number generators. In: Mangard, S., Standaert, F.X. (eds.) CHES 2010.
+LNCS, vol. 6225, pp. 33–47. Springer, Heidelberg (Aug 2010)
+10. Bertoni,G.,Daemen,J.,Peeters,M.,VanAssche,G.:Duplexingthesponge:Single-
+pass authenticated encryption and other applications. In: Miri, A., Vaudenay, S.
+(eds.) SAC 2011. LNCS, vol. 7118, pp. 320–337. Springer, Heidelberg (Aug 2012)
+11. Biham, E., Shamir, A.: Differential cryptanalysis of DES-like cryptosystems. Jour-
+nal of Cryptology 4(1), 3–72 (Jan 1991)
+12. Biryukov, A., De Cannière, C., Quisquater, M.: On multiple linear approxima-
+tions. In: Franklin, M. (ed.) CRYPTO 2004. LNCS, vol. 3152, pp. 1–22. Springer,
+Heidelberg (Aug 2004)
+13. Brassard, G., Hoyer, P., Mosca, M., Tapp, A.: Quantum amplitude amplification
+and estimation. Contemporary Mathematics 305, 53–74 (2002)
+14. Brassard, G., Høyer, P., Tapp, A.: Quantum cryptanalysis of hash and claw-free
+functions. In: Lucchesi, C.L., Moura, A.V. (eds.) LATIN 1998. LNCS, vol. 1380,
+pp. 163–169. Springer, Heidelberg (Apr 1998)
+15. Cai, J., Wei, Z., Zhang, Y., Sun, S., Hu, L.: Zero-sum distinguishers for round-
+reduced Gimli permutation. In: Mori, P., Furnell, S., Camp, O. (eds.) Proceedings
+of the 5th International Conference on Information Systems Security and Privacy,
+ICISSP 2019, Prague, Czech Republic, February 23-25, 2019. pp. 38–43. SciTePress
+(2019)
+16. Derbez, P., Huynh, P., Lallemand, V., Naya-Plasencia, M., Perrin, L., Schrotten-
+loher, A.: Cryptanalysis results on Spook - bringing full-round Shadow-512 to the
+light. In: Micciancio, D., Ristenpart, T. (eds.) CRYPTO 2020, Part III. LNCS, vol.
+12172, pp. 359–388. Springer, Heidelberg (Aug 2020)
+17. Dinu, D., Perrin, L., Udovenko, A., Velichkov, V., Großschädl, J., Biryukov, A.:
+Design strategies for ARX with provable bounds: Sparx and LAX. In: Cheon,
+J.H., Takagi, T. (eds.) ASIACRYPT 2016, Part I. LNCS, vol. 10031, pp. 484–513.
+Springer, Heidelberg (Dec 2016)
+34
+18. Flórez-Gutiérrez, A., Leurent, G., Naya-Plasencia, M., Perrin, L., Schrottenloher,
+A., Sibleyras, F.: New results on Gimli: full-permutation distinguishers and im-
+proved collisions. In: Moriai, S., Wang, H. (eds.) ASIACRYPT 2020, Part I. LNCS,
+vol. 12491, pp. 33–63. Springer, Heidelberg (Dec 2020)
+19. Gilbert, H.: A simplified representation of AES. In: Sarkar, P., Iwata, T. (eds.)
+ASIACRYPT 2014, Part I. LNCS, vol. 8873, pp. 200–222. Springer, Heidelberg
+(Dec 2014)
+20. Gilbert, H., Peyrin, T.: Super-sbox cryptanalysis: Improved attacks for AES-like
+permutations. In: Hong, S., Iwata, T. (eds.) FSE 2010. LNCS, vol. 6147, pp. 365–
+383. Springer, Heidelberg (Feb 2010)
+21. Gleixner, A., Bastubbe, M., Eifler, L., Gally, T., Gamrath, G., Gottwald, R.L.,
+Hendel, G., Hojny, C., Koch, T., Lübbecke, M.E., Maher, S.J., Miltenberger, M.,
+Müller, B., Pfetsch, M.E., Puchert, C., Rehfeldt, D., Schlösser, F., Schubert, C.,
+Serrano, F., Shinano, Y., Viernickel, J.M., Walter, M., Wegscheider, F., Witt, J.T.,
+Witzig, J.: The SCIP Optimization Suite 6.0. Technical report, Optimization On-
+line (July 2018),http://www.optimization-online.org/DB_HTML/2018/
+07/6692.html
+22. Gleixner, A., Bastubbe, M., Eifler, L., Gally, T., Gamrath, G., Gottwald, R.L.,
+Hendel, G., Hojny, C., Koch, T., Lübbecke, M.E., Maher, S.J., Miltenberger,
+M., Müller, B., Pfetsch, M.E., Puchert, C., Rehfeldt, D., Schlösser, F., Schu-
+bert, C., Serrano, F., Shinano, Y., Viernickel, J.M., Walter, M., Wegscheider,
+F., Witt, J.T., Witzig, J.: The SCIP Optimization Suite 6.0. ZIB-Report 18-26,
+Zuse Institute Berlin (July 2018),http://nbn-resolving.de/urn:nbn:de:
+0297-zib-69361
+23. Grover, L.K.: A fast quantum mechanical algorithm for database search. In: 28th
+ACM STOC. pp. 212–219. ACM Press (May 1996)
+24. Hamburg, M.: Cryptanalysis of 22 1/2 rounds of Gimli. Cryptology ePrint Archive,
+Report 2017/743 (2017),https://eprint.iacr.org/2017/743
+25. Hosoyamada, A., Sasaki, Y.: Finding hash collisions with quantum computers by
+using differential trails with smaller probability than birthday bound. In: Canteaut,
+A., Ishai, Y. (eds.) EUROCRYPT 2020, Part II. LNCS, vol. 12106, pp. 249–279.
+Springer, Heidelberg (May 2020)
+26. Iwamoto, M., Peyrin, T., Sasaki, Y.: Limited-birthday distinguishers for hash
+functions - collisions beyond the birthday bound can be meaningful. In: Sako,
+K., Sarkar, P. (eds.) ASIACRYPT 2013, Part II. LNCS, vol. 8270, pp. 504–523.
+Springer, Heidelberg (Dec 2013)
+27. Jaques, S., Naehrig, M., Roetteler, M., Virdia, F.: Implementing grover oracles
+for quantum key search on AES and LowMC. In: Canteaut, A., Ishai, Y. (eds.)
+EUROCRYPT 2020, Part II. LNCS, vol. 12106, pp. 280–310. Springer, Heidelberg
+(May 2020)
+28. Knill, E.: An analysis of Bennett’s pebble game. CoRR abs/math/9508218 (1995)
+29. Lamberger, M., Mendel, F., Schläffer, M., Rechberger, C., Rijmen, V.: The re-
+bound attack and subspace distinguishers: Application to Whirlpool. Journal of
+Cryptology 28(2), 257–296 (Apr 2015)
+30. Leurent, G.: Improved differential-linear cryptanalysis of 7-round Chaskey with
+partitioning. In: Fischlin, M., Coron, J.S. (eds.) EUROCRYPT 2016, Part I. LNCS,
+vol. 9665, pp. 344–371. Springer, Heidelberg (May 2016)
+31. Levin, R.Y., Sherman, A.T.: A note on Bennett’s time-space tradeoff for reversible
+computation. SIAM J. Comput. 19(4), 673–677 (1990)
+35
+32. Liu,F.,Isobe,T.,Meier,W.:Preimagesandcollisionsforupto5-roundGimli-Hash
+using divide-and-conquer methods. Cryptology ePrint Archive, Report 2019/1080
+(2019), https://eprint.iacr.org/2019/1080
+33. Liu, F., Isobe, T., Meier, W.: Automatic verification of differential character-
+istics: Application to reduced Gimli. In: Micciancio, D., Ristenpart, T. (eds.)
+CRYPTO 2020, Part III. LNCS, vol. 12172, pp. 219–248. Springer, Heidelberg
+(Aug 2020)
+34. Liu, F., Isobe, T., Meier, W.: Exploiting weak diffusion of Gimli: A full-round dis-
+tinguisherandreduced-roundpreimageattacks.CryptologyePrintArchive,Report
+2020/561 (2020),https://eprint.iacr.org/2020/561
+35. Matsui, M.: Linear cryptanalysis method for DES cipher. In: Helleseth, T. (ed.)
+EUROCRYPT’93. LNCS, vol. 765, pp. 386–397. Springer, Heidelberg (May 1994)
+36. Nielsen, M.A., Chuang, I.L.: Quantum information and quantum computation.
+Cambridge: Cambridge University Press 2(8), 23 (2000)
+37. Nyberg, K.: Linear approximation of block ciphers (rump session). In: Santis, A.D.
+(ed.) EUROCRYPT’94. LNCS, vol. 950, pp. 439–444. Springer, Heidelberg (May
+1995)
+38. Soos, M., Nohl, K., Castelluccia, C.: Extending SAT solvers to cryptographic prob-
+lems. In: Kullmann, O. (ed.) Theory and Applications of Satisfiability Testing -
+SAT 2009, 12th International Conference, SAT 2009, Swansea, UK, June 30 - July
+3, 2009. Proceedings. Lecture Notes in Computer Science, vol. 5584, pp. 244–257.
+Springer (2009)
+39. Zong, R., Dong, X., Wang, X.: Collision attacks on round-reduced Gimli-
+Hash/Ascon-Xof/Ascon-Hash. Cryptology ePrint Archive, Report 2019/1115
+(2019), https://eprint.iacr.org/2019/1115
+36
+A Appendix
+A.1 SP-Box Inverse
+The SP-Box is a bijective operation, but its inverse is difficult to write (and it
+is never used).
+1. Swap 𝑥 and 𝑧
+2. Perform:5
+𝑥0 ←𝑥′
+0
+𝑦0 ←𝑦′
+0 + 𝑥′
+0
+𝑧0 ←𝑧′
+0 + 𝑥′
+0 + 𝑦′
+0
+𝑥1 ←𝑥′
+1 + 𝑧0
+𝑦1 ←𝑦′
+1 + 𝑥′
+1 + 𝑧0 + (𝑥0 ∨𝑧0)
+𝑧1 ←𝑧′
+1 + 𝑦′
+1 + 𝑥′
+1 + 𝑧0 + (𝑥0 ∨𝑧0)
+𝑥2 ←𝑥′
+2 + 𝑧1 + (𝑦0 ∧𝑧0)
+𝑦2 ←𝑦′
+2 + 𝑥′
+2 + 𝑧1 + (𝑦0 ∧𝑧0) + (𝑥1 ∨𝑧1)
+𝑧2 ←𝑧′
+2 + 𝑦′
+2 + 𝑥′
+2 + 𝑧1 + (𝑦0 ∧𝑧0) + (𝑥1 ∨𝑧1)
+∀3 ≤𝑖 ≤32, 𝑥𝑖 ←𝑥′
+𝑖 + 𝑧𝑖−1 + (𝑦𝑖−2 ∧𝑧𝑖−2)
+𝑦𝑖 ←𝑦′
+𝑖 + 𝑥𝑖 + (𝑥𝑖−1 ∨𝑧𝑖−1)
+𝑧𝑖 ←𝑧′
+𝑖 + 𝑦𝑖 + (𝑥𝑖−3 ∧𝑦𝑖−3)
+3. Rotate 𝑥 and 𝑦: 𝑥𝑖 = 𝑥𝑖+24 mod 32 and 𝑦𝑖 = 𝑦𝑖+9 mod 32
+A.2 Gimli-Hash
+Algorithm 5Gimli-Hash (from [5])
+Input: 𝑀 ∈{0, 1}*
+Output: ℎ ∈{0, 1}256
+1: 𝑆 ←0 ◁ Initialize state to0
+2: 𝑚1, . . . , 𝑚𝑡 ←pad(𝑀)
+3: for 𝑖 from 1 to 𝑡 do
+4: if 𝑖 = 𝑡 then
+5: 𝐷𝑧 ←𝐷𝑧 ⊕0x01000000
+6: end if
+7: 𝑆 ←absorb(𝑆, 𝑚𝑖) ◁ XOR 𝑚𝑖 in the rate:𝐴𝑥, 𝐵𝑥, 𝐶𝑥, 𝐷𝑥, applyGimli
+8: end for
+9: ℎ ←𝐴𝑥‖𝐵𝑥‖𝐶𝑥‖𝐷𝑥
+10: 𝑆 ←Gimli(𝑆)
+11: ℎ ←ℎ‖𝐴𝑥‖𝐵𝑥‖𝐶𝑥‖𝐷𝑥
+Return ℎ
+5 Note that the formulas given page 15 of the specification ofGimli are erroneous. In
+the line𝑧′
+𝑛 ←𝑧𝑛 + 𝑦𝑛 + (𝑥𝑛−3 ∧𝑧𝑛−3), 𝑧𝑛−3 should be replaced by𝑦𝑛−3 and 𝑥𝑗 ∧𝑧𝑗
+must be replaced by𝑥𝑗 ∧𝑦𝑗 in the subsequent formulas.
+37
+A.3 Representation of Full Gimli
+SP24 SP24 SP24 SP24
+⊕rc24
+SP23 SP23 SP23 SP23
+SP22 SP22 SP22 SP22
+SP21 SP21 SP21 SP21
+SP20 SP20 SP20 SP20
+⊕rc20
+SP19 SP19 SP19 SP19
+SP18 SP18 SP18 SP18
+SP17 SP17 SP17 SP17
+SP16 SP16 SP16 SP16
+⊕rc16
+SP15 SP15 SP15 SP15
+SP14 SP14 SP14 SP14
+SP13 SP13 SP13 SP13
+SP12 SP12 SP12 SP12
+⊕rc12
+SP11 SP11 SP11 SP11
+SP10 SP10 SP10 SP10
+SP9 SP9 SP9 SP9
+SP8 SP8 SP8 SP8
+⊕rc8
+SP7 SP7 SP7 SP7
+SP6 SP6 SP6 SP6
+SP5 SP5 SP5 SP5
+SP4 SP4 SP4 SP4
+⊕rc4
+SP3 SP3 SP3 SP3
+SP2 SP2 SP2 SP2
+SP1 SP1 SP1 SP1
+Fig.10. A representation of full Gimli.
+38
