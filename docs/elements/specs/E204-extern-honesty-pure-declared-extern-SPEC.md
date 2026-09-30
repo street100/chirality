@@ -3,7 +3,7 @@ element: E204
 slug: extern-honesty-pure-declared-extern
 title: "**Extern honesty: a pure-declared extern reaches no crossing**"
 design: arcs/parts/enforcement-N27.md
-status: draft
+status: audited
 updated: 2026-09-30
 ---
 
@@ -53,7 +53,7 @@ Measured 2026-09-30 at `37e99c0`, re-verified by this run:
 | `lib/lowering/compile-emit.chiral:14-18` | `prim2lib-table` is in reach | the table lives in `lib/lowering/tal/erase.chiral:111-143`, which `compile-emit` does not import; `erase` imports `prelude`, `ssa`, `erased-nf`, `crossing-wraps` (`:20-23`) and nothing that imports `compile-emit` | constrains: see below |
 | `lib/lowering/compile-emit.chiral:238-252` | the walker follows `xw-code`'s pattern | `xw-code` and `xw-branches` walk `t-seq`, `ti-ret`, `ti-tcase` with its default; `TInstr` carries `ti-sys (dst nr args)` and `ti-call (dst fname args)` (`lib/lowering/tal/ir.chiral:24`, `:33`) | agrees |
 | `lib/lowering/tal/bytes.chiral:813-825` | `native-lib` is one list of `TIFn` | it is; the members' names come from `tifn-nm` (`compile-emit.chiral:172-173`) | agrees |
-| `lib/lowering/tal/sys-check.chiral:71-77` | `ck-tiprog` already refuses a `ti-sys` in `native-lib` | it does, keyed by function name, since no `native-lib` routine has a `sys-row`. The new check runs first, so the `ti-sys` gate row pins E204's sentence and `ck-tiprog` stays the backstop | constrains: see below |
+| `lib/lowering/tal/sys-check.chiral:71-77` | `ck-tiprog` already refuses a `ti-sys` in `native-lib` | it does, keyed by function name, since no `native-lib` routine has a `sys-row`; and a routine renamed to a registered name collides with its `sys-lib` twin at `first-dup-go` (`compile-emit.chiral:304`). So on today's registry E204's `ti-sys` arm refuses nothing the image did not already refuse. What it adds is independence from the registry, which is swappable data (`sys-check.chiral:11-13`): a `native-lib` routine that a registry row names, with a matching number, passes `ck-tiprog` and `first-dup-go` and is refused by E204 alone. The gate's `ti-sys` row poisons exactly that case | constrains: see below |
 
 - **Constraints carried into §3:**
   1. The new `Judg` arm goes on its own line after `(jg-pure-crossing)`, so
@@ -61,7 +61,8 @@ Measured 2026-09-30 at `37e99c0`, re-verified by this run:
      its M7 row (`:571-572`) to 39.
   2. `compile-emit` gains `(import "lowering/tal/erase")`. The new names use
      the prefix `plib-`, which is unused under `lib/` and `prog/`.
-  3. The emit check runs **before** `ck-tiprog`.
+  3. The emit check runs **before** `ck-tiprog`, so a `native-lib` offender is
+     named in E204's sentence. No gate row depends on the order.
   4. Ten `compile-main` roots hold `module/loader` or `compile-emit` in their
      import closure: `prog/compiler.prog`, `e185-apply-word.prog`,
      `e186-capture-fields.prog`, `e188-apply-spine.prog`,
@@ -75,8 +76,9 @@ Measured 2026-09-30 at `37e99c0`, re-verified by this run:
 ### Step 1: the mutant builder takes a source root
 
 - **Target:** `tools/test/mutant.sh`, at `mutant_build` (`:127`).
-- **Change:** add `MUT_SRC="${CHIRALITY_MUTANT_SRC:-$MUT_REPO}"` beside
-  `MUT_B1`, and copy `lib`, `prog`, `bin` from `$MUT_SRC` at `:131`. The
+- **Change:** inside `mutant_build`, `local src="${CHIRALITY_MUTANT_SRC:-$MUT_REPO}"`,
+  and copy `lib`, `prog`, `bin` from `$src` at `:131`. Read per call, so a
+  row can point one build at a pre-poisoned tree (E3). The
   default keeps every existing caller byte-for-byte on its current tree. The
   E204 gate's poison rows need it: under a mutant leg they must build from the
   mutant's tree, or they grade the shipped sources and convict nothing.
@@ -242,7 +244,7 @@ a trivial root with it. Each wants a refusal carrying
 |---|---|---|
 | E1 a `native-lib` routine calls outside it | `lib/lowering/tal/bytes.chiral`, `(ti-fn "nb-id" 1 1 (ti-ret 0))` to `(ti-fn "nb-id" 1 2 (t-seq (ti-call 1 "nb-arena-fail" (cons 0 nil)) (ti-ret 0)))` | `nb-id calls nb-arena-fail outside native-lib` |
 | E2 a `prim2lib-table` target outside `native-lib` | `lib/lowering/tal/erase.chiral`, `(cons (pair "brepeat" "nb-brepeat")` to `(cons (pair "brepeat" "nb-sys-write")` | `prim brepeat routes to nb-sys-write outside native-lib` |
-| E3 a `native-lib` routine holds a `ti-sys` | `bytes.chiral`, the same anchor to `(ti-fn "nb-id" 1 2 (t-seq (ti-sys 1 60 (cons 0 nil)) (ti-ret 0)))` | `nb-id holds ti-sys` |
+| E3 a `native-lib` routine holds a registered `ti-sys` | two files. The row copies `lib`, `prog`, `bin` from its source tree to a scratch tree, replaces `(nil)` in `lib/lowering/tal/target-linux.manifest` (one occurrence) with `(cons (sys-row "nb-id" 60) (nil))`, then calls `mutant_build` with `CHIRALITY_MUTANT_SRC` at that tree and `bytes.chiral`'s E1 anchor to `(ti-fn "nb-id" 1 2 (t-seq (ti-sys 1 60 (cons 0 nil)) (ti-ret 0)))`. `ck-tiprog` admits it (registered, matching number) and `first-dup-go` admits it (`nb-id` is in no other library) | `nb-id holds ti-sys` |
 
 Every anchor occurs once today. A poison build that answers `FAIL:` is `bad`,
 never `ok`.
@@ -256,12 +258,16 @@ and its leg re-runs this file under the mutant compiler with
 | M1 load refusal off | `lib/module/loader.chiral`, `((some w) (ld-err (r-judged (subj-extern name) (jg-extern-pure-crossing))))` to `((some w) (load-extern-linear s name tyt))` | L1, L2, L3, L4 |
 | M2 emit closure off | `lib/lowering/compile-emit.chiral`, `(pure-lib-offender native-lib prim2lib-table)` to `(pure-lib-offender nil nil)` | E1, E2, E3 |
 
-Under M2, E1 and E2 are accepted and E3 is refused by `ck-tiprog` with the
-E76 sentence, so all three redden. A non-empty base red set is `bad`
+Under M2 all three poison compilers emit: E1 and E2 hold no `ti-sys`, and
+E3's is registered with its number. Each row reddens because the image is
+admitted. No row's red rests on which check's sentence answers. A non-empty base red set is `bad`
 before any mutant is scored.
 
 ⚑ **Cost.** Three poison builds on the base run, two mutant builds, and three
-poison builds in each leg: eleven compiler generations, about 40 s each.
+poison builds in each leg: eleven compiler generations, about 40 s each,
+so about seven minutes. No tree rule caps a phase's cost; phases 33 and 36
+rebuild compilers inside the suite and state the cost in their `run_phase`
+comment (`tools/test/run-tests.sh:370-383`), which step 5's comment follows.
 
 - **Mutant:** M1 and M2 above, each run, each pinned to its full red set.
 - **Done when:** `bash tools/test/run-tests.sh` prints phase 37 with 0 failed,
