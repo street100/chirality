@@ -1,9 +1,9 @@
 ---
 node: arc-memory-discipline
 layer: navigation
-related: [arcs/README, goals/local-ai, goals/self-hosting, benchmarks/text-matcher-allocation, records/author-calls, records/memory-discipline, arcs/text-tools-arc, arcs/parts/lowering-and-emit-LE25, status-ledger, index]
+related: [arcs/README, goals/local-ai, goals/self-hosting, benchmarks/text-matcher-allocation, records/author-calls, records/memory-discipline, arcs/text-tools-arc, arcs/parts/lowering-and-emit-LE25, arcs/parts/memory-discipline-M8, decisions/decision-effect-facets, status-ledger, index]
 status: current
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Arc: the value-cell heap's discipline
@@ -74,11 +74,18 @@ proves the first was right.
 4. **One `alloc-region` runs on every backend.** The discipline is
    ISA-agnostic, and ISA-specific allocation assembly stays in `Mach` primitives.
 5. **A buffer is written in place.** One mechanism gives an indexed write that
-   mutates in place and an indexed read that lowers to one load, under a linear
-   binder, for every element type a consumer names: a byte for `M4`'s emit
+   mutates in place and an indexed read that lowers to one load, over a handle
+   tagged with its region, for every element type a consumer names: a byte for `M4`'s emit
    buffer, an `I64` word for [[arcs/text-tools-arc]] P2, P3 and P5, and a boxed
    value for `lowering-and-emit/LE25`'s id-keyed tables. Observed as a write
-   whose cost does not grow with the buffer's length.
+   whose cost does not grow with the buffer's length. ⚑ **This read *"under a
+   linear binder"*, corrected 2026-09-30.** Under the author's seal ruling a
+   linear handle makes every read hand the buffer back in a fresh cell, and a
+   region-tagged handle inside the seal returns the value alone.
+6. **A pure body uses a buffer.** A block that allocates, writes, reads and
+   freezes a buffer inside a seal has a pure type, and no handle leaves the
+   seal, bare or inside a closure. Observed as a `->` def calling the seal
+   checking, and a returned handle and a returned closure over one each refused.
 
 ## Roster
 
@@ -91,16 +98,19 @@ proves the first was right.
 | `memory-discipline/M5` | compose and grade: per-phase and per-runtime profile composition, with an optional static size bound from `E38` | compose | law | connect | 2 | open | `E85` |
 | `memory-discipline/M6` | `mem-region` is reached, or it moves to SEEDED with the reason. It is the only reclamation discipline in the tree and nothing imports it | discipline | tool | connect | 3 | open | `unminted` |
 | `memory-discipline/M7` | one `alloc-region` runs on every backend, with ISA-specific allocation assembly left in `Mach` primitives | discipline | law | new | 4 | open | `unminted` |
-| `memory-discipline/M8` | the linear indexed buffer: one mechanism, an in-place indexed write and a one-load indexed read under a linear binder, carrying bytes, `I64` words and boxed values, with the index bounded the way `mem-put-checked` bounds an offset | seam | primitive | new | 5 | designed | `unminted` |
+| `memory-discipline/M8` | the region-indexed buffer: one mechanism, an in-place indexed write and a one-load indexed read, carrying bytes, `I64` words and boxed values, with the index bounded the way `mem-put-checked` bounds an offset. The handle is unrestricted and tagged with its region `s`; every operation is `=>` and names `s` in its effect; a read returns the value alone; the buffer is frozen before `M9`'s seal returns. ⚑ **This row read *"under a linear binder"* and stood at `designed`, corrected 2026-09-30.** A linear handle is what made the read allocate a result cell per read (`docs/arcs/parts/memory-discipline-M8.md:264-282`), and the author ruled the seal first with this row over it ([[records/author-calls]]). **Blocking condition**: `M9` | seam | primitive | new | 5 | open | `unminted` |
+| `memory-discipline/M9` | the sandboxed seal, in the shape of `runST`: a rank-2 block `(=> (0 s (type 0)) … A)` whose operations on a region-`s` handle name `s` in their effect, so the result type and every escaping closure's type name `s` and scoping refuses them, and a seal rule that removes the region-`s` entries from the block's row and no others, which makes the block pure. The kernel takes the rank-2 block and refuses a result naming `s` today (`docs/arcs/parts/memory-discipline-M8.md:218-237`, S1, S2); the arrow is one bit (`lib/surface/syntax.chiral:12`), so a block calling an unrelated `=>` extern checks (S3) and a closure over the handle escapes (S4, S15). The region entry and the discharge rule are this row. **Blocking condition**: the Pi's effect-row seat with its row-variable seat (`docs/decisions/decision-effect-facets.md:77-83`), which is `E39`'s, at `design` and homed by nobody (`records/homing-triage.md:117`, an author call); and the call-level membrane `E171`, at `design` (`docs/elements/ledger.md:121`). Each is complete on its own and serves consumers beyond this row, so neither is rostered here. Its design owes the pinned soundness argument for `runST` and for region-carrying effects | seam | law | new | 6 | open | `unminted` |
 
 ### Coverage
 
 Every requirement is served: 1 by M2, M3 and M4; 2 by M1 and M5; 3 by M6; 4 by
-M7; 5 by M8. Every row serves one. `M4` builds on `M8`, and so do
+M7; 5 by M8; 6 by M9. Every row serves one. `M8` builds on `M9`. `M4` builds on `M8`, and so do
 [[arcs/text-tools-arc]] P2, P3 and P5 and `lowering-and-emit/LE25`. `M5` and `M6` are `connect`: `E38`'s grading and
 `mem-region` are built and nothing reaches either.
 
 ## Resume state
+
+⚑ **2026-09-30: the seal joins the roster as `M9`, and `M8` stands over it.** The author ruled the buffer effectful and a `runST`-shaped seal its own item, then asked whether `M8` should be held complete without the seal. It should not: under the seal the handle is region-tagged and a read returns the value alone, so the linear-read fork is gone. `M8`'s design re-runs over a region-indexed handle. `MD-03` in [[records/memory-discipline]] holds the reasoning. **Next: `M9`, `element-design`**, whose preconditions `E39`'s row seat and `E171` are unhomed.
 
 ⚑ **2026-09-29: `M8` joins the roster.** The in-place indexed write had no row, and `M4`'s element `E84` names only the emit buffer. The author ruled on 2026-09-29 that the write is built properly and `LE25` over it ([[records/author-calls]]). **Next: `M8`, `element-design`.** `LE25`'s mint waits on that design. `MD-01` in [[records/memory-discipline]] holds the reasoning.
 

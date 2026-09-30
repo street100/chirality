@@ -3,7 +3,7 @@ node: records-memory-discipline
 layer: navigation
 related: [records/README, arcs/memory-discipline-arc, records/author-calls, arcs/text-tools-arc, arcs/parts/lowering-and-emit-LE25, index]
 status: current
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Memory discipline arc
@@ -33,3 +33,12 @@ a row, on the precedent of [[records/text-tools]]. The arc header points here.
 - evidence: records/author-calls.md:535-536; docs/arcs/parts/memory-discipline-M8.md §3 item 7, §5 question 1 and NEEDS-AUTHOR 2, §6; lib/surface/syntax.chiral:12; lib/typing/kernel.chiral:26; lib/lowering/tal/erase.chiral:157-172, :217-227; docs/decisions/decision-effect-facets.md:77-83; docs/examples/E39-effect-row.md:157-159; docs/elements/ledger.md:121; PRINCIPLES.md:55-58
 - checked:  2026-09-30
 - element:  `memory-discipline/M8`, `unminted`, still `designed` and blocked on NEEDS-AUTHOR 2 alone; the seal and the closure-capture defect are recorded in its §6 "Needed and unrostered" and have no roster row
+
+### MD-03 the seal is its own row and the buffer stands over it with a region-tagged handle
+
+- state:    FIXED
+- claim:    `docs/arcs/memory-discipline-arc.md` at `69c5ce2` carried `memory-discipline/M8` as *"the linear indexed buffer … under a linear binder"* at `designed`, requirement 5 as a read *"under a linear binder"*, and the seal in no roster row, only in `docs/arcs/parts/memory-discipline-M8.md` §6 "Needed and unrostered".
+- measured: the trigger is two rows in [[records/author-calls]]: the `ruled` row opening *"Whether E159 tells a memory porttype"*, which rules the buffer `=>` and a `runST`-shaped seal a separate item, and the withdrawn row opening *"How `memory-discipline/M8`'s linear read"*, which puts the seal first and `M8` over it. ⚑ **The linear handle was the fork.** The design kept it so that `M8` stood complete without the seal, and a value-only read then consumes the handle (`docs/arcs/parts/memory-discipline-M8.md:264-282`, S6, S10). Under the seal the handle is unrestricted and tagged with `s`, the seal frees and freezes at exit, and a read returns the value alone, which lowers to one load (`lib/lowering/tal/erase.chiral:157-172`). ⚑ **The seal is one row, and its preconditions are not.** A region entry in the row is inert without the rule that discharges it, and the rule has nothing to discharge without the entry, so both are `M9`. The Pi's effect-row seat with its row-variable seat (`docs/decisions/decision-effect-facets.md:77-83`) is `E39`'s, serves alarms, row inference and `E70` beside this row, and is homed by nobody (`records/homing-triage.md:117`); `E171` (`docs/elements/ledger.md:121`) is proposed to [[arcs/enforcement-arc]] (`records/homing-triage.md:225`). Each is complete on its own, so each is `M9`'s blocking condition and neither is rostered here. ⚑ **PRB-101 is neither row's.** With the handle unrestricted, a closure over it escapes by its type naming `s`, which the seal refuses; the returned-closure quantity loss is a kernel defect in the linearity floor, `checker-core` group G5 (`docs/arcs/checker-core-arc.md:206`, `CK18`, `E159`). The verdict is RESCOPE: requirement 5 corrected, requirement 6 added, `M9` added, `M8` restated over `M9` and moved `designed` to `open` by `pack.py --reopen`. The arc side moved.
+- evidence: records/author-calls.md:535-536; docs/arcs/memory-discipline-arc.md; docs/arcs/parts/memory-discipline-M8.md:218-237, :264-282, :342-343; docs/decisions/decision-effect-facets.md:77-83; lib/surface/syntax.chiral:12; lib/lowering/tal/erase.chiral:157-172; docs/elements/ledger.md:116, :121; records/homing-triage.md:117, :225; docs/arcs/checker-core-arc.md:206; records/lenses/problems.md:1420-1432
+- checked:  2026-09-30
+- element:  `memory-discipline/M9`, `unminted`, `open`; its `element-design` runs next. `memory-discipline/M8` re-runs `element-design` after it
