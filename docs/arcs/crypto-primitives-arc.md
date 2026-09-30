@@ -3,7 +3,7 @@ node: arc-crypto-primitives
 layer: navigation
 related: [arcs/README, goals/own-web, arcs/native-protocol-arc, banks/INDEX, decisions/decision-work-ids, decisions/decision-lane-split, records/author-calls, records/crypto-primitives, status-ledger, index]
 status: current
-updated: 2026-09-22
+updated: 2026-09-30
 ---
 
 # Arc: the crypto primitives
@@ -108,6 +108,30 @@ Three, and an ordering with no back-edges reads as a schedule.
    Observable: a differential gate names two representations of one object and
    runs in the suite; a law gate runs at the smallest member of a family; the
    published vectors live in a declared form rather than in shell.
+   ⚑ **RESCOPED 2026-09-30 against the author's direction** at
+   `.planning/DISPATCH-QUEUE.md:34`: *"lets sort out a process where you create
+   proper tests (like creating mini versions of the idea true to the math, in
+   stages)"*. The requirement named three instruments and no order among them,
+   so a gate could be pointed at an own configuration with nothing below it to
+   calibrate against. **Its shape is the ladder in the table below, rungs 0 to
+   5.** A rung has three parts: a mini version built from the same separated
+   step primitives `T1` fixes, true to the published mathematics; a published
+   number it reproduces, cited `PIN:LINE` into `.planning/sources/`; and, for
+   each check, the mutant that check must convict. Two representations of one
+   object agree at every rung. A rung starts once the rung below it is green,
+   and rung 4, the trail-search tool calibrated on published bounds, comes
+   before rung 5, the family's own configurations. Observable: for each rung a
+   gate row reproduces every number the table cites for it, byte for byte or
+   weight for weight against the pin; the rung's two representations agree on
+   every input the rung covers; and each named mutant, built and run, turns its
+   check red. A mutant that no check at its rung convicts is recorded as a
+   finding against that rung. ⚑ **The cost of rungs 1 and 4 is unmeasured.**
+   Whether one exhaustive pass over 2^25 states is affordable in chirality's
+   emitted code has not been measured. The CPU costs of the published trail
+   searches rung 4 calibrates against are in [[records/findings]] FD-60 section
+   5, and they are other programs' figures on other machines. Both are the
+   design stage's to measure, and each rung's gate runs alone under the queue's
+   rule for suite runs at `.planning/DISPATCH-QUEUE.md:38`.
 4. **Randomness enters through one discipline and everything downstream of it is
    deterministic and reproducible.** Observable: no module here reads entropy
    directly, a randomness source is linear so it cannot be reused, and a key
@@ -155,6 +179,22 @@ Three, and an ordering with no back-edges reads as a schedule.
    customer for a built idiom, and the honest reading of what it buys is refusal
    on the **binding** a ciphertext was produced under, not on the key's value.
 
+### The ladder requirement 3 runs
+
+Every number below was read at its pin on 2026-09-30. The two representations
+at rungs 0 to 3 are the lane-sliced form the family module is written in and a
+bit-indexed form written from the published definition, state bit `[x][y][z]`.
+`w` is the lane width, `b = 25w`, and the round count is `12 + 2l` at `w = 2^l`.
+
+| rung | mini version | published number it reproduces | mutant each check convicts |
+|---|---|---|---|
+| **0** | each step alone. χ over one 5-bit row, all 32 inputs. θ, ρ and π are linear, so each is checked over the `25w` unit states at each width from 25 to 1600. ι as the constant each round adds | χ: among the 31 nonzero input differences 5 have restriction weight 2, 15 weight 3 and 11 weight 4, `KECCAKREF:407-408`; of the 31 nonzero masks 10 have correlation weight 2 and 21 weight 4, `KECCAKREF:446-447`; a differential's cardinality is zero or a power of two, `KECCAKREF:383`; χ is invertible only on an odd number of bits, `XOODOODESIGN:923`. θ: the identity on the column parity kernel, `KECCAKREF:804-805`, of size `2^(20w)`, `:806`; the identity on states whose every column has odd parity, `:820`; branch number 4, `:808-809`, and at least 12 outside the kernel, `:818-819`. π: its matrix groups the lanes into one cycle of length 24 and the origin, `KECCAKREF:684-685`. ρ: the 25 offsets per width, `KECCAKIV200:24-48`, `KECCAKIV400:26-50`, `KECCAKIV800:28-52`, `KECCAKIV1600:30-54`. ι: the round constants, `KECCAKIV200:3-20`, `KECCAKIV400:3-22`, `KECCAKIV800:3-24`, `KECCAKIV1600:3-26` | χ over a 4-bit row, which the bijectivity check convicts. A θ that adds one column's parity in place of two, which the odd-parity identity at `:820` convicts. π replaced by any lane map whose orbit on the 24 non-origin lanes splits into more than one cycle, which the cycle check convicts. One ρ offset changed, which the offset lines convict at every width where the change survives reduction mod `w`. A round constant taken from the wrong round, which the constant lines convict |
+| **1** | Keccak-f[25], 12 rounds, over all 2^25 states. At `w = 1` every ρ rotation is the identity and θ's `z − 1` equals `z`, so no ρ mutant and no θ offset mutant is visible here, and rung 2 exists for them | a permutation, `KECCAKREF:1931`; 12 cycles at 12 rounds with the lengths of Table 4.4, `KECCAKREF:2216-2218`, which sum to 2^25; the cycle count at each round count from 1 to 12, Table 4.5, `KECCAKREF:2221-2224`; every member an even permutation, `:2178-2181`; no monomial above degree `2^i` after `i` rounds, `:1697-1698`; component functions at degree 4 after two rounds, 8 after three and 16 after four, `:2092-2093`, `:2103`, `:2163`; from 7 rounds every monomial up to order 24 present at close to one half, `:1929-1931`; `slide[25, n]` at the maximum degree tested after 8 rounds and its inverse after 7, `:1777-1779` | any step mutant from rung 0 that changes the permutation at `w = 1`, which the 12 cycle lengths convict. ι dropped, which the cycle lengths convict, since without ι every round is identical, `KECCAKREF:1764-1766` |
+| **2** | Keccak-f[50] and f[100], 14 and 16 rounds. The Matryoshka embedding: a state at `w = 1` repeated along `z`, run through f[50] or f[100] with ι removed, equals the repeated f[25] output with ι removed | every step but ι is translation-invariant along `z`, `KECCAKREF:329-330`; a state of `z`-period `d` at lane length `w` corresponds one to one with a state at lane length `d`, `:321-323`, and a `z`-invariant map's reduced output is independent of `w`, `:324-325`; without ι a symmetric input behaves as parallel identical copies of f[25], `:1735-1736`, and a 1-symmetric input stays 1-symmetric, `:1743-1744`; `slide[b, n]` is identically zero without ι, `:1772-1773`. The symmetric-lane ANF test: f[50] to f[400] need at least 3 rounds to impose dense nonlinear equations, and the inverse reaches the maximum degree tested after 6 rounds at f[50] and 5 at f[100], `KECCAKREF:1750-1756`. The results sit in `ANF-Keccak-f.ods`, `:1749`, which no pin holds, so this check waits on the design stage stating the test from §4.1.1's prose | ι dropped, which the symmetric-input check convicts. A step made to depend on `z`, which the embedding convicts. **A θ reading its second column at `z` in place of `z − 1`, and a changed ρ offset, are `z`-invariant and pass every published check at this rung.** No published number at `b = 50` or `100` reaches them, FD-54 section 7, so the comparison between the two representations is what convicts them here, and rung 3 convicts them again |
+| **3** | b = 200, 400, 800 and 1600, each step's output checked against XKCP's intermediate values | the state after each of θ, ρ, π, χ and ι for every round of two chained examples: 180 dumps at `b = 200` from `KECCAKIV200:50` and `:658`, 200 at `b = 400` from `KECCAKIV400:52` and `:726`, 220 at `b = 800` from `KECCAKIV800:54` and `:794`, 240 at `b = 1600` from `KECCAKIV1600:56` and `:862`; 18, 20, 22 and 24 rounds, the last constants at `KECCAKIV200:20`, `KECCAKIV400:22`, `KECCAKIV800:24`, `KECCAKIV1600:26` | every rung 0 mutant at the widths where it changes the state, convicted at the first dump that differs, which names the step. The all-zero example is zero until round 0's ι, so the chained second example is the one that exercises θ in round 0 |
+| **4** | the trail-search tool, `K37`, run on the family's own round at published widths before any own configuration. Its second representation at `b = 25` is exhaustive enumeration of two-round trail cores | minimum trail weight at `w = 1` for 2 to 6 rounds, differential 8, 16, 23, 30, 37 and linear 8, 16, 24, 30, 38, and at `w = 2` differential 8, 18, 29, 42, 54 and linear 8, 16, 30, 40, 52, Table 3.3, `KECCAKREF:1499-1504`; at `w = 1` five rounds leave no trail below weight 25, `:1479`; at `b = 100` the 4-round minimum is 30 differential and 38 linear, `:1486`, `:1492`; at `b = 200` the 3-round minimum is 20, `KECCAKTRAILS:121`, and a 4-round trail of weight 46 is the lightest, `KECCAKTRAILS:991-992`; the 6-round lower bound is 92 for widths above 100, `KECCAKTRAILS:987-988`. Xoodoo's 3-round minimum is 36, differential and linear, `XOODOODESIGN:719-720`, and Ascon-p's 3-round differential minimum is 2^-40, `ASCONTRAILS:157`; both need that design's round in the tree and wait on `C2` | a bounding function that prunes a subtree holding the minimum, which Table 3.3 and the exhaustive count at `b = 25` convict. A weight function that counts Hamming weight in place of restriction weight, which rung 0's χ weights convict, since restriction weight is Hamming weight plus the count of `001` patterns, `KECCAKREF:404-405` |
+| **5** | the family's own configurations at toy size, starting at `planes = 1`, `K39`. At small `w` a one-plane state is small enough for rung 1's exhaustive laws and rung 4's tool to both reach it | **none is published.** No analysis of a Keccak round at one plane exists, FD-59 section 5, and the column parity kernel has dimension `n(m − 1)`, `CPMIXERS:429-430`, which is zero at one row. The rung's standard is that its instruments reproduced rungs 0 to 4 unchanged | every mutant from rungs 0 to 4, rerun at one plane. What θ and π are at one plane is `K2`'s to design, since one plane leaves π nothing to restrict, `.planning/CRYPTO-MODEL.md:181-186` |
+
 ## Roster
 
 | row | what | group | kind | origin | req | state | element |
@@ -173,8 +213,8 @@ Three, and an ordering with no back-edges reads as a schedule.
 | `crypto-primitives/K12` | the PAKE: a short human-carried secret authenticating an exchange ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §6.** One primitive serves two callers: a pairing whose output is a link secret, and a route ceremony whose output is a shared routing key. The property to state is that the construction gives an attacker one online guess instead of an offline dictionary attack, which is what lets roughly twenty bits of spoken secret authenticate a full-strength exchange. | combine | law | new | 1 | open | `unminted` |
 | `crypto-primitives/K13` | the target declaration: what a target states beyond width, and the cost model that gives `best` a meaning | representation | decision | new | 5 | open | `unminted` |
 | `crypto-primitives/K14` | the representation registry and its admission test: what evidence a second encoding of one object supplies to be admitted | representation | law | new | 3 | open | `unminted` |
-| `crypto-primitives/K15` | the differential gate: two representations of one object agree, which is the floor `docs/definitions/testing-floors.md` records as cut | assurance | tool | new | 3 | open | `unminted` |
-| `crypto-primitives/K16` | the law gate: the field axioms, bijectivity and the representation round trip, run exhaustively at the smallest member of each family | assurance | tool | new | 3 | open | `unminted` |
+| `crypto-primitives/K15` | the differential gate: two representations of one object agree, which is the floor `docs/definitions/testing-floors.md` records as cut ⚑ **RESCOPED 2026-09-30 onto requirement 3's ladder.** This row owns the agreement at every rung: the lane-sliced module form against a bit-indexed form written from the published definition, compared on every input a rung covers, exhaustively at rungs 0 and 1, and at rung 4 the tree search against exhaustive enumeration at `b = 25`. At rung 2 the comparison is the only check that reaches θ's `z − 1` offset and ρ's offsets, since no published number at `b = 50` or `100` does. It is also the consumer FD-60 names: a configuration with no proven trail-weight bound from `K37` is refused | assurance | tool | new | 3 | open | `unminted` |
+| `crypto-primitives/K16` | the law gate: the field axioms, bijectivity and the representation round trip, run exhaustively at the smallest member of each family ⚑ **RESCOPED 2026-09-30 onto rungs 0, 1 and 2 of requirement 3's ladder.** χ's weight tables, θ's kernel and branch number, π's cycle, the cycle structure and degree statements of Keccak-f[25], the Matryoshka embedding at f[50] and f[100] and ι's break of it. **It waits on `T7`**, `.planning/CRYPTO-TRANSLATION.md:588`, for whether f[25], f[50] and f[100] are real modules or test-only instances, and the author has not ruled it. Whether rung 1's pass over 2^25 states is affordable in emitted code is unmeasured and is this row's design stage to measure | assurance | tool | new | 3 | open | `unminted` |
 | `crypto-primitives/K17` | the user-naming refusal: the crypto modules carry no identity, principal or permission type, and something checks it | representation | law | new | 6 | open | `unminted` |
 | `crypto-primitives/K18` | the randomness discipline: what consumes entropy, why a source is linear, and where deterministic derivation replaces a draw so `native-protocol/N2`'s crossing is spent once per identity ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §11.** The entropy row names three consumers and this row named none of them: keys, nonces, and cover selection. Cover selection draws every slot under §9's cadence, busy or idle, so the draw rate is a standing cost rather than a function of traffic. | representation | law | new | 4 | open | `unminted` |
 | `crypto-primitives/K19` | the AEAD over the machine: a Farfalle or duplex mode at the keyed round count, which is the bulk path and the largest throughput lever in the stack | modes | primitive | new | 2, 8 | open | `unminted` |
@@ -182,7 +222,7 @@ Three, and an ordering with no back-edges reads as a schedule.
 | `crypto-primitives/K21` | materialization as the third memory dial beside `budget` and `access`: how much of a derivable structure is stored against recomputed, and whether the schedule is written or derived from the target | representation | decision | new | 5 | open | `unminted` |
 | `crypto-primitives/K22` | the regime split: a public mark is unkeyed and one length, a private or group mark is keyed and shorter, and whether they are one type or two ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §4.** §4 prices unreadable and unreachable separately and says most private things want the first: a sealed value rides the **open** infrastructure as opaque bytes at nearly free, on the same path as any public value. That requires the sealed value to be addressed by a mark a stranger can verify, which a keyed mark is not, so the regime split has to say which mark addresses a sealed value. `R24` in §15 is the open fork and this row waits on it. | modes | decision | new | 2 | open | `unminted` |
 | `crypto-primitives/K23` | the domain separator: its encoding, whether the configuration rides in it, and the extension point the layer above needs ⚑ **AMENDED 2026-09-21 against `.planning/REACH-MODEL.md` §6, §7 and §10.** The consumers that size the extension point are now named: §10's envelope slices, one key derivation each and their count open as `R12`; §6's per-pairing link secret against its per-ceremony route key; and the tree's leaf against internal separation that `K29` rests on. | modes | law | new | 2, 8 | open | `unminted` |
-| `crypto-primitives/K24` | the vector tier: the published constants as declared data rather than 403 lines of shell, which is `.planning/CRYPTO-MODEL.md` `C7` | assurance | tool | new | 3 | open | `unminted` |
+| `crypto-primitives/K24` | the vector tier: the published constants as declared data rather than 403 lines of shell, which is `.planning/CRYPTO-MODEL.md` `C7` ⚑ **RESCOPED 2026-09-30 onto rung 3 of requirement 3's ladder, and onto every rung's published numbers.** It declares the four XKCP intermediate-value files, `KECCAKIV200` to `KECCAKIV1600`, as data: round constants, ρ offsets and the 840 per-step state dumps. It also holds each rung's published numbers as declared rows, each carrying its `PIN:LINE`, so a gate cites a number from one place. XKCP publishes no such file at `b = 25`, `50` or `100`, FD-54 section 7 | assurance | tool | new | 3 | open | `unminted` |
 | `crypto-primitives/K25` | the lattice arithmetic a KEM needs: `Z_q` at its moduli, modular reduction, the NTT and its inverse, and rejection sampling. `native-protocol/N6` predates the post-quantum target and says field arithmetic generically | asymmetric | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K26` | the wide-block payload cipher: a length-preserving strong pseudorandom permutation over the whole payload, so every payload bit changes and any modification invalidates all of it. `.planning/REACH-MODEL.md` §9 names it as one of the four mechanisms bitwise unlinkability needs, and it is not an AEAD: a 16 B tag beside a 12 B nonce expands what §9's fixed payload size forbids | modes | primitive | new | 2, 7 | open | `unminted` |
 | `crypto-primitives/K27` | the output length as a security parameter: what a truncated tag, a shortened digest and an expanded seed each buy and cost, with the refusal below a declared floor. `.planning/REACH-MODEL.md` §12 offers three, an 8 B per-hop MAC at a stated cost in forgery resistance, a 24 B digest at 96-bit collision resistance instead of 128, and 16 B of per-hop key material where the hop expands a seed, and this arc priced none of them | modes | law | new | 2, 7 | open | `unminted` |
@@ -195,13 +235,16 @@ Three, and an ordering with no back-edges reads as a schedule.
 | `crypto-primitives/K34` | the memory-hard derivation: a key from a human-chosen secret at a deliberate memory and time cost, the cost parameters declared, and the refusal for a target that cannot pay them. `.planning/RUNG2-MICROVM-MAP.md:284-287` puts hash, signature and KDF on the critical path from install onward and names Argon2 and scrypt for the KDF, which is the password-hashing job and **not** the key-expansion job `K4` configures the sponge for: `.planning/REACH-MODEL.md:520` prices its KDF at *"per-layer and per-parcel keys from a link secret"*, 32 B out, riding whichever hash is chosen. One word, two primitives, and this arc held only the second. `.planning/RUNG2-SECURITY-MODEL.md:112` adds the property the construction has to carry: a static passphrase reaching the same bundle every time is what leaves T2 unenforceable, so the derivation is salted and session-scoped rather than a pure function of the secret. ⚑ **This row collides with requirement 5 and with `K20`.** A memory-hard function's whole mechanism is a large deliberate allocation, so "no allocation in an inner loop" cannot mean here what it means elsewhere and the declared budget is the only thing it can be measured against. Its position is the off-path case requirement 7 now names | modes | law | new | 1, 5, 7, 8 | open | `unminted` |
 | `crypto-primitives/K35` | the derivation hierarchy: keys descend from one seed so that a child reveals nothing about a sibling or a parent, which is what makes `.planning/RUNG2-MICROVM-MAP.md:263`'s per-stage independent keys multiply across boot stages instead of adding. `.planning/CRYPTO-TRANSLATION.md:569` names it one of four things that must hold now for the deferred layer above to land without rework, and no row carried it. The boundary against two rows that neighbour it: `K18` says a deterministic derivation replaces an entropy draw, `K23` says how a domain is encoded, and neither states the independence property or the shape of the tree | representation | law | new | 4, 6, 8 | open | `unminted` |
 | `crypto-primitives/K36` | the key-and-context index: a keyed module's ciphertext, tag or derived key is a datum indexed by erased key and domain terms, so decryption under the wrong key or in the wrong context does not construct, and something shows every keyed module carries it. The same shape as `K17` for requirement 6 and `K33` for requirement 7, and the law and its check are one row here as they are there. `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md:371-375` applies its §3 witness move to ciphertext and calls key confusion and cross-context decryption *"most of the real CVEs"*. Two things this row settles before any design. **The index equates terms, not bytes**: two live keys bound through one variable are one key to the checker, so the refusal is over provenance and the row states that rather than inheriting the document's phrasing. **The carrier is new work**: `lib/` holds `(0 _ (type 0))` and `(0 _ I64)` and no erased binder over a data term anywhere, so `(Pool n)` at `lib/memory/mem-linear.chiral:15` is a precedent for the shape and not for the content. It carries the dependency `.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md:375` names, §3.3's rule that an erased position must be effect-free or 0 is not erasure, which is `E12`'s effect membrane and not this arc's to enforce | representation | law | new | 8 | open | `unminted` |
+| `crypto-primitives/K37` | the trail-search tool, rung 4 of requirement 3's ladder: a tree search over the family's own round that proves minimum differential and linear trail weight per round count, calibrated on the published bounds the ladder cites before it is pointed at any own configuration. Canonicity by `z`-translation carries over from the Keccak method, and FD-60 section 2 reads it as surviving at one plane. **It must work at `planes = 1`**, where θ's column parity kernel is empty and the Keccak and Xoodoo programs' two-round generation has no object, FD-60 section 2, so its generation phase is new work, and FD-60 names El Hirch et al.'s Ascon tool as the nearest published model. Calibration on Xoodoo and Ascon-p needs their rounds in the tree and waits on `C2`. KeccakTools and XooTools declare no licence, FD-60 section 4, so their source is read only under `docs/decisions/decision-inspiration-policy.md`. The published run costs are FD-60 section 5's and this tool's cost is unmeasured | assurance | tool | new | 3 | open | `unminted` |
+| `crypto-primitives/K38` | the mutant set requirement 3's ladder names: for each check at each rung, the mutant it must convict, built from the same step primitives and run through the check, which must go red. A mutant no check at its rung convicts is a finding against the rung. The ladder's table names the first set, and rung 2 already holds two published checks miss, θ's second column read at `z` and a changed ρ offset | assurance | tool | new | 3 | open | `unminted` |
+| `crypto-primitives/K39` | the family's own configurations at toy size, rung 5 of requirement 3's ladder, starting at `planes = 1`: the evidence FD-60 section 6 reads from practice computed here, meaning trail bounds to the round count used from `K37`, a degree table and an invariant-subspace check of the linear layer with its constants from `K16`'s instruments, and a clustering argument. No published number exists for it, FD-59 section 5. Third-party analysis stays owed, since no computation of this tree's own replaces it. **It waits on `C2`**, the row in [[records/author-calls]] beginning "Which instances the permutation family starts with", and on `K37` reaching rung 4 green | assurance | law | new | 2, 3 | open | `unminted` |
 
 ### Coverage
 
 Every requirement is named by at least one row: 1 by `K1`, `K3`, `K7`, `K8`,
 `K9`, `K10`, `K11`, `K12`, `K31`, `K32` and `K34`; 2 by `K1`, `K2`, `K4`, `K5`,
-`K6`, `K19`, `K22`, `K23`, `K25`, `K26`, `K27`, `K28`, `K29` and `K30`; 3 by
-`K14`, `K15`, `K16`, `K24` and `K29`; 4 by `K18`, `K30` and `K35`; 5 by `K13`,
+`K6`, `K19`, `K22`, `K23`, `K25`, `K26`, `K27`, `K28`, `K29`, `K30` and `K39`;
+3 by `K14`, `K15`, `K16`, `K24`, `K29`, `K37`, `K38` and `K39`; 4 by `K18`, `K30` and `K35`; 5 by `K13`,
 `K20`, `K21` and `K34`; 6 by `K17`, `K31` and `K35`; 7 by `K26`, `K27`, `K32`,
 `K33` and `K34`; 8 by `K19`, `K23`, `K34`, `K35` and `K36`.
 
@@ -296,11 +339,22 @@ tree, AEAD, arithmetic, classical asymmetric, PQ asymmetric, combiner, PAKE,
 entropy and constant time, with no credential layer among them. `K31` holds the
 question and settles nothing.
 
+⚑ **Requirement 3's ladder cost three rows and moved three.** Rungs 0 to 2 land
+on `K16`, rung 3 on `K24`, and the agreement between two representations at
+every rung on `K15`, each amended in place. No row held rung 4, the trail-search
+tool FD-60 found missing, which is `K37`; nor rung 5, the family's own
+configurations, which is `K39`; nor the mutant each check must convict, which is
+`K38`. `K14`'s admission test is untouched: it decides which second encodings
+exist, and the ladder only runs the ones it admits. No row was renumbered and
+none deleted.
+
 ## Resume state
 
 Opened 2026-09-07 with 25 rows and 6 requirements, none designed. 33 rows and 7
 requirements from 2026-09-21. 35 rows and 7 requirements from 2026-09-22.
-**36 rows and 8 requirements from 2026-09-22**, still none designed beyond `K1`.
+36 rows and 8 requirements from 2026-09-22. **39 rows and 8 requirements from
+2026-09-30**, with requirement 3 rescoped to a ladder, still none designed
+beyond `K1`.
 
 The translation tier landed the same day and is what this arc runs on:
 `docs/translations/` with its README, `tools/xlat/xlat.sh`, `pipeline-audit` at
@@ -409,6 +463,14 @@ at `4c1f0d2`, `ac6c560`, `a9e0104` and `cf57293`. The rows sit uncommitted in
 | `.planning/CRYPTO-TRANSLATION.md:387` says the 6-round count is sound because the construction is keyed; FD-61 reads the designers' reason as access and the sufficiency as a belief, with two Kravatte schedules broken | `revisit` of that section |
 | the same section's keyed capacity floor of 128 is one bit short under the N/2^(c−1) term, and `.planning/CRYPTO-MODEL.md` §7's `c ≥ 2S` is the unkeyed rule only (FD-61) | the same `revisit` |
 | `.planning/CRYPTO-MODEL.md` §9's Ascon bound at 4 rounds reads 2^-72; FD-59 finds it tightened to 2^-86 | the same `revisit` |
+| requirement 3's ladder, rungs 0 to 2: `K16` designed first, since every rung above calibrates on it, and its design measures rung 1's 2^25 pass in emitted code before any gate runs it | `element-design` of `K16`, after the `K1` translation it reads its steps from |
+| the representation agreement, the mutant set, and rung 3's declared vectors | `element-design` of `K15`, `K38` and `K24`, one at a time |
+| rung 4, the trail-search tool calibrated at `b = 25` to `200` before any own configuration | `element-design` of `K37`, which measures its own cost |
+| rung 5, the family's own configurations from `planes = 1` | `K39`, after `C2` is ruled and `K37` is green at rung 4 |
+| where Keccak-f[25], [50] and [100] live, which `K16` waits on | the author, `T7` at `.planning/CRYPTO-TRANSLATION.md:588` |
+
+⚑ The second row of this table, the trail-search tool no row held, is `K37`
+from 2026-09-30.
 
 The crypto queue's vertical order and its pause, written 2026-09-28 in
 `ba709a9` with no author quote, do not bind this arc: it runs in waves per the
