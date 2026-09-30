@@ -11,6 +11,7 @@ holds the rulings and the rejections this file is checked against.
 | L2 | The open question is the lock's own side: *"the complicated part for this bit is the opposite side of this and what solutions say about where structure needs to go"* |
 | L3 | Access granted is successful decryption. The author: *"access granted is positionally identical to successful decryption"*. A lock is sealed data, and the correct thing is the key that opens it |
 | L4 | The lock is read from what it asks of a key. The author: *"approach from what this asks of key perspective"* |
+| L5 | A lock is opened only by talking to a stall. The author, 2026-09-30, naming the rule this model needs: *"lock can talk to a stall"*. With expiry held by the stall alone, a lock is passive data with no time in it, so a copy of it opens wherever a copy of its key survives. The rule closes that: a lock names what it needs through its handle, and the stall that holds the key and the schedule answers or refuses |
 
 ## Consequences of L3
 
@@ -26,7 +27,7 @@ For "decrypts" to mean "the correct key", the structure has to sit in the cipher
 |---|---|---|
 | S1 | a commitment to the one key that opens it | a non-committing AEAD can decrypt successfully under two different keys, so success no longer names the key |
 | S2 | the lock's context and domain | a lock opens as a different lock |
-| S3 | the epoch | an old key opens a rotated lock |
+| S3 | the epoch | an old key opens a rotated lock. ⚑ The epoch carries no time. Expiry is the stall's alone, per L5 and `.planning/KEY-STALL-KEY.md` |
 | S4 | a nonce derived from the key and the content | a nonce counter is state that rollback (X6) can reuse |
 
 ## What opening asks of a key
