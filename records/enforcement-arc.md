@@ -429,3 +429,12 @@ narrowed rather than cleared.
 - evidence: docs/arcs/enforcement-arc.md:25-28 (owned rows), :514-519 (roster count), :531-535 (`effect` group), :563 (`N25`), :564 (`N26`), :568 (coverage), :600-607 (resume state), :710-711, :730 (handoff paths); records/homing-triage.md:105, :117, :225; records/author-calls.md:537; docs/decisions/decision-effect-facets.md:72-76, :77-86; lib/surface/syntax.chiral:12; lib/typing/effects.chiral:34-46; lib/typing/kernel.chiral:898, :1001; docs/elements/catalog.md:169, :491; docs/elements/ledger.md:113, :114, :116, :121; docs/examples/E26-alarm-control-flow.md:30-31, :134-139; docs/arcs/memory-discipline-arc.md:102; .planning/archive/handoffs/LANE-1-effect-row.md:1
 - checked:  2026-09-30
 - element:  `enforcement/N25` at `E39` and `enforcement/N26` at `E171`, both `open`, next stage `element-design`, `N25` first because `memory-discipline/M9` waits on it. No element was minted, nothing under `lib/` or `prog/` changed, and [[records/findings]] stays untouched. **Owed elsewhere:** the `:12` citation in `memory-discipline/M9` and FD-62; [[arcs/README]]'s row for this arc (`docs/arcs/README.md:165`), which still reads five rows; the `E26` example's placement of row subtraction.
+
+### EN-38 `N26` deferred extern honesty to a row that did not exist
+
+- state:    FIXED
+- claim:    `docs/arcs/parts/enforcement-N26.md` §5 row 10 read *"DEFERRED: unrostered"*, and the design charter allows DEFERRED only to an existing `E#` or roster row
+- measured: **2026-09-30, the `N26` design audit's FLAG, verbatim:** *"§5 row 10 DEFERS extern honesty to an unrostered item; the charter allows DEFERRED only to an existing E# or roster row. Open an enforcement roster row for 'every extern declared `->` issues no syscall', then re-point row 10."* The orchestrator opened `enforcement/N27` and repointed row 10. 44 lines under `lib/` and `prog/` match `(extern NAME (->`
+- evidence: docs/arcs/enforcement-arc.md row `N27`; docs/arcs/parts/enforcement-N26.md §5 row 10
+- checked:  2026-09-30
+- element:  `enforcement/N27`, `open`, `unminted`

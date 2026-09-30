@@ -25,8 +25,8 @@ updated: 2026-09-30
 
 - **The row:** the kernel refuses an application of an effectful Pi made at a
   pure seat. The seat a body runs at is the seat of the Pi its lambda is checked
-  against; a def body other than a lambda runs pure; an argument at a
-  quantity-0 position is checked pure. The rule is complete on today's bit and
+  against; a def body other than a lambda runs pure; an erased position, a
+  quantity-0 argument or `let` value or a type, is checked pure. The rule is complete on today's bit and
   is written as one predicate that `enforcement/N25` later widens to row
   subsumption without touching the rest.
 - **Serves:** requirement 1 of [[arcs/enforcement-arc]], "A capability sits at
@@ -87,13 +87,33 @@ or may halt `=>`. Quantity-0 positions: 0 sites. Probe limits: 7 lambdas had no
 expected type (0 sites under them); 144 application heads in pure seats
 resolved to no type, and are names used outside their file's import closure.
 
+**Re-measured by the kernel at audit.** A scratch copy of `lib/typing/kernel.chiral`
+patched with this row's rule (the ambient taken from the Pi at the `t-lam` arm,
+the refusal in `infer-app`, quantity-0 arguments checked pure), built into a
+compiler by `bin/chirality-bin` and run over all 105 roots that define
+`compile-main`, refuses exactly four: `turn-test.prog` in `depth-ok` on
+`assign-plan`, `prapanca-divide-live.prog` in `show-chunks`,
+`prapanca-evidence-sift-refined-live.prog` in `dump-pure` and
+`prapanca-parse-robust-test.prog` in `dump`, each on `put`. With those four
+retyped `=>`, all four compile. Every other root keeps its outcome, including
+`prog/compiler.prog`. A second build that also checks a quantity-0 `let` value, a
+Pi's domain and codomain and an annotation's type pure refuses the same four. The
+67 files no root imports, loaded one by one, add only `prog/demo/_eff.chiral`.
+Two of them under `lib/`, `lib/memory/arena.chiral` and
+`lib/typing/reflect-floor.chiral`, fail to load today, so the kernel does not
+reach their bodies and the probe's 0 stands for them. **The count holds: five
+sites in four compiling roots, 0 under `lib/`.**
+
 ## 3. The delta
 
 1. **An ambient seat.** `check` and `infer` carry no seat, so no judgment knows
    whether it runs pure.
 2. **The refusal.** `infer-app2` binds the head's seat and never reads it.
-3. **Rule 2.** An argument at a quantity-0 position is checked at the caller's
-   seat. An effectful call there would be erased and never run.
+3. **Rule 2.** An erased position is checked at the caller's seat: a
+   quantity-0 argument, a quantity-0 `let` value, and a type (a Pi's domain and
+   codomain, an annotation's type, which the kernel forms at quantity 0,
+   `lib/typing/kernel.chiral:852-853`). An effectful call there would be erased
+   and never run.
 4. **A diagnostic.** No `Judg` arm says "effectful application at a pure seat"
    (`lib/typing/diag.chiral:99-100` is the table).
 5. **The four roots** and the demo, retyped and repaired.
@@ -113,8 +133,9 @@ call-graph pass adds nothing the per-call check misses.
 - **Form:** `infer`, `check` and the 38 helpers that take `(sig c …)` take the
   ambient seat. `check-body`'s `t-lam` arm checks the body at the seat of the
   Pi it is checked against. `infer-app2` refuses when `(seat-sub s amb)` is
-  false, and checks an argument at a quantity-0 domain with the ambient pure.
-  Top-level callers pass `(s-pure)`.
+  false, and checks an argument at a quantity-0 domain with the ambient pure;
+  `infer-pi`, `infer-ann` and a quantity-0 `let` check their erased subterms
+  with the ambient pure. Top-level callers pass `seat-none`, the pure ambient.
 - **Costs:** one parameter on 38 helper heads and their call sites, most of
   them one token each; the loader's eight `infer`/`check` calls.
 - **Forbids:** an effectful call at a pure seat, directly, through a callback
@@ -164,15 +185,20 @@ call-graph pass adds nothing the per-call check misses.
 
 **The predicate, on today's bit.** `(seat-sub callee amb)`: true when
 `(seat-crosses callee)` is false, else `(seat-crosses amb)`. Beside `seat=` at
-`lib/typing/kernel.chiral:559`.
+`lib/typing/kernel.chiral:559`, with `seat-none` defined as `(s-pure)`.
 
-**Why `N25` needs no rewrite of this row.** Under `N25`'s Shape B the Pi's
-seat becomes a record holding a row, and `N25` §5 already writes subsumption
-over rows and routes `seat-crosses` through `row-crosses`. What changes here
-when `N25` lands: `seat-sub`'s body becomes that subsumption, and the ambient
-the `t-lam` arm passes is the row evaluated at the lambda's fresh variable,
-which `N25`'s own eval change produces beside the codomain. The threading, the
-refusal site, the quantity-0 rule, the `Judg` arm and the corpus stay. Every
+**What `N25` replaces, and what stays.** Under `N25`'s Shape B the Pi's seat
+becomes a record holding a row scoped like the codomain, and `N25` §5 already
+writes subsumption over rows and routes `seat-crosses` through `row-crosses`.
+Three reads change when `N25` lands. `seat-sub`'s body becomes that
+subsumption. The ambient the `t-lam` arm passes is the row evaluated at the
+lambda's fresh variable, which `N25`'s own eval change produces beside the
+codomain. The callee's seat that `infer-app2` hands `seat-sub` is the row
+evaluated at the argument, as the codomain is by `clos-apply`, because `M9`'s
+block names its own binder `s` in its row. The pure ambient is one def, `seat-none`,
+which every top-level caller, the quantity-0 rule and the other erased positions name,
+so the empty row replaces it in one place. The threading, the refusal site, the
+erased-position rule, the `Judg` arm and the corpus stay. Every
 program the bit refuses is refused by the row: a pure ambient is the empty row
 and a crossing callee's row holds an entry. Under `N25`'s recommended reading of
 a bare `=>` as the top row, every program the bit accepts is accepted by the
@@ -183,8 +209,13 @@ pure by a seal rule that removes the region entries from its type
 (`docs/arcs/memory-discipline-arc.md:102`). The refusal reads the head's type
 at the call, so a sealed block, whose type no longer crosses, is accepted, and
 this row names no exemption and needs nothing from `M9`. The consequence for
-`M9`: a seal written as a `->` library def that applies its `=>` argument is
-refused here, so the seal is a kernel rule.
+`M9`: a seal written as a `->` def that applies its `=>` argument is refused
+here. Probed at audit on the patched kernel: `(def seal (-> (=> Unit I64) I64)
+(lam (b) (b unit)))` loads today and is refused at `(b unit)`. An extern
+declared `(-> (=> Unit I64) I64)` and applied at a pure seat is accepted, since
+the refusal reads declared types. So the seal is a kernel rule, or an extern
+trusted as the extern-honesty row below would check it; a def in chirality
+cannot be it.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
@@ -193,11 +224,11 @@ refused here, so the seal is a kernel rule.
 | 3 | Granularity against E160/E161's module port set | RESOLVED: per arrow, independent of the module coordinate | E161 made the type the authority, `lib/typing/kernel.chiral:305`; `crossings` stays sense (a) BINDS |
 | 4 | The seat of a body between curried binders | RESOLVED: pure, the innermost binder carries the bit | `build-pis`, `lib/surface/surface.chiral:101-106` |
 | 5 | A top-level def whose type lacks an arrow | RESOLVED: pure | P2; 0 sites measured |
-| 6 | Rule 2, quantity-0 arguments | RESOLVED: checked pure | `lib/typing/effects.chiral:39-40`; 0 sites measured |
+| 6 | Rule 2, erased positions | RESOLVED: checked pure, a quantity-0 argument or `let` value and a type | `lib/typing/effects.chiral:39-40`, "a q0 (erased, runtime-absent) position must be pure"; 0 sites measured by the kernel (§2) |
 | 7 | Rule 3, on-binder | RESOLVED: built | E159, `lib/typing/kernel.chiral:360` |
 | 8 | An exemption for debug output in pure code | RESOLVED: none | P2; `M9`'s seal is the one sanctioned route |
 | 9 | Blast radius | RESOLVED: 5 sites in 4 roots, retyped in the build | §2 |
-| 10 | Extern honesty: a `->` extern that crosses | DEFERRED: unrostered, below | declared types are the trust root this rule reads |
+| 10 | Extern honesty: a `->` extern that crosses | DEFERRED: `enforcement/N27` | declared types are the trust root this rule reads |
 
 No NEEDS-AUTHOR. No register row is owed.
 
@@ -208,19 +239,20 @@ No NEEDS-AUTHOR. No register row is owed.
   minted.
 - **Band:** none drawn. `E171` predates the arc's block `E184-E189`.
 - **Catalog row, amended:**
-  `| E171 | **The `->`/`=>` membrane, enforced at the CALL.** The kernel threads the seat a body runs at: the seat of the Pi a lambda is checked against, pure for a non-arrow def and for a quantity-0 argument. `infer-app` refuses an application whose Pi crosses at a seat that does not, through one predicate `seat-sub` that E39 widens to row subsumption. Rule 3 of the model is E159's. Transitivity follows from checking every body against its written arrow; externs are the trust root | Not built. Measured 2026-09-30: the refusal is absent at HEAD (a `(-> Str I64)` def calling a `=>` def prints and exits 7); 0 sites under `lib/`; 5 sites in 4 `prog/` roots redden and are retyped `=>`. Relations: ←E12 · ←E159 · →E39 widens `seat-sub` · `memory-discipline/M9`'s seal is accepted as a kernel rule | `OURS` (`lib/typing/kernel.chiral` as the destination; `PRINCIPLES.md` P2/P3 as the contract; `docs/banks/effect-and-alarm.md`) | SH |`
+  `| E171 | **The `->`/`=>` membrane, enforced at the CALL.** The kernel threads the seat a body runs at: the seat of the Pi a lambda is checked against, pure for a non-arrow def and at every erased position. `infer-app` refuses an application whose Pi crosses at a seat that does not, through one predicate `seat-sub` that E39 widens to row subsumption. Rule 3 of the model is E159's. Transitivity follows from checking every body against its written arrow; externs are the trust root | Not built. Measured 2026-09-30: the refusal is absent at HEAD (a `(-> Str I64)` def calling a `=>` def prints and exits 7); 0 sites under `lib/`; 5 sites in 4 `prog/` roots redden and are retyped `=>`. Relations: ←E12 · ←E159 · →E39 widens `seat-sub` · `memory-discipline/M9`'s seal is accepted as a kernel rule | `OURS` (`lib/typing/kernel.chiral` as the destination; `PRINCIPLES.md` P2/P3 as the contract; `docs/banks/effect-and-alarm.md`) | SH |`
 - **Ledger row, amended:**
-  `| E171 | membrane | design | The `->`/`=>` membrane refused at the call, on the one-bit seat. Check: a gate phase with a refusing fixture per class (direct call, callback parameter, `Mach`-style field, partial application saturating at a pure seat, quantity-0 argument, non-arrow def) and accepting controls (a `=>` body, a curried `=>` returning a closure, the E42 sample still refused by `conv`), each with a mutant that drops the refusal; the four retyped roots compile; BUILD RULE `C1 == C2` | | SH |`
+  `| E171 | membrane | design | The `->`/`=>` membrane refused at the call, on the one-bit seat. Check: a gate phase with a refusing fixture per class (direct call, callback parameter, `Mach`-style field, partial application saturating at a pure seat, quantity-0 argument, quantity-0 `let` value, non-arrow def) and accepting controls (a `=>` body, a curried `=>` returning a closure, the E42 sample still refused by `conv`), each with a mutant that drops the refusal; the four retyped roots compile; BUILD RULE `C1 == C2` | | SH |`
 - **SPEC:** none exists for `E171`. `design-to-spec` writes it from this file.
 - **Size:** about 9 files and 190 lines. `lib/typing/kernel.chiral`: the
   parameter on 38 helper heads and their call sites, `seat-sub` at about 4
   lines, the refusal and the quantity-0 rule at about 10, the `t-lam` arm at 2,
   and the comments at `:14-15`, `:898`, `:1001` rewritten. `lib/module/loader.chiral`:
-  8 call sites. `lib/typing/totality-check.chiral` and
-  `lib/typing/kernel-core.chiral`: their `infer` calls. `lib/typing/diag.chiral`:
+  7 call sites (`:391`, `:398`, `:419`, `:437`, `:463`, `:508`, `:519`).
+  `lib/surface/parse.chiral:807` and `lib/typing/kernel-core.chiral:58`: one
+  `infer` call each. `lib/typing/diag.chiral`:
   one `Judg` arm and its text, about 3 lines. Four `prog/` declarations retyped
   and `prog/demo/_eff.chiral:3` repaired to `(put "x")` so it is refused for the
-  membrane. A gate script at about 90 lines with 8 fixtures. Basis: the counts
+  membrane. A gate script at about 95 lines with 9 fixtures. Basis: the counts
   in §2 and a grep of `(lam (sig c` in `lib/typing/kernel.chiral`.
 - **Related:** [[arcs/enforcement-arc]] `N25`; [[arcs/memory-discipline-arc]]
   `M9`; `E12`; `E159`; `E39`; [[banks/effect-and-alarm]].
@@ -230,7 +262,7 @@ No NEEDS-AUTHOR. No register row is owed.
 | what | why this row needs it | where it would go |
 |---|---|---|
 | a check that every extern declared `->` issues no syscall | the refusal trusts declared arrows; 43 externs open with `->`, 35 of them in `lib/prelude/prelude.chiral`, and `prog/prapanca/backend.chiral:40-44` states its no-syscall claim in a comment | an `enforcement` row beside `N20`'s extern census |
-| `M9`'s seal must be a kernel rule | a `->` def that applies its `=>` block is refused here (§5) | carried into `memory-discipline/M9`'s design |
+| `M9`'s seal is a kernel rule or a trusted `->` extern | a `->` def that applies its `=>` block is refused here (§5, probed) | carried into `memory-discipline/M9`'s design |
 | `prog/scriba/flook.chiral` names the unbound type `flook-list` and has no importer | it is one of the seven sites and cannot load today | a revisit of the scriba subtree |
 | `lib/typing/effects.chiral:1-6` still says "effects.py stays the oracle", and its three rules are superseded once `E171` and `E39` land | the model this row declines to call (Shape D) | a `doc-audit` of that file, or `N25`'s SPEC |
 | the ledger row `E171` cites `ports/stdio.chiral:11` and a 1,102,200-byte compiler | the file is `lib/ports/stdio.port:11` and the binary is 1,253,752 bytes today | a clerical edit with the amended row above |
