@@ -13,6 +13,7 @@ file is checked against.
 | K3 | Open is shredded from memory as soon as possible. The author: *"open needs to be more specific about shred from memory asap"* |
 | K4 | Split is Shamir over the key. Where the shares live is the stall's. The author: *"split here is shamir not stall stuff"* |
 | K5 | An old key dies everywhere and is irrecoverable at expiration, except by a legitimate extension made before it. The author: *"can we make old keys just die all around? irrecoverrable at expiration (outside of legit expiration extension) should be the case right?"* |
+| K6 | Decryptability is structurally bound to expiry. The author, 2026-09-30: *"make ability to decrypt structurally bound to expiry so its literally just unable to be decrypted outside of"*, and *"we can totally bind this"*. It binds because no whole key exists at rest: shares at rest (K4), whole only for one operation (K3). Every share and the lock's commitment (S1) carry the expiry, shares recombine only with shares of the same epoch and expiry, and each share is shredded at expiry. After expiry nothing exists to recombine. What remains: K stalls compromised before expiry, the one-operation copy read from memory, and a clock rolled back on K stalls |
 
 ## States, draft
 
@@ -41,11 +42,11 @@ Each move consumes the state it leaves, so a key is in one state at a time.
 | bound | dropped | expiration passes, or an explicit drop |
 | split | dropped | the same, and every share goes with it |
 
-## What K5 costs
+## What K5 and K6 cost
 
-- **A lock sealed under a dying key dies with it** unless it is resealed under its successor first. Rotation is therefore a migration: open under the old key, seal under the new one, then drop the old key.
-- **Expiration needs a clock, and a clock is a port.** On one device offline, a clock rolled back (X6) delays the drop. An epoch advanced by an event, such as a rotation or a revocation, needs no clock and is offline-safe. Expiration by time is only as strong as the time source.
+- **A lock sealed under a dying key dies with it** unless an extension reseals it under the new expiry first.
+- **Each stall reads its own clock.** A clock rolled back (X6) keeps that stall's share alive, so it takes K rolled-back stalls to open after expiry.
 
 ## Open
 
-Whether expiration is by time, by event, or both.
+What an extension requires, and who may make one.
