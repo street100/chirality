@@ -397,6 +397,19 @@ Keccak translation or any design audit:
 | KR3 | what analysing a new permutation in-house takes: the trail-bound and algebraic methods, the tools, the bounds designers publish per round count, and whether it runs CPU-only here |
 | KR4 | what the sponge, duplex, Farfalle and tree modes assume of the permutation, and what a permutation with no public cryptanalysis must show before those proofs apply to it |
 
+⚑ **The pre-wave ran 2026-09-30 and all four rows are written**: KR1 is
+[[records/findings]] FD-58, KR2 FD-59, KR3 FD-60, KR4 FD-61, 30 pins committed
+at `4c1f0d2`, `ac6c560`, `a9e0104` and `cf57293`. The rows sit uncommitted in
+`records/findings.md` beside the author's FD-52 to FD-54. What they leave:
+
+| owed | where it lands |
+|---|---|
+| which instances the family starts with, now registered in [[records/author-calls]] as `C2` sharpened | the author |
+| a trail-search tool for the family's own round that works at `planes = 1`, which no roster row holds (FD-60) | this roster, by `revisit` |
+| `.planning/CRYPTO-TRANSLATION.md:387` says the 6-round count is sound because the construction is keyed; FD-61 reads the designers' reason as access and the sufficiency as a belief, with two Kravatte schedules broken | `revisit` of that section |
+| the same section's keyed capacity floor of 128 is one bit short under the N/2^(c−1) term, and `.planning/CRYPTO-MODEL.md` §7's `c ≥ 2S` is the unkeyed rule only (FD-61) | the same `revisit` |
+| `.planning/CRYPTO-MODEL.md` §9's Ascon bound at 4 rounds reads 2^-72; FD-59 finds it tightened to 2^-86 | the same `revisit` |
+
 The crypto queue's vertical order and its pause, written 2026-09-28 in
 `ba709a9` with no author quote, do not bind this arc: it runs in waves per the
 2026-09-29 ruling, and the first slice is `K1` to `K4`.
