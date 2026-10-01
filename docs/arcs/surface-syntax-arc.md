@@ -3,7 +3,7 @@ node: arc-surface-syntax
 layer: navigation
 related: [arcs/README, goals/readable-surface, arcs/file-types-arc, arcs/diagnostics-arc, syntax-evolution, design-principles, modules-core, status-ledger, decisions/decision-lane-split, decisions/decision-work-ids, decisions/decision-scope, elements/catalog, records/homing-triage, records/lenses/unspoken, index]
 status: current
-updated: 2026-09-14
+updated: 2026-10-01
 ---
 
 # Arc: surface-syntax
@@ -226,6 +226,14 @@ an extraction from files already enumerated here, and it is the input `SY1`
 needs to be answerable. `SY4` is the second for the same reason: its harness
 half is buildable against one front-end and it becomes `SY3`'s acceptance test
 the moment a second surface exists.
+
+⚑ **Ruled 2026-10-01, after this file was written.** The author settled
+`SY1` in session: raw s-expressions stay, and a simpler coder surface is added
+over the same core and translates to raw and back. The register row is the
+stage-4 fork row in [[records/author-calls]], and `.planning/SYNTAX-REWORK.md`
+holds the discussion, the research (FD-66 to FD-70) and the reader rules it
+supports. The paragraph below is the state before the ruling. The roster's
+`SY1` cell moves with the arc's revisit, `SR6` in `.planning/DISPATCH-QUEUE.md`.
 
 ⚑ **The stage-4 fork is an author call and this run does not take it.** No row
 in [[records/author-calls]] carries it, so there is nothing to quote. The
