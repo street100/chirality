@@ -178,6 +178,50 @@ session's scratch directory, and the rows are merged into
 | SR8 | the kind map the author outlined 2026-10-01 (`.planning/FILE-KIND-STRUCTURES.md` §Amended 2026-10-01): collect the raw split schema from `splitting-law`, `joining-law` and `MAP.md` into one; amend `MAP.md` §Extensions (`.prog` becomes the coder view, so where an entry lives reopens); `revisit` [[arcs/file-types-arc]] against the map | [[goals/readable-surface]] condition 4 | nothing |
 | SR7 | the form inventory, `.planning/FORM-INVENTORY.md`, extracted from `lib/surface/` and the loader for the author's review; dispatched 2026-10-01. It is the draft `surface-syntax/SY2`'s design adopts | [[goals/readable-surface]] condition 4 | nothing |
 
+### Before the enforcement waves start, 2026-10-01
+
+Asked by the author the same day: what this session left rough that the waves
+need first. In order, each with what it unblocks.
+
+1. **The edits today's rulings left, R1 to R7.** Mechanical, no call. The
+   design runs on `N25`, `CK20` and `L5` read parts that still list answered
+   questions as open, so these go before any design run touches them.
+2. **Classes [[bug-classes]] lacks, which condition 1 quantifies over.**
+   - The syntax and source classes FD-66 and FD-68 name: optional delimiters,
+     assignment for comparison, precedence, fallthrough, look-alike and bidi
+     source, read-time evaluation. The list holds none of them.
+   - A checker that accepts a program which crashes, PRB-107. Today a
+     `declare` and a later `def` of another type both load.
+   - A refinement whose operator silently changes meaning, PRB-106.
+   - An integer literal that wraps, PRB-108.
+   - An error result dropped unhandled, `G5`.
+
+   One [[bug-classes]] pass adds them with owners. PRB-106 and PRB-107 fold
+   into `FE4`, the checker-core revisit. PRB-108 and the syntax classes go to
+   `SR6`.
+3. **The register's derivable calls, wave 1b.** `:84` gates `N13` and `N14`,
+   `:86` gates `E184`'s R1 and R7, `:113` the fixpoint phase, `:119` the region
+   class, `:540` and `:541` gate `N15`, `:542` gates `N16`. `:85` needs a clerical
+   close. Two author-only calls the screen counted went unnamed and are
+   screened again before the batch.
+4. **The grade factor set, `G2` then `G3` in `.planning/GRADE-ARCHITECTURE.md`.**
+   `enforcement/N30` (`E38`) locks the factor list and `N25` gives the effect
+   row; both read as provisional until the factor-set decision says whether
+   authority and binding time are factors and what the row is checked as. The
+   other enforcement rows proceed without it.
+5. **The gates in a cloud checkout.** At a 50-commit clone the suite is red on
+   history it lacks and its headline prints `0 failed` beside three failures.
+   Wave 5 exits on a green suite, so `N11`'s tally fix and `N36`'s
+   depth-independence come before implementation, or the environment's clone
+   depth is raised.
+6. **Cadence.** The serial rule above stands. Five research runs went out at
+   once on 2026-10-01 as a departure; whether the waves stay strictly serial is
+   the author's, and `.planning/protocol/dispatch.md` §What a fan-out costs
+   carries the measured price of running wide.
+
+Not needed for enforcement and left for later: `SR6`, `SR8`, the kind map, the
+typed text system, UNS-52 on requiring meaningful logic tests.
+
 ## Held from before the waves
 
 These keep their order and join a wave when their arc's turn comes.
