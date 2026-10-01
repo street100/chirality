@@ -24,8 +24,8 @@ The author's words, verbatim, 2026-10-01:
 Offered three shapes for the goal tier the same day, the author chose the
 first, *"Amend enforcement's claim"*.
 
-`docs/goals/enforcement.md:9` claimed that what is built is gated and that the
-compiler's claims about its own work are checked. The goal now claims that
+The goal claimed *"what is built is gated, and what the compiler claims it
+checks"* (`docs/goals/enforcement.md:9` at `2faa028`). It now claims that
 every obligation `PRINCIPLES.md` implies sits at ENFORCED on the
 [[status-ledger]] rungs, or that the row holding it says why it does not.
 
@@ -41,7 +41,8 @@ Three things, each with one home.
 
 The widening is in the first two rows. Condition 1 read *"A capability sits at
 ENFORCED, or its ledger row says why it does not"*
-(`docs/goals/enforcement.md:25`), which quantifies over what has been built. A
+(`docs/goals/enforcement.md:25` at `2faa028`), which quantifies over what has
+been built. A
 class nobody had built anything for sat outside every condition, and
 [[bug-classes]] listed 28 of them under `status: draft` with no goal reading
 the list.
@@ -81,7 +82,7 @@ classes, with the owning goal named in the row.
 | option | why it lost |
 |---|---|
 | keep the claim and cascade below it | the principle-derived classes would sit in [[bug-classes]] with no goal condition quantifying over them, and a class no condition names schedules nothing |
-| a second goal for the gates themselves | `docs/goals/enforcement.md:36` and `docs/goals/presentability.md:42` already state the run-mutant condition under two goals, and a third goal would give it a third home |
+| a second goal for the gates themselves | `docs/goals/enforcement.md:36` at `2faa028` and `docs/goals/presentability.md:42` already state the run-mutant condition under two goals, and a third goal would give it a third home |
 
 ## What this does not rule
 

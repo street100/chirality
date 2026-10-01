@@ -49,7 +49,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/self-tooling]] | in flight | [[arcs/zero-python-arc]], [[arcs/text-tools-arc]] |
 | [[goals/readable-surface]] | in flight | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]], [[arcs/surface-syntax-arc]] |
 | [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
-| [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]], [[arcs/syscall-custody-arc]] |
+| [[goals/enforcement]] | in flight; claim widened 2026-10-01 to every obligation the principles imply, [[decisions/decision-full-enforcement]] | [[arcs/enforcement-arc]], [[arcs/syscall-custody-arc]] |
 | [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
 | [[goals/bridge]] | stated 2026-09-02, unbuilt | [[arcs/bridge-arc]] |
 | [[goals/module-split]] | in flight, one measured miss | [[arcs/module-split-arc]], [[arcs/part-split-arc]] |
