@@ -19,8 +19,7 @@ derivation, the first sentence says so, with the date it was stated.>
 ## What done means
 
 Numbered. Each condition checkable, with the observation stated beside it. Each
-names its arc, or says it is unopened. Five or fewer: a goal with nine
-conditions is two goals.
+names its arc, or says it is unopened.
 
 1. **<condition>.** <What would be observed. The gate that would fail, the count
    that would move, the file that would exist.> [[arcs/<name>-arc]].

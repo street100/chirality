@@ -1,0 +1,1179 @@
+                             EverParse: Verified Secure Zero-Copy Parsers
+                                 for Authenticated Message Formats
+
+       Tahina Ramananandro∗                Antoine Delignat-Lavaud∗                   Cédric Fournet∗                    Nikhil Swamy∗
+                             Tej Chajed†           Nadim Kobeissi‡                   Jonathan Protzenko∗
+              ∗Microsoft Research               †Massachusetts Institute of Technology                                 ‡Inria Paris
+
+
+
+                                                                                                            LowParse
+                          Abstract
+                                                                                                            F* Spec
+                                                                          DSL Spec
+We present EverParse, a framework for generating parsers                    (TLS,     QuackyDucky            F* Impl                     F* App
+and serializers from tag-length-value binary message format                ASN.1)
+                                                                                                           Low* Impl
+descriptions. The resulting code is verified to be safe (no
+overflow, no use after free), correct (parsing is the inverse of
+serialization) and non-malleable (each message has a unique                                         Memory-safe, zero-copy C code        C App
+binary representation). These guarantees underpin the security
+of cryptographic message authentication, and they enable
+testing to focus on interoperability and performance issues.                             Figure 1: EverParse architecture
+   EverParse consists of two parts: LowParse, a library of
+parser combinators and their formal properties written in F? ;
+and QuackyDucky, a compiler from a domain-specific lan-                 format specifications, or even from type declarations in Java
+guage of RFC message formats down to low-level F? code                  or C++. However, when parsing is on the critical path of
+that calls LowParse. While LowParse is fully verified, we do            an application’s performance, or because of requirements of
+not formalize the semantics of the input language and keep              the message format (such as compliance with a standard),
+QuackyDucky outside our trusted computing base. Instead, it             developers may be forced to write and maintain their own
+also outputs a formal message specification, and F? automati-           parsers and serializers in low-level unsafe languages like C,
+cally verifies our implementation against this specification.           increasing the risk of attacks triggered by malicious inputs.
+   EverParse yields efficient zero-copy implementations, us-               More specifically, when the application authenticates mes-
+able both in F? and in C. We evaluate it in practice by fully im-       sages in some way—using for instance cryptographic hashes,
+plementing the message formats of the Transport Layer Secu-             MACs, encryptions, or signatures—it is critical for security to
+rity standard and its extensions (TLS 1.0–1.3, 293 datatypes)           ensure that the messages are verified, parsed, and interpreted
+and by integrating them into MITLS, an F? implementation of             by the receiver exactly as intended by the sender before serial-
+TLS. We illustrate its generality by implementing the Bitcoin           ization. This is often at odds with general-purpose formats and
+block and transaction formats, and the ASN.1 DER payload                tools that may not provide such non-malleability guarantees.
+of PKCS #1 RSA signatures. We integrate them into C ap-                    This paper presents EverParse, a new framework to auto-
+plications and measure their runtime performance, showing               matically generate efficient, low-level parsers and serializers
+significant improvements over prior handwritten libraries.              in C from declarative descriptions of tag-length-value (TLV)
+                                                                        binary message formats. The generated parsers and serial-
+                                                                        izers are formally verified to be safe (no use-after-free, no
+1   Introduction                                                        buffer overruns, no integer overflows, ...), functionally correct
+                                                                        (parsers and serializers are inverse of one another), and non-
+Because they are directly exposed to adversarial inputs,
+                                                                        malleable (valid messages have unique representations). With
+parsers are often among the most vulnerable components
+                                                                        EverParse, developers of low-level protocols can enjoy the
+of security applications, and techniques to simplify their con-
+                                                                        ease of programming and maintenance expected from parser
+struction while ensuring their safety and correctness are valu-
+                                                                        generators, and stop worrying about details of the message
+able. Hence, developers prefer self-describing formats like
+                                                                        format and trade-offs between security and performance.
+JSON or XML (with universal implementations) or use auto-
+mated tools and libraries to generate parsers from structured
+
+
+                                                                    1
+Architecture Overview. Figure 1 depicts the overall archi-             and are proved functionally correct and memory safe.
+tecture of EverParse and its two main components: a simple,               EverParse code can be used in two ways. A verified F?
+untrusted frontend (named QuackyDucky) for compiling mes-              application can use the formal specification for its security
+sage format descriptions; and a library of verified parsers and        proof, and either the high-level or low-level implementation—
+serializers (named LowParse).                                          this is the approach adopted for verifying protocols as part of
+   Verification is based on F? [48], a programming language            the Everest project [6], and notably the MITLS [7] implemen-
+and proof assistant. Whereas F? is a high-level functional lan-        tation of the TLS secure channel protocol. Alternatively, a
+guage, whose code extracts by default to OCaml or F#, it also          native C/C++ application can use the interface extracted from
+embeds a language named Low? for writing verified low-level            the Low? implementation by the KReMLin compiler—this is
+code that extracts to C using a tool named KReMLin [38].               the approach taken in this paper for performance evaluation.
+EverParse uses Low? to program efficient, low-level parsers
+and serializers, proving them safe, correct and non-malleable          Our contributions We present the following contributions:
+in F? , and then extracting them to C. The resulting C code can          • A definition of message-format security, motivated by a
+be compiled using several off-the-shelf C compilers, includ-                discussion of several vulnerabilities whose root cause is
+ing CompCert [28] for highest assurance, or more mainstream                 malleability (§2).
+compilers like Clang or GCC.                                             • QuackyDucky, a compiler from tag-length-value mes-
+   The input of EverParse is a message format description for               sage format descriptions to their high-level datatype spec-
+a collection of types, in the C-like language commonly used                 ifications and low-level implementations. It provides the
+in RFCs and similar specifications. QuackyDucky translates                  first implemented zero-copy and secure message format
+this description into a collection of F? modules, one for each              language that captures several existing protocols and
+input type, and F? typechecks each of these modules to verify               standards, including TLS, PKCS #1 signature payloads,
+their safety and security. The modules produced by Quacky-                  and Bitcoin (§4).
+Ducky include a formal parser specification (using high-level            • LowParse, a library of verified parser and formatter com-
+F? datatypes) and two correct implementations of this spec-                 binators, with support for non-malleability proofs (§5).
+ification: one high-level and the other in Low? , suitable for           • A qualitative evaluation of EverParse: we present a com-
+extraction to safe C code. This lower-level implementation en-              plete case study of applying EverParse to the message
+ables efficient message processing; it automatically performs               formats of all TLS versions, featuring many improve-
+the same input validation as the high-level parser, but it oper-            ments and corrections over the standard’s descriptions.
+ates in-place using interior pointers to binary representations             We integrate the generated high-level implementation
+within messages. Its performance is similar to handwritten C                into MITLS, an implementation of the TLS protocol in
+code—but its safety, correctness, and security are automati-                F? . For a few select types, we also replace the high-level
+cally verified. Hence, rather than verifying existing, ad hoc C             implementation with the Low? one (§3).
+code by hand, which would require much effort and expertise
+                                                                         • A quantitative evaluation of EverParse: we compare
+even for small protocols, our toolchain automatically yields
+                                                                            the performance of our extracted low-level parsers for
+C code verified by construction.
+                                                                            Bitcoin blocks and the ASN.1 payload of PKCS #1
+   The code generated by QuackyDucky consists of applica-                   signatures with their counterparts in Bitcoin Core and
+tions of combinators in LowParse, which are higher-order                    mbedTLS. We find that our automatically generated code
+functions on parsers. For instance, given a integer parser, one             meets, and in some cases significantly exceeds, the per-
+can build a parser for pairs of integers by applying the con-               formance of hand-written C/C++ reference code (§6).
+catenation combinator to two copies of the integer parser.
+                                                                         All the components of EverParse and its dependencies
+While parser combinators are widely used in functional lan-
+                                                                       are open-source and publicly available at https://github.
+guages [22, 27], they are usually more difficult to apply in
+                                                                       com/project-everest/everparse
+languages that do not easily support higher-order program-
+ming with closures, like C. However, by employing partial
+evaluation within F? , we specialize higher-order code to effi-        2   Parsing Security: Definitions & Attacks
+cient, ad hoc, first-order C code.
+   We carry out all proofs on combinators once and for all             In this paper, we focus on applications that authenticate the
+within LowParse. Only the conditions for composing them                contents of serialized messages in some way. Cryptographic
+must be checked (by typing) in the code produced by Quacky-            mechanisms provide (serialized) bytestring authentication,
+Ducky. LowParse is split into three layers: one for specifi-           whereas applications rely on (parsed) message authentication.
+cations, where we prove non-malleability, one for high-level           Hence, correctness and runtime safety are not sufficient to
+functional implementations, which are proved functionally              preserve authentication: a correct parser may accept inputs
+correct with respect to specifications, and one for low-level          outside the range of the serializer, or multiple serializations of
+implementations, which operate on positions within buffers             the same message, which may lead to subtle, and sometimes
+
+
+                                                                   2
+                 ⊥                         {0,1}*
+                                                                         struct {
+                 V                         p⁻¹(V)                          HeartbeatMessageType type;
+                               p                                           uint16 payload_length;
+                                                                           opaque payload[payload_length];
+                               s                                           opaque padding[padding_length];
+              p·p⁻¹(V)                      s(V)
+                                                                         } HeartbeatMessage;
+                                                                         The total length of a HeartbeatMessage MUST NOT exceed
+                                                                         2^14 or max_fragment_length when negotiated [RFC6066].
+                                                                         The padding is random content that MUST be ignored by
+        Figure 2: Parsing and serialization functions                    the receiver. The padding_length MUST be at least 16,
+                                                                         and equal to TLSPlaintext.length-payload_length-3 for
+devastating, vulnerabilities. We propose a security definition           TLS and DTLSPlaintext.length-payload_length-3 for DTLS
+                                                                         The sender of a HeartbeatMessage MUST use a random
+for authenticated message formats to prevent such vulnerabil-
+                                                                         padding of at least 16 bytes. The padding of a
+ities, and illustrate it using known high-impact attacks against         received HeartbeatMessage message MUST be ignored.
+popular applications.
+                                                                         Figure 3: Specification of the Heartbeat message (fragment)
+2.1    What is a Secure Message Format?
+We first set up notations for parsers and serializers, illustrated       ification of HeartbeatMessage is very unusual among TLS
+in Figure 2, and define their properties of interest. Given a set        types (explained in detail in §3), because it contains a variable
+V of valid messages,                                                     length field (padding) that is not prefixed by an explicit length
+   • a parser is a function p : {0, 1}∗ → V ] {⊥} that returns           (padding_length is not defined in the struct, but its value is
+      either a message m ∈ V or a parsing error ⊥;                       defined semantically). Indeed, as specified, this type is not
+                                                                         expressible in QuackyDucky because the padding length de-
+   • a serializer, or formatter, is a function s : V → {0, 1}∗ .
+                                                                         pends on a field of the parent TLSPlaintext type, and we only
+Informally, parsers and formatters are inverse of one another.           capture dependencies between fields that are concatenated.
+A parser is correct with respect to a serializer when it yields          This forces applications to verify the padding_length seman-
+back any formatted message: ∀m ∈ V , p(s(m)) = m, and exact              tically, increasing the risk of error. The Heartbleed disaster
+when it accepts only serialized messages: p−1 (V ) = s(V ).              would likely have been averted if the format was specified
+   Parsers may also be considered on their own. A parser                 using standard TLS constructors for variable length fields:
+is non-malleable (or injective) when it accepts at most one
+binary representation of each message: ∀x, y ∈ {0, 1}∗ , p(x) =          struct {
+p(y) ⇒ (x = y∨ p(x) = ⊥), and complete (or surjective) when                HeartbeatMessageType type;
+it accepts at least one binary representation of each message:             opaque payload<0..2^14-21>;
+                                                                           opaque padding<16..2^14-3>;
+p({0, 1}∗ ) \ {⊥} = V . If p is a non-malleable parser for V ,
+                                                                         } HeartbeatMessage;
+then p−1 is a serializer over p({0, 1}∗ ) \ {⊥}.
+   We say that p is a secure parser for V if p is non-malleable          This example illustrates the benefits of writing message for-
+and complete. If p is secure, then it is also correct and exact          mat descriptions in a constrained language: it encourages
+with respect to the (unique) serializer p−1 . We say a serializer        uniform patterns and enables automated analysis.
+s is secure if there exists a secure parser p such that s = p−1 .
+(§5 provides more general definitions that account for parsers           PKCS #1 signature forgery The PKCS #1 v1.5 signature
+that do not consume their whole input.)                                  format illustrates the risks of applying message parsing after
+   In the rest of the paper, we only consider parsers that oper-         a cryptographic operation (in this case, modular exponenti-
+ate on strings of bytes B = {0, 1}8 .                                    ation). Given a public key (N = pq, e) where p and q are
+                                                                         large secret primes, the raw RSA signature σ over a mes-
+                                                                         sage m is computed as σ = md mod N where the secret expo-
+2.2    Attacks on Parsers
+                                                                         nent d = e−1 mod (p − 1)(q − 1) is hard to compute without
+Heartbleed Unsurprisingly, the most common type of parser                knowing p and q. As written, this scheme is not usable be-
+vulnerability is simply memory safety bugs. Indeed, one of               cause m must be smaller than N, and it has the undesirable
+the most impactful attacks in the past decade, Heartbleed                homomorphic property that the signature of the product of
+(which is estimated to have affected up to 55% of the top                2 messages is equal (modulo N) to the product of the sig-
+internet websites [17]) is a simple buffer overrun caused by             nature of each message (thus, it is easy to forge new valid
+improper validation of the length field in the TLS messages              signatures from existing ones). To fix these shortcomings,
+defined in OpenSSL’s implementation of the heartbeat pro-                PKCS #1 v1.5 defines a standard for hashing and padding
+tocol extension (shown in Figure 3). Interestingly, the spec-            the message to sign: given an arbitrary message m, it is first
+
+
+                                                                     3
+hashed into a digest h, then stored together with the identifier         edge of the private key. Other sources of malleability are
+a of the hash algorithm into an ASN.1 DER [36] structure.                related to the scriptSig construct of the Bitcoin Script lan-
+The distinguished encoding rules are supposed to ensure that             guage,1 inasmuch as the signature is passed to a stack-based
+the serializer ρ for this structure is secure. The final signature       script to authorize spending. In total, BIP62 [50] lists 9 differ-
+is obtained by applying raw RSA to ρ(a, h) left-padded to the            ent sources of malleability. Each of them allows an attacker
+size of N with padding of the form \x00\x01(\xFF)*\x00.                  to alter a valid transaction t into a semantically-equivalent
+   The security of the scheme relies heavily on (the integer             valid transaction t 0 such that h(t) 6= h(t 0 ). One way to exploit
+interpretation of) the padding: it is computationally hard to            this is to try to fool someone into believing that a transac-
+forge a valid signature σ because σe mod N must be of the                tion they submitted was rejected by the network, although
+form 2dlog2 (N)e−15 −2dlog2 (ρ(a,h)e+1 +ρ(a, h) for some digest h        in reality, it was accepted under a different transaction hash.
+and hash identifier a. It is hard to find such a value by brute          The Mt. Gox bitcoin exchange blamed this attack for the
+force because all but the dlog2 (ρ(a, h)e last bits are fixed, and       loss of over 850,000 bitcoins (worth $473M at the time of
+inverting the modular exponentiation by e is hard without                bankruptcy) and although this claim is heavily disputed, later
+knowing d. However, if the ASN.1 parser π used after expo-               forensic examination of the blockchain by Decker et al. [12]
+nentiation is malleable (or non exact), there may exist a large          revealed that in total, 300,000 bitcoins were spent over 30,000
+class of inputs x such that π(x) = (a, h). If this class contains        transactions confirmed under a different identifier than origi-
+inputs that fill most of the dlog2 (N)e bits of the message, the         nally submitted between Feb 1, 2014 and Feb 28, 2014.
+padding may be reduced to \x00\x01\x00. When e is small
+                                                                         Ambiguous TLS message Sometimes, the message spec-
+(e = 3 is commonly used by legacy public keys), it may be
+                                                                         ifications themselves are ambiguous, and cannot be im-
+easy to find a value σ such that σe mod N = 2dlog2 (N)e−15 + x
+                                                                         plemented by a secure parser. This is the case of the
+with π(x) = (a, h) for any h. For instance, in Bleichenbacher’s
+                                                                         ServerKeyExchange message in TLS:
+original description of the attack (retold by Finney [18]), the
+parser ignores the bytes that appear after the encoded ASN.1             enum {dh_anon, dhe, ecdhe, rsa,(255)} KeyExchange;
+structure, i.e. if π(x) 6= ⊥, π(x||z) = π(x) for all z. To forge a       struct {
+valid signature for h, one can simply compute the cubic root               select (KeyExchange) {
+of 2dlog2 (N)e−dlog2 (ρ(a,h)e−16 (\x0100||ρ(a, h)).                          case dh_anon: DHAnonServerKeyExchange;
+   Ever since its publication, this attack has reappeared in                 case dhe: SignedDHKeyExchange;
+                                                                             case ecdhe: SignedECDHKeyExchange;
+dozens of implementations, including several recent examples
+                                                                             case rsa: Fail; /* Force error: no SKE in RSA */
+(e.g. [9, 13, 37, 49]). Interestingly, the parser malleability             } key_exchange;
+bugs that cause the attack are diverse: unparsed extra bytes are         } ServerKeyExchange;
+tolerated at the end of the message [18, 49]; the parser accepts
+arbitrary parameters in the algorithm identifier [9]; and a              This message represents an untagged union: the struct is
+length overflow causes only its last 4 bytes to be counted [13].         missing a field of type KeyExchange that clarifies which case
+This diversity illustrates how difficult it is to write secure           to use in the union. A parser for an untagged union can
+parsers and to detect malleability vulnerabilities—some of               only be secure if the format of all cases share no com-
+the attacks above have existed for years in popular libraries.           mon prefix. The specification of TLS assumes that the
+All variants lead to universal signature forgery: an attacker            key exchange algorithm is available from the context (in
+can freely impersonate any client or server, sign malicious              this case, it is part of the negotiation process). However,
+code updates, etc.                                                       it turns out that the security of the TLS negotiation de-
+                                                                         pends itself on the ServerKeyExchange message. This leads
+Bitcoin transaction malleability Another well-documented                 to a real practical attack reported by Mavrogiannopoulos et
+case of parser security attacks occurred against Bitcoin [34]            al. [32], where a SignedDHKeyExchange is interpreted as a
+transactions, which are signed by the sender, then hashed (af-           bogus SignedECDHKeyExchange. Worryingly, two other TLS
+ter serialization) and stored in Merkle trees. Transactions are          types use untagged unions: ClientKeyExchange (in TLS 1.2)
+identified by their hash, which covers more data than what               and CertificateEntry (in TLS 1.3).
+the sender signs (in particular, the hash includes the signa-
+ture itself). The format of transactions is malleable in several
+ways: one example is the encoding of this signature, which
+                                                                         3    Case Study: the TLS Message Format
+originally did not mandate the ASN.1 DER rules for non-
+                                                                         We choose the TLS message format as our main case study
+malleability. Another source comes from the ECDSA signing
+                                                                         for several reasons: the message format description of TLS is
+algorithm, which is a randomized scheme (hence, there are
+                                                                         reasonably specified; it is designed to be secure and extensi-
+many valid signatures for the same message) that always has
+                                                                         ble; it defines hundreds of types that exercise the full range
+two valid representations: if (r, s) is a valid signature, then
+(r, −s) also is, and can be trivially computed without knowl-                1 https://en.bitcoin.it/wiki/Script
+
+
+
+
+                                                                     4
+                                                                        a length field encoded in a fixed number of bytes (determined
+uint32 word; /* Type declaration */                                     by the maximum length of the list, encoded in big endian),
+word digest[16]; /* Fixed-length array of 4 words */
+                                                                        followed by a concatenation of the elements. A special case
+word phrase<0..2^8-1>; /* List of 0 to 16 words */
+                                                                        of structs are length-dependent fields, e.g., the batch type in
+struct {
+  opaque id[32]; /* Array of 32 bytes */                                Figure 4. In these types the first field describes the length
+  uint16 payload<2..8>; /* List of 1 to 4 uint16 */                     of a single (variable-length) element of the specified type of
+  digest payload_digest;                                                the second field represented adjacently. The interpretation of
+} body; /* Struct with 3 fields */                                      enumerations contains the big endian encodings of its ele-
+enum {                                                                  ments in a constant number of bytes determined by the size
+  request (0x2300), /* Constant tag */                                  descriptor of the enum type. Tagged unions (like message in
+  response (0x2301),                                                    the figure) are encoded as the concatenation of the tag’s enum
+  (65535) /* Indicates 16 bit representation */                         representation followed by the encoding of the correspond-
+} header; /* Enum with 2 defined cases */                               ing case’s type. TLS messages are more compact than many
+struct {
+                                                                        TLV formats: explicit tags only appear for tagged unions, and
+  header tag;
+                                                                        lengths only for lists (or when ascribed). All structural infor-
+  select(tag) { /* Tagged union */
+    case request: body;                                                 mation is erased, in contrast with BSON [33] (which encodes
+    case response: phrase;                                              field names) or Protocol Buffers [20] (which encodes field
+  } x; /* Enum-dependent field type */                                  numbers).
+} message;                                                                 We automatically extracted the data format descriptions
+struct {                                                                from the RFCs for TLS 1.2 [15] (including descriptions also
+  uint24 len; /* Explicit length */                                     for TLS 1.0 and TLS 1.1), for TLS 1.3 [40], for TLS ex-
+  message data[len]; /* Ensures length(data)=len */                     tensions (RFC 6066), and from the TLS IANA parameter
+} batch; /* Length encapsulation */                                     assignments, which defines additional constants for enumer-
+                                                                        ations. We then merged them together by hand, and edited
+Figure 4: Sample type descriptions in TLS message format.               some of them to fix minor mistakes, avoid name clashes in
+                                                                        the original descriptions, and gain precision (e.g. by adding
+of available combinators in LowParse; and there exists a ver-           length dependencies documented in the RFC text).
+ified F? implementation of TLS that we can use to test the
+integration of the generated parsers (including the integration
+                                                                        Extensibility A difficult issue for any format description lan-
+of parser security lemmas into the protocol security proof).
+                                                                        guages is extensibility: as new versions of the protocol are
+Language Description IETF’s RFC 2246 [14] specification                 defined, it is often necessary to extend messages with new
+of TLS 1.0, published in 1999, includes a section that de-              fields and cases while maintaining compatibility with older
+scribes the presentation language of its message format, in-            implementations. To address this problem, TLS was designed
+spired by C and XDR [46], and illustrated in Figure 4. A                with extensibility through open enumerations. As a simple
+description consists of a sequence of type declarations. The            example, TLS has an enum type that defines the possible ci-
+base types are unsigned fixed-length integers uint8, uint16,            pher suites to negotiate. Receiving a value that doesn’t match
+uint24, and uint32, with opaque being used instead of uint8             any of the defined cases of the enum is not a parsing error—
+to indicate raw bytes. The type constructors are fixed-length           instead, the value should be treated as unknown but valid, and
+arrays, variable-length lists, structs, enums, and tagged unions.       the receiver should ignore it in the rest of the negotiation. This
+The length boundaries of arrays and lists are all counted in            also applies to enums that act as a tag for unions. For instance,
+bytes rather than in elements: for instance, type digest in             the hello messages contain a list of extensions tagged with
+Figure 4 is an array of elements of type word whose binary              an extension type. Although this is implicit in the standard,
+representation takes 16 bytes in total; since each word takes           it is possible to define a default type for unknown values in
+4 bytes, this array holds exactly 4 elements. Arrays can be             a select. The protocol is extended by defining new values
+constructed only from fixed-length types, whereas lists can be          for enums (such as new cipher suites or new group names),
+defined for any types: as illustrated by answer and payload,            and new defined cases for tagged unions (for instance, new
+their format declares the range of their length; and their binary       extensions). Interestingly, many TLS implementations fail
+representation embeds their actual length within that range.            to understand this concept, and incorrectly reject unknown
+   Following the convention of RFCs, we interpret types in              values. To fight this problem, Google recently introduced
+terms of the byte sequences that represent their elements. The          GREASE [4], which causes Chrome to randomly include un-
+representation of a struct is the concatenation of the represen-        defined values in all extensible fields of the protocol, thereby
+tations of each of its fields in sequence, without any padding.         enforcing that implementations that interoperate with Chrome
+Arrays are the concatenation of elements whose total length             be extensible.
+in bytes is the array’s annotated size. Lists are represented by            Unfortunately, the TLS standard does not clearly say which
+
+
+                                                                    5
+                                                                                    TLS 1.2                        TLS 1.3
+/* All TLS versions*/
+                                                                           struct {                       struct {
+struct {
+                                                                             HandshakeType type;            HandshakeType type;
+  ExtensionType extension_type;
+                                                                             uint24 length;                 uint24 length;
+  opaque extension_data<0..2^16-1>;
+                                                                             select (type) {                select (msg_type) {
+ } Extension;
+                                                                               case hello_request:            case eoed:
+                                                                                 Empty;                         Empty;
+/* From RFC 5246, section 7.4.2 */
+                                                                               case certificate:              case certificate:
+opaque ASN.1Cert<1..2^24-1>;
+                                                                                 Certificate12;                 Certificate13;
+struct {
+                                                                              /* ... */                       /* ... */
+  ASN.1Cert certificate_list<0..2^24-1>;
+                                                                               case finished:                 case key_update:
+} Certificate;
+                                                                                 Finished;                      KeyUpdate;
+                                                                             } m[length];                   } m[length];
+/* From RFC 8446, section 4.4.2 */
+                                                                           } Handshake12;                 } Handshake13;
+enum { X509(0), RawPublicKey(2), (255)} CertType;
+opaque ASN1_subjectPublicKeyInfo<1..2^24-1>;
+                                                                       Figure 6: Specialized Handshake types for TLS 1.2 and 1.3
+struct {
+  select (certificate_type) {
+    case RawPublicKey: ASN1_subjectPublicKeyInfo;
+    case X509: ASN.1Cert; } cert;                                      Certificate and we define version-specific variants of the
+  Extension extensions<0..2^16-1>;                                     handshake message type, shown in Figure 6. Before version
+} CertificateEntry;                                                    negotiation, hello messages are parsed using a third, version-
+struct {                                                               agnostic Handshake type. We then switch to parsers for the
+  opaque certificate_request_context<0..2^8-1>;                        negotiated version, thus ensuring that the following messages
+  CertificateEntry certificate_list<0..2^24-1>;
+                                                                       are parsed using precise, version-specific types.
+} Certificate;
+                                                                          To address the problem of untagged unions, we introduce
+ Figure 5: The Certificate type for TLS 1.2 vs TLS 1.3.                an /*@implicit*/ attribute for tags, which instructs Quacky-
+                                                                       Ducky to generate an interface where the value of the tag is
+enums and which tagged unions are extensible in the message            passed as an additional argument to the parser and formatter.
+format, and instead explain their intended semantics in text. In       This approach is not compositional, and comes with a restric-
+QuackyDucky, we add an explicit annotation to mark which               tion: if a type that contains an implicit tag appears in another
+enums are extensible, and we extend the syntax of select               type, it must appear at a location that includes an explicit
+to support default cases. For instance, we mark the tag of             length. The parsing will be staged: when it reaches the sur-
+extensions ExtensionType with the /*@open*/ attribute, but             rounding length, it skips its contents, leaving it uninterpreted.
+not the tag of messages HandshakeType, as the RFC states that          The application needs to manually call the parser for the un-
+receiving any unknown message is an error.                             tagged union by providing the tag value. The presence of
+                                                                       untagged unions is a clear mistake in message formats, as the
+Protocol versions Another complication stems from ver-                 application is responsible for providing the correct tag when
+sion differences not captured by extensibility. Consider the           it calls the parser, and thus, we only provide a conditional
+Certificate message in TLS 1.2 [15] and TLS 1.3 [40].                  security guarantee in this case.
+Its format, listed in Figure 5, illustrates several problems
+with the TLS specification. First, the two definitions of the             Similarly to what we did with message types, we split and
+Certificate type are mutually incompatible, even though the            specialize the definition of extension types for each message
+Certificate message is defined in both versions using the              that may include them (hellos, hello retry, encrypted exten-
+same handshakeType tag. Second, the CertificateEntry type              sions, certificate, certificate request, new session ticket). This
+of TLS 1.3 uses an untagged union, where the value of the tag          also reveals some interesting mistakes in RFCs. For instance,
+depends on the context rather than on a value sent over the            in [41, Appendix A], the authors fail to understand the pur-
+network (as in ServerKeyExchange and ClientKeyExchange                 pose of the explicit length around extensions, and incorrectly
+where the key exchange algorithm is omitted). Third, the               believe it is redundant with the length of the list in the exten-
+Extension type is under-specified: there are complex rules             sion contents. They claim merging the two lengths makes the
+and tables about which extension may appear in which mes-              extension less ambiguous; in reality, their change makes the
+sage (see [40, §4.2]), and the type of each extension contents         format more ambiguous: it is no longer possible to distinguish
+depends on which message it appears in. None of these con-             between receiving no ticket and receiving an empty ticket. To
+straints are currently captured in type definitions.                   handle such corner cases, we add support in QuackyDucky
+   To address the issue of conflicting definitions across ver-         to coerce opaque arrays with explicit lengths to opaque lists
+sions, we split the definitions of incompatible types such as          after parsing.
+
+
+                                                                   6
+4     Compiling Message Format Descriptions                                      to use the GTot effect, hence using the function type t → GTot u
+                                                                                 instead. Stateful functions that operate on mutable objects
+We now present our compiler from the message formats of §3                       (such as a mutable array of bytes, i.e. uint8_t* in C) live in
+to parsers and serializers for processing these messages in                      the ST effect and are extracted to stateful OCaml or C code.
+Low? [38]. We briefly review F? and Low? (§4.1), then ex-                           All F? proofs rely on automatic encoding of proof obliga-
+plain the code generated by QuackyDucky in three parts:                          tions to first-order logic, which are then solved by automatic
+datatypes and parser specifications for verification purposes                    theorem provers such as Z3, leading to reduced overall proof
+(§4.2); high-level functional parsers and serializers (§4.3);                    effort. F? also has a tactic system [31] that can be used in
+and lower-lever code for reading (§4.4) and writing (§4.5)                       cooperation with, or in replacement of, Z3-based proofs.
+messages.
+                                                                                 The Low? subset of F? and its extraction to C code Users
+   QuackyDucky recursively descends through the structure of
+                                                                                 who wish to use our parsers and serializers not only demand
+the format description, generating parsers and serializers for
+                                                                                 performance, but also the ability to integrate our code into
+compound types from those previously generated, while keep-
+                                                                                 their codebases. Therefore, OCaml is oftentimes not a viable
+ing track of their properties (notably their length boundaries).
+                                                                                 option; instead, we compile our F? code to C.
+QuackyDucky mostly composes the combinators provided by
+                                                                                    As shown in Figure 1, specifications are first implemented
+LowParse, described in §5. In contrast with this library, which
+                                                                                 in F? . This implementation can already be compiled to C
+involves complex proofs for a few generic combinators, the
+                                                                                 using a dedicated compiler, KReMLin. However, lacking fur-
+generated code is verbose but shallow, enabling us to auto-
+                                                                                 ther restrictions, this F? implementation relies on lists and
+matically verify its safety, correctness, and non-malleability
+                                                                                 bytes as values, meaning that compiling the F? implementa-
+using the properties verified in LowParse.
+                                                                                 tion through KReMLin generates code that (i) is inefficient,
+                                                                                 because it uses functional byte copies and linked lists; (ii) is
+4.1     Verified Programming in Low? (Review)                                    not idiomatic: no C programmer would write such code; and
+                                                                                 (iii) requires a garbage collector, since lists and bytes are
+The F? language and proof assistant We carry out our                             persistent values with no lifetime (as in, say, OCaml).
+specification, implementation and proofs using F? [48], a                           To avoid these shortcomings, the Low? [38] subset of F?
+functional language and proof assistant based on dependent                       defines a C-like memory model that talks about the stack and
+types. A simple form of dependent types supported in F?                          the heap, along with corresponding abstractions and libraries,
+is refinement types, to represent types of values satisfying                     e.g. for mutable arrays, machine integers and in-place loops.
+additional properties: whereas int is the F? type of mathe-                      Using Low? requires the programmer to rewrite their code
+matical integers, the type nat of non-negative mathematical                      and reason about spatial and temporal safety; in exchange for
+integers is defined as the refinement type (x: int { x ≥ 0 }). F?                these added constraints, the F? code is compiled by KReM-
+supports types that depend on other types and values. It                         Lin to idiomatic, readable, efficient C code that does not re-
+also supports functions where argument types can depend                          quire a garbage collector. The Low? restrictions only apply to
+on the values of the previous arguments and the type of the                      executable code; computationally-irrelevant portions of the
+return value of a function can depend on the values of its                       program, such as proofs and ghost code, retain the full power
+arguments. For instance, the integer division function, which                    of F? , since they are eliminated when compiled to C.
+would have a simple type int → int → int in a functional lan-
+guage such as OCaml, can be given a more precise type,
+such as (a: int) → (b: int {b > 0}) → (q: int { 0 ≤ a − b ∗ q < b }) mean-       4.2      Datatypes and Parser Specifications
+ing that F? will reject, at typechecking time, any call to such a                Continuing from §2.1, we use F? types to represent sets of
+function if it cannot prove the second argument is strictly pos-                 parsed values. Hence, QuackyDucky generates a parsed type t
+itive (b > 0). Conversely, the caller can use the postcondition                  for each named format description in its input.
+on its return value 0 ≤ a − b ∗ q < b to prove further goals.                       Our F? types for parser and serializer specifications are
+   F? is not just a proof assistant: it is also a programming                    listed below.
+language enjoying automatic translation (extraction) into ex-
+                                                                                 type parser (t :Type) (k:meta) =
+ecutable languages such as OCaml or C; in this extraction                          p: (input: seq uint8 → GTot (option (t ∗ l: nat{l ≤ length input})))
+process, the user can mark some of their F? functions as ghost,                    { parser_prop k p }
+to have them erased at extraction time, such as lemmas and
+                                                                                 type serializer (#t :Type) (#k:meta) (p: parser t k) =
+proofs, but also auxiliary functions that need not, or cannot, be
+                                                                                   s: (t → GTot (seq uint8))
+executed at run time. To this end, F? equips its function types                    { ∀ (x:t ) . p (s v) == Some (v, length (s v)) }
+with an effect system. By default, given two types t and u, all
+functions from type t to u, in the type t → u, will be extracted,                The parser type definition is parameterized by a parsed type t
+one says that they are in the Tot effect, so their type can be                   and some metadata k (explained below) that records verified
+written as t → Tot u; to mark a function ghost, the user needs                   properties of the parser. It states that a parser is a pure function
+
+
+                                                                             7
+that takes as input a sequence of bytes (of arbitrary length) and                    lists have constant binary lengths, QuackyDucky computes
+returns an optional result that consists of some parsed value                        precise bounds on their numbers of elements. Conversely, the
+of type t and the number of input bytes consumed. GTot states                        extensions in the last list are themselves of variable lengths,
+that this parser is ghost, that is, used only for verification;                      hence QuackyDucky captures the bounds on its total binary
+option indicates that it may return nothing in case parsing fails;                   size using an auxiliary function extension_list_bytesize previously
+the refinement l ≤ length input ensures that it consumes at most                     defined from the extension serializer. The main benefit of cap-
+a prefix of its input; the refinement parser_prop k p states that                    turing these constraints is to ensure that all messages of type
+p is non-malleable (see formal definition in §5) and that it                         clientHello can be serialized to a standard-compliant bytestring.
+satisfies the properties recorded in k.                                                  QuackyDucky also generates the corresponding metadata,
+   The metadata k includes a verified range of lengths of input                      parser and serializer specifications.
+that the parser may consume. This range provides useful                              let clientHello_meta = {low=43;high=131396; ...}
+bounds for programming with this parser, for instance to wait                        val clientHello_parser: parser clientHello_meta clientHello
+for a minimal number of input bytes before parsing, or to                            val clientHello_serializer: serializer clientHello_parser
+allocate I/O buffers of adequate sizes. Internally, Quacky-
+Ducky also relies on this information to select more efficient                       The parser metadata is exposed in the generated interface
+implementations (for example when the input length is fixed)                         (indicating, e.g., that the shortest TLS clientHello body message
+and to require that some parsers consume at least one byte (for                      takes 43 bytes) whereas the parser and serializer specs are kept
+example to compute the length of a list from its binary format).                     abstract—the interface gives their types, but hides the details
+The metadata may include additional properties, indicating for                       of their wire format. Thus, the three lines above state the
+instance that the parser always fails; or that it always succeeds                    abstract, joint properties of our generated parser and serializer
+given enough input bytes; or that it is no-lookahead (see §5).                       specs (including non-malleability and round-trip properties)
+   The serializer type definition is indexed by a parser for t,                      and typechecking these specs ensures these properties hold.
+not just by t (the # makes this parameter an implicit argument,                         Anticipating on the combinators defined in §5, we give
+as it can be inferred from p). It states that a serializer specifi-                  below an outline of the generated definition of clientHello_parser,
+cation is a pure, total, ghost function from values of type t to                     which parses our sample message by successively calling the
+sequences of bytes, such that parsing its output for any value                       parsers corresponding to each of its fields:
+v of type t succeeds and yields back v and its binary length.                        let clientHello_parser =
+                                                                                       ((protocolVersion_parser × clientHello_random_parser) × ...)
+Running Example Consider the following excerpt of the                                    synth (fun ((pv, r), ...) → { protocolVersion = pv; random = r; ... })
+TLS 1.3 wire format description [40] for the body of its first
+ClientHello message.                                                                    These definitions are used only as reference implementa-
+                                                                                     tions and are not extracted to C. In a second stage, Quacky-
+struct {                                                                             Ducky generates actual parsers and serializers, and typecheck-
+  ProtocolVersion version;                                                           ing their code ensures they safely implement these specs.
+  opaque random[32];
+  opaque session_id<0..32>;
+  CipherSuite cipher_suites<2..2^16-2>;                                              4.3      Functional Parsers and Serializers
+  Compression compressions<1..2^8-1>;
+  ClientHelloExtension extensions<0..2^16-1>;
+                                                                                     QuackyDucky generates high-level functional parsers and
+} ClientHello;                                                                       serializers, with the following interface. (The “32” suffix in-
+                                                                                     dicates that their code uses 32-bit machine integers instead of
+This message includes a 2-byte protocol version, a 32-byte                           the unbounded integers in their specs.)
+random nonce, a variable-length session identifier for resump-                       val clientHello_parser32: parser32 clientHello_parser
+tion, and variable-length list of proposed cipher suites, com-                       val clientHello_serializer32: serializer32 clientHello_serializer
+pression methods, and extensions. QuackyDucky translates it
+to a corresponding F? record type:                                                   We systematically index our implementations by their specifi-
+                                                                                     cations. Here, for instance, the type definition parser32 p used
+let in_range x min max = min ≤ x ∧ x ≤ max
+                                                                                     above simply states that a high-level parser for the parser-
+type clientHello = {
+  version : protocolVersion;                                                         specification p is a pure function that takes a (bounded, im-
+  random : (b:bytes {Bytes.length b == 32});                                         mutable) F? bytestring and returns the same result as p on the
+  session_id : (b:bytes{in_range (Bytes.length b) 0 32});                            corresponding sequence of bytes except that the consumed
+  cipher_suites : (l:list cipherSuite{in_range (List.length x) 1 32767});
+  compressions : (l: list compression{in_range (List.length l) 1 255});
+                                                                                     length is an unsigned 32-bit integer.
+  extensions : (l: list extension{in_range (extensions_bytesize l) 0 65535});}          We give below an F? code sample illustrating their use: a
+                                                                                     ‘reader’ function that counts the number of cipher suites in
+This high-level type includes precise length information,                            a given ClientHello message in wire format, and a ‘writer’
+coded as refinements. Since the elements of the first three                          function that builds a message given a configuration.
+
+
+                                                                                 8
+                                                                          (Experimentally, computations on integer positions based on
+let count_ciphersuites (input: bytes): UInt32.t =
+  match clientHello_parser32 input with
+                                                                          a single pointer are simpler to verify, and better optimized
+  | None → 0ul                                                            by C compilers.) Accordingly, our validators return either the
+  | Some ch → List.length ch.ciphersuites                                 final position in the slice after successful validation, or an
+                                                                          error coded as a large integer. We illustrate their use by re-
+let compute_extensions config: (l: list extension {...} ) = ...
+                                                                          implementing the count_cipherSuites example of §4.3 in Low? .
+let hello (cfg: config) : bytes =                                         let count_ciphersuites_inplace (input:slice) (pos:UInt32.t) =
+  clientHello_serializer32 {                                                let pos_final = clientHello_validator input pos in
+   version = TLS_1p3;                                                       if max_length < pos_final then 0ul (∗ invalid input ∗)
+   random = config.random;                                                  else
+   ...;                                                                       let pos_ciphersuites = accessor_clientHello_ciphersuites input pos in
+   extensions = compute_extensions config; }                                  clientHello_cipherSuites_count input pos_ciphersuites
+
+    This code and its supporting parsers and formatters op-               The last line calls another QuackyDucky-generated function
+erate on immutable bytestrings. Although it can be safely                 that returns the length of a list of cipher suites in wire for-
+extracted to C, it is inefficient, and the implicit allocations and       mat. In this case, since each cipher suite takes exactly two
+copies mandate the use of a garbage-collector. For example,               bytes, this length is computed without actually reading the
+clientHello_parser32 allocates 4 lists and briefly uses only one.         list content, by dividing its binary length by two.
+                                                                             Unsurprisingly, this function yields C code of the form:
+4.4      Low-Level Accessors and Readers                                  // A slice is the pair of a byte array and its size
+                                                                          typedef struct {uint8_t ∗ base; uint32_t len; } slice;
+To provide more efficient implementations, QuackyDucky                    uint32 count_ciphersuites_inplace(slice input, uint32 pos) {
+                                                                            uint32 pos_final = clientHello_validator(input,pos);
+also generates code for a lower-level API that enables in-place             if (max_length < pos_final) return 0;
+processing of messages in their binary formats.                             else {
+   We begin with a low-level alternative to parsing. For each                 uint32 pos_ciphersuites = accessor_clientHello_ciphersuites(input,pos);
+parser specification p, QuackyDucky provides functions that                   return clientHello_cipherSuites_count(input,pos_ciphersuites);
+                                                                            }
+operate on an input buffer. A validator reads the input buffer
+and returns either the number of bytes that p would consume               Once compiled by Clang, we can check on the resulting ma-
+by successfully parsing its contents, or an error code. Thus,             chine code that the ‘else’ branch eventually boils down to (1)
+successful validation ensures the existence of a high-level               adding 34 to pos to skip the first two fields; (2) reading and
+message in binary format, but does not construct it. Assuming             adding the one-byte length of the third field; (3) reading the
+the input buffer is valid, then, for each field of the message,           two-byte length of the fourth field and shifting it by one.
+an accessor computes the position of the first byte in its                   Validators, accessors, jumpers and readers are specified
+binary representation. This guarantees in particular that this            using a validity predicate, valid(p, m, b, i) stating that the
+representation of this element of the message is also valid.              parser p succeeds when provided the bytes in buffer b start-
+Accessor computations are similar to pointer arithmetic in                ing from offset i in memory state m. If this predicate holds,
+C, or “get element pointer” computations in LLVM, but they                then, thanks to the injectivity property of p, there is a unique
+sometimes require reading the lengths of intermediate parts in            value contents(p, m, b, i) returned by the parser, and an offset
+order to skip them. For each base type (e.g. 16-byte unsigned             getpos(p, m, b, i) within b one past the end of the representa-
+integers), a reader takes an input buffer and position and                tion of that value. This validity predicate is the post-condition
+actually parses and returns a value of that type.                         of validators when they succeed, and is the precondition of
+   Continuing with our example, QuackyDucky produces a                    jumpers and readers; accessors for struct fields have the valid-
+validator for clientHello and an accessor for every field (shown          ity predicate for the struct (resp. field) parser as a precondition
+below only for its cipherSuites).                                         (resp. postcondition). We give below the type definitions for
+val clientHello_validator : validator clientHello_parser
+                                                                          validators and readers:
+val accessor_clientHello_cipherSuites :                                   type validator (#k: meta) (#t: Type) (p: parser k t) =
+ accessor                                                                   (input: slice) → (pos: U32.t) → ST U32.t
+  clientHello_parser                                                        (requires (fun m → live_slice input pos ∧ input.len ≤ max_length))
+  clientHello_cipherSuites                                                  (ensures (fun m pos’ m’ → m ≡ m’ ∧
+  clientHello_cipherSuites_parser                                             (valid(p, m, input, pos) ⇔ pos’ ≤ max_length) ∧
+                                                                              (pos’ ≤ max_length ⇒ pos’ == getpos(p, m, input, pos))))
+   The type definitions validator and accessor are still parameter-
+ized by parser specifications, but they are more complex, since           type reader (#k: meta) (#t: Type) (p: parser k t) =
+                                                                            (input: slice) → (pos: U32.t) → ST t
+they describe functions that operate on pointers to mutable                 (requires (fun m → valid(p, m, input, pos)))
+buffers. We represent their input as a slice, that is, a Low?               (ensures (fun m res m’ → m ≡ m’ ∧ res == contents(p, m, input, pos)))
+buffer (§4.1) and its length, and a position within this slice.
+
+
+                                                                      9
+4.5    Low-Level Writers
+                                                                          let write_extension_list cfg output pos = ...
+                                                                            (∗ write a list of extensions computed from the configuration ∗)
+We finally describe our low-level API for serializing a mes-
+sage in an output buffer. Our goal is to avoid intermediate               let write_hello cfg output pos =
+allocations and copies; for example, our high-level hello func-             (∗ write 2 bytes of protocol version ∗)
+tion constructs the whole message before serializing. To this               let pos_after_protocol_version =
+                                                                              write_protocolVersion output pos TLS_1p3 in
+end, QuackyDucky generates families of low-level writers                    (∗ copy 32 bytes from the configuration ∗)
+and auxiliary functions that take as parameter an output slice              memcpy cfg.random 0ul out.base pos_after_protocol_version 32ul;
+(that is, a buffer and a length) and a write position, modify the           let pos_after_random = pos_after_protocol_version + 32ul in
+buffer between this position and the end of the buffer, and re-             (∗ similarly write or copy the other fields ∗)
+                                                                            let pos_after_session_id = ... in
+turn a new write position. These functions either require that              let pos_after_ciphersuites = ... in
+the output buffer is large enough (based on parser metadata)                let pos_after_compressions = ... in
+or may also return an error in case the buffer is too small.                (∗ leave two bytes for the total length of the extension list ∗)
+                                                                            let pos_list = pos_after_compressions in
+   In contrast to accessors, which enable random access to                  (∗ calls an auxiliary function to write the extension list in−place ∗)
+validated input in binary format, it is not generally possible to           let pos_after_extensions =
+know in advance where to write data before writing any pre-                   write_extension_list cfg output pos_list in
+                                                                            (∗ computes and writes the extensions length at pos_after_compressions ∗)
+ceding variable-length data. Thus, our API assumes that data
+                                                                            finalize_clientHelloExtensions
+will be written sequentially, with the flexibility for the pro-               output pos_after_compressions pos_after_extensions;
+grammer to use an intermediate buffer whenever they choose                  (∗ call the validity lemma for the clientHello message ∗)
+to write data out of order. A notable exception is for encoding             let m = get () in clientHello_valid m output pos;
+                                                                            (∗ return the final position ∗)
+the lengths of variable-length data, which is usually known
+                                                                            pos_after_extensions
+only after writing the raw data itself. To this end, Quacky-
+Ducky provides a finalizer that takes two positions in the
+output buffer, requires as a precondition that the buffer con-
+                                                                          uint32_t write_extension_list(config cfg, slice output, uint32_t pos);
+tain a placeholder for the length followed by a valid binary              uint32_t write_hello(config cfg, slice output, uint32_t pos)
+representation of the raw data, computes and writes its length,           {
+and ensures as a post-condition that the buffer now contains a              uint32_t pos_after_protocol_version =
+valid variable-length representation of this data.                            write_protocolVersion(output, pos0, TLS_1p3);
+                                                                            memcpy(cfg.random + 0, output.base + pos_after_protocol_version, 32);
+   We illustrate these different cases on a low-level variant               uint32_t pos_after_random = pos_after_protocol_version + 32;
+of the hello function, whose Low? and extracted C code are                  ...
+shown in Figure 7. The first field, version, is an enumeration              uint32_t pos_list = pos_after_compressions + 2;
+                                                                            uint32_t pos_after_extensions =
+formatted in a fixed two-byte format: it is directly written                  write_extension_list(cfg, output, pos_after_compressions);
+using the QuackyDucky writer for protocolVersions. The second               finalize_clientHelloExtensions
+field, random, is a fixed-length, previously-allocated bytestring             (output, pos_after_compressions, pos_after_extensions);
+that can be copied from the configuration. Omitting interme-                return(pos_after_extensions);
+                                                                          }
+diate fields, which may be handled similarly, the last field
+is a complex list of extensions. The list itself is written by
+repeatedly calling the extension writer on each element, af-              Figure 7: Sample Low? code for writing a TLS client hello
+ter skipping the 2 bytes required for their total length. The             (above) and its translation to C (below).
+computed length of the list is finally written by calling a
+QuackyDucky finalizer.
+   As a cumulative post-condition of all these steps, we know             5    LowParse: Secure Parser Combinators
+that the output buffer now contains the concatenation of a
+valid binary format for each of its fields, and we can conclude           As we have seen in §4.2, QuackyDucky produces parser im-
+that it thus also contains a valid representation of a clientHello        plementations by composing basic parsers using combinators,
+message by calling the validity lemma clientHello_valid also gen-         which are higher-order functions on parsers. For example, a
+erated by QuackyDucky and verified by F? . The call to this               combinator for pairs may take parsers for types t and u and
+lemma is erased before extraction to C code.                              yield a parser for type t ×u. Its implementation may first parse
+   As an important simplification, our sample code requires               a message of type t, then parse a message of type u.
+as static precondition that the output buffer be large enough                LowParse is our library of parser combinators, based on
+to hold any valid clientHello message. In more realistic code,            the long tradition of monadic parser combinators [22] in the
+one would need to dynamically check this length. (Each of                 functional programming community. However, LowParse is
+these writer functions are fail-safe, but their errors still need         unique in that it is tailored to support the verification of non-
+to be propagated.)                                                        malleable, correct parsers. We focus on combinators at the
+
+
+                                                                     10
+ QuackyDucky Syntax                           Data Type                                           Parser Combinator
+ uintN , N ∈ {8, 16, 32, 64}                  Unsigned integer within 0..2N − 1                   parse_uN
+ t[N ], N ∈ N                                 Fixed-size array of ts of length N                  plist[p] truncN
+ t<M ..N >                                    List of ts, of variable length M..N                 vldata(plist[p], M, N)
+ t{M ..N }                                    List of ts of variable element count M..N           (parse_uk filter (n 7→ M ≤ n ≤ N)) . (n 7→ pn )
+                                                                                                  where k = 8 × log256 N
+ struct{t1 x1 ; . . .; tn xn ;}               Record with n fields named (xi ) of type (ti )      (p1 × · · · × pn ) synth
+                                                                                                  ((v1 , . . . , vn ) 7→ {x1 = v1 ; . . . ; xn = vn })
+ struct {. . .; uintN x; t y[x]; . . .}       Variable-length field y prefixed by its length x    vldata(p, 0, 256N/8 − 1)
+ enum {E1 (N1 ), . . ., En (Nn ), (M )}       Constant integer enumeration                        penum(parse_uN, [(E1 , N1 ); . . . ; (En , Nn )])
+                                              (with maximal value M = 2N − 1)
+ struct {t x; select(x) {                     Tagged union (t must be an enum type)               p . f q where f (Ei , x) = Ei
+    case E1 : t1 ; . . .; case En : tn } y}                                                                 and q(Ei ) = pi synth (y 7→ (Ei , y))
+
+Figure 8: The QuackyDucky input language and the corresponding LowParse combinators: everywhere in this table, pi is the
+parser for type ti . All lengths are counted in bytes except otherwise mentioned.
+
+
+specification level and their security properties, then discuss                      returns (x1 , |s1 (x1 )|), but this is not enough to know that
+more briefly their implementations. For each specification                           p1 (s1 (x1 ) · s2 (x2 )) succeeds and also returns (x1 , |s1 (x1 )|) (so
+combinator, we prove non-malleability and inverse properties;                        that we can cut the input after |s1 (x1 )| and apply p2 on the
+for each implementation combinator, we prove both safety and                         remainder, s2 (x2 )), unless p1 has the strong prefix property.
+correctness. All properties are verified by typing the library.                         These properties are included in the definition of parser_prop
+   Figure 8 summarizes the QuackyDucky input language                                on the metadata generated by QuackyDucky, hence enforced
+and the corresponding LowParse combinators. We designed                              by typing for all its parser specifications.
+QuackyDucky and LowParse in a modular way, making it easy
+to extend the surface syntax of QuackyDucky by providing
+additional combinators. For instance, the t x{M ..N } syntax for
+                                                                                     5.1       Specification Combinators
+variable-size lists prefixed with their number of elements is a                      LowParse is an extensible library of combinators. For each
+late addition to support the Bitcoin application in §6.2 but is                      parser specification combinator, we attach a corresponding
+not required for TLS.                                                                metadata combinator; then, we define, when possible, a seri-
+   We first define the properties attached to the specifications                     alizer combinator.
+of §4.2. We prove a stronger version of non-malleability than
+the one given in §2.1, extending the definition there to handle                      Parser combinators We define primitive parser combina-
+parsers that may not consume all their input.                                        tors below. For each of them, we prove injectivity and any
+                                                                                     relevant additional properties indicated in their metadata, such
+Definition 1 A parser p for type t is non-malleable if, when-                        as the strong prefix property. We also define derived combina-
+ever it succeeds and returns the same parsed value on two                            tors; in contrast, all their properties are established automati-
+inputs, it also returns the same number of consumed bytes,                           cally as the result of their definitions (by type unification and
+and the two inputs coincide of these bytes.                                          matching on their metadata). The code produced by Quacky-
+                                                                                     Ducky only inserts annotations to prove their composability
+We also rely on the following no-lookahead property:
+                                                                                     conditions, for instance, by computing the length boundaries
+Definition 2 A parser p has the strong prefix property when,                         of the derived metadata, which are then verified by F? .
+if it succeeds on an input and consumes ` bytes, then it returns                        We start by defining primitive parser combinators: fail,
+the same result on any inputs with the same first ` bytes.                           which consumes no input and fails; ret[x], which consumes no
+                                                                                     input and succeeds returning x; read_byte, which consumes
+For a serializer to exist for a format that requires concate-                        and returns a single byte of input; and and_then, which se-
+nating two value representations valid with respect to two                           quentially composes two parsers where the second parser
+parsers p1 , p2 (such as pairs, lists, tagged unions, or variable-                   depends on the value parsed by the first parser (i.e., monadic
+length data), p1 is required to have the strong prefix prop-                         composition). For each of these basic combinators, we prove
+erty. Consider for instance serializing a pair of two pieces                         non-malleability and/or the strong prefix property under suit-
+of data x1 , x2 using serializers s1 , s2 correct with respect                       able conditions. For instance, p and_then q has the strong
+to parsers p1 , p2 . We would like to prove that the serial-                         prefix property provided that p has it, q[x] has it for all x,
+ization s(x1 , x2 ) = s1 (x1 ) · s2 (x2 ) obtained by concatenating                  and, moreover, if q[x1 ] and q[x2 ] succeed on inputs b1 and b2 ,
+the two serializations, is correct with respect to the parser                        respectively, and return the same value, then x1 = x2 . (Other-
+for pairs. By correctness of s1 , p1 (s1 (x1 )) succeeds and                         wise, consider for example p = read_byte and q = ret[0].)
+
+
+                                                                                11
+   Using those primitive combinators, we define derived com-                as a parser for the refined type (x : t{l ≤ |s(x)| ≤ h}), where
+binators, for which verification of non-malleability and meta-              ` = 8×| log256 (h)|, is the bit size of the size integer prefix, and
+data correctness automatically follows by typing. Given                     f (x) = |s(x)|. Such parsers inherit the strong prefix property
+parsers p0 and p1 for t0 and t1 , respectively, we can derive a             from the parser for the prefix size, regardless of whether it
+parser for pairs of type t0 × t1 using p × q; mapping functions             holds for p.
+over parsed results using p synth f ; filtering parsed results by
+                                                                            Correct Serializers Not all parser specifications have cor-
+some predicate using p filter f ; etc. proving non-malleability
+                                                                            rect serializers. For instance, ret[x] and and_then do not have
+and the strong prefix property for them under suitable condi-
+                                                                            a generic serializer. So, in LowParse, we provide serializer
+tions.
+                                                                            combinators for read_byte, fail, plist, synth, and ., for each of
+   More specifically, we derive parsers for fixed-length ma-
+                                                                            which we prove correctness with respect to its corresponding
+chine integers, and we prove their non-malleability for both
+                                                                            parser combinator (i.e., that they are inverse of one another).
+endiannesses. For instance, we define little-endian 16-bit pars-
+                                                                            We also easily prove that a correct serializer for p is also cor-
+ing as (read_byte × read_byte) synth ((x, y) 7→ x + 256 × y).
+                                                                            rect for p trunc n and p filter f (once its domain is restricted
+   Our next combinators support variable-length data and lists:
+                                                                            accordingly). From there, we derive correct serializers for
+   • Given a parser p for type t, the parser plist[p] is defined            ×, nlist, vldata, etc. for which the correctness proof automati-
+      by repeatedly applying p to its input. It fails as soon               cally follows by typing.
+      as p fails or consumes zero bytes. If succeeds when p
+      eventually consumes its whole input and then returns the
+      resulting list of values.                                             5.2    Implementation Combinators
+   • Given a parser p for type t and n > 0, the parser p trunc n            For each parser-specification combinator, LowParse provides
+      succeeds when p succeeds on its input truncated to its                combinators for its high-level parser and for its low-level
+      first n bytes and consumes exactly n bytes.                           validators and jumpers (and similarly for serializers). For
+The parser plist[p] does not have the strong prefix property,               primitive combinators, we implement their corresponding val-
+but it consumes all its input. The parser p trunc n always has              idators jumpers and serializers; for each of them we prove
+the strong prefix property, even if p does not. If s is a correct           memory safety and functional correctness with respect to their
+serializer for p at type t, then p trunc n is a parser for type             specification. We implement most derived combinators by
+x : t{|s(x)| = n} and s is its correct serializer at that type.             following the same construction as for their specs, by assem-
+   We finally present further derived combinators, whose prop-              bling the corresponding implementation combinators. Thus,
+erties are automatically verified by construction:                          their memory safety and functional correctness automatically
+   Tagged unions: if p is a parser for type t and f : u → t and             follow by typing. We also define accessor combinators for
+q[x] is a parser for type (y : u{ f (y) = x}) for every x : t, then:        synth and tagged unions, and accessors for pair elements,
+                                                                            from which QuackyDucky derives accessors for struct fields
+        p . f q = p and_then (x 7→ q[x] synth (y 7→ y))                     and sum types.
+is a parser for type u. This combinator is a strengthening of                  By design, our combinators are inherently higher-order and
+and_then that enforces non-malleability of q by making its                  so they cannot directly be extracted to C. Instead, we rely
+codomain dependent: u is the union type, and t is the tag type,             on meta-programming features of F? and KReMLin, based
+and f gives the tag of an element of the union type. From                   on source code annotations, to ensure that all combinator
+there, we define a combinator for sum types, which can be                   code is inlined and specialized before extraction. In most
+used for tagged unions.                                                     cases, this is achieved by annotating our source code. In other
+   Enum types: if l is a list of key-value pairs where each key             cases, we extend LowParse with F? tactics [31], pieces of
+and each value only appear once, then it defines both a closed              F? metaprograms written once and for all and evaluated at
+enum type (whose elements are the keys that appear in l)                    typechecking time to automatically generate Low? valida-
+and an open enum type (whose elements are the known keys                    tors from some type definitions. For example, our validators
+that appear in l and the unknown values that do not appear                  for enum values and tagged unions are specified using con-
+in l). We define parsers for both variants penum(p, l) (where               stant key-value lists. Instead of programming a loop on these
+p is the value parser), using filter, synth and the dictionary              lists, we meta-program their unrolling at compile-time, which
+function on key-value pair lists.                                           yields a cascade of ifs automatically turned into a switch by
+   Variable-sized data: formats such as TLS often specify                   many C compilers. In rare cases, such as unions tagged with
+variable-length data as a payload prefixed by its size in bytes.            an enum value, we write additional validator combinators to
+If p is a parser for the payload, and if s is a serializer correct          more precisely control their inlining by F? and KReMLin.
+with respect to p, then we define                                              In addition, metadata allow us to provide some generic
+                                                                            validator combinators that apply regardless of the actual parser
+    vldata(p, l, h) = parse_u` ◦ filter(n 7→ l ≤ n ≤ h)                     combinator. For example, if we know that a parser consumes
+                                . f (n 7→ p trunc n)                        a constant n bytes and always succeeds, then we can use a
+
+
+                                                                       12
+                QD    F? LoC    Verify   Extract    C LoC      Obj.        proofs for such lemmas are lengthy and intricate. So, we
+    TLS        1601   69,534      46m      25m     192,229   717KB
+    Bitcoin      31     1,925   1m56s    1m14s       1,344     8KB
+                                                                           define a LowParseWrappers module to replace such proofs
+    PKCS #1     117     4,452   2m14s    2m39s       3,368    26KB         with a uniform call to LowParse parser property lemmas. Our
+    LowParse    N/A   32,210     3m5s     1m5s         185    739 B        changes do not break other existing proofs, but several gener-
+                                                                           ated types are more precise than the handwritten ones (notably,
+          Table 1: Overview of EverParse Applications                      all lists are refined to ensure they can be serialized), which
+validator that just jumps n bytes. QuackyDucky selects these               leads to additional conditions to prove in many functions. The
+combinators based on the metadata it computes.                             generated parsers are also a lot stricter: for instance, we now
+                                                                           check at parsing which extensions can appear in a message,
+                                                                           and which messages can appear for the negotiated version.
+6      Integration and Evaluation                                             To test the impact of EverParse parsers, we run the sim-
+                                                                           ple HTTP client and server tool distributed with MITLS to
+We evaluate the integration of EverParse-generated parsers for
+                                                                           compare how many requests can be served, using the default
+three applications: the TLS message format, integrated into
+                                                                           algorithm choices. This tool is not optimized for production
+MI TLS; the Bitcoin block and transaction format, integrated
+                                                                           and processes requests sequentially. We compare the time to
+into the Bitcoin Core benchmark; and the ASN.1 payload of
+                                                                           process 500 requests between the original MITLS parsers and
+PKCS #1 signatures, integrated into mbedTLS.
+                                                                           EverParse high-level parser implementations.
+   Table 1 shows for each application the lines of Quacky-
+Ducky input specification, the amount of F? code generated,                                            MI TLS     MI TLS-EverParse
+the time required for verification and KReMLin extraction,                           HTTP requests   49.8 req/s          53.3 req/s
+and the size of the C code and compiled objects. The Bitcoin
+evaluation was performed on a 28-core Xeon E5-2680 v4                         Integrating the low-level Low? implementations into
+                                                                           MI TLS requires a large effort, as many functions that are
+CPU with 128GB of RAM, running with turbo boost and all
+but one core disabled. The rest of the figures were collected on           currently pure (operating on values such as lists) become
+a 10-core Xeon W-2155 CPU with 128GB of RAM, running                       stateful (the buffer that contains the valid positions matching
+F? commit 7b6d77 with Z3 4.5.1 and GCC 7.4.                                each value must be live). To anticipate the benefits of this
+                                                                           effort, we run a synthetic benchmark that validates all mes-
+                                                                           sages from a public dataset of TLS handshakes published by
+6.1      TLS Message Format                                                Lumen [39]. This dataset contains handshake produced by a
+As described in §3, we have specified the TLS message format               wide range of clients and servers, and contains over 13GB
+for all versions of TLS from 1.0 to 1.3. However, integrat-                of data (including the BSON overhead). As a baseline, we
+ing the generated parsers presents some major challenges:                  compare in-place validation time with the cost of checking
+implementations tend to define their own representations                   the message length, allocating a buffer of the message size,
+of messages, with field and tag names that differ from the                 and copying the contents of the message in the buffer.
+RFC, and some of them like mbedTLS interleave the pars-                                   Memcpy                    EverParse
+ing and processing of messages. MITLS [7] uses functional,                         1,864 MB/s 1.761 cy/B     2,684 MB/s 1.177 cy/B
+high-level parser implementations and types, operating on
+values. Most of the basic data types (such as cipher suite
+names) are defined in a module called TLSConstants, while                  6.2    Bitcoin Blocks and Transactions
+some specialized ones scattered in other modules (e.g. group
+names in CommonDH). Extension types and parsers are in the                 To show that EverParse is extensible and evaluate the per-
+Extensions module, while message types and parsers are                     formance of its low-level parsers, we implement the Bitcoin
+in HandshakeMessage. We noticed that these files contain                   block and transaction format, listed in Figure 9. We do not
+many assumptions and incomplete proofs, many of which                      implement Segregated Witness (“segwit”), an extension that
+have been completed for earlier drafts of TLS 1.3, but not                 overloads the semantics of a length in the block format to
+updated as the formats changed (with EverParse, such up-                   conditionally add a new field to the block structure, because it
+dates and extensions only require a few changes to the format              requires a very ad-hoc combinator. Bitcoin requires two Low-
+description).                                                              Parse extensions: one for the encoding of "compact integers"
+   In total, in order to switch to the high-level implementation           (bitcoin_varint), and one for lists prefixed by their size in
+produced by QuackyDucky, we update or rename over 200                      elements rather than in bytes.
+types (and propagate these changes), which requires 2,865                     For compact integers, the representation may either use
+additions and 3,266 deletions over 38 files (according to our              1, 3, 5, or 9 bytes depending on whether the value of the
+Github pull request). Unlike LowParse, MITLS individually                  first byte is respectively less than 252, 253, 254, or 255. It
+proves the non-malleability of each parser as a lemma separate             is not clear from the Bitcoin documentation and wiki that
+from parser definitions instead of a refinement; the MITLS                 the format of compact integer is not malleable (e.g. 4636
+
+
+                                                                      13
+opaque sha256[32];
+struct {
+  sha256 prev_hash; uint32_le prev_idx;
+  opaque scriptSig<0..10000 : bitcoin_varint>;
+  uint32_le seq_no;
+} txin;
+struct {
+  uint64_le value;
+  opaque scriptPubKey<0..10000 : bitcoin_varint>;
+} txout;
+struct {
+  uint32_le version;
+  txin inputs{0..1000 : bitcoin_varint};
+  txout outputs{0..11110 : bitcoin_varint};
+  uint32_le lock_time;
+} transaction;
+struct {                                                                 Figure 10: Synthetic performance comparison for validating
+  uint32_le version;                                                     10,001 Bitcoin blocks. Throughput in kiB/s, higher is better.
+  sha256 prev_block; sha256 merkle_root;
+  uint32_le timestamp;
+  uint32_le bits; uint32_le nonce;                                       cbe7efe); second, the performance variations of our zero-
+  transaction tx{0..2^16 : bitcoin_varint};                              copy block validator across compilers and optimization levels;
+} block;                                                                 third, the performance impact of fine-grained code-generation
+                                                                         options passed to KReMLin (Figure 10). For each one of those
+  Figure 9: QuackyDucky specification of Bitcoin blocks                  benchmarks, we report numbers in kiB/s, i.e. the throughput;
+                                                                         we only occasionally report cycles per byte since most of our
+                                                                         validators run at less than 1 cy/B.
+could be represented as fd121c, or fe0000121c). However,                    The first measurement compares the performance of our
+we checked that the Core implementation enforces the short-              code against a reference implementation, namely, Bitcoin
+est representation in the ReadCompactSize function. Ad-                  Core. Bitcoin uses a custom template for serializing C++ ob-
+ditionally, we allow list types to specify in their range the            jects. This template is well-optimized and tries to rely on
+type of integer used to encode the prefix length or size (e.g.           casts and the in-memory representation of base types as much
+txin inputs{0..2^14 : bitcoin_varint}). A drawback of                    as possible. However, it is not zero-copy: parsing relies on
+prefixing lists by their number of elements is that the theoreti-        the memory allocated for the C++ object, and serialization
+cal maximum length of the formatted list can get extremely               requires a copy to the output buffer. The benefit is that the data
+large. For instance, the maximal size of a well-formed Bitcoin           can be accessed using standard data structure libraries such
+block is over 2320 bytes (in practice, it is well-known that             as std::vector for lists. Bitcoin provides a built-in bench-
+non-segwit blocks are at most 1MB). To avoid overflowing                 marking tool for many of its features, including block deseri-
+OCaml’s 63-bit arithmetic in the parser metadata length com-             alization and validation in src/bench/checkblock.cpp.
+putations in QuackyDucky, we must write more conservative                   We modify this benchmark to use our test data of 10,001
+boundaries. Scripts are known to be at most 10,000 bytes.                blocks and deserialize all of them in each run. The benchmark
+Historically, all non-segwit blocks in the main chain contain            deserializes 130 times, and reports the median over 5 runs.
+less than 216 transactions (although the maximum is higher).             We keep the default compiler options (gcc-8, O2 optimization
+It is more difficult to bound the number of inputs and outputs           level). The measured throughput is 152,786 kiB/s, which
+of a transaction. If we assume a transaction is standard (at             translates to 15 cy/B on the test machine used for the Bitcoin
+most 100,000 bytes) and all inputs are signed (their script is at        measurements. We then validate the same 21MB of data using
+least 64 bytes), there are less than 1000 inputs. Since outputs          our validators, with the same compiler and optimization levels.
+can be as short as 9 bytes, a transaction can have over 11000.           We obtain a throughput of 4,568,632 kiB/s, which is less than
+Our test data is blocks 100,000 to 110,000 of the Bitcoin                a cycle per byte, for the default KReMLin configuration.
+blockchain, totaling 21MB. To experimentally check those                    While the validation performance of our code is excellent,
+assumptions, we parsed all of these blocks and confirmed they            we do not claim that this benchmark is representative of real
+are accepted by our validator.                                           application usage, as it doesn’t account for the overhead of
+  For benchmarking, we measure: first, the performance of                accessor functions to read the block and transaction contents.
+our zero-copy block validator compared with the built-in de-             Nevertheless, this shows that our verified low-level implemen-
+serialization function of the Bitcoin Core client (commit                tation is competitive with hand-optimized formatters.
+
+
+                                                                    14
+   Second, we measure performance variations across com-                   the specification is the lack of dependency between the object
+piler versions. The performance is comparable between the                  identifier of the hash algorithm and the octet string of the
+two most recent versions of Clang and GCC, for optimiza-                   actual digest: the application is required to check the digest is
+tion levels O2 and O3. Unsurprisingly, the default setting                 of the correct length if it tries to parse the signature contents.
+without optimization yields much slower code, but even then,               We capture this dependency by only making the outermost
+we remain considerably faster than the original Bitcoin code.              sequence variable length, and by parsing the object identifier
+We also measure the performance of our code compiled with                  as a constant tag of an union of fixed-length arrays. (Note
+CompCert [28]. We find that CompCert is consistently 42%                   that this is for illustration only, the recommended approach
+slower than GCC and Clang with optimizations, but still more               is to serialize the computed hash, and use a constant time
+than twice as fast as GCC or Clang without optimizations. We               comparison with the un-padded signature contents instead).
+conclude that our code lends itself well to optimizations by                  We integrate our code into pkcs1_v15_verify function
+modern compilers, and that users do not need to enable the                 of mbedTLS, and modify the built-in benchmarking tool
+(risky) O3 performance level to get maximum performance                    to measure the PKCS #1 signature verification time in-
+out of Clang or GCC.                                                       stead of the raw public key and private key operation time
+   Third, we experiment with various compilation                           measured by default. In addition, we also export the inter-
+schemes of the KReMLin compiler for the core type                          nal function to format the ASN.1 payload of the signature
+LowParse.slice.slice, a two-field C struct (representing a                 (pkcs1_v15_encode), and compare it with our extracted for-
+byte buffer through its base pointer and length) which in the              matter functions. The following table compares the amount
+default configuration is passed by value (§4.4). Two alternate             of operations per second and cycles per operation for com-
+compilation schemes are considered. First, passing both the                plete signature verification, and for the encoding of the ASN.1
+base pointer and length as separate arguments to functions;                payload:
+this is the “struct-explode” category, and yields no perfor-                   Operation         mbedTLS                EverParse
+mance improvement. Second, we pass those structures by                         Verify      79K op/s 5,700 cy/op    79K op/s 5,649 cy/op
+address, relying on an unverified transformation in the KReM-                  Encode      31M op/s    14 cy/op   134M op/s       3 cy/op
+Lin compiler, similar to CompCert’s -fstruct-passing                       As expected, the verification time is dominated by the cost
+feature. This yields modest performance improvements for                   of the RSA exponentiation: even though our validator is over
+GCC 7 and GCC 8 at the higher optimization levels (3% to                   4 times faster and avoids the allocation of a modulus-sized
+9%). We conclude that our generated C code is satisfactory                 intermediate buffer to compare the expected and computed
+and that we don’t need to either rewrite our code to pass                  digests, the impact on overall validation performance is negli-
+slices by address (a substantial proof burden) or instruct                 gible. For signing and encoding, the constant constant parts of
+KReMLin to perform this transformation (which would                        the signature payload must be written manually, and separate
+increase the trusted computing base).                                      finalizers must be called for to write the bytes we depend on
+   Finally, we perform fuzz testing on the X64 machine code                for the algorithm choice and the outermost ASN.1 length.
+of our generated bitcoin-block validator as compiled with                     We tested our implementation against all variants of the
+gcc-8 -O2. (Although our verification results ensure memory                Bleichenbacher’s attack listed in §2.2 and confirmed they are
+safety for all inputs, fuzzing may still, in principle, detect bugs        properly rejected.
+in our toolchain and the C compilers we use.) We use SAGE
+[19], a fuzzer specialized to parsers, which generates random
+                                                                           7     Related work
+input, valid or not, and feeds them to the validator which
+SAGE automatically instruments to check for buffer over-                   Parsing combinators are widely used in functional program-
+flows. As expected, SAGE reported no bugs after 21,664,448                 ming languages, and there exist several libraries for network
+inputs tested at an average rate of 599 inputs per minute.                 protocols [29], including TLS and X.509 [30].
+                                                                              For well-behaved language classes (e.g. regular, context-
+6.3    ASN.1 Payload of PKCS #1 Signatures                                 free), there is a long history on verification of parser correct-
+                                                                           ness with respect to simple specifications (regular expressions,
+Our last example is the payload of PKCS #1 signatures intro-               grammars). Jourdan et al. [25] propose a certifying compiler
+duced in § 2.2. We extend LowParse with a combinator for                   for LR(1) grammars, which translates the grammar into a
+the encoding of ASN.1 DER lengths. This encoding is partic-                pushdown automaton and a certificate of language equiva-
+ularly convoluted: if a length is less than 127, it is represented         lence between the grammar and the automaton. The certifi-
+over a single byte. Otherwise, the 7 least significant bits of the         cate is checked by a validator verified in Coq [1], while the
+first byte encode the length in byte of the shortest big endian            automaton is interpreted by a verified interpreter. Barthwal
+representation of the length. This means the length can be at              et al. [3] propose a verified grammar compiler and automa-
+         1016
+most 22 − 1. To avoid overflows, we only support values of                 ton interpreter for the simpler class of SLR languages, ver-
+the first byte less than 132 (i.e. 32-bit lengths). An issue with          ified in HOL [42]. For regular languages, Koprowski et al.
+
+
+                                                                      15
+introduced TRX [26], an interpreter for regular expressions              value encodings, tagged unions, and other forms of depen-
+verified in Coq. All of these works require runtime interpre-            dence supported by QuackyDucky. They also provide tooling,
+tation, which greatly degrades the performance compared to               like QuackyDucky, to automatically extract message format
+compilation. Furthermore, they target garbage-collected func-            descriptions from RFCs and have applied their work to net-
+tional language runtimes like OCaml, which cannot easily be              work message formats like IMAP, the popular mail protocol.
+integrated into high-performance, native C applications.                 While the input language of their framework is significantly
+   For TLV languages, there have been some attempts [2] to               more expressive than ours, EverParse, in contrast, produces
+create context-free or even regular specifications for X.509.            provably safe, secure and functionally correct parsers. Jim
+However, due to the context-sensitive nature of ASN.1, these             and Mandelbaum also do not address message formatting.
+efforts rely on discretizations of some fields (such as variable-
+length integers) and drastic simplifications of the format (such
+as limiting the choice of extensions to a known subset). The
+                                                                         8   Limitations and Future Work
+combinatorial explosion required to achieve interoperability
+                                                                         Trusted computing base: we statically guarantee at the F?
+makes these approaches impractical for real implementations,
+                                                                         source level memory safety, functional correctness, and non-
+although some authors claim otherwise [21].
+                                                                         malleability for all code generated by QuackyDucky. Pre-
+   For runtime safety, fuzzing techniques [19, 43] are widely
+                                                                         serving non-malleability down to machine code requires only
+deployed and often included into test suites for cryptographic
+                                                                         preserving functional correctness, since non-malleability is
+libraries. Although best practice, fuzzing is by nature incom-
+                                                                         a specification-level guarantee. All our verification results,
+plete, and may be difficult to apply to authenticated mes-
+                                                                         including preservation of memory safety and functional cor-
+sages (as fuzzing invalidates hashes, signatures and MACs).
+                                                                         rectness down to machine code, relies on a trusted computing
+Dynamic analysis tools like Valgrind [35] or AddressSani-
+                                                                         base (TCB) that includes:
+tizer [44] are widely used but also incomplete, while static
+analysis tools like Frama-C [11] require higher expertise, a                • the F? proof assistant and the Z3 theorem prover, al-
+significant time investment, and tend to scale poorly with                     though work by Swamy et al. [48] provides a model of a
+large codebases. Because of past attacks, specific tools have                  subset of F? and proves its soundness;
+been created for TLS and cryptographic libraries, including                 • the KReMLin compiler from Low? to C, although work
+TLS-Attacker [45], FlexTLS [5], and Wycheproof [8], but                        by Protzenko et al. [38] provides a model of a sub-
+their focus is to uncover known vulnerability patterns in pro-                 set of Low? , its compilation to CompCert Clight, and
+tocol implementations rather than prove formal guarantees on                   proofs (on paper) that compilation to C preserves mem-
+their message formats.                                                         ory safety and functional correctness;
+   Another related line of work [10, 16] applies abstract in-               • the C compiler, although one can use the CompCert [28]
+terpretation and symbolic execution to study the properties                    verified C compiler, which ensures the preservation of
+of parsers, such as whether two implementations of a format                    memory safety and functional correctness, at the expense
+accept the same message. These techniques can be applied to                    of some performance.
+existing implementations, but cannot generate new ones.                  This trusted base is comparable to Coq-based verified imple-
+   Narcissus [47] also constructs correct binary parsers from a          mentations, which trust Coq, the Coq extraction to OCaml,
+verified library of combinators written in Coq. There are two            and the OCaml compiler and runtime. Ongoing research aims
+major differences with EverParse: first, Narcissus only proves           to reduce this TCB by verifying Coq extraction; similar efforts
+the correctness of its parsers, while we also prove parser secu-         could, in principle, be applied to F? and KReMLin.
+rity; second, Narcissus only generates higher-order, functional             Conversely, neither LowParse nor QuackyDucky are in the
+implementations while our compiled approach means that our               TCB. LowParse is fully verified. The input format specifi-
+parsers are entirely specialized at F? extraction, and can be            cation of QuackyDucky is trusted for liveness, but not for
+compiled in zero-copy mode. Building on Narcissus, Ye and                security: if there is a mistake in the format specification, the
+Delaware [51] build a verified compiler in Coq for parsers               worse that can happen is that the generated messages are in-
+and formatters described using Protocol Buffers [20]. Like               compatible with implementations of the correct format. We
+EverParse, their parsers and formatters are proven to be cor-            rely on interoperability testing to detect such mistakes. Con-
+rect. Their library produces high-level functional code, which           versely, EverParse can be used during the standardization of
+is memory-safe by construction—in contrast, EverParse pro-               a new message format, as it can prove that the specification is
+duces low-level C code, together with memory safety proofs.              secure regardless of the generated implementation.
+Further, due to the inherent structure of the Protocol Buffers              Expressiveness QuackyDucky currently focuses on sup-
+format, their work does not consider non-malleability.                   porting tag-length-value encodings of non-malleable data
+   Jim and Mandelbaum [23, 24] have formalized and devel-                formats. We show that the message formats of several im-
+oped parser generators for a wide class of context-free gram-            portant protocols and standards, including TLS, PKCS #1
+mars extended with data dependency, including tag-length-                signature payloads and Bitcoin, fall into this class. LowParse,
+
+
+                                                                    16
+being the target language of QuackyDucky’s translation, is               Wintersteiger and the Everest team for their help in test-
+also currently restricted to supporting non-malleable data               ing EverParse. We thank Clément Pit-Claudel and Benjamin
+formats. However, it would be straightforward to make non-               Delaware for insightful discussions on the goals of verified
+malleability conditional on a flag set in the parser metadata            parsing. Tej Chajed and Nadim Kobeissi completed their work
+in order to define combinators for zero-copy malleable for-              during internships at Microsoft Research.
+mats, including MessagePack, CBOR, Apache Arrow, Cap’n
+proto, and Protocol Buffers which are malleable at least by de-
+fault (some have canonical representation rules). Generalized
+                                                                         References
+to support malleable formats, LowParse, being a library of                [1] The Coq proof assistant. http://coq.inria.fr, 1984–2019.
+verified monadic parser combinators, would support parsing                [2] A. Barenghi, N. Mainardi, and G. Pelosi. Systematic parsing
+with arbitrary data dependence and lookahead, beyond the                      of X.509: eradicating security issues with a parse tree. CoRR,
+class of context-free languages—however, coming up with                       abs/1812.04959, 2018.
+efficient verified implementations of parsers for such language           [3] A. Barthwal and M. Norrish. Verified, executable parsing.
+classes is an open question. In the future, we will also consider             In European Symposium on Programming, pages 160–174.
+generalizing QuackyDucky to target the class of languages                     Springer, 2009.
+supported by LowParse.                                                    [4] D. Benjamin. Applying GREASE to TLS extensibility. IETF
+   Side-channel attacks: the implementation produced by                       Draft, 2016.
+EverParse branches on values read from the input buffer,                  [5] B. Beurdouche, A. Delignat-Lavaud, N. Kobeissi, A. Pironti,
+which may leak (through timing side-channels) information                     and K. Bhargavan. FLEXTLS: A tool for testing TLS imple-
+                                                                              mentations. In Usenix Workshop on Offensive Technologies
+when used on confidential data. We may in principle verify
+                                                                              (WOOT15), 2015.
+properties such as constant-time execution for the process-
+                                                                          [6] K. Bhargavan, B. Bond, A. Delignat-Lavaud, C. Fournet,
+ing of simple message formats, reusing F? and KReMLin
+                                                                              C. Hawblitzel, C. Hritcu, S. Ishtiaq, M. Kohlweiss, R. Leino,
+techniques and libraries for side-channel protection of crypto-               J. R. Lorch, K. Maillard, J. Pan, B. Parno, J. Protzenko, T. Ra-
+graphic algorithms. For example, we may provide constant-                     mananandro, A. Rane, A. Rastogi, N. Swamy, L. Thompson,
+time combinators for fixed-length secret bytestrings. We leave                P. Wang, S. Z. Béguelin, and J. K. Zinzindohoue. Everest: To-
+such extensions for future work.                                              wards a verified, drop-in replacement of HTTPS. In 2nd Sum-
+   Fuzzing: since we expect our extracted C code to be com-                   mit on Advances in Programming Languages, SNAPL 2017,
+piled by unverified toolchains (such as GCC and LLVM, with                    May 7-10, 2017, Asilomar, CA, USA, pages 1:1–1:12, 2017.
+optimizations), fuzz testing can provide additional assurance                 https://project-everest.github.io.
+that the compilation from F? to binary does not break our                 [7] K. Bhargavan, C. Fournet, and M. Kohlweiss. miTLS: Ver-
+verified safety properties. We started using fuzzers optimized                ifying protocol implementations against real-world attacks.
+for parsers, such as SAGE [19], to fuzz the generated bitcoin                 IEEE Security & Privacy, 14(6):18–25, Nov 2016. https:
+                                                                              //github.com/project-everest/mitls-fstar.
+block validator; we plan to extend their use to fuzz application
+                                                                          [8] D. Bleichenbacher, T. Duong, E. Kasper, and Q. Nguyen.
+code that uses generated validators and accessors.
+                                                                              Project Wycheproof: Scaling crypto testing. In Real World
+   Integration: we have integrated the high-level implemen-                   Crypto Symposium, New York, USA, 2017.
+tation of EverParse TLS parsers into MITLS, but our goal                  [9] S. Y. Chau. The OID parser in the ASN.1 code in GMP allows
+is to transition to the low-level implementation, thus avoid-                 any number of random bytes after a valid OID. Available from
+ing many unnecessary heap allocations and copies. This is a                   MITRE CVE-2018-16151, 2018.
+major step towards making MITLS practical in performance-                [10] P. Cousot and R. Cousot. Grammar Analysis and Parsing
+sensitive deployments.                                                        by Abstract Interpretation, pages 175–200. Springer Berlin
+                                                                              Heidelberg, Berlin, Heidelberg, 2007.
+                                                                         [11] P. Cuoq, F. Kirchner, N. Kosmatov, V. Prevosto, J. Signoles,
+9   Conclusion                                                                and B. Yakobowski. Frama-C. In International Conference
+                                                                              on Software Engineering and Formal Methods, pages 233–247.
+Developers should prefer the convenience and robustness of                    Springer, 2012.
+writing high-level format specifications compiled by parser              [12] C. Decker and R. Wattenhofer. Bitcoin transaction malleability
+generation tools to programming tedious and error-prone cus-                  and MtGox. In European Symposium on Research in Computer
+tom parsers, although the latter is sometimes required for                    Security, pages 313–326. Springer, 2014.
+performance reasons. EverParse offers a unique combination               [13] A. Delignat-Lavaud. RSA signature forgery attack in NSS due
+of high performance, zero-copy implementations and high-                      to incorrect parsing of ASN.1 encoded DigestInfo. MITRE
+assurance formal verification of the generated parsers.                       CVE-2014-1569, 2014.
+                                                                         [14] T. Dierks and C. Allen. The TLS 1.0 protocol. IETF RFC
+Acknowledgments We thank the anonymous reviewers and                          2246, 1999.
+Prateek Saxena for their helpful comments, which improved                [15] T. Dierks and E. Rescorla. The transport layer security (TLS)
+the writing of this paper. We thank Barry Bond, Christoph                     protocol version 1.2. IETF RFC 5246, 2008.
+
+
+                                                                    17
+[16] K.-G. Doh, H. Kim, and D. A. Schmidt. Abstract LR-Parsing,              [35] N. Nethercote and J. Seward. Valgrind: a framework for heavy-
+     pages 90–109. Springer Berlin Heidelberg, Berlin, Heidelberg,                weight dynamic binary instrumentation. In ACM Sigplan no-
+     2011.                                                                        tices, volume 42, pages 89–100. ACM, 2007.
+[17] Z. Durumeric, F. Li, J. Kasten, J. Amann, et al. The Matter of          [36] G. Neufeld and S. Vuong. An overview of ASN.1. Computer
+     Heartbleed. In Proceedings of the 2014 Internet Measurement                  Networks and ISDN Systems, 23(5):393–415, 1992.
+     Conference, pages 475–488. ACM, 2014.                                   [37] Y. Oiwa, K. Kobara, and H. Watanabe. A new variant for
+[18] H. Finney. Bleichenbacher’s RSA signature forgery based on                   an attack against RSA signature verification using parameter
+     implementation error, 2006.                                                  field. In J. Lopez, P. Samarati, and J. L. Ferrer, editors, Public
+[19] P. Godefroid, M. Y. Levin, and D. Molnar. SAGE: whitebox                     Key Infrastructure, pages 143–153, Berlin, Heidelberg, 2007.
+     fuzzing for security testing. Queue, 10(1):20, 2012.                         Springer Berlin Heidelberg.
+[20] Google. Protocol buffers. github.com/protocolbuffers.                   [38] J. Protzenko, J.-K. Zinzindohoué, A. Rastogi, T. Ramananan-
+[21] R. D. Graham and P. C. Johnson. Finite state machine parsing                 dro, P. Wang, S. Zanella-Béguelin, A. Delignat-Lavaud,
+     for internet protocols: Faster than you think. In Security and               C. Hriţcu, K. Bhargavan, C. Fournet, and N. Swamy. Ver-
+     Privacy Workshops (SPW), 2014 IEEE, pages 185–190. IEEE,                     ified low-level programming embedded in F*. PACMPL,
+     2014.                                                                        1(ICFP):17:1–17:29, Sept. 2017.
+[22] G. Hutton. Higher-order functions for parsing. Journal of               [39] A. Razaghpanah, A. Akhavan Niaki, N. Vallina-Rodriguez,
+     functional programming, 2(3):323–343, 1992.                                  S. Sundaresan, J. Amann, and P. Gill. Tls handshake data col-
+[23] T. Jim and Y. Mandelbaum. Efficient earley parsing with                      lected by Lumen, Sept. 2017. https://haystack.mobi/datasets.
+     regular right-hand sides. Electr. Notes Theor. Comput. Sci.,            [40] E. Rescorla. The transport layer security (TLS) protocol ver-
+     253(7):135–148, 2010.                                                        sion 1.3. IETF RFC 8446, 2018.
+[24] T. Jim and Y. Mandelbaum. A new method for dependent pars-
+                                                                             [41] J. Salowey, H. Zhou, P. Eronen, and H. Tschofenig. Transport
+     ing. In Programming Languages and Systems - 20th European
+                                                                                  layer security (TLS) session resumption without server-side
+     Symposium on Programming (ESOP), pages 378–397, 2011.
+                                                                                  state. IETF RFC 5077, 2008.
+[25] J.-H. Jourdan, F. Pottier, and X. Leroy. Validating LR(1)
+     parsers. In Proceedings of the 21st European Conference                 [42] N. Schirmer. Verification of sequential imperative programs in
+     on Programming Languages and Systems, ESOP’12, pages                         Isabelle/HOL. PhD thesis, Technische Universität München,
+     397–416, Berlin, Heidelberg, 2012. Springer-Verlag.                          2006.
+[26] A. Koprowski and H. Binsztok. TRX: A formally verified                  [43] K. Serebryany. OSS-Fuzz: Google’s continuous fuzzing ser-
+     parser interpreter. In European Symposium on Programming,                    vice for open source software. 2017.
+     pages 345–365. Springer, 2010.                                          [44] K. Serebryany, D. Bruening, A. Potapenko, and D. Vyukov.
+[27] D. Leijen and E. Meijer. Parsec: Direct style monadic parser                 Addresssanitizer: A fast address sanity checker. In Usenix
+     combinators for the real world. 2001.                                        Annual Technical Conference (ATC12), pages 309–318, 2012.
+[28] X. Leroy. Formal certification of a compiler back-end, or:              [45] J. Somorovsky. Systematic fuzzing and testing of TLS libraries.
+     programming a compiler with a proof assistant. In 33rd ACM                   In Proceedings of the 2016 ACM SIGSAC Conference on Com-
+     symposium on Principles of Programming Languages, pages                      puter and Communications Security, pages 1492–1504. ACM,
+     42–54. ACM Press, 2006.                                                      2016.
+[29] O. Levillain. Parsifal: A pragmatic solution to the binary pars-        [46] R. Srinivasan. XDR: External data representation. IETF RFC
+     ing problems. In 2014 IEEE Security and Privacy Workshops,                   1832, 1995.
+     pages 191–197, May 2014.                                                [47] S. Suriyakarn, B. Delaware, A. Chlipala, et al. Narcissus:
+[30] A. Madhavapeddy and D. J. Scott. Unikernels: the rise of the                 Deriving correct-by-construction decoders and encoders from
+     virtual library operating system. Communications of the ACM,                 binary formats. arXiv preprint arXiv:1803.04870, 2018.
+     57(1):61–69, 2014.
+                                                                             [48] N. Swamy, C. Hriţcu, C. Keller, A. Rastogi, A. Delignat-
+[31] G. Martínez, D. Ahman, V. Dumitrescu, N. Gian-
+                                                                                  Lavaud, S. Forest, K. Bhargavan, C. Fournet, P.-Y. Strub,
+     narakis, C. Hawblitzel, C. Hritcu, M. Narasimhamurthy,
+                                                                                  M. Kohlweiss, J.-K. Zinzindohoue, and S. Zanella-Béguelin.
+     Z. Paraskevopoulou, C. Pit-Claudel, J. Protzenko, T. Ra-
+                                                                                  Dependent types and multi-monadic effects in F*. In ACM
+     mananandro, A. Rastogi, and N. Swamy. Meta-F*: Proof
+                                                                                  Symposium on Principles of Programming Languages, pages
+     automation with SMT, tactics, and metaprograms. In 28th
+                                                                                  256–270, 2016. https://www.fstar-lang.org.
+     European Symposium on Programming, 2019.
+[32] N. Mavrogiannopoulos, F. Vercauteren, V. Velichkov, and                 [49] F. Valsorda. Bleichenbacher’06 signature forgery in Python-
+     B. Preneel. A cross-protocol attack on the TLS protocol. In                  RSA, 2016.
+     Proceedings of the ACM Conference on Computer and Com-                  [50] P. Wuille et al. BIP62: Dealing with malleability, 2014.
+     munications Security, pages 62–72, 10 2012.                             [51] Q. Ye and B. Delaware. A verified protocol buffer compiler.
+[33] MongoDB. BSON. http://bsonspec.org/.                                         In Proceedings of the 8th ACM SIGPLAN International Con-
+[34] S. Nakamoto. Bitcoin: A peer-to-peer electronic cash system.                 ference on Certified Programs and Proofs, CPP 2019, pages
+     2008.                                                                        222–233, 2019.
+
+
+
+
+                                                                        18
+

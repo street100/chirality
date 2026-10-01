@@ -197,3 +197,34 @@ Do not mark the artifact. Carry the FLAG list verbatim, in the agent's words.
 The author's answers feed a re-audit of the same artifact, which is a new
 dispatch of the same stage. An audit that resolves its own flag has taken an
 author's decision.
+
+## What a fan-out costs, measured 2026-10-01
+
+The author asked on 2026-09-30 to see *"how much usage you burn on ultracode in
+cloud vm"*, and authorized one multi-agent workflow for it: an orientation on
+the enforcement goal at `2faa028`. Twenty-one read-only agents, ten readers,
+ten verifiers and one synthesizer, ran for about 62 minutes in a cloud
+container. Counted from the agent transcripts:
+
+| phase | agents | turns | cache read | cache write | output |
+|---|---|---|---|---|---|
+| readers | 10 | 682 | about 96M | 1.6M | about 120k |
+| verifiers | 10 | 196 | about 13M | 0.4M | about 50k |
+| synthesis | 1 | 6 | 1.2M | 0.24M | about 50k |
+| **total** | **21** | **884** | **110M** | **2.25M** | **about 226k** |
+
+- **Cache reads are about 98% of the tokens.** Each turn re-reads the agent's
+  whole context, so cost is turns times context size. The costliest reader took
+  100 turns and read 13.6M. A verifier that opens cited lines took 10 to 35
+  turns and about 1M.
+- **The harness's counters leave cache reads out.** Its subagent counter
+  reported 2.9M for the run, and a workflow's `budget.spent()` counts output
+  only. The figures above sum each transcript's `usage` blocks, taking the
+  largest value per message id so a streamed turn counts once.
+- **The container ran two agents at a time.** It had 4 CPUs, and the workflow
+  runner keeps CPUs minus two agents live.
+- **Verification was the cheap half.** It cost about a seventh of the reading
+  and checked 251 claims: 240 held, 10 held with a citation a line or two off,
+  and 1 was false.
+
+The run's document is `.planning/archive/enforcement-2026-10-01/orientation-2faa028.md`.

@@ -53,8 +53,17 @@ tools/xlat/xlat.sh pin <ID> <url> raw /tmp/<id>.txt
 had, and then say so in the row, because a transcription carries the
 transcriber's reading.
 
-Egress works from this sandbox. It was assumed blocked for a whole session on
-the strength of a note, and `curl` returns HTTP 200.
+Egress depends on the environment's network policy, so probe it before
+deciding: `curl -sS -o /dev/null -w '%{http_code}' URL`. It was assumed blocked
+for a whole session on the strength of a note while `curl` returned HTTP 200.
+⚑ In the cloud sessions of 2026-10-01 the policy was narrower:
+`raw.githubusercontent.com` answered 200, and unicode.org, cwe.mitre.org,
+arxiv.org, rfc-editor.org, racket-lang.org and srfi.schemers.org returned `000`.
+Under that policy, fetch the same document from a GitHub repository's raw path
+and pin it `raw`; a PDF converted by `pdftotext -layout` pins `transcribed`; a
+page only `WebFetch` reaches is saved as the verbatim text of the sections
+needed and pinned `transcribed`, and the row says so. The author can widen the
+environment's network access in its settings.
 
 ## Step 3: read the pin
 

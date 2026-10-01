@@ -12,6 +12,14 @@ The extension is the file's kind. The resolver checks it.
 | `.profile` | a named frozen port set | zero lambdas, zero externs, names a module set |
 | `.manifest` | pure data, the replacement for JSON/TOML config | declared in the file, not derived |
 
+⚑ **Outlined by the author 2026-10-01, amendment owed.** `.chiral` is raw
+s-expressions, the split every other kind is parsed to; `.prog` becomes the
+coder view, so where an entry lives reopens; `.port` is the pure port-maker
+view; `.manifest` is the whole manifest realm, with the `<name>.m.<facet>`
+kinds as its members. The table above is the contract until the amendment
+lands. The outline and what it moves are in `.planning/FILE-KIND-STRUCTURES.md`
+§Amended 2026-10-01, and the amendment is `SR8` in `.planning/DISPATCH-QUEUE.md`.
+
 Extension is the type, directory is the role. Subject matter is neither, so there is
 no `stdlib/` and no `compiler/`.
 

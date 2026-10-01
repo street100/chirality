@@ -1,0 +1,500 @@
+                                    Verbatim: A Verified Lexer Generator
+
+
+                   Derek Egolf                              Sam Lasser                          Kathleen Fisher
+                  Tufts University                        Tufts University                       Tufts University
+                   Medford, MA                             Medford, MA                            Medford, MA
+               derek.egolf@tufts.edu                   samuel.lasser@tufts.edu                kfisher@cs.tufts.edu
+
+
+
+   Abstract—Lexers and parsers are often used as front ends         analyze Verbatim’s runtime complexity and present results of
+to connect input from the outside world with the internals of       an empirical performance evaluation in Section 7. In Section
+a larger software system. These front ends are natural targets      8, we give a brief overview of related work. Finally, in
+for attackers who wish to compromise the larger system. A
+formally verified tool that performs mechanized lexical analysis    Section 9 we discuss our plans for future development.
+would render attacks on these front ends less effective.
+   In this paper we present Verbatim, an executable lexer that                II. BACKGROUND AND S PECIFICATION
+is implemented and verified with the Coq Proof Assistant.
+We prove that Verbatim is correct with respect to a standard           Lexical analysis (lexing) is the process of partitioning an
+lexer specification. We also analyze its theoretical complexity     input string into a list of words and assigning a label to each
+and give results of an empirical performance evaluation. All        of these words. A label-word pair is usually called a token.
+correctness proofs have been mechanized in Coq.
+                                                                    A lexer performs this process with the help of lexical rules
+  Keywords-lexical analysis; interactive theorem proving            that specify how to partition the input. Given a set of lexical
+                                                                    rules, we must specify how the lexer is to apply these rules.
+                      I. I NTRODUCTION                              In particular, we must specify how the lexer partitions the
+   Lexers and parsers are often used as front ends to connect       input and how the lexer labels a word that matches multiple
+input from the external world with an otherwise trusted             rules. In this section, we formalize regexes, regex matching,
+computing base. These front ends are natural targets for            the maximal munch principle, and Brzozowski derivatives.
+attackers who wish to access the internals of such computing
+bases. There is a plentiful pool of such attacks in the real        A. Regular Expressions
+world, many of which have exploited avoidable implemen-                Regexes inductively denote regular languages. These ex-
+tation bugs [1]–[7]. A formally verified tool that performs         pressions are natural interfaces for lexing as they are both
+mechanized lexical analysis would render many of those              human and machine readable. If a string z is in the language
+attacks far less effective.                                         represented by regex e, we say that z matches e and write
+   In this paper we present Verbatim, an executable lexer           z ≃ e. We use the canonical, inductive definitions of regexes
+that provably conforms to a standard lexer specification.           (Figure 1) and regex matching (Figure 2) presented in
+Verbatim takes as input a list of lexical rules and a string, and   Software Foundations [10], a popular textbook on interactive
+it uses a technique for regular expression matching based           theorem proving in Coq.
+on the concept of Brzozowski derivatives [8] to tokenize               We differentiate the empty string λ from the empty regex
+the string. The resulting list of tokens satisfies a common         ε, which denotes the language {λ}. Additionally, a is the
+specification known as the “maximal munch” principle: each          string consisting solely of symbol a, while [[a]] is the regex
+token is the longest prefix of the remaining input string that      that denotes {a}, the language containing only that string.
+matches a lexical rule.
+                                                                       We represent a lexical rule as a label-regex pair. We say
+   The Coq development that accompanies this paper is
+                                                                    that a string z matches a rule (l, e) iff z ≃ e and we write
+publicly available online [9]. The development consists of
+                                                                    z ≃ (l, e) to represent such a match.
+roughly 700 lines of specification and 1200 lines of proof.
+   This paper is organized as follows. In Section 2 we
+                                                                    B. Maximal Prefixes
+provide background information on lexical analysis, the
+maximal munch principle, and Brzozowski derivatives. We                If string z = p ++ s, we say that p is a prefix of z and
+present the Verbatim implementation in Section 3. In Section        we write Prefix p z. Given a list of rules R and a string
+4, we discuss how we constructed a provably terminating             z, we say that p is the maximal prefix of z with respect to
+lexer implementation in Coq. Section 5 presents our correct-        R iff p is the longest prefix of z that matches some rule
+ness theorems and proof sketches. In Section 6, we discuss          in R. Under those conditions, we write MaxPrefR p z (we
+our use of proof automation in the Coq development. We              formalize this definition in Figure 3).
+                                                                                                               (P REFIX )
+  Symbol a, b ∈ Σ
+                                                                                                                p ++ s = z
+  String          z ::= λ | az
+                                                                                                               Prefix p z
+  Regex           e ::= ∅ | ε | [[a]] | e + e | e · e | e∗
+  Rule            r ::= (z, e)                                                    (M AX P REF )
+                                                                                               Prefix p z      r∈R      p≃r
+  Token           t ::= (z, z)
+                                                                                  ∀p0 , Prefix p0 z ∧ len p < len p0 → ∀r0 ∈ R, ¬(p0 ≃ r0 )
+Figure 1: Definition of strings, regular expressions, lexical rules, and tokens                         MaxPrefR p z
+over an alphabet Σ. For brevity, we write non-empty strings without a
+terminal λ. For example, we write a instead of aλ.                                Figure 3: Definition of the maximal prefix of a string z with respect to a
+                                                                                  list of lexical rules R.
+
+                (ME MPTY )                        (MC HAR )
+                λ≃ε                               a ≃ [[a]]                          (F IRST T OKEN )
+                                                                                     p 6= λ       MaxPrefR p z    p ≃ (l, e)    (l, e) ∈ R
+    (MA PP )                                     (MU NION L)
+                                                                                          ∀r0 , IndexR r0 < IndexR (l, e) → ¬(p ≃ r0 )
+    z1 ≃ e1     z2 ≃ e2                            z ≃ e1
+                                                                                                         FirstTokenR (l, p) z
+     z1 ++ z2 ≃ e1 · e2                          z ≃ e1 + e2
+                                                                                                        (T OKENS N IL )
+ (MU NION R)                                       (MS TAR A PP )
+                        (MS TAR 0)                                          ∗                           ∀t, ¬FirstTokenR t z
+   z ≃ e2                                           z1 ≃ e      z2 ≃ e
+                        λ ≃ e∗                                                                             TokensR ([ ], z) z
+ z ≃ e1 + e2                                           z1 ++ z2 ≃ e∗
+                                                                                          (T OKENS C ONS )
+Figure 2: Formal specification of string-regex matching, where a string is
+a list of symbols from alphabet Σ and z1 ++ z2 is the concatenation of                                          z = p ++ s
+strings z1 and z2 .                                                                       FirstTokenR (l, p) z               TokensR (ts, u) s
+                                                                                                      TokensR ((l, p) :: ts, u) z
+
+C. Maximal Munch Principle                                                        Figure 4: Formal specification of the maximal munch principle applied to
+                                                                                  a string z and a list of lexical rules R. In T OKENS C ONS, the unprocessed
+   Regardless of the exact process used to lex an input                           suffix is u, while in T OKENS N IL all of z is unprocessed.
+string, that process ought to be unambiguous. One popular
+specification for unambiguous lexing is the maximal munch
+principle [11]. Given an input string z and a list of rules R,
+                                                                                  formally:
+the maximal munch principle says that the first word of z
+is the maximal prefix of z with respect to R. If multiple                                                 ∂a L = {z | az ∈ L}
+rules in R match the maximal prefix, we label this first
+word according to the matching rule with the least index
+                                                                                  Brzozowski showed that this operation preserves regularity,
+in R (see F IRST T OKEN in Figure 4). If we partition z as
+                                                                                  so the operation can be extended to strings recursively:
+z = p ++ s, where p is the first word of z, then we can
+specify the remaining tokens inductively as the tokens of
+s. If no maximal munch exists or the remaining suffix is                                                      ∂λ L = L
+empty, we specify the remaining suffix as unprocessed. (see                                                  ∂az L = ∂z (∂a L)
+T OKENS N IL and T OKENS C ONS in Figure 4).
+
+D. Brzozowski Derivatives                                                         So if we have a string z and a regular language L, we can
+                                                                                  conclude by induction on the string that
+   Verbatim’s regex matcher uses a matching algorithm
+based on the concept of Brzozowski derivatives. Brzozowski
+                                                                                                          z ∈ L ⇐⇒ λ ∈ ∂z L
+derivatives are a popular approach to regex matching in the
+functional programming community [12], and we used them
+as the basis for our lexer because they allow for incremental                        Because regular expressions inductively denote regular
+matching on a sequence of characters.                                             languages, we can extend the concept of a derivative from a
+   Intuitively, the derivative of a language L with respect                       regular language to a regular expression. Intuitively, if regex
+to symbol a chops off the a from those strings in L that                          e represents language L, then ∂a e = e0 represents ∂a L. The
+begin with a and includes only the resulting suffixes. More                       following recursive algorithm computes the derivative of a
+regular expression with respect to a character a:                 a nullable regex, there is no maximal prefix and the finder
+                                                                  returns None. For instance,
+          ∂a ∅ := ∅
+                                                                              maxpref_one bb (l1 , [[a]]) = None
+           ∂a ε := ∅
+         ∂a [[b]] := if a == b then ε else ∅                      because no prefix of bb matches [[a]]. Specifically, ∂b [[a]] = ∅
+  ∂a (e1 + e2 ) := ∂a e1 + ∂a e2                                  and ∂b ∅ = ∅. Neither ∅ nor [[a]] is nullable. Because none
+                                                                  of the encountered regexes are nullable, Verbatim recognizes
+   ∂a (e1 · e2 ) := (∂a e1 · e2 )
+                                                                  that there is no maximal prefix.
+                 + (if nullable e1 then ∂a e2 else ∅)                We create a maximal prefix finder for a list of regexes by
+       ∂a (e ) := ∂a e · e∗
+             ∗
+                                                                  wrapping the singleton finder in a function called max_pref.
+
+where nullable r1 evaluates to true if λ ≃ r1 and false           max_pref : String -> list Rule
+otherwise. We also compute nullable recursively:                                -> Label * option (String * String)
+
+                                                                  This function takes a string and a list of rules and, if
+          nullable ∅ := false                                     possible, returns the longest prefix matching any rule, the
+           nullable ε := true                                     complementary suffix, and the label associated with the
+                                                                  earliest matching rule. Otherwise, the function returns None
+         nullable [[b]] := false
+                                                                  if no maximal prefix can be found for any rule.
+  nullable (r1 + r2 ) := nullable r1 ∨ nullable r2                   Next, we have our workhorse function
+   nullable (r1 · r2 ) := nullable r1 ∧ nullable r2
+                                                                             lex0 : String -> list Rule
+          nullable r ∗ := true
+                                                                                    -> (list Token) * String
+                    III. I MPLEMENTATION                          which takes as input a string and the rules with which to
+   The Verbatim implementation has three main components:         lex that string, and returns as output a list of tokens and
+a regex matcher, a maximal prefix finder, and a top-level lex     the unprocessed suffix of the input string. As seen in Figure
+function. Breaking the implementation into these compo-           5, the lex0 function repeatedly calls max_pref; each call
+nents allowed us to prove the correctness of the development      produces a single token and a remaining suffix that serves
+in a modular fashion.                                             as input to a recursive lex0 call. The function terminates
+   The Verbatim matcher takes a regex and a string as             when max_pref returns an empty prefix or None.
+input, and recursively takes derivatives of the regex for each       Finally, our top-level function, lex, calls lex0 with ap-
+character in the string. If the resulting regex is nullable,      propriate initial values.
+the matcher returns true, and otherwise returns false.               A challenging aspect of implementing Verbatim was
+We say that this matcher does incremental matching; while         defining lex0 in a provably terminating way. In the next
+consuming a string, it checks at each character whether or        section, we sketch the function’s termination proof and
+not the current regex is nullable. If the current regex is        discuss our Coq mechanization of this proof.
+nullable, the prefix consumed thus far matches the original
+                                                                                       IV. T ERMINATION
+regex.
+   We use this matcher to construct a function,                      To avoid logical inconsistencies, all Coq functions must
+maxpref_one, that finds the maximal prefix for a                  terminate provably. When a function is primitively recursive
+single lexical rule.                                              on one of its arguments, Coq is able to infer that the
+                                                                  function terminates. Here, “primitively recursive” means that
+    maxpref_one : String -> Rule                                  the function calls itself on a syntactic subterm of one of its
+                      -> option (String * String)                 arguments.
+                                                                     Intuitively, the lex0 function must terminate because
+In addition to returning the maximal prefix, the function also    it makes recursive calls on proper suffixes of the input
+returns the complementary suffix of this prefix.                  string. However, the function obtains a suffix via a call
+   Given a matcher and a string z, we could find the maximal      to max_pref, and Coq’s termination checker is unable to
+prefix by applying the matcher to each prefix of z. The time      detect the fact that max_pref returns a proper suffix of its
+complexity of this operation would be quadratic. Instead,         input. It was straightforward to prove that max_pref returns
+maxpref_one exploits incremental matching and makes just          a proper suffix of its input, but it was challenging to leverage
+one pass over the string. The last character in the string that   that proof to obtain a provably terminating lex0 definition.
+produces a nullable regex corresponds to the last character          As depicted in Figure 6, we solved this problem with a
+of the maximal prefix. If no character in the string produces     recursion technique in which lex0 takes as an additional
+ 1   Fixpoint lex’ (in_str : String) (rules : list Rule)                       1   Fixpoint lex’ (in_str : String) (rules : list Rule)
+ 2                                                                             2     ( Ha : Acc lt (length in_str)) {struct Ha}
+ 3     : ( list Token) ∗ String :=                                             3     : ( list Token) ∗ String :=
+ 4     match max_pref in_str rules                                             4    match max_pref in_str rules as mpref’
+ 5                                                                             5        return max_pref in_str rules = mpref’ −> _
+ 6     with                                                                    6    with
+ 7     | ( _, None) => ([], in_str)                                            7    | ( _, None) => fun _ => ([], in_str)
+ 8     | ( _, Some ([], _)) => ([], in_str)                                    8    | ( _, Some ([], _)) => fun _ => ([], in_str)
+ 9     | ( label, Some (prf_hd :: prf_tl, suffix)) =>                          9    | ( label, Some (prf_hd :: prf_tl, suffix)) =>
+10                                                                            10        fun Heq =>
+11      match lex’ rules suffix                                               11          match (lex’ rules suffix
+12      with                                                                  12            ( acc_rec_call _ _ _ _ _ _ Ha Heq)) with
+13      | ( tkns, rest) =>                                                    13            | ( tkns, rest) =>
+14        ((( label, prf_hd :: prf_tl) :: tkns), rest)                        14               ((( label, prf_hd :: prf_tl) :: tkns), rest)
+15      end                                                                   15          end
+16     end.                                                                   16    end eq_refl.
+
+Figure 5: This definition of lex0 captures the function’s semantics, but it   Figure 6: The actual definition of lex0 includes an additional parameter,
+does not compile, because Coq is unable to detect the fact that max_pref      Ha (line 2), which is a proof that the length of the input string is accessible
+(line 4) returns a suffix of its in_str argument that is structurally         in the standard “less than” relation on natural numbers. In the lex0
+smaller than in_str.                                                          recursive call (line 11), the acc_rec_call function (line 12) constructs
+                                                                              a proof that the length of the suffix argument is accessible in the same
+                                                                              relation. This proof term is structurally smaller than Ha; therefore, lex0
+                                                                              is structurally recursive on its accessibility proof parameter.
+
+
+
+parameter a proof that the string’s length is accessible in a                 A. Soundness
+well-founded relation. A well-founded relation is one that
+                                                                                 Our soundness theorem says that the output of the top-
+contains no infinite descending sequences. For example, the
+                                                                              level lex function partitions and labels the input correctly.
+standard < relation on natural numbers is well-founded
+because a descending sequence from any natural number                                         ∀t u z R,
+must eventually end at zero. Informally, an element x is
+                                                                                              lex R z = (t, u)
+accessible in a well-founded relation R if every element
+y < x is also accessible. Note that the least element in                                       ∧ rules_are_unambiguous R
+R is “trivially” accessible according to this definition; for                                  → TokensR (t, u) z
+example, zero is accessible in < because no natural number
+is less than zero.                                                            Here z is the string to be lexed, R is a list of lexical rules, t is
+   The concept of accessibility enables us to define lex0                     the list of tokens that lex produces, and u is the unprocessed
+in a provably terminating way. Suppose that string z 0 is a                   suffix of z.
+proper suffix of z, and Acc< (z) is a proof that the length                      The predicate rules_are_unambiguous holds when the
+of z is accessible in the < relation. In this case, one can                   rules map each label to exactly one regex. We introduced
+obtain a corresponding proof term for z 0 , Acc< (z 0 ), that is              this constraint to make the proof more tractable. Without
+a syntactic subterm of Acc< (z). We take advantage of this                    the constraint, it becomes much more difficult to show that
+fact by adding an accessibility proof term as a parameter                     the lexer correctly handles certain syntactically valid but
+to lex0 ; the function becomes structurally recursive on this                 unintuitive lists of rules. For instance, consider the following
+proof term.                                                                   rules:
+
+                         V. C ORRECTNESS                                                  R = [(l1 , [[a]]∗ ); (l2 , [[b]]∗ ); (l1 , [[b]])]
+  We prove the following properties of Verbatim and its                       The input string b matches both the second and third rules.
+specification:                                                                This string ought to be labeled l2 because (l2 , [[b]]∗ ) ap-
+  1) Soundness: If Verbatim produces a tokenization for                       pears earlier and our disambiguation strategy prefers earlier
+      its input, then that tokenization is correct according to               rules. But the presence of a later matching rule, (l1 , [[b]]),
+      our maximal munch specification.                                        which has the same label as an earlier non-matching rule,
+  2) Uniqueness: According to the specification, there is                     (l1 , [[a]]∗ ), complicates the proof. We would have to show
+      only one way to tokenize a string with a given list of                  that in cases like this one, Verbatim chooses the label of the
+      rules.                                                                  earliest matching rule—not the earliest label associated with
+  3) Completeness: If a tokenization for a given input                        any matching rule. This kind of rule list is unlikely to appear
+      string is correct according to the specification, then                  in practice, so we opted to disallow it. This requirement does
+      Verbatim outputs exactly that tokenization.                             not limit the expressiveness of the lexer—if the user would
+like multiple regexes to have the same label, they can simply        1) TokensR (t, u) z
+union the regexes.                                                   2) rules_are_unambiguous R
+   The proof of this theorem goes by strong induction on the         3) lex R z = (t0 , u0 ), for some t0 , u0
+length of the input string. The primary difficulty is showing
+that the first token produced by lex0 really is the first token    Through Soundness, we can conclude from (2) and (3) that
+of the input, as defined by FirstToken. Although it is
+relatively easy to show that the word of the first token is                             TokensR (t0 , u0 ) z
+a maximal prefix, it is harder to show that lex0 gives the
+word a correct label. This difficulty lies in the fact that we     Then by Uniqueness and (1), we can conclude that
+must label the word according to the least-indexed (earliest)
+                                                                                          (t0 , u0 ) = (t, u)
+matching rule. In Section 6, we discuss our proof of “sound
+labeling” further.                                                 Then by substitution into (3) we have
+B. Uniqueness                                                                            lex R z = (t, u)
+   The Uniqueness lemma says that according to our speci-
+fication, there is only one way to correctly lex a string with     Hence Completeness follows from Soundness and Unique-
+a given list of rules. This result is important in and of itself   ness.
+because unambiguity is a cornerstone of lexing, but it is also
+                                                                                    VI. P ROOF AUTOMATION
+important because, when paired with Soundness, it proves
+the Completeness of our lexer. The lemma is as follows:               In this section, we describe how we made judicious use
+                                                                   of Coq’s proof search facilities to prove a difficult lemma
+                   ∀t u t0 u0 z R,
+                                                                   that requires intensive case analysis.
+                   TokensR (t, u) z                                   Coq is a tool for proving theorems interactively. The
+                   ∧ TokensR (t0 , u0 ) z                          interactivity manifests as a window containing a set of
+                    → (t, u) = (t0 , u0 )                          hypotheses and a goal, which represent the premises and
+                                                                   conclusion of a theorem, respectively. The user manipulates
+Because TokensR is defined inductively on the first token,         the state of the goal and the hypotheses by applying “tactics”
+this lemma follows from the fact that the first token is           until the goal is trivially true or until one of the hypotheses
+unique. Intuitively, we know that the first token is unique        is false. In either case, Coq has constructed a proof of the
+because there is only one maximal prefix and because tokens        theorem.
+are labeled according to the earliest matching rule.                  Proofs often involve many, potentially nested, subproofs.
+   In the proof development, we suppose that the                   For instance, if a hypothesis contains an if-then-else expres-
+FirstToken property holds for tokens (l, w) and (l0 , w 0 ).       sion, we might use the destruct tactic to do case analysis on
+We then show that w and w0 are of the same length and              the branches of that expression. Each branch produces a new
+are prefixes of the same string and hence w = w0 . We then         hypothesis in place of the prior one as well as a new subgoal.
+establish that the rules associated with l and l0 are either       We would then have to prove each of the new subgoals.
+the same or that one is earlier than the other. In the first          Coq provides support for semi-automated proof search;
+case l = l0 and we’re done. In the latter case we derive a         users can write custom tactics that analyze the current
+contradiction: according to the FirstToken definition, the         hypotheses and goal in order to determine how to manipulate
+higher-indexed rule cannot match the maximal prefix, but           the proof state. We take advantage of this facility in our proof
+both rules match w. Hence (l, w) = (l0 , w0 ) and the first        of sound labeling (first mentioned in Section V-A).
+token is unique.                                                      The lemma is as follows: On a list of rules R and an
+                                                                   input string z, suppose that the function max_pref returns
+C. Completeness
+                                                                   a label l, prefix p, and suffix s. Additionally, suppose that p
+  This theorem says that the output of lex is uniquely             is the maximal prefix of z with respect to some rule (l, e)
+correct.                                                           in R. We wish to show that for all (l0 , e0 ) in R, if (l0 , e0 )
+             ∀t u z R,                                             comes before (l, e), then p is not the maximal prefix of z
+                                                                   with respect to (l0 , e0 ).
+             TokensR (t, u) z
+                                                                      This lemma may have been the most challenging in the
+              ∧ rules_are_unambiguous R                            entire development. The proof is as follows. Because (l0 , e0 )
+              → lex R z = (t, u)                                   appears before (l, e) in R, we know that R has the following
+                                                                   general form:
+  This theorem follows directly from Soundness and
+Uniqueness. Suppose                                                        R = R1 ++ [(l0 , e0 )] ++ R2 ++ [(l, e)] ++ R3
+where R1 consists of the elements before (l0 , e0 ), R2                    After substituting and applying inj_all, we reach the
+consists of the elements between (l0 , e0 ) and (l, e), and             following state:
+R3 consists of the elements after (l, e).
+                                                                                   len p0 < len p1             p = p0        p = p1
+   When max_pref is applied to the partition above, the
+function must decide which of the five sublists contains the                                               ⊥
+rule that produces the maximal prefix. Applying max_pref                From this state, we can derive the hypothesis len p < len p,
+to the partition produces an expression that contains many              which is a contradiction.
+if-then-else clauses. Each condition of these clauses imposes              The final category of subgoals (68/625) have the following
+a constraint on the length of a possible maximal prefix. We             form:
+use a custom tactic to do case analysis on all of these if-
+then-else clauses. Because there are many nested clauses, the                        (x, max_pref_one z r) = (x0 , None)
+                                                                                         max_pref_one z r = Some y
+analysis produces 625 subgoals, each of which comes with
+a different set of constraints on the length of the maximal                                         ⊥
+prefix.                                                                 By substituting and applying inj_all, we produce the
+   Recall, though, that we assumed the maximal prefix is                contradictory hypothesis Some y = None .
+p. We can therefore check p against the constraints that the               None of these subgoals were particularly difficult concep-
+case analysis generates. In all cases, the constraints force one        tually. The problem was that there were hundreds of trivial
+of two conclusions: either (1) p is not the maximal prefix              subgoals. Once we identified the categories of subgoals
+of z with respect to (l0 , e0 ), or (2) at least one constraint         described above, we were able to solve them using proof
+is inconsistent with our assumption that p is the maximal               automation.
+prefix. In case (1), we have proven the conclusion of our
+original lemma. In case (2), there is a contradiction and thus                        VII. P ERFORMANCE E VALUATION
+the implication is vacuously true.                                         For a specific list of lexical rules, Verbatim has quadratic
+   Because of the large number of subproofs required for this           theoretical time complexity with respect to the length of the
+lemma, we rely heavily on automation to make the problem                input string. Even if the maximal prefix is short, Verbatim
+tractable. We are able to solve all 625 subproofs using just            must scan the entire input in order to rule out longer
+nine distinct tactics.                                                  possibilities.
+   For example, many subgoals (465/625) have the following                 For example, consider Verbatim’s behavior on the single-
+form:                                                                   ton list of rules R = [(A, [[a]])] and the input string aaa. To
+                            (l1 , e1 ) = (l2 , e2 )                     find the first token, it will perform the following calculations:
+    (l2 , e2 ) = (l3 , e3 )        ...    (ln−1 , en−1 ) = (ln , en )      1) ∂a [[a]] = ε, which is nullable. Therefore, a might be
+   max_pref z R = (l1 , o)                max_pref z R 6= (ln , o)
+                                                                               the maximal prefix.
+                                       ⊥                                   2) ∂a ε = ∅, which is not nullable. Therefore, aa cannot
+  Since the conclusion is ⊥ (false), we must derive a                          be the maximal prefix.
+contradiction in the hypotheses. We solve this category of                 3) ∂a = ∅, which is not nullable. Therefore, aaa cannot
+subgoals in part with a custom tactic inj_all, which takes                     be the maximal prefix.
+hypotheses like (l1 , e1 ) = (l2 , e2 ) and produces the hypothe-       Therefore, a is the first maximal prefix and (A, a) is the first
+ses l1 = l2 and e1 = e2 . If we apply this tactic repeatedly,           token. Verbatim will then find the second token, repeating
+we arrive at the fact that l1 = ln . After substitution, the            steps 1 and 2. To find the third token, it will repeat step 1.
+proof state is                                                          In this case there were 3 + 2 + 1, operations, but if the input
+   max_pref z R = (l1 , o)           max_pref z R 6= (l1 , o)           string were an , Verbatim would perform n + (n − 1) + ... +
+                                                                        2 + 1 operations.
+                                 ⊥
+                                                                           We know then that the runtime is O(tn) where t is the
+At this point, we can finish the subgoal by deriving a                  number of tokens produced. In the worst case, each token is
+contradiction from the hypotheses.                                      a single character, so t = n. Therefore, the overall theoretical
+   Another sizable portion of subgoals (92/625) have this               complexity is O(n2 ).
+form:                                                                      To confirm this complexity empirically, we extracted the
+                     len p0 < len p1                                    Verbatim source code to OCaml, instantiated a JSON lexer,1
+      (x, max_pref_one z r0 ) = (x0 , Some(p0 , s0 ))                   and evaluated its performance. The data set used in the
+      (y, max_pref_one z r1 ) = (y 0 , Some(p1 , s1 ))                  evaluation was a collection of gross domestic product (GDP)
+             max_pref_one z r0 = Some(p, s)
+                                                                           1 The lexer currently does not support escape sequences, such as those
+             max_pref_one z r1 = Some(p, s)
+                                                                        for Unicode characters. Escape sequences do not appear in our evaluation
+                            ⊥                                           data set.
+                                                                                   As for lexical analysis, the RockSalt security policy
+                                                                                checker for native code [16] includes a verified regex-to-
+                                                                                DFA construction based on Brzozowski derivatives. The
+                                                                                authors use this construction to produce a recognizer rather
+                                                                                than a lexer. The x86 grammar they are interested in is un-
+                                                                                ambiguous, so they do not need to employ a disambiguation
+                                                                                strategy such as the maximal munch principle.
+                                                                                   Hardin [17] describes a large project that includes a
+                                                                                regex-to-DFA construction based on Brzozowski derivatives,
+                                                                                implemented in HOL4. The algorithm is proved correct
+Figure 7: Verbatim execution time on JSON inputs. Each point represents
+the average execution time over five trials; there was little variance across   and used as part of a lexer. The paper does not describe
+trials for a given input.                                                       the lexer in great detail, so it is difficult to compare the
+                                                                                work to Verbatim. However, the termination and correctness
+                                                                                arguments are likely to be quite different from ours, because
+statistics [13] formatted as a JSON list. This list contains                    HOL4 and Coq are based on different underlying logics.
+60 entries. We took 30 prefixes of this dataset, each prefix                       Lopes et al. [18] discuss a Brzozowski derivative-based
+containing two more GDP entries than the previous one.                          matcher. The authors implemented a function that takes as
+We ran Verbatim on each of these prefixes five times and                        input a regular expression e and a string s, and outputs a
+recorded the lexer’s execution time for each trial.                             proof that s matches e (in the case that they do match). Their
+   We ran the evaluation on a laptop with 15.3 GB of                            tool does not produce labeled tokens and does not employ
+RAM, 8 1.8 GHz cores, and Ubuntu 18.04. We used the                             a disambiguation strategy.
+4.11.0+flambda version of OCaml and compiled with the                              Ausaf et al. [19] discuss a lexer that is based on Br-
+-O3 flag.                                                                       zozowski derivatives and implemented with Isabelle/HOL.
+   The results of our empirical tests, depicted in Figure                       This tool is similar in scope to Verbatim. Like Verbatim, the
+7, confirm that Verbatim has O(n2 ) time complexity. A                          tool matches regexes without using intermediate automata.
+quadratic regression returned a correlation coefficient of                      Whereas Verbatim uses a list of lexical rules as input to
+0.99996. Because a coefficient close to 1 indicates a good fit,                 the top-level lexer, this tool uses a disjunction of regular
+a quadratic function accurately models the empirical results.                   expressions. Despite this difference in representation, both
+                                                                                tools use the maximal munch principle and prefer ”earlier”
+                       VIII. R ELATED W ORK                                     rules for disambiguation. In the interest of error reporting,
+                                                                                Verbatim is capable of partial lexing. The tool discussed in
+   Most related work falls into two categories: automata                        this paper returns None if it is unable to lex the string com-
+theory and lexical analysis. Much of the work on verified                       pletely. Both tools produce labeled tokens. The authors of
+lexical analysis and regex matching resides outside of the                      this paper do not discuss the theoretical runtime complexity
+Coq literature. Within automata theory, work that uses                          of their tool, nor do they discuss any empirical results.
+Brzozowski derivatives to convert regexes to DFAs is of                            Nipkow [20] formalized the conversion of regular expres-
+particular interest, as adding this component is one of our                     sions to deterministic finite automata (DFAs) and verified a
+possible next steps.                                                            lexer in Isabelle/HOL, but he did not produce an executable
+   In terms of automata theory, Almeida et al. [14] present                     program suitable for lexing.
+a derivative-based function for computing the support of a
+regex: a set of regexes that can be used to produce a non-                                      IX. F UTURE D IRECTIONS
+deterministic finite automaton (NFA) for the original one.                         Although we have an executable lexer that satisfies a
+The authors implement this function in Coq and prove its                        widely-used correctness specification, its underlying algo-
+correctness. They are not concerned with lexical analysis in                    rithm is somewhat naive. Matching directly on regexes using
+particular, and they have not produced an NFA that could                        Brzozowski derivatives can be expensive. It would be more
+be used in a matcher or a lexer.                                                efficient to match using a DFA. The cost of building the
+   Coquand and Siles [15] discuss Brzozowski derivatives                        DFA would be comparable to computing the Brzozowski
+in the context of proving regex equivalence. The authors                        derivatives during runtime, but a DFA can be computed
+give a detailed exposition of the finiteness of Brzozowski’s                    before lexing. Throughout this work, we strove to keep
+construction in Coq. They show that a regex has only a                          the lexer agnostic to the implementation of the matcher,
+finite number of derivatives up to a notion of similarity.                      so swapping in a DFA-based matcher should be relatively
+Because derivatives correspond to states in Brzozowski’s                        straightforward.
+DFA construction, their finiteness result could help prove                         By swapping in a DFA-based matcher, we could also
+the termination of this construction.                                           achieve linear worst-case complexity through memoization
+[21]. As it stands, we are scanning almost the entire input                [10] B. C. Pierce, A. A. de Amorim, C. Casinghino, M. Gaboardi,
+for every token. In the worst case, there will be many cases                    M. Greenberg, C. Hriţcu, V. Sjöberg, and B. Yorgey,
+where we start at some state (or regex) q and consume the                       Logical Foundations, ser. Software Foundations series, vol-
+                                                                                ume 1. Electronic textbook, May 2018, version 5.5. http:
+same suffix s, never touching an accepting state (or nullable                   //www.cis.upenn.edu/∼bcpierce/sf.
+regex) along the way. In this case, we know that the state-
+suffix pair (q, s) will never produce a longer prefix. It is               [11] R. G. G. Cattell, “Formalization and Automatic Derivation of
+possible to keep track of these non-productive pairs and short                  Code Generators,” Ph.D. dissertation, Pittsburgh, PA, USA,
+circuit the prefix search when the lexer reaches one of them.                   1978.
+Reps shows that this memoization technique enables lexers
+                                                                           [12] S. Owens, J. H. Reppy, and A. Turon, “Regular-expression
+to achieve linear worst-case complexity.                                        derivatives re-examined,” J. Funct. Program., vol. 19,
+   Finally, we are interested in combining our lexer with                       no. 2, pp. 173–190, 2009. [Online]. Available: https:
+a verified parser, such as the LL(1) parser that Lasser et                      //doi.org/10.1017/S0956796808007090
+al. [22] present. The resulting pipeline would vet program
+                                                                           [13] World Bank, “United States annual GDP data [data file],”
+inputs in a fully verified manner, helping to defend systems
+                                                                                Retrieved from http://api.worldbank.org/v2/countries/USA/
+against malicious input.                                                        indicators / NY.GDP.MKTP.CD?per page = 5000&format =
+                                                                                json, 2020.
+                      ACKNOWLEDGMENT
+                                                                           [14] J. B. Almeida, N. Moreira, D. Pereira, and S. M.
+  This material is based upon work supported by the
+                                                                                de Sousa, “Partial Derivative Automata Formalized in Coq,”
+National Science Foundation under Grant No. 1934553.                            in Implementation and Application of Automata, ser. Lecture
+Any opinions, findings, and conclusions or recommendations                      Notes in Computer Science. Berlin, Heidelberg: Springer
+expressed in this material are those of the author and do                       Berlin Heidelberg, 2011, pp. 59–68.
+not necessarily reflect the views of the National Science
+Foundation. Sam Lasser’s research is supported by a Draper                 [15] T. Coquand and V. Siles, “A Decision Procedure for Reg-
+                                                                                ular Expression Equivalence in Type Theory,” in Certified
+Fellowship.                                                                     Programs and Proofs, ser. Lecture Notes in Computer Science,
+                                                                                J.-P. Jouannaud and Z. Shao, Eds., vol. 7086. Springer,
+                           R EFERENCES                                          Berlin, Heidelberg, 2011, pp. 119–134.
+ [1] “Cloudflare: Cloudflare Reverse Proxies are Dumping Unini-
+                                                                           [16] G. Morrisett, G. Tan, J. Tassarotti, J. Tristan, and E. Gan,
+     tialized Memory,” https://bugs.chromium.org/p/project-zero/
+                                                                                “RockSalt: better, faster, stronger SFI for the x86,” in
+     issues/detail?id=1139, 2017.
+                                                                                ACM SIGPLAN Conference on Programming Language
+                                                                                Design and Implementation, PLDI ’12, Beijing, China
+ [2] “CVE-2017-5638,” National Vulnerability Database. https://                 - June 11 - 16, 2012, J. Vitek, H. Lin, and F. Tip,
+     nvd.nist.gov/vuln/detail/CVE-2017-5638, 2017.                              Eds. ACM, 2012, pp. 395–404. [Online]. Available:
+                                                                                https://doi.org/10.1145/2254064.2254111
+ [3] D. Goodin, “Failure to patch two-month-old bug led to mas-
+     sive Equifax breach,” https://arstechnica.com/information-            [17] D. S. Hardin, “Verified Hardware/Software Co-Assurance:
+     technology / 2017 / 09 / massive - equifax - breach - caused - by -        Enhancing Safety and Security for Critical Systems,” in
+     failure-to-patch-two-month-old-bug/, 2017.                                 Proceedings of the 2020 IEEE Systems Conference (to
+                                                                                appear), 2020.
+ [4] “CVE-2016-0101,” National Vulnerability Database. https://
+     nvd.nist.gov/vuln/detail/CVE-2016-0101, 2016.                         [18] R. Lopes, R. Ribeiro, and C. Camarão, “Certified
+                                                                                Derivative-Based Parsing of Regular Expressions,” in
+ [5] “CVE-2020-8597,” National Vulnerability Database. https://                 Programming Languages, ser. Lecture Notes in Computer
+     nvd.nist.gov/vuln/detail/CVE-2020-8597, 2020.                              Science. Cham: Springer International Publishing, 2016, pp.
+                                                                                95–109.
+ [6] D. Goodin, “Windows has a new wormable vulnerability,
+     and there’s no patch in sight,” https : / / arstechnica.com /         [19] F. Ausaf, R. Dyckhoff, and C. Urban, “POSIX Lexing
+     information - technology / 2020 / 03 / windows - has - a - new -           with Derivatives of Regular Expressions (Proof Pearl),” in
+     wormable-vulnerability-and-theres-no-patch-in-sight/, 2020.                Interactive Theorem Proving, ser. Lecture Notes in Computer
+                                                                                Science. Cham: Springer International Publishing, 2016, pp.
+ [7] M. Kumar, “Critical PPP Daemon Flaw Opens Most Linux                       69–86.
+     Systems to Remote Hackers,” The Hacker News, 2020.
+                                                                           [20] T. Nipkow, “Verified Lexical Analysis,” in Theorem Proving
+ [8] J. A. Brzozowski, “Derivatives of Regular Expressions,” J.                 in Higher Order Logics, 11th International Conference,
+     ACM, vol. 11, no. 4, pp. 481–494, 1964. [Online]. Available:               TPHOLs’98, Canberra, Australia, September 27 - October
+     https://doi.org/10.1145/321239.321249                                      1, 1998, Proceedings, ser. Lecture Notes in Computer
+                                                                                Science, J. Grundy and M. C. Newey, Eds., vol. 1479.
+ [9] D. Egolf, “Verbatim source code,” https://github.com/egolf-                Springer, 1998, pp. 1–15. [Online]. Available: https:
+     cs/vlg, 2021.                                                              //doi.org/10.1007/BFb0055126
+[21] T. Reps, ““Maximal-Munch” Tokenization in Linear Time,”
+     ACM Trans. Program. Lang. Syst., vol. 20, no. 2, pp.
+     259–273, Mar. 1998. [Online]. Available: https://doi.org/
+     10.1145/276393.276394
+
+[22] S. Lasser, C. Casinghino, K. Fisher, and C. Roux, “A Verified
+     LL(1) Parser Generator,” in 10th International Conference on
+     Interactive Theorem Proving (ITP 2019). Schloss Dagstuhl-
+     Leibniz-Zentrum fuer Informatik, 2019.
+

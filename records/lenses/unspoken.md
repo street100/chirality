@@ -713,3 +713,17 @@
 - checked:  2026-09-09
 - owner:    none
 - from:     none
+
+### UNS-52 how a program's logic tests are required to be meaningful, with coverage spread across people and machines over time
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    goal
+- about:    goals/enforcement
+- claim:    The author separated two things on 2026-10-01, in session: error handling is the compiler's to require, and tests are for logic bugs, *"tests should be for logic bugs anyway and we neee a specific different realm of thinking outside of this to consider how to require meaningful logical tests as far as coverage can be spread by humans and machines over time"*. [[goals/enforcement]] claims the failure classes of [[bug-classes]], which stop below a specification that says the wrong thing. `docs/definitions/verification-coverage.md` covers the compiler's own checks layer by layer, and `docs/definitions/testing-floors.md` covers what each instrument can see and where an expected value comes from.
+- measured: **2026-10-01: no document in this tree says how a program's own logic tests are required, judged meaningful, or accumulated over time by people and machines.** The two notes above concern the compiler checking itself; neither states an obligation on a program's tests or a measure of their meaning beyond the run-the-mutant rule for the suite's gates.
+- evidence: `docs/definitions/verification-coverage.md`, `docs/definitions/testing-floors.md`, `docs/goals/enforcement.md`
+- checked:  2026-10-01
+- owner:    none
+- from:     none

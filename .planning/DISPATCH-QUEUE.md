@@ -23,6 +23,16 @@ and the tree is documented densely so a session can keep up, so the summary is
 where a session bridges the two. A call answered in session is written to its
 row the same turn.
 
+**Refined 2026-10-01, one call at a time.** The author asked *"Gimme decisions 1
+by 1 for a bit"* and then sorted two calls out of the ballot: of one, *"This is a
+research question not a decision"*, and of the next, *"Web research necessary
+too"*, then *"Web research for the other one. Also do it so the decision can be
+made before we move on to the one you just tried to move to"*. So a call is put
+to the author only when its answer is the author's. A call the tree's
+principles or measurements settle goes to reconcile. A call that turns on the
+outside world gets its `research` run first, and the call is put with the
+finding behind it before the next call is raised.
+
 ## Running
 
 The author gave a green light on 2026-09-29, *"dispatch next stages for all, green light"*, after three concurrent runs the same day. Two run at once: one writer over the tools and one read-only review. Writers over docs and arcs wait, because a tool fix checks the docs they would be writing.
@@ -85,9 +95,134 @@ bad"*, with speed rows added to the enforcement arc as checked rewrites.
 | # | run | waits on |
 |---|---|---|
 | E3 | `element-design` on each unminted, undesigned row, one run each: `N23` (designed), `N24` (designed), `N10` (designed), `N11` (designed), `N12` (designed), `N13` (designed), `N15` (a run was stopped by the harness 2026-09-29 and left a partial file uncommitted; re-run after reconcile), `N16`, `N17`, `N19`, `N21`, `N22` | E2 |
-| E4 | `revisit` folding every "needed and unrostered" discovery into its roster. Standing from E2: an interprocedural constant fact for `X10` (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`, emitted-speed condition 3 has no arc), a lift form for a quantity-0 value (waits on `records/author-calls.md:117`), and a region profiler (`records/findings.md:1527`). From `N23`: `eval-prim` covering fold's ops and `dead`'s path, answering `r-err` for an unknown op, and a literal table in `tal-eval` (`lib/lowering/tal/eval.chiral:86-95`, `:131`), owed a row in this arc, and a condition holding the compiler's own time and memory (`goal-open` amendment of emitted-speed, the author's). From `N24`: fold's static case dispatch, its third rule (`lib/lowering/upper/optimize.chiral:57`, `:124-136`), has no rule-level check. From the coverage map, U1-U10 in `docs/definitions/verification-coverage.md` §needed (phases 29 and 30 never test the candidate; check P reads `[ok]` on a subject that appears in no file; nothing triggers L2 or L3; `prose-lint --regress` as a gate; totality by default; the effect rule per compile; the tal-evaluator cross-check; `ddc-fold` over verdicts with formulation in `Prov`; the alignment register; adequacy per pair of cores). From call 1's ruling: the in-compile half of `N23` and `N13`, on the map and queued, with its three preconditions (PRB-70's reach over `eval.chiral` and `interp.chiral`, a compile budget, type-drawn inputs as evidence) and `interp.chiral:68` made total. From `N10`: one gate port per script under its port rule; the build steps made native; the `prose-lint` switch that never happened (`tools/prose-lint/prose-lint.sh:86-113`, text-tools P1); `mkdir` and `unlink` crossings (zero-python); `run-filter` ignoring its input (`lib/runtime/proc.chiral:133-148`, tool-authority). From `N11`: the suite tally reads the five `N ok, M FAIL` phases or refuses a log with no tally (`tools/test/run-tests.sh:134-138`), 50 rows run uncounted; `mutant.sh`'s matrix under a phase (PRB-55); falsifiers for `profile-target.sh`'s 11 uncovered rows (PRB-56) and `linear-mint.sh`'s 22; the three held-out gates' mutants reach a run; E168's `Gate` carries one `MutRun` per gate (`lib/evidence/test-floor.chiral:641`). From `N12`: one compiler function returning the shipped pre-erase program, so no census measures a stale copy (`prog/optimizer-census.prog:153-163` against `lib/lowering/compile-back.chiral:252-274`, lowering-and-emit, inside the closure); each TFn's own signature checked equal to its source signature (`lib/lowering/tal/check.chiral:293-298`). From `N13`: `interp.chiral` gains globals, prims, strings, constructors by name and a case default (`lib/evidence/interp.chiral:17-20`, `:31-38`), and returns a closed result with fuel where it now returns `(v-lit -1)` (`:52`, `:58`, `:105`), lowering-and-emit beside `LE19`; the checked `Sig` returned beside the lowered program (`lib/lowering/compile-front.chiral:369-373`), extending `N12`'s item. Then every row E3 surfaces, and a design for each new row. Repeats until a pass adds nothing | E3 |
+| E4 | `revisit` folding every "needed and unrostered" discovery into its roster. Standing from E2: an interprocedural constant fact for `X10` (`docs/benchmarks/OPT-CANDIDATES-2026-09.md:80-81`, emitted-speed condition 3 has no arc), a lift form for a quantity-0 value (waits on `records/author-calls.md:117`) ⚑ *2026-10-01: ruled (a) at `records/author-calls.md:118` after FD-64. A quantity-0 value is never lifted; where a compile-time marker lives is G3 in `.planning/GRADE-ARCHITECTURE.md`.*, and a region profiler (`records/findings.md:1527`). From `N23`: `eval-prim` covering fold's ops and `dead`'s path, answering `r-err` for an unknown op, and a literal table in `tal-eval` (`lib/lowering/tal/eval.chiral:86-95`, `:131`), owed a row in this arc, and a condition holding the compiler's own time and memory (`goal-open` amendment of emitted-speed, the author's). From `N24`: fold's static case dispatch, its third rule (`lib/lowering/upper/optimize.chiral:57`, `:124-136`), has no rule-level check. From the coverage map, U1-U10 in `docs/definitions/verification-coverage.md` §needed (phases 29 and 30 never test the candidate; check P reads `[ok]` on a subject that appears in no file; nothing triggers L2 or L3; `prose-lint --regress` as a gate; totality by default; the effect rule per compile; the tal-evaluator cross-check; `ddc-fold` over verdicts with formulation in `Prov`; the alignment register; adequacy per pair of cores). From call 1's ruling: the in-compile half of `N23` and `N13`, on the map and queued, with its three preconditions (PRB-70's reach over `eval.chiral` and `interp.chiral`, a compile budget, type-drawn inputs as evidence) and `interp.chiral:68` made total. From `N10`: one gate port per script under its port rule; the build steps made native; the `prose-lint` switch that never happened (`tools/prose-lint/prose-lint.sh:86-113`, text-tools P1); `mkdir` and `unlink` crossings (zero-python); `run-filter` ignoring its input (`lib/runtime/proc.chiral:133-148`, tool-authority). From `N11`: the suite tally reads the five `N ok, M FAIL` phases or refuses a log with no tally (`tools/test/run-tests.sh:134-138`), 50 rows run uncounted; `mutant.sh`'s matrix under a phase (PRB-55); falsifiers for `profile-target.sh`'s 11 uncovered rows (PRB-56) and `linear-mint.sh`'s 22; the three held-out gates' mutants reach a run; E168's `Gate` carries one `MutRun` per gate (`lib/evidence/test-floor.chiral:641`). From `N12`: one compiler function returning the shipped pre-erase program, so no census measures a stale copy (`prog/optimizer-census.prog:153-163` against `lib/lowering/compile-back.chiral:252-274`, lowering-and-emit, inside the closure); each TFn's own signature checked equal to its source signature (`lib/lowering/tal/check.chiral:293-298`). From `N13`: `interp.chiral` gains globals, prims, strings, constructors by name and a case default (`lib/evidence/interp.chiral:17-20`, `:31-38`), and returns a closed result with fuel where it now returns `(v-lit -1)` (`:52`, `:58`, `:105`), lowering-and-emit beside `LE19`; the checked `Sig` returned beside the lowered program (`lib/lowering/compile-front.chiral:369-373`), extending `N12`'s item. Then every row E3 surfaces, and a design for each new row. Repeats until a pass adds nothing | E3 |
 | V0 | call 2 is paused: its register row reads `dissolved` by derivation (`ad95e20`), and the author has since said *"yes the tests count as the compiler checking itself"*, with self-verification proper coming from distinct judgment cores and their alignment, *"including where everything should agree and where not everything should"*. The row is left as it stands until the map lands and the author rules | V1 |
-| E5 | reconcile, one call per run, in this order, as the author asked on 2026-09-29 (*"serially research and present updated summaries ... reseach against principles properly to filter for correct approaches"*). Each `DISSOLVED` is followed by its check run, and a call that needs a source gets a research run first. Order: 1 where the value check runs (`:116`); 2 whether a gate-side `ck-prog` discharges `N8` and goal condition 3; 3 census gates pin invariants or whole counts (`E201`, `N12`); 4 `N10`'s three; 5 `N11`'s three; 6 T1 over every definition or a counted reach; 7 lifting a quantity-0 value (`:117`); 8 a goal condition for the compiler's own time and memory; 9 the preserve-check tier line (`:83`) and the region owner (`:118`); 10 the fixpoint compare (`:112`); 11 `J1`; 12 `EV3` (`:52`); 13-15 checks H, M and AM; 16 `K2`'s number; 17 the three file-type calls. Calls held only in a design artifact get a register row first. **One at a time with the author**, ruled 2026-09-29: *"we'll go 1 by 1 too i need to make final call on each one before we move on"*. Each call's result goes to the author when it returns, and the next call waits for the author's ruling | E4 |
+| E5 | reconcile, one call per run, in this order, as the author asked on 2026-09-29 (*"serially research and present updated summaries ... reseach against principles properly to filter for correct approaches"*). Each `DISSOLVED` is followed by its check run, and a call that needs a source gets a research run first. Order: 1 where the value check runs (`:116`); 2 whether a gate-side `ck-prog` discharges `N8` and goal condition 3; 3 census gates pin invariants or whole counts (`E201`, `N12`); 4 `N10`'s three; 5 `N11`'s three; 6 T1 over every definition or a counted reach; 7 lifting a quantity-0 value (`:117`, ⚑ ruled 2026-10-01 at `:118`, leaves the order); 8 a goal condition for the compiler's own time and memory; 9 the preserve-check tier line (`:83`) and the region owner (`:118`); 10 the fixpoint compare (`:112`); 11 `J1`; 12 `EV3` (`:52`); 13-15 checks H, M and AM; 16 `K2`'s number; 17 the three file-type calls. Calls held only in a design artifact get a register row first. **One at a time with the author**, ruled 2026-09-29: *"we'll go 1 by 1 too i need to make final call on each one before we move on"*. Each call's result goes to the author when it returns, and the next call waits for the author's ruling | E4 |
+
+### Wave 1, the full-enforcement cascade
+
+Opened 2026-10-01 by [[decisions/decision-full-enforcement]]. [[bug-classes]]
+now carries 86 obligations and 54 classes, each with an `owner` cell; the goal,
+the ledger and the enforcement arc already moved (`4f2f1f7` to `ab8881d`). What
+is left is one `revisit` per arc whose `owner` cells name it, each folding those
+obligations into its roster and adding [[goals/enforcement]] to its goal line,
+then the design runs on the rows that open. Serial, one agent at a time.
+
+| # | run | serves | waits on |
+|---|---|---|---|
+| FE1 | `element-design` on `enforcement/N28` to `N38`, one run each, inside wave 1 beside E3. `N35` (`eval-prim`'s comparison arms) first: `N23` names it as its first precondition | goal conditions 1, 3, 4 | nothing |
+| FE2 | `revisit` [[arcs/lowering-and-emit-arc]]: the closure-assertion instrument as a `tool` row serving requirement 2 of `checker-core`, `lowering-and-emit` and `substrate-floor` (none exists; every closure scan asserts the opposite direction) | condition 4 | nothing |
+| FE3 | `revisit` [[arcs/errors-as-values-arc]]: J for the four gated refusals that answer in text (`SysR` and `elf-err` at `compile-emit.chiral:354`, `:357`; `tot-holdout`; the relayed `SheetErr`), beside `EV7`; a failure arm for `str->i64` | condition 2 | nothing |
+| FE4 | `revisit` [[arcs/checker-core-arc]]: a termination `Judg` arm; `E47`, the enforce-by-default flip, held by no arc (UNS-12); `CK18`'s data-result linearity hole; `CK19`'s denominator, 38; rows for the six loader declaration judgments, `r-unbound`, the `rl-shape` fence and the `kernel.chiral:920` and `loader.chiral:566` sites; a rule mutant per arm, which no `CK` row asks for | conditions 1, 2, 4 | nothing |
+| FE5 | `revisit` [[arcs/memory-discipline-arc]] (uninitialized read: a pin on the zero contract `M2` and `M3` must keep) and [[arcs/substrate-floor-arc]] (stack exhaustion) | condition 1 | nothing |
+| FE6 | `revisit` [[arcs/tool-authority-arc]] (no capability minted from a raw value beyond `TA6`; crossings declared outside `lib/ports/` beyond `TA12`'s five) and [[arcs/syscall-custody-arc]] (the port-check at check time, requirement 3) | condition 1 | nothing |
+| FE7 | `revisit` [[arcs/independent-judgment-arc]]: the referee that names the disagreeing legs, the strict order of cores for soundness, and a row for requirement 4 (GAP-06) | [[goals/independent-judgment]] | nothing |
+| FE8 | `revisit` [[arcs/ownership-and-trust-arc]], planning only per [[decisions/decision-scope]]: rows for `E44`, `E45`, `E52`, `E54`, `E56`, `E57`, `E59`, `E60`, `E62`, `E73`, `E74`. The arc's own text says nineteen OT elements are owed a row | [[goals/ownership-and-trust]] | nothing |
+| FE9 | `arc-open` concurrency under [[goals/enforcement]] condition 1: data races, deadlock, time-of-check to time-of-use, memory ordering. No arc fits, and nothing in the tree points at them | condition 1 | nothing |
+| FE10 | register rows in `records/author-calls.md`, which need no ruling: the eight NEEDS-AUTHOR with no row (`N10` Q5 to Q7, `N11` Q5 to Q7, `N12` Q8, `N13` Q3), `E201`'s R2, whether a gate may depend on git history (`N36`), and `E161`'s homing (`records/homing-triage.md:216`) | condition 4 | nothing |
+| FE11 | lens upkeep: UNS-05 (`E38`, homed at `N30`) and UNS-06 (`E39`, homed at `N25`) are stale; `E52` has no lens row | presentability | nothing |
+| FE12 | `revisit` [[arcs/unit-lane-arc]] (Phases 29 and 30 grade the shipped binary under `CHIRALITY_COMPILE`), [[arcs/text-tools-arc]] (a row for Phase 9, `E156`), [[arcs/presentability-arc]] (`ledger-lint` AI dates rows by graft commits in a shallow clone) | condition 4 | nothing |
+
+**For reconcile (E5), left for that run:** `records/author-calls.md:94` asks whether
+the goal gets a sixth condition for memory safety, and condition 1 now claims the
+memory classes; `:99` asks whether condition 4 quantifies over gate rows or bug
+classes, and condition 4 still reads gate rows. Both may dissolve under the
+decision, and that is a reconcile run's verdict to give.
+
+⚑ *Both ruled by the author on 2026-10-01, before reconcile reached them:
+`:94` (a), condition 1 covers the memory classes; `:99` (a), condition 4
+counts gate rows and `enforcement/N21` serves condition 1. R1 below carries the
+arc edit `:99` leaves.*
+
+### From the 2026-10-01 rulings
+
+The author ruled seven calls in session on 2026-10-01 (`records/author-calls.md`
+`:94`, `:96`, `:97`, `:99`, `:118`, `:538`, `:539`). Each ruling is written to its
+row. These are the edits the rulings leave in other artifacts. Serial, one
+agent at a time.
+
+| # | run | serves | waits on |
+|---|---|---|---|
+| R1 | edit [[arcs/enforcement-arc]]: `N21`'s requirement cell 6 becomes 1, since `:99` makes the class census condition 1's | [[goals/enforcement]] condition 1 | nothing |
+| R2 | `revisit` `docs/arcs/parts/enforcement-N25.md`: its NEEDS-AUTHOR 1 and 2 are answered by `:539` (a bare `=>` is the top row) and `:538` (a leading `(row ...)` item) | condition 1 | nothing |
+| R3 | `revisit` `docs/arcs/parts/checker-core-CK20.md`: its NEEDS-AUTHOR 4 is answered by `:538` (`->1` and `=>1`) | condition 1 | nothing |
+| R4 | `revisit` `docs/arcs/parts/diagnostics-L5.md`: its Q9 is answered by `:97`, a trap at `nb-bslice`, so `L5` unblocks and `E176` builds Shape E | condition 1 | nothing |
+| R5 | a roster row in [[arcs/diagnostics-arc]] beside `L5` for the audit of the 87 class-C2 guard sites `:97` pulls in | condition 1 | R4 |
+| R6 | split [[bug-classes]]'s buffer overread and overwrite row in two per `:96` (c), after FD-63: *an access leaves its buffer*, enforced by the trap on every access path, and *a reachable call traps*, cell J, owed by `N18` to `N22` | condition 1 | nothing |
+| R7 | `bget` traps too. It lowers to `nb-bget` (`lib/lowering/tal/erase.chiral:135`) apart from `nb-bslice`, and reads past its buffer today. A row beside `E176`'s trap work in `diagnostics/L5`, or under `enforcement/N20`; until it lands the first half of R6 cannot read ENFORCED | condition 1 | R4 |
+
+**The rest of the register, screened the same day.** The session screened the
+remaining enforcement calls for derivable answers. `:84`, `:86`, `:113`, `:119`,
+`:540`, `:541` and `:542` are settled by the tree's principles, its
+measurements or published surveys, so each goes to E5's reconcile with an
+answer the author can veto. `:85` needs a clerical close: its body records most
+of its six decisions as settled. The screen counted three calls as the author's
+own, a language-design call, a policy call and a homing call. `:118` was the
+first, and was ruled. The session's record does not name the other two, so the
+next author batch screens again rather than guessing.
+
+**Two queues live in working files.** The grade-architecture queue, `G1` to
+`G5`, is in `.planning/GRADE-ARCHITECTURE.md` §Queue. The syntax rework's five
+research runs, FD-66 to FD-70, are in `.planning/SYNTAX-REWORK.md` §Research in
+flight. ⚑ Those five went out at once on 2026-10-01, which departs from the
+serial cadence above. Each writes pins under its own prefix and its row to the
+session's scratch directory, and the rows are merged into
+`records/findings.md` one at a time.
+
+⚑ *All five landed and merged 2026-10-01 (`38eee3a`, `7099e6a`, `90e17ad`,
+`d56c5aa`, `9af6319`).* Next from them:
+
+| # | run | serves | waits on |
+|---|---|---|---|
+| SR6 | `revisit` [[arcs/surface-syntax-arc]] against FD-66 to FD-70 and the `SY1` ruling of 2026-10-01 (`records/author-calls.md`, the stage-4 fork row): the eleven reader rules in `.planning/SYNTAX-REWORK.md` §The reader the five findings support become roster rows, PRB-102 to PRB-104 their evidence, and the arc's goal line gains [[goals/enforcement]] condition 1 for the syntax classes | [[goals/readable-surface]] condition 4 | nothing |
+| SR8 | the kind map the author outlined 2026-10-01 (`.planning/FILE-KIND-STRUCTURES.md` §Amended 2026-10-01): collect the raw split schema from `splitting-law`, `joining-law` and `MAP.md` into one; amend `MAP.md` §Extensions (`.prog` becomes the coder view, so where an entry lives reopens); `revisit` [[arcs/file-types-arc]] against the map | [[goals/readable-surface]] condition 4 | nothing |
+| SR7 | the form inventory, `.planning/FORM-INVENTORY.md`, extracted from `lib/surface/` and the loader for the author's review; dispatched 2026-10-01. It is the draft `surface-syntax/SY2`'s design adopts | [[goals/readable-surface]] condition 4 | nothing |
+
+### Before the enforcement waves start, 2026-10-01
+
+Asked by the author the same day: what this session left rough that the waves
+need first. In order, each with what it unblocks.
+
+1. **The edits today's rulings left, R1 to R7.** Mechanical, no call. The
+   design runs on `N25`, `CK20` and `L5` read parts that still list answered
+   questions as open, so these go before any design run touches them.
+2. ⚑ *Done 2026-10-01: eleven rows in [[bug-classes]] §Classes found 2026-10-01.*
+   **Classes [[bug-classes]] lacks, which condition 1 quantifies over.**
+   - The syntax and source classes FD-66 and FD-68 name: optional delimiters,
+     assignment for comparison, precedence, fallthrough, look-alike and bidi
+     source, read-time evaluation. The list holds none of them.
+   - A checker that accepts a program which crashes, PRB-107. Today a
+     `declare` and a later `def` of another type both load.
+   - A refinement whose operator silently changes meaning, PRB-106.
+   - An integer literal that wraps, PRB-108.
+   - An error result dropped unhandled, `G5`.
+
+   One [[bug-classes]] pass adds them with owners. PRB-106 and PRB-107 fold
+   into `FE4`, the checker-core revisit. PRB-108 and the syntax classes go to
+   `SR6`.
+3. **The register's derivable calls, wave 1b.** `:84` gates `N13` and `N14`,
+   `:86` gates `E184`'s R1 and R7, `:113` the fixpoint phase, `:119` the region
+   class, `:540` and `:541` gate `N15`, `:542` gates `N16`. `:85` needs a clerical
+   close. Two author-only calls the screen counted went unnamed and are
+   screened again before the batch.
+4. ⚑ *Ruled 2026-10-01: `G2` is FD-65, and `G3` is ruled as recommended in [[records/author-calls]]. The decision note under `docs/decisions/` is owed before `N30` and `N25` are designed.*
+   **The grade factor set, `G2` then `G3` in `.planning/GRADE-ARCHITECTURE.md`.**
+   `enforcement/N30` (`E38`) locks the factor list and `N25` gives the effect
+   row; both read as provisional until the factor-set decision says whether
+   authority and binding time are factors and what the row is checked as. The
+   other enforcement rows proceed without it.
+5. **The gates in a cloud checkout.** At a 50-commit clone the suite is red on
+   history it lacks and its headline prints `0 failed` beside three failures.
+   Wave 5 exits on a green suite, so `N11`'s tally fix and `N36`'s
+   depth-independence come before implementation, or the environment's clone
+   depth is raised.
+6. **Cadence.** The serial rule above stands. Five research runs went out at
+   once on 2026-10-01 as a departure; whether the waves stay strictly serial is
+   the author's, and `.planning/protocol/dispatch.md` §What a fan-out costs
+   carries the measured price of running wide.
+
+Not needed for enforcement and left for later: `SR6`, `SR8`, the kind map, the
+typed text system, UNS-52 on requiring meaningful logic tests.
 
 ## Held from before the waves
 

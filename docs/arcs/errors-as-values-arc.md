@@ -3,7 +3,7 @@ node: arc-errors-as-values
 layer: navigation
 related: [arcs/README, goals/readable-surface, arcs/diagnostics-arc, pattern-boundary-sums, banks/effect-and-alarm, status-ledger, index]
 status: current
-updated: 2026-09-23
+updated: 2026-10-01
 ---
 
 # Arc: errors-as-values
@@ -12,7 +12,9 @@ updated: 2026-09-23
   safe way.** Where a check is conservative and taxes safe code, that is
   recorded as a debt against this goal rather than absorbed silently by the
   person writing the code." Second: condition 1, "**A diagnostic tells the
-  reader what to do**, beyond that something failed and where."
+  reader what to do**, beyond that something failed and where." Third, from
+  2026-10-01: [[goals/enforcement]] conditions 1 and 2, through the
+  [[bug-classes]] rows whose `owner` cell names this arc.
 - reserved element block: `none`. `E184-E189` is spent (`E189` was the last free
   number and landed 2026-09-08, [[working-discipline]] §A capability the
   substrate lacks is a finding), `E190-E195` is [[arcs/file-types-arc]]'s,
@@ -20,8 +22,8 @@ updated: 2026-09-23
   `E260-E263` is [[arcs/text-tools-arc]]'s. Rows here carry arc-local ids
   `EV1`-`EV12` per [[decisions/decision-work-ids]]. `EV` is free tree-wide.
 - build-state authority: [[status-ledger]]
-- checklist: none yet. A `records/errors-as-values-record.md` opens with the
-  first adoption row that lands.
+- checklist: [[records/errors-as-values]], opened 2026-10-01 by the revisit
+  that set the three principles below. It read *"none yet"* until then.
 
 ## Why this arc exists
 
@@ -47,6 +49,43 @@ of this arc must be scheduled together**, and §4's first back-edge says why: a
 shared carrier laid over a `Str` payload turns `(p-err (msg Str))` into
 `(Result Core Str)`, which preserves the defect exactly and makes it read as
 finished.
+
+## The three principles
+
+Stated by the author on 2026-10-01 in session, and every row serves at least
+one. The author's words, verbatim: *"doesnt compile until the errors we can
+detect are handled"*; *"feedback is great even if tests arent thorough (because
+tests should be for logic bugs anyway"*; *"error handling is made more
+convenient/straightforward for all cases we can detect"*. And on their standing:
+*"these three need to be principle goals of error handling arc"*.
+
+1. **A program doesn't compile until the errors we can detect are handled.**
+2. **The refusal is the feedback.** It names what is unhandled and where, with
+   evidence the writer can act on. Tests are for logic bugs, and this arc leans
+   on none of them; how a program's logic tests are required is
+   `records/lenses/unspoken.md` UNS-52.
+3. **Handling is convenient and straightforward for every case we can detect.**
+
+**The errors we can detect** are the failures whose possibility shows in a type:
+a crossing, a partial primitive, a refinement, a declared error sum. A wrong
+specification sits outside, and so does a channel with no port
+(`PRINCIPLES.md:108-111`).
+
+### What handled covers
+
+Principle 1 has four sides, and a missing side lets an error through unhandled
+with the program still compiling.
+
+| side | what it asks | where it is served |
+|---|---|---|
+| produced | every detectable failure arrives as a declared error. Text, a value of the success type standing for failure, and a silent default each fail this side | requirements 2, 3 and 5; rows `EV14` and the adoption rows |
+| ruled out | a failure a refinement rules out needs no handler, and a partial primitive offers a proven precondition or a checked form that returns a result | [[arcs/enforcement-arc]] rows `N18` to `N22` and `N31`; termination under [[arcs/checker-core-arc]] row `CK12` |
+| consumed | a result cannot be dropped, cannot skip an arm, and cannot escape a boundary | requirement 6; `jg-nonexhaustive`, ENFORCED; rows `EV13` and `EV16` |
+| fed back | the refusal names the unhandled arms or rights with evidence | requirement 3's evidence-bearing payloads; row `EV15` |
+
+Principle 3 rides on all four: requirement 1's combinators, handlers that keep
+the plumbing out of a body, and an explicit discard that is written out where a
+result is meant to be dropped, so dropping is the loud opt-in P4 asks for.
 
 ## What the tree already holds
 
@@ -116,7 +155,12 @@ condition 2 is unopened and holds no arc file, which is what this one takes.
    each adopted boundary. The census predicate is a `case` arm destructuring an
    error and reconstructing one with the same binder, re-runnable over `lib/`
    and `prog/`.
-2. **A carrier shared over a `Str` payload is refused.** Observed by no adopted
+2. **A carrier shared over a `Str` payload is refused.** ⚑ **Widened
+   2026-10-01 under principle 1**: an error encoded as a value of the success
+   type is the same defect one step earlier, since nothing can `case` on it
+   either. `open-rw` answers `fd | -errno` in one `I64`
+   (`lib/ports/file.port:14`), and `str->i64` maps junk to 0 with no failure arm
+   (`lib/prelude/prelude.chiral:150`). Row `EV14` carries the census. Observed by no adopted
    boundary's error slot resolving to `Str`: every one names a declared sum. A
    row that lands the carrier and leaves the payload is this requirement
    failing, and it is the one the first back-edge exists for.
@@ -135,6 +179,12 @@ condition 2 is unopened and holds no arc file, which is what this one takes.
    check that fails on the census predicate: a two-arm ok/err sum whose error
    arm carries exactly one `Str` field. It reads 30 today, and the number it is
    allowed to read is settled by `EV3`'s ruling.
+
+6. **A detectable error cannot be dropped and cannot escape.** Opened
+   2026-10-01 under principle 1. Observed by two probes refused at check: a
+   result bound and never consumed, refused by `r-usage` through a linear error
+   arm on `EV1`'s carrier, and an alarm reaching a profile's `main` with no
+   handler, refused through [[arcs/enforcement-arc]] row `N25`'s effect row.
 
 ## Roster
 
@@ -156,6 +206,10 @@ to `unminted`: this arc holds no band.
 | `errors-as-values/EV10` | `lib/surface/parse.chiral`: `MfR` at `:750` adopts `EV1` with **zero** classification work, being already the target shape, and `StepR`'s `step-err` (15 arms / 79 sites) classifies beside it. 69 rebuild sites, the highest count in the tree. Inside the closure | adoption | primitive | bind | 1, 2, 3 | open | `unminted` |
 | `errors-as-values/EV11` | `lib/surface/surface.chiral:23-25` `PR`/`p-err`: 38 arms over 279 sites, 32 rebuild sites. The largest boundary in the tree and the row that settles whether `EV1`'s error slot needs a constraint. Inside the closure, and **last** | adoption | primitive | bind | 1, 2, 3 | open | `unminted` |
 | `errors-as-values/EV12` | the census becomes a check: a two-arm ok/err sum whose error arm is exactly one `Str` field fails it. Reads 30 today. Registers as a suite phase or as a `ledger-lint` check, and that placement is part of the row | gate | tool | new | 5 | specced | `E201` |
+| `errors-as-values/EV13` | a result cannot be dropped: `EV1`'s error arm carries quantity 1, so a result bound and never consumed is refused by `r-usage`; `bind` threads it, and a written discard is the one way to drop an error on purpose | carrier | law | new | 6 | open | `unminted` |
+| `errors-as-values/EV14` | no failure in band: a census of every crossing and primitive whose failure is a value of its success type (`-errno` in an `I64` at `lib/ports/file.port:14`, junk parsed to 0 at `lib/prelude/prelude.chiral:150`), each converted to a declared sum. The census's first reading is owed by this row's design | classification | law | new | 2 | open | `unminted` |
+| `errors-as-values/EV15` | typed refusals reach the writer: def, declare and extern refusals keep their `Reason` past `lib/surface/parse.chiral:580` and `:673` instead of becoming text there and coming back as `r-relayed` at `lib/module/load-batch.chiral:81` ([[bug-classes]], *A typed refusal is flattened on the shipping path*) | classification | law | connect | 3 | open | `unminted` |
+| `errors-as-values/EV16` | an alarm cannot escape a boundary: the effect row at a profile's `main` is discharged by handlers, and an undischarged row is refused. The consumer of [[arcs/enforcement-arc]] row `N25`'s row, with E26's handlers | adoption | law | pair | 6 | open | `unminted` |
 
 ### Coverage
 
@@ -163,8 +217,9 @@ Run 2026-09-23, and it passes on all three limbs.
 
 **Every requirement is named by at least one row.** 1 by `EV1`, `EV2`, `EV5`,
 `EV7`, `EV8`, `EV9`, `EV10`, `EV11`. 2 by `EV1`, `EV5`, `EV6`, `EV7`, `EV8`,
-`EV9`, `EV10`, `EV11`. 3 by `EV3`, `EV4`, `EV6`, `EV7`, `EV8`, `EV10`, `EV11`.
-4 by `EV5`, `EV6`, `EV7`, `EV8`, `EV9`. 5 by `EV3` and `EV12`.
+`EV9`, `EV10`, `EV11`, `EV14`. 3 by `EV3`, `EV4`, `EV6`, `EV7`, `EV8`, `EV10`,
+`EV11`, `EV15`. 4 by `EV5`, `EV6`, `EV7`, `EV8`, `EV9`. 5 by `EV3` and `EV12`.
+6 by `EV13` and `EV16`, added 2026-10-01 with the requirement.
 
 **Every row names at least one requirement.** All twelve do.
 
@@ -181,6 +236,16 @@ five remaining adoption rows are `bind` because §3 measures the arm set as
 surface rather than invention. No row is marked `new` over work §3 shows built.
 
 ## Resume state
+
+⚑ **2026-10-01: RESCOPE. The arc takes three principles and a sixth
+requirement.** Trigger: the author's direction in session the same day, recorded
+under `## The three principles`, that a program does not compile until the
+errors we can detect are handled, that the refusal is the feedback, and that
+handling is convenient for every case we can detect. Requirement 2 widens to
+errors held in band; requirement 6 opens for an error that is dropped or
+escapes; rows `EV13` to `EV16` open. [[records/errors-as-values]] ER-01 carries
+the run. **Next is unchanged**: `EV3`, then `EV1`, `EV4`, `EV5`. `EV13` designs
+beside `EV1`, since both settle the carrier.
 
 **Opened 2026-09-23.** Nothing designed, nothing minted, no element number
 available. The next stage is `element-design` on one roster row.
