@@ -283,6 +283,101 @@ Dated 2026-10-01, after the five rows landed. The read above stays as given.
   row, and FD-69 attaches a condition, that the projection's readability is
   measured.
 
+## Typed text instead of refusals, the author's turn, 2026-10-01
+
+> "Wouldnt we want to approach this different? Like we make a typed extendible
+> unicode system so you just cant abuse and get a functioning piece. And then
+> ill ask again if the required fields per semantic type of prog in chirality
+> are obviously reppable"
+
+The session's reading, unruled. The eleven rules above are refusals at the
+reader. The author's shape moves them into construction: no constructor
+produces the abused value, so there is nothing to refuse downstream. It is the
+tree's own doctrine at the bottom layer, *the dangerous thing has a type*
+([[goals/enforcement]] §The dangerous thing has a type), and FD-67's
+parse-don't-validate result: code past the reader holds a type that cannot
+carry an unread form.
+
+**The triple, applied to text** (`.planning/FILE-KIND-STRUCTURES.md` §The
+triple):
+
+| question | for text in source | authored |
+|---|---|---|
+| what exists | the Unicode data at a pinned version: categories, `XID`, `Bidi_Control`, default-ignorables, identifier status, confusable skeletons, held as typed data | yes, imported from the standard |
+| what is allowed | a text profile per position: identifier, literal spelling, comment, whitespace, each a refinement over code points, with its normalization form | yes, declared per module |
+| what happens | the scripts and characters a file used | derived by the checker |
+
+**What construction does to each abuse FD-66 and FD-68 name.**
+
+- *Malformed UTF-8* has no code point value, so it yields no token. The one
+  decoder is `lib/protocol/utf8.chiral`, which sits off the reader's path
+  today.
+- *A homoglyph name.* An identifier value is built only by its profile's
+  constructor, so a Cyrillic `а` in a Latin-profile module has no identifier
+  value at all. Where the profile admits both scripts, a scope is keyed by the
+  name's confusable skeleton: a second name with the same skeleton is the same
+  key, so its binding collides and is refused, and a reference finds the one
+  binding. A look-alike cannot become a second working function. Every
+  compiler FD-68 surveyed only warns on confusables.
+- *Bidi and invisible characters in a literal.* The string value may hold any
+  code point. Its source spelling admits only visible characters, and every
+  other code point is spelled as an escape such as `\u{200B}`, which is what the
+  canonical print emits. With source equal to its canonical print, a raw
+  invisible byte in a literal fails the round trip. That settles by
+  construction the question FD-68 found no source settling.
+- *Unpaired direction controls* in text meant for display. A display type
+  carries direction as structure, isolates as nodes, so an unpaired control
+  has no representation.
+
+**Extendible.** A profile is a declared value of a profile type: the Unicode
+version, the scripts admitted at each position, the normalization form, the
+confusable table's version. Adding a script is a new profile value, and the
+reader's code stays untouched. Widening a module's profile is a declared,
+visible act, as widening a port set is, and at rung 2 it is ceremony. A basic
+profile is the default, the way the basic semiring embeds in
+`.planning/GRADE-ARCHITECTURE.md`. FD-68 advised a warning for confusables
+because skeletons change between Unicode versions; pinning the version in the
+profile makes the key stable, and an upgrade is a profile change that
+re-checks everything under it.
+
+**What stays a judgment or a trust.** The Unicode data is trusted input, pinned
+by version. Confusability is a relation between names, so it is checked where
+names meet: a scope, and module exports, both keyed the same way. The decoder
+and the tables join the reader's trusted base. Text a running program prints
+belongs to the display type, a separate seat from source.
+
+**Prior art to check before this is ruled.** The PRECIS framework, RFC 8264,
+defines string classes with profiles layered on them, and IDNA2008 restricts
+domain labels by derived property. Both are typed, extendible Unicode in the
+author's sense, as this session recalls them; neither is pinned here.
+
+## The required fields per kind of program, asked again 2026-10-01
+
+**Representable, and the tree already does it twice.** A record type with
+named required fields is a `data` declaration, and `ctor-fields` gives the
+field names (`lib/typing/kernel.chiral:1026`). `lib/lowering/tal/target-linux.manifest`
+is a file whose content is one value of a declared type, `SysReg`, built from
+`(data SysRow () (sys-row (name Str) (num I64)))`. So a kind of program is a
+declared type its file must inhabit, and a missing field is a missing
+constructor argument, refused with the field's name.
+
+The semantic requirements are types too: the ports a program may use (its
+profile's port set), the effects it may perform (the row), the guarantees it
+owes (totality, refinements, grades). A program fits its purpose when its type
+satisfies the requirement type, the conformance [[decisions/decision-profiles]]
+already states.
+
+The fields nest. A program's fields are typed records, their elements and
+sub-elements are typed records, and at the bottom each name or literal is a
+typed text value from the section above. One mechanism runs from the program's
+kind down to its characters.
+
+**What is unbuilt**, measured in `.planning/FILE-KIND-STRUCTURES.md`: no file is
+checked against its kind (contents checked for 0 of 6 extensions); a `.prog` is
+checked only for defining its entry; conformance needs the subtyping
+`modules-core` defers; no `.profile` file exists; `SpecRule.statement` is a
+`Str`.
+
 ## Next
 
 - A `revisit` of [[arcs/surface-syntax-arc]] against FD-66 to FD-70, folding
@@ -297,6 +392,10 @@ Dated 2026-10-01, after the five rows landed. The read above stays as given.
 2. The Unicode choices the sources leave open, listed above.
 3. Whether the surface becomes declared records throughout, per the section on
    the requirements structure.
+4. Typed text in place of reader refusals, per the author's turn above, after a
+   research run on PRECIS, IDNA2008 and typed-text precedents.
+5. The required fields per kind of program, as declared types each file must
+   inhabit.
 
 ## Rejected
 
