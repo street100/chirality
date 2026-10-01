@@ -378,6 +378,28 @@ checked only for defining its entry; conformance needs the subtyping
 `modules-core` defers; no `.profile` file exists; `SpecRule.statement` is a
 `Str`.
 
+## Raw stays, a coder surface over it, ruled 2026-10-01
+
+> "We need to go over elements and subelements that are required for
+> different things so we can make syntax simpler and required fields
+> straightforward, while using the structural knowledge to continue curbing
+> possible syntax issues. Also, i do want s-expressions to remain a part of the
+> language, just not the only way. Maybe raw becomes its own syntax a simpler
+> coder surface elaborates too. Already doing file types so as long as it can
+> translate to and from raw its useful"
+
+The second half settles `surface-syntax/SY1`, written to its register row in
+`records/author-calls.md` the same turn: s-expressions stay as raw, a simpler
+coder surface is added over the same core, and the coder surface owes a
+translation to raw and back. Whether raw is named as a kind of its own is left
+open by the author's *"maybe"*.
+
+The first half is the review the inventory serves. `.planning/FORM-INVENTORY.md`
+is the extraction: every level from bytes to program purpose, each form's slots
+with what each becomes, whether it is required, the refusal when it is wrong,
+its redundancy and its hazard. It feeds `surface-syntax/SY2`, and the author
+goes over it before the coder surface's slots are drawn.
+
 ## Next
 
 - A `revisit` of [[arcs/surface-syntax-arc]] against FD-66 to FD-70, folding
@@ -387,8 +409,9 @@ checked only for defining its entry; conformance needs the subtyping
 
 ## Open
 
-1. `SY1`: graduate the s-expression surface, or add a second notation over the
-   same core. The author's.
+1. ⚑ *Ruled 2026-10-01, see §Raw stays.* `SY1`: graduate the s-expression
+   surface, or add a second notation over the same core. Open from it: whether
+   raw is named as a kind of its own.
 2. The Unicode choices the sources leave open, listed above.
 3. Whether the surface becomes declared records throughout, per the section on
    the requirements structure.

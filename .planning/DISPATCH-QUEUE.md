@@ -174,7 +174,8 @@ session's scratch directory, and the rows are merged into
 
 | # | run | serves | waits on |
 |---|---|---|---|
-| SR6 | `revisit` [[arcs/surface-syntax-arc]] against FD-66 to FD-70: the eleven reader rules in `.planning/SYNTAX-REWORK.md` §The reader the five findings support become roster rows, PRB-102 to PRB-104 their evidence, and the arc's goal line gains [[goals/enforcement]] condition 1 for the syntax classes | [[goals/readable-surface]] condition 4 | nothing |
+| SR6 | `revisit` [[arcs/surface-syntax-arc]] against FD-66 to FD-70 and the `SY1` ruling of 2026-10-01 (`records/author-calls.md`, the stage-4 fork row): the eleven reader rules in `.planning/SYNTAX-REWORK.md` §The reader the five findings support become roster rows, PRB-102 to PRB-104 their evidence, and the arc's goal line gains [[goals/enforcement]] condition 1 for the syntax classes | [[goals/readable-surface]] condition 4 | nothing |
+| SR7 | the form inventory, `.planning/FORM-INVENTORY.md`, extracted from `lib/surface/` and the loader for the author's review; dispatched 2026-10-01. It is the draft `surface-syntax/SY2`'s design adopts | [[goals/readable-surface]] condition 4 | nothing |
 
 ## Held from before the waves
 
