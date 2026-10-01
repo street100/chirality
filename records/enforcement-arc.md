@@ -438,3 +438,14 @@ narrowed rather than cleared.
 - evidence: docs/arcs/enforcement-arc.md row `N27`; docs/arcs/parts/enforcement-N26.md §5 row 10
 - checked:  2026-09-30
 - element:  `enforcement/N27`, `open`, `unminted`
+
+## The claim widened
+
+### EN-39 the goal claims every obligation the principles imply, and eleven of them become rows here
+
+- state:    FIXED
+- claim:    [[arcs/enforcement-arc]] held seven requirements and twenty-seven rows against a goal that claimed *what is built is gated, and what the compiler claims it checks*. Its requirement 1 quantified over built capabilities, so a failure class nobody had built anything for sat outside every requirement, and [[bug-classes]] listed 28 classes that no goal read. The roster intro said twenty-six rows and missed `N27`, and `N2` read `open` for a built `E185`.
+- measured: **RESCOPE.** Trigger: a decision, [[decisions/decision-full-enforcement]] (`4f2f1f7`), on the author's 2026-10-01 ruling to amend the goal's claim. **The arc moved; the decision reaches requirements 1 and 6 and the roster.** [[goals/enforcement]] (`2182b1a`) now claims every obligation `PRINCIPLES.md` implies, and [[bug-classes]] (`becb1de`) carries 86 obligations and 54 classes with the cascade cells and an `owner` per row. Eleven obligations whose `owner` cell suggested this arc became `N28` to `N38`: extern signature agreement, no ambient crossing, the cost grades (`E38`, held by no arc until now), arithmetic refusal, totality before compile-time evaluation, the mediator's budget, the false-reject tax, `eval-prim`'s comparison arms, checkout-depth independence, the registration witness's reasons, and the ledger checked against the dispatch table. Requirement 1 widens to the classes and requirement 6 to the gates themselves. `N2` moves to `built`. **`N1` is left at `open`**: `E184` has a draft SPEC, and that move belongs to `pack.py` and the SPEC audit. Obligations suggested for other arcs stay with them and are queued one revisit per arc.
+- evidence: docs/arcs/enforcement-arc.md:43-47 (requirement 1), :376-380 (requirement 6), :520 (roster count), :546 (`N2`), :572-582 (`N28` to `N38`), :586-588 (coverage), :618-629 (resume state); docs/decisions/decision-full-enforcement.md; docs/goals/enforcement.md:25-61; docs/definitions/bug-classes.md `## Classes the principles add` and the `owner` cells; docs/elements/ledger.md:329 (`E185` built)
+- checked:  2026-10-01
+- element:  `enforcement/N28` to `enforcement/N38`, all `open`; `N30` holds `E38`, the rest `unminted`, next stage `element-design`. `enforcement/N2` at `built`. No element minted, nothing under `lib/` or `prog/` changed.

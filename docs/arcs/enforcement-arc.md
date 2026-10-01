@@ -41,7 +41,10 @@ Done when all seven hold. Each is checkable, and the state beside it is measured
 [[records/findings]] FD-55, [[records/enforcement-arc]] EN-36.
 
 1. **A capability sits at ENFORCED, or its ledger row says why it does not.**
-   Inherited verbatim from [[goals/enforcement]]. The row-says-why half carries
+   ⚑ **Widened 2026-10-01 with [[goals/enforcement]] condition 1**, under
+   [[decisions/decision-full-enforcement]]: every class in [[bug-classes]] whose
+   `owner` cell names this arc counts too, read on the cascade cells R, C, P, N
+   and G. Inherited verbatim from [[goals/enforcement]]. The row-says-why half carries
    the weight and is the open part. Measured 2026-09-05: `docs/elements/ledger.md`
    holds **66 rows at `design`**, and a `design` row states what an element would
    do rather than why the capability is not at ENFORCED. Filling that half is
@@ -370,7 +373,10 @@ Done when all seven hold. Each is checkable, and the state beside it is measured
    coreutils dependency later. `records/gate-audit.md` holds the measurement;
    `docs/arcs/text-tools-arc.md` holds the coverage table.
 
-6. **Every gate row names a mutant that is actually run.** Inherited from
+6. **Every gate row names a mutant that is actually run.** ⚑ **Widened
+   2026-10-01 with [[goals/enforcement]] condition 4**: the gates themselves are
+   gated, so a phase's tally reaches the headline, its verdict holds at any
+   checkout depth, and a declared-out script states a true reason. Inherited from
    [[goals/enforcement]] and from `docs/definitions/testing-floors.md:261`. E173
    found two rows that could not fail; both were repaired at `e882568`.
 
@@ -511,7 +517,7 @@ stop short of it as written, so no element owns it.
 
 ## Roster
 
-Twenty-six rows. Five are the minted `E184-E188` band, four are older catalog
+Thirty-eight rows. ⚑ *This read twenty-six and missed `N27`, opened 2026-09-30 from the `N26` audit; `N28` to `N38` came from [[decisions/decision-full-enforcement]] on 2026-10-01 ([[records/enforcement-arc]] EN-39).* Five are the minted `E184-E188` band, four are older catalog
 rows this arc owns, three came from the 2026-09-06 native-tests ruling, five
 came from the TAL conformance findings on 2026-09-08, four came from the
 `diagnostics/L5` design on 2026-09-10, `N22` came from `PRB-82` on
@@ -537,7 +543,7 @@ arc, and `E171`, the refusal at the call, came with it
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
 | `enforcement/N1` | attribution: every def's fate is stated by the compiler, with evidence, and checked ⚑ **E184's R1 is the tree's def partition, established 2026-09-09 by [[decisions/decision-def-partition]]** and by [[records/enforcement-arc]] EN-28. That document is the outline the author asked for when ruling the 84-line `lower.chiral` partition neither retired nor repaired, and it lands entirely on R1 through R7, so **no second element is minted for the partition**. Three findings it owes this row's SPEC stage: **R2's three skipped classes are the wrong set** (it names `type-does-not-peel`, measured at 0 of 22,742 on definitions with no record produced; it omits `body-does-not-lower`, measured at 182 of the 347 refusals; and E187 added a fourth `SkReason` constructor after E184 minted); `lib/lowering/compile-back.chiral:271` files all 182 term-level failures as `(sk-extern er)`, which `lib/lowering/skip-diag.chiral:28` renders as the tag `"extern"`, and that is the mechanical cause of the five misattributed citations; and no committed instrument re-derives any def-level count, which `enforcement/N14` is now scoped to fix first. The 84 dead lines are retired inside this element's build cycle ⚑ **A fourth finding, 2026-09-10: R1's domain is amended and the SPEC stage is barred from spelling it.** R1, R6 and R7 each carry a ⚑ dated 2026-09-10 under `#### The seven requirements`, and [[records/enforcement-arc]] EN-29 is the run. The domain of the fate function stays the author's, priced at two options by [[records/findings]] FD-21 ⚑ **That bar is LIFTED 2026-09-10: the domain is ruled.** [[records/author-calls]] carries the row at `ruled` (`0ffa1ae`) and the ruling is `docs/examples/E184-def-fate-sum.md` §6 decision 1: the domain is the pre-pass def set plus what the pass created, and deletion is never a fate. [[records/enforcement-arc]] EN-30 is the run. R1, R6 and R7 each gain a second ⚑ under `#### The seven requirements`; R6 survives on one restated clause, the two-stage domain's construction at the pass boundary; the SPEC stage may now spell `FateRec`'s domain. What stays the author's is two arm-count sub-questions | attribution | law | new | 1 | open | `E184` |
-| `enforcement/N2` | how the `$apply` dispatcher's erased domains are spelled at the lowering type level | attribution | primitive | new | 3 | open | `E185` |
+| `enforcement/N2` | how the `$apply` dispatcher's erased domains are spelled at the lowering type level. ⚑ *The state read `open` until 2026-10-01 while `E185` was built and gated by Phase 25 (`docs/elements/ledger.md:329`)* | attribution | primitive | new | 3 | built | `E185` |
 | `enforcement/N3` | the `$k<i>_<j>` capture constructor's field types: concrete, or the erased word | attribution | primitive | new | 3 | built | `E186` |
 | `enforcement/N4` | the `sk-defunc` blame channel: `closconv` states why it dropped a family | attribution | law | new | 1 | built | `E187` |
 | `enforcement/N5` | `arm-body`'s unreachable arm is reached, and an `$apply` arm returns a literal `0` | attribution | law | new | 3 | built | `E188` |
@@ -563,12 +569,23 @@ arc, and `E171`, the refusal at the call, came with it
 | `enforcement/N25` | the effect row on the Pi: the seat `docs/decisions/decision-effect-facets.md:77-86` reserves beside the grade seats, holding a row of entries where `lib/surface/syntax.chiral:12` holds one bit, `(data Seat () (s-pure) (s-proc))`, plus the reserved row-variable seat, plus the algebra over both: join for sequencing, subsumption at application with contravariant domains, and removal of named entries. An entry is a crossing name or a label naming a type-level variable, so a row can name a region `s` an enclosing binder bound. The one bit becomes the row's empty or nonempty projection. `lib/typing/effects.chiral` (46 L) models join and subsumption over `(List Str)`, closed names and no variable, and nothing in the compiler blob imports it (`docs/elements/ledger.md:113`); the earlier build of this row was in the evicted oracle (`.planning/archive/handoffs/LANE-1-effect-row.md:1`). A trusted-core edit, reviewed as one (`decision-effect-facets.md:84-86`). **Scope against the catalog**: E39's title adds alarms and counter-effects (`docs/elements/catalog.md:169`). An alarm is a crossing carried in the row (`decision-effect-facets.md:72-76`), so this row types it; the handler that answers it and the continuation's resume-or-cancel offering are `E26`'s (`docs/examples/E26-alarm-control-flow.md:30-31`, `:134-139`), homed at [[arcs/diagnostics-arc]] (`records/homing-triage.md:105`), so no second row opens here. ⚑ **Entry removal moves here from `E26`.** That example rode row subtraction on `E26`. Removal is algebra and two consumers discharge entries, `E26`'s handler and `memory-discipline/M9`'s seal, so the operation is this row's and each consumer keeps the rule saying when a removal is sound. **Consumers**: `memory-discipline/M9`, which adds region entries and the seal's discharge over this row ([[records/findings]] FD-62); `E26`'s typed alarm, gated on `E39` (`docs/elements/ledger.md:114`); `N9`, which lowers this row to tal; `N26`, whose bit becomes this row's projection | effect | primitive | new | 1 | designed | `E39` |
 | `enforcement/N26` | the `->`/`=>` membrane refused at the call: a `->` body that reaches a crossing, transitively, is refused by the compiler that compiles everything. The bit is carried in the Pi (`lib/surface/syntax.chiral:12`) and refused nowhere: the three seams lived only in the evicted Python oracle, `lib/typing/kernel.chiral:898` and `:1001` say the native checker threads none of them, and the model's rules at `lib/typing/effects.chiral:34-46` are reached by nothing in the blob (`docs/elements/ledger.md:113`). Measured at `4f64d91` (`docs/elements/ledger.md:121`): a `(-> Str I64)` def calling a `=>` def prints and exits 7. P2 and P3 fix the direction (`docs/elements/catalog.md:491`); blast radius, granularity against `E160`/`E161`'s module-level port set, and inferring the obligation against annotating it are the design stage's. **Complete on the bit**: it needs no row, and once `N25` lands the bit is the row's projection, so the refusal becomes subsumption against the empty row and its corpus carries over. **Consumer**: `memory-discipline/M9`, whose sealed block is `->` and is pure only if this refusal exists (`docs/arcs/memory-discipline-arc.md:102`) | effect | law | new | 1 | built | `E171` |
 | `enforcement/N27` | extern honesty: every extern declared `->` issues no syscall, so the membrane `N26` enforces rests on declared types that are true. `N26` reads a callee's written arrow as the trust root (`docs/arcs/parts/enforcement-N26.md` §5 row 10), and nothing checks an extern's arrow against what its lowering does. Measured 2026-09-30: 44 lines under `lib/` and `prog/` match `(extern NAME (->`. Opened by the orchestrator from the `N26` design audit's FLAG, EN-38 | effect | law | new | 1 | built | `E204` |
+| `enforcement/N28` | extern signature agreement: an extern's declared signature is checked against the primitive it names, so a re-typed prim is refused. Measured 2026-10-01: `(extern str-len (-> I64 I64))` then `(str-len 0)` compiles and exits 139, and an extra argument is accepted ([[bug-classes]], null deref and FFI rows). Beside `N27`, which checks the arrow kind only | effect | law | new | 1 | open | `unminted` |
+| `enforcement/N29` | no ambient crossing: `print`, `put`, `trace`, `env-get`, `time-mono` and `sleep-ms` become porttypes the profile hands to `main`, and an extern crossing with no capability parameter is refused (`docs/decisions/decision-effect-facets.md:20-24`, `:41-49`; [[bug-classes]], ambient authority) | effect | law | new | 1 | open | `unminted` |
+| `enforcement/N30` | the cost grades: usage, time and space as grades of the kernel semiring, and a term whose cost exceeds its grade refused ([[decisions/decision-graded-kernel]]; [[bug-classes]], unbounded allocation and fuel). `E38` was held by no arc (`records/lenses/unspoken.md` UNS-05) and no goal condition named the grade (GAP-21) until condition 1 widened | effect | primitive | bind | 1 | open | `E38` |
+| `enforcement/N31` | arithmetic refusal: a division whose divisor may be zero and an `I64` operation that may overflow are refused, or carry a refinement that discharges them. Today `/` is declared bare (`lib/prelude/prelude.chiral:62`), a zero divisor traps at run time and overflow wraps silently ([[bug-classes]], integer overflow) | safety | law | new | 1 | open | `unminted` |
+| `enforcement/N32` | compile-time evaluation reads totality: `fold`, `specialize` and pregeneration evaluate a subterm early only when the classifier proves it total (`docs/decisions/decision-graded-kernel.md:61-64`). Both halves are built and nothing in `lib/lowering/upper/optimize.chiral` reads the verdict | floor | law | connect | 7 | open | `unminted` |
+| `enforcement/N33` | the mediator's budget: the compiler's and the checker's own time and memory carry a stated bound, and a compile over it is refused (`PRINCIPLES.md:66-69`; [[bug-classes]], the mediator runs over budget) | attribution | law | new | 1 | open | `unminted` |
+| `enforcement/N34` | the false-reject tax: each conservative checker's rejections of safe code are measured, and the sacrifice it takes is stated as a costed choice (`PRINCIPLES.md:137-142`). Measured today for `ck-prog` alone, through `N12` | floor | tool | new | 3 | open | `unminted` |
+| `enforcement/N35` | the reference interpreter's comparison arms: `eval-prim` computes `=i`, `<i` and `<=i` as `fold-cmp` does. Today it answers 0 for all three (`lib/lowering/tal/eval.chiral:86-95`). The first precondition `N23` names, and `N13`'s target needs it | floor | primitive | new | 3 | open | `unminted` |
+| `enforcement/N36` | a phase's verdict holds at any checkout depth: the R6 base binaries of Phases 25, 27 and 28 resolve by pinned hash, or the phase fails with a named reason. Measured 2026-09-30 in a 50-commit clone: all three read `nobase`, fail, and skip 15 mutants | tooling | tool | new | 6 | open | `unminted` |
+| `enforcement/N37` | the registration witness reads its reasons: a declared-out script cites an open register row, the unported band is guarded, and a dispatched script's banner cannot call itself unregistered. Measured 2026-10-01: `tal-check.sh` is out on EN-25, which EN-26 fixed, and `mutant.sh` cites GA-01, which is retired | tooling | tool | new | 6 | open | `unminted` |
+| `enforcement/N38` | the ledger checked against the dispatch table: a [[status-ledger]] row filed ENFORCED names a phase `tools/test/run-tests.sh` dispatches, and every element a dispatched phase names has a row. Until 2026-10-01 five built elements had none | tooling | tool | new | 1 | open | `unminted` |
 
 ### Coverage
 
-**Every requirement is served.** 1 by N1, N4, N18, N20, N22, N25 and N26; 2 by N6, N8, N9, N12,
-N13, N14, N17 and N19; 3 by N2, N3, N5, N13, N15, N16, N17 and N19; 4 by
-N7; **5 by N10 and 6 by N11** and N21, the first two opened 2026-09-06 on the
+**Every requirement is served.** 1 by N1, N4, N18, N20, N22, N25, N26, N27, N28, N29, N30, N31, N33 and N38; 2 by N6, N8, N9, N12,
+N13, N14, N17 and N19; 3 by N2, N3, N5, N13, N15, N16, N17, N19, N34 and N35; 4 by
+N7; **5 by N10 and 6 by N11**, N21, N36 and N37, the first two opened 2026-09-06 on the
 author's ruling that tests and harnesses are
 native. `GAP-02` and `GAP-03` enumerated those two holes while the arc's band was
 spent and are closed by these rows. Every row serves one. `N7`, `N8` and `N13`
@@ -597,6 +614,18 @@ wrong program (N13). `GAP-22` names N13 as its owner, and PRB-74, PRB-75 and
 PRB-76 name N15, N17 and N16.
 
 ## Resume state
+
+⚑ **2026-10-01: RESCOPE. The goal's claim widened, and `N28` to `N38` open.**
+Trigger: a decision, [[decisions/decision-full-enforcement]], amending
+[[goals/enforcement]] to claim every obligation `PRINCIPLES.md` implies, with
+[[bug-classes]] as the list it quantifies over. Requirements 1 and 6 widen with
+goal conditions 1 and 4. Eleven obligations whose `owner` cell suggested this arc
+became rows; `N2` moved to `built`, and the roster count picks up `N27`.
+[[records/enforcement-arc]] EN-39 carries the run. ⚑ **`N1` reads `open` while
+`E184` has a draft SPEC**; that move goes through `pack.py` and is left to the
+SPEC audit. Obligations suggested for other arcs are queued in
+`.planning/DISPATCH-QUEUE.md`, one revisit per arc. **Next is unchanged by this
+run**: the wave in that queue, with `N24` the one designed row nothing blocks.
 
 ⚑ **2026-09-30: RESCOPE. `E39` and `E171` are homed here as `N25` and `N26`.**
 Trigger: [[records/author-calls]], the `ruled` row homing `E39` on this arc
