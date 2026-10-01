@@ -400,6 +400,16 @@ with what each becomes, whether it is required, the refusal when it is wrong,
 its redundancy and its hazard. It feeds `surface-syntax/SY2`, and the author
 goes over it before the coder surface's slots are drawn.
 
+## The kind map, outlined 2026-10-01
+
+The author outlined which file kind carries which surface: `.chiral` is raw,
+with a schema for splitting a codebase that every other kind is parsed to;
+`.prog` is the coder view; `.port` the pure port-maker view; `.manifest` the
+whole manifest realm; further kinds are drawn from the raw split. When one
+program requires another, the requirement is navigable as file structure. The
+words and the map are in `.planning/FILE-KIND-STRUCTURES.md` §Amended
+2026-10-01, which is their home.
+
 ## Next
 
 - A `revisit` of [[arcs/surface-syntax-arc]] against FD-66 to FD-70, folding

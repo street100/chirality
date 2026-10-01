@@ -403,6 +403,73 @@ algorithm.
 - **Renaming `.manifest` and `.protocol` on the obvious reading.** The scheme is
   ruled and the per-kind mapping is not. [[records/author-calls]] the suffix-mapping call holds it.
 
+
+## Amended 2026-10-01, author-led: the kind map
+
+The author's words, verbatim:
+
+> "i want to outline that .chiral will be raw s-expression stuff with a nice
+> schema to follow for splitting up files into a navigable and modular codebase
+> and set the split that the rest of files translate to (the reason they are
+> specific purpose but just parsed to this). .prog will be the new coder view.
+> .port for a dedicated pure port maker view, .manifest for the whole realm of
+> manifest stuff, and then i think we should outline more? im not sure what is
+> meaningful beyond those tbh but we can rip from how we structure split for
+> the high level raw. The whole structurally requires this other program needs
+> to be a file structure navigable thing"
+
+It follows the `surface-syntax/SY1` ruling of the same day
+(`records/author-calls.md`, the stage-4 fork row): raw s-expressions stay, and
+a coder surface translates to raw and back.
+
+### The map as outlined
+
+| kind | is | relation to raw |
+|---|---|---|
+| `.chiral` | **raw**: s-expressions, with a schema for splitting a codebase into navigable, modular files | the target. Every other kind is parsed to it, which is why the others can be specific in purpose |
+| `.prog` | **the coder view**, the simpler surface | translates to raw and back |
+| `.port` | **the pure port-maker view**: declaring crossings and nothing else | translates to raw |
+| `.manifest` | **the whole realm of manifest kinds**: inert data and its facets | translates to raw. The `<name>.m.<facet>` family ruled 2026-09-23 (`conf`, `check`, `type`, `gram`) reads as this realm's members |
+| more | open. The author: *"rip from how we structure split for the high level raw"* | the split for raw is the source the next kinds are drawn from |
+
+**One structural requirement across all of it:** when one program requires
+another, the requirement is navigable as file structure. The tree already keys
+a module by its root-relative path (`MAP.md` §The module key), so an import is
+a path. The author extends that to every structural requirement a program
+states: what it needs from another program reads as a place in the tree.
+
+### What this moves, recorded and not yet made
+
+- `MAP.md` §Extensions gives `.prog` as *"program with an entry"*. Under this
+  map `.prog` is the coder view, so where an entry lives is reopened: a raw
+  `.chiral` defining one, or any kind declaring one as a field. `MAP.md` owes
+  the amendment, and it is the tree's contract, so the amendment is its own run.
+- `.profile` is absent from the outline. Its content is a frozen port set
+  naming a module set, which reads as a member of the manifest realm; that
+  reading is the session's and unruled.
+- The schema for splitting raw is the thing the next kinds are drawn from. The
+  tree's existing rules for it are `docs/definitions/splitting-law.md` (where
+  one module ends), `docs/definitions/joining-law.md` (the four typed
+  connectors between modules) and `MAP.md` (path as key, directory as role).
+  Collecting them into one schema a `.chiral` file follows is the first piece
+  of work this map asks for.
+- The form inventory, `.planning/FORM-INVENTORY.md`, measures that no file's
+  content is checked against its kind today (0 of 5 extensions). Each kind in
+  this map therefore owes its content check.
+
+### Candidate kinds beyond the four, from the split, unruled
+
+Drawn from what the split for raw already separates, offered for the author's
+outline and decided by nobody yet:
+
+| candidate | what the raw split already separates | nearest seed |
+|---|---|---|
+| a protocol or wire-format view | a port-protocol data layer, `lib/protocol/` | `.protocol`, E183, minted and unbuilt |
+| a grammar view | a grammar as a value | `<name>.m.gram`, ruled as a manifest facet |
+| a checker or rule view | the judgment's rules, `SpecRule` | the checker kind of §The kinds, unnamed |
+| a profile or target view | a frozen port set and a requirement type | `.profile`, unused, and the `target` and `profile` forms |
+| a test or evidence view | fixtures, gates and their expected values | `lib/evidence/`, the test floor |
+
 ## Rejected
 
 - **A kind emits checker code.** Rejected 2026-09-02. It breaks the view law: a
