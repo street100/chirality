@@ -103,7 +103,7 @@ is what the row is checked as.
 
 | # | run | waits on |
 |---|---|---|
-| G1 | `research` FD-64, binding time and the lift, with the author's grade strand | running |
+| G1 | `research` FD-64, binding time and the lift, with the author's grade strand. **Done 2026-10-01**: every lift surveyed uses a stage marker kept apart from erasure, defined per type and refused at function types and resources; no erasure discipline lets erased data reach run time; no source puts binding time in a grade beside usage counts, and DCC places it beside information flow; the parameter-level marker (Zig `comptime`, Rust const generics) is a smaller complete two-level shape | done |
 | G2 | `research` FD-65: do published capability-safe type systems carry authority as a grade or coeffect, how attenuation, delegation and revocation map onto semiring operations, and whether any separates grade algebra, interpretation and runtime enforcement as layers | G1, since both append to `records/findings.md` |
 | G3 | a decision note on the frozen factor set and the three layers, for the author's ruling | G1, G2 |
 
