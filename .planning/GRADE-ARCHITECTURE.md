@@ -227,10 +227,38 @@ With join as `+` and meet as `·`, a bounded distributive lattice of rights is
 a semiring, so the factor sits beside information flow and leaves 0/1/ω alone.
 No ambient authority then follows from the typing rules: every right a term
 uses appears in its context grade, and only a grant discharges it.
+⚑ *2026-10-01, after FD-65: true only where the root grant cannot be minted
+from a plain value. See §What FD-65 asks of this file, repair 2.*
 
 **Why the window is now.** The factor list locks when `E38` is built, which is
 `enforcement/N30`. Nothing of it is built, so a factor costs planning today and
 a change to the trusted kernel after.
+
+## What FD-65 asks of this file, 2026-10-01
+
+Two repairs, owed before `G3` states anything as a law.
+
+1. **Fix the order before stating the invariants.** The law table writes
+   attenuation as `r · s ≤ r` in the subset order. The graded papers order the
+   set semiring by `⊇` and state the same fact as multiplication increasing.
+   The decision note picks one order and writes every law in it.
+2. **No ambient authority holds only when the root grant cannot be minted.**
+   §The two factor arguments says it follows from the typing rules. FD-65 finds
+   the claim true only where a capability cannot be made from a plain value:
+   Granule's example grants a set by wrapping `()`, and Hack's default context
+   is a large ambient set. Pony's private-constructor token, a capability type
+   with no constructor, and Craig et al.'s capability-safe `import` are the
+   published shape of the fix. In this tree that shape is a linear port value
+   handed down by the profile as the only source of an authority grade.
+
+Three readings it gives the open questions below, unruled: question 1 has no
+published case of an authority grade absorbing linear possession, and where a
+system holds both, the requirement set plays the effect row's part and the
+value bounds it, the has-versus-does split [[decisions/decision-effect-facets]]
+already draws; question 5's "none needed" default for authority matches Hack,
+Scala and Effekt, and Hack documents that an unbounded polymorphic context
+cannot be called from a default caller; and extension by ceremony has no
+precedent, since Granule adds a semiring by changing its implementation.
 
 ## Open questions
 
@@ -253,7 +281,7 @@ a change to the trusted kernel after.
 | # | run | waits on |
 |---|---|---|
 | G1 | `research` FD-64, binding time and the lift, with the author's grade strand. **Done 2026-10-01**: every lift surveyed uses a stage marker kept apart from erasure, defined per type and refused at function types and resources; no erasure discipline lets erased data reach run time; no source puts binding time in a grade beside usage counts, and DCC places it beside information flow; the parameter-level marker (Zig `comptime`, Rust const generics) is a smaller complete two-level shape | done |
-| G2 | `research` FD-65: do published capability-safe type systems carry authority as a grade or coeffect, how attenuation, delegation and revocation map onto semiring operations, and whether any separates grade algebra, interpretation and runtime enforcement as layers | G1, since both append to `records/findings.md` |
+| G2 | **Done 2026-10-01, FD-65**: authority is published as a set-lattice grade in Granule, Petricek's coeffects and Hack, with `+` as union, `·` as intersection, `0` the empty set, and attenuation as subsumption; delegation and revocation have no algebraic treatment anywhere, revocation is a runtime forwarder (caretaker, membrane); no source shares one algebra between a static checker and a runtime enforcer; embedding uses a fixed permissive default everywhere and no source defaults an unmentioned grade to a polymorphic one; no source lets an authority grade absorb linear possession. `research` FD-65: do published capability-safe type systems carry authority as a grade or coeffect, how attenuation, delegation and revocation map onto semiring operations, and whether any separates grade algebra, interpretation and runtime enforcement as layers | G1, since both append to `records/findings.md` |
 | G3 | a decision note on the frozen factor set and the three layers, for the author's ruling | G1, G2 |
 | G4 | the primitive outline, which the author asked to continue: every prelude primitive and extern with its pattern signature (basic only, or which patterns it mentions), its failure modes (bounds, zero divisor, overflow, junk parse) and what it does today on each, and the row that owns it. `enforcement/N20`'s census (E198) and [[bug-classes]] supply most of the rows; `.planning/PRIMITIVES-FOR-NATIVE-TOOLS.md` and `.planning/LANGUAGE-INVENTORY.md` are read first | nothing |
 | G5 | a [[bug-classes]] row for an error result discarded unhandled, and the requirement it owes in [[arcs/errors-as-values-arc]]: a declared carrier whose error arm is linear, so a dropped result does not compile | the rescoping |
