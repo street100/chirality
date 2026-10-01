@@ -89,6 +89,36 @@ bad"*, with speed rows added to the enforcement arc as checked rewrites.
 | V0 | call 2 is paused: its register row reads `dissolved` by derivation (`ad95e20`), and the author has since said *"yes the tests count as the compiler checking itself"*, with self-verification proper coming from distinct judgment cores and their alignment, *"including where everything should agree and where not everything should"*. The row is left as it stands until the map lands and the author rules | V1 |
 | E5 | reconcile, one call per run, in this order, as the author asked on 2026-09-29 (*"serially research and present updated summaries ... reseach against principles properly to filter for correct approaches"*). Each `DISSOLVED` is followed by its check run, and a call that needs a source gets a research run first. Order: 1 where the value check runs (`:116`); 2 whether a gate-side `ck-prog` discharges `N8` and goal condition 3; 3 census gates pin invariants or whole counts (`E201`, `N12`); 4 `N10`'s three; 5 `N11`'s three; 6 T1 over every definition or a counted reach; 7 lifting a quantity-0 value (`:117`); 8 a goal condition for the compiler's own time and memory; 9 the preserve-check tier line (`:83`) and the region owner (`:118`); 10 the fixpoint compare (`:112`); 11 `J1`; 12 `EV3` (`:52`); 13-15 checks H, M and AM; 16 `K2`'s number; 17 the three file-type calls. Calls held only in a design artifact get a register row first. **One at a time with the author**, ruled 2026-09-29: *"we'll go 1 by 1 too i need to make final call on each one before we move on"*. Each call's result goes to the author when it returns, and the next call waits for the author's ruling | E4 |
 
+### Wave 1, the full-enforcement cascade
+
+Opened 2026-10-01 by [[decisions/decision-full-enforcement]]. [[bug-classes]]
+now carries 86 obligations and 54 classes, each with an `owner` cell; the goal,
+the ledger and the enforcement arc already moved (`4f2f1f7` to `ab8881d`). What
+is left is one `revisit` per arc whose `owner` cells name it, each folding those
+obligations into its roster and adding [[goals/enforcement]] to its goal line,
+then the design runs on the rows that open. Serial, one agent at a time.
+
+| # | run | serves | waits on |
+|---|---|---|---|
+| FE1 | `element-design` on `enforcement/N28` to `N38`, one run each, inside wave 1 beside E3. `N35` (`eval-prim`'s comparison arms) first: `N23` names it as its first precondition | goal conditions 1, 3, 4 | nothing |
+| FE2 | `revisit` [[arcs/lowering-and-emit-arc]]: the closure-assertion instrument as a `tool` row serving requirement 2 of `checker-core`, `lowering-and-emit` and `substrate-floor` (none exists; every closure scan asserts the opposite direction) | condition 4 | nothing |
+| FE3 | `revisit` [[arcs/errors-as-values-arc]]: J for the four gated refusals that answer in text (`SysR` and `elf-err` at `compile-emit.chiral:354`, `:357`; `tot-holdout`; the relayed `SheetErr`), beside `EV7`; a failure arm for `str->i64` | condition 2 | nothing |
+| FE4 | `revisit` [[arcs/checker-core-arc]]: a termination `Judg` arm; `E47`, the enforce-by-default flip, held by no arc (UNS-12); `CK18`'s data-result linearity hole; `CK19`'s denominator, 38; rows for the six loader declaration judgments, `r-unbound`, the `rl-shape` fence and the `kernel.chiral:920` and `loader.chiral:566` sites; a rule mutant per arm, which no `CK` row asks for | conditions 1, 2, 4 | nothing |
+| FE5 | `revisit` [[arcs/memory-discipline-arc]] (uninitialized read: a pin on the zero contract `M2` and `M3` must keep) and [[arcs/substrate-floor-arc]] (stack exhaustion) | condition 1 | nothing |
+| FE6 | `revisit` [[arcs/tool-authority-arc]] (no capability minted from a raw value beyond `TA6`; crossings declared outside `lib/ports/` beyond `TA12`'s five) and [[arcs/syscall-custody-arc]] (the port-check at check time, requirement 3) | condition 1 | nothing |
+| FE7 | `revisit` [[arcs/independent-judgment-arc]]: the referee that names the disagreeing legs, the strict order of cores for soundness, and a row for requirement 4 (GAP-06) | [[goals/independent-judgment]] | nothing |
+| FE8 | `revisit` [[arcs/ownership-and-trust-arc]], planning only per [[decisions/decision-scope]]: rows for `E44`, `E45`, `E52`, `E54`, `E56`, `E57`, `E59`, `E60`, `E62`, `E73`, `E74`. The arc's own text says nineteen OT elements are owed a row | [[goals/ownership-and-trust]] | nothing |
+| FE9 | `arc-open` concurrency under [[goals/enforcement]] condition 1: data races, deadlock, time-of-check to time-of-use, memory ordering. No arc fits, and nothing in the tree points at them | condition 1 | nothing |
+| FE10 | register rows in `records/author-calls.md`, which need no ruling: the eight NEEDS-AUTHOR with no row (`N10` Q5 to Q7, `N11` Q5 to Q7, `N12` Q8, `N13` Q3), `E201`'s R2, whether a gate may depend on git history (`N36`), and `E161`'s homing (`records/homing-triage.md:216`) | condition 4 | nothing |
+| FE11 | lens upkeep: UNS-05 (`E38`, homed at `N30`) and UNS-06 (`E39`, homed at `N25`) are stale; `E52` has no lens row | presentability | nothing |
+| FE12 | `revisit` [[arcs/unit-lane-arc]] (Phases 29 and 30 grade the shipped binary under `CHIRALITY_COMPILE`), [[arcs/text-tools-arc]] (a row for Phase 9, `E156`), [[arcs/presentability-arc]] (`ledger-lint` AI dates rows by graft commits in a shallow clone) | condition 4 | nothing |
+
+**For reconcile (E5), left for that run:** `records/author-calls.md:94` asks whether
+the goal gets a sixth condition for memory safety, and condition 1 now claims the
+memory classes; `:99` asks whether condition 4 quantifies over gate rows or bug
+classes, and condition 4 still reads gate rows. Both may dissolve under the
+decision, and that is a reconcile run's verdict to give.
+
 ## Held from before the waves
 
 These keep their order and join a wave when their arc's turn comes.
