@@ -189,6 +189,49 @@ The 2026-10-01 rulings on the row's spelling and the bare `=>`
 (`records/author-calls.md:538-539`) stand under any of these; the open question
 is what the row is checked as.
 
+## The two factor arguments, as given 2026-10-01
+
+Given to the author in session before this file was opened, and recovered here
+from the session's transcript so the reasoning survives it. Neither is ruled.
+G3 decides both.
+
+**Binding time as a factor beside usage.** How many times a value is used and
+when it is available vary independently: a value known at compile time can be
+used once or many times. A new value θ inside 0/1/ω would need meanings for
+`θ + 1` and `θ · ω`. As a factor of its own, each binder carries a pair, uses
+and availability. `0` stays erasure, and `(ω, static)` is a value needed at run
+time and known at compile time, the one value a lift could embed as a constant.
+A product of semirings is a semiring, so the laws come with no new proof.
+Point 3 keeps binding time out of the semiring because staging concerns when a
+value is available (`docs/decisions/decision-graded-kernel.md:67`, `:85`).
+Information flow concerns who may see a value, which is equally far from an
+amount, and point 1 admits it as a factor (`:39-49`). FD-64 found binding time published beside information flow
+(the Core Calculus of Dependency) and nowhere beside usage counts. A factor
+cannot give code as a value, quote and splice, which point 3 wants for
+multi-stage work. The shape argued for: availability as a factor, with `E57`'s
+modality kept for multi-stage code.
+
+**Authority as a factor.** A binder's authority grade is the set of rights the
+term needs from its context. In coeffect terms a grade states what the context
+must supply, which is what a broker grants.
+
+- `+` joins requirements: two subterms need the union of their rights.
+- `·` attenuates along composition: a capability used inside a narrower grant
+  is scaled down to it.
+- `0` is no authority. It annihilates, and it lines up with the pure `->`.
+- Delegation is one dimension of the rights lattice, *may pass on*, as
+  `docs/definitions/permission-model.md` already describes it.
+- Revocation stays with the component broker, because it is an event in time.
+
+With join as `+` and meet as `·`, a bounded distributive lattice of rights is
+a semiring, so the factor sits beside information flow and leaves 0/1/ω alone.
+No ambient authority then follows from the typing rules: every right a term
+uses appears in its context grade, and only a grant discharges it.
+
+**Why the window is now.** The factor list locks when `E38` is built, which is
+`enforcement/N30`. Nothing of it is built, so a factor costs planning today and
+a change to the trusted kernel after.
+
 ## Open questions
 
 1. Does the authority pattern subsume the effect row, the linear possession, or

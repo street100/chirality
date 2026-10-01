@@ -354,6 +354,10 @@ terminal-side decoder and is not on the reader's path.
 that names capabilities that is a live hole rather than an encoding question. Two
 crossing names differing only by a Cyrillic homoglyph are distinct to `str-eq` and
 identical to a reviewer. No row anywhere carries this.
+⚑ *2026-10-01: `records/lenses/problems.md` PRB-102 carries it now, measured
+with bidi controls and zero-width characters beside the confusable letter.
+`.planning/SYNTAX-REWORK.md` holds the surface rework it feeds, and reads this
+file's record-against-grammar measurement as the frame for a minimal surface.*
 
 **ELF is not load-bearing and is the wrong place to look for security.**
 `lib/lowering/x64/elf.chiral` is 4,845 B over 9 defs, and its own header says
