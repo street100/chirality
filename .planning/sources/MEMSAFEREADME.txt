@@ -1,0 +1,46 @@
+* Compiling
+
+Requirements:
+- Coq 8.13
+- MathComp 1.12
+- Extructures 0.3.0 (https://github.com/arthuraa/extructures; coq-extructures on opam)
+- CoqUtils (https://github.com/arthuraa/coq-utils; commit 81eaf5b6c2ed58d230de0fe3ab1fc19e0c99e297)
+
+To compile just hit "make"
+
+* Files
+
+** basics.v
+
+This file sets up the basic definitions for our language. It starts by
+defining various types used throughout the development, including the
+syntax of expressions and commands. To simplify the rest of the
+development, this semantics is parameterized over a type of program
+states and a few functions over that type, so that we can instantiate
+it with "raw" program states (as done in the first, unstructured
+version of the language), and program states with restricted names
+(cf. structured.v). Instead of being defined relationally, as done in
+the paper, we opt for an executable definition, which defines an
+interpreter for the language that takes a starting state, a program,
+and a number of steps to run for, and returns the result of running
+that command on that state. This means that we prove our main results
+here by induction on the number of steps, as opposed to induction on
+a relation.
+
+** structured.v
+
+This file defines the instance of the language semantics based on the
+free name restriction construction. It also prove the main results of
+the paper for that semantics.
+
+** logic.v
+
+This file defines some basic heap-building functions, following the
+section on program verification, and proves some properties about
+them. It does not define triples, and it does not include the program
+verification examples.
+
+** cast.v
+
+This file proves a weaker integrity property for an unstructured
+version of the semantics that features a cast operator.
