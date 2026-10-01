@@ -186,7 +186,8 @@ need first. In order, each with what it unblocks.
 1. **The edits today's rulings left, R1 to R7.** Mechanical, no call. The
    design runs on `N25`, `CK20` and `L5` read parts that still list answered
    questions as open, so these go before any design run touches them.
-2. **Classes [[bug-classes]] lacks, which condition 1 quantifies over.**
+2. ⚑ *Done 2026-10-01: eleven rows in [[bug-classes]] §Classes found 2026-10-01.*
+   **Classes [[bug-classes]] lacks, which condition 1 quantifies over.**
    - The syntax and source classes FD-66 and FD-68 name: optional delimiters,
      assignment for comparison, precedence, fallthrough, look-alike and bidi
      source, read-time evaluation. The list holds none of them.

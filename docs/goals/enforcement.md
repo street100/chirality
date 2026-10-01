@@ -101,7 +101,9 @@ for a dependency.
 In flight, measured 2026-10-01 at `2faa028`. [[bug-classes]] carries the
 cascade row by row; this is its summary.
 
-- **54 classes**, 28 carried before and 26 the principles add. **One is fully
+- **54 classes**, 28 carried before and 26 the principles add. ⚑ *65 later the
+  same day: [[bug-classes]] added 11 found by research and probe, among them a
+  checker that accepts a program which crashes (PRB-107).* **One is fully
   enforced**, IO from something that reads as pure, on its one bit (E171,
   E204). Of the 28, 9 sit at ENFORCED in whole or in part, 5 at IMPLEMENTED, 1
   at SEEDED, 4 at DESIGNED, 8 at none and 1 by construction. Sixteen have J as

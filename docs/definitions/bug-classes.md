@@ -413,6 +413,31 @@ ownership-and-trust track are marked OT: build-deferred and planned, per
 | agreement that is correlated | the checker | P5.k, M.l, M.m, M.n, M.o, M.p | distinct-formulation cores; a referee naming the disagreeing legs; a strict order for soundness | `ddc-bad-quorum` exists in `lib/evidence/ddc.chiral` and no fixture produces it | G | `independent-judgment/J1`, `J3`, `J4`. The referee and the core order are unrostered, suggested [[arcs/independent-judgment-arc]] |
 | the checker rejects safe code unmeasured | the checker | P4.e, P4.f | each conservative checker's tax measured, its sacrifice stated | measured for `ck-prog` at 38,333 of 38,333 accepted (`decision-floor-check-per-compile.md:114-116`), and in part by `enforcement/N12`, `N15`, `N16`, `checker-core/CK10` | a measurement per checker | unrostered in general. Suggested [[arcs/enforcement-arc]] requirement 3 |
 
+## Classes found 2026-10-01, by research and by probe
+
+Eleven classes the obligations above did not reach. Eight are classes of
+source and its reader, named by the research rows FD-66 to FD-68 in
+[[records/findings]]. Two belong to the checker and were found by the probes
+behind `.planning/FORM-INVENTORY.md`. One is the errors-as-values arc's
+principle 1. The checker's own claim, that an accepted program does not fail
+for a reason its types rule out, appears in no obligation row above, and that
+is a gap in the derivation of 2026-10-01: a list derived by reading is as
+complete as the reading. Columns as in `## Classes the principles add`.
+
+| class | category | obligations | how it gets said | state | next | owner |
+|---|---|---|---|---|---|---|
+| a block whose extent the reader cannot see | source | DP.c | every grouping delimited, and indentation that disagrees with the delimiters refused (FD-66, CWE-483, goto fail) | s-expressions delimit every form. `paren-audit` checks balance only, and nothing compares indentation with structure | R | unrostered. Suggested [[arcs/surface-syntax-arc]], through `SR6` |
+| assignment read as a comparison, or a wrong operator | source | DP.c | binding is its own form and never a value inside a test (FD-66, CWE-481, CWE-480) | by construction: the surface has no assignment expression, and `let` and `<-` are forms | N | a refusal fixture would gate it. [[arcs/surface-syntax-arc]] through `SR6` |
+| operator precedence misread | source | DP.c | no precedence table in a reader; where operators mix, grouping is required (FD-66, CWE-783) | by construction in raw s-expressions. The coder surface ruled for `surface-syntax/SY1` owes it | J | [[arcs/surface-syntax-arc]], `SY3` |
+| a case arm falling through | source | DP.c | arms never fall through (FD-66, CWE-484) | by construction: a `case` arm is a separate form, and `jg-nonexhaustive` refuses a missing one | N | [[arcs/surface-syntax-arc]] through `SR6` |
+| look-alike, bidirectional or invisible characters in source | source | DP.c, P1.f | a typed text profile per position: identifiers built only from the profile, a scope keyed by confusable skeleton, invisible and bidi code points spelled as escapes (FD-68, `.planning/SYNTAX-REWORK.md`) | the reader accepts all three (`records/lenses/problems.md` PRB-102) | J | unrostered. Suggested [[arcs/surface-syntax-arc]] |
+| code run while reading source | source | DP.c | the reader reads data and runs nothing (FD-66, FD-67) | by construction today: `lib/surface/sexp.chiral` has no read-time evaluation and no reader extension | N | [[arcs/surface-syntax-arc]] through `SR6` |
+| a reader exhausted by nesting or size | source | DP.c | nesting depth, token length and file size bounded, and the refusal names the bound (FD-67) | `MAX-DEPTH` is defined in `lib/surface/sexp.chiral` and nothing reads it | R | [[arcs/surface-syntax-arc]] through `SR6` |
+| a literal that silently becomes another value | source | DP.c | an out-of-range literal refused (FD-66, FD-70) | an integer literal past `I64` wraps (PRB-108) | R | [[arcs/surface-syntax-arc]] through `SR6` |
+| a refinement whose operator silently changes meaning | the checker | DP.c | the operator slot is a closed set, refused outside it | every operator outside `>=`, `>`, `<=` and `<` reads as not-equal (PRB-106) | R | [[arcs/checker-core-arc]], through `FE4` |
+| the checker accepts a program that crashes | the checker | none above; see the paragraph before this table | a definition's type checked equal to its earlier declaration | a `declare` and a later four-item `def` of another type both load, and the program exits 139 (PRB-107) | R | [[arcs/checker-core-arc]], through `FE4` |
+| an error result dropped unhandled | resources | the errors-as-values arc's principle 1 | a result's error side carries quantity 1, and a written discard is the one way to drop it | no result type is declared that way; `r-usage` and `jg-nonexhaustive` are built | J | `errors-as-values/EV13` |
+
 ## The cascade
 
 Where each cell comes from. The cells restate rules the tree already held, so
@@ -449,6 +474,10 @@ a separate state from unbuilt, and `## The systemic finding` measures it.
 ## Counts, 2026-10-01
 
 **54 classes**: the 28 the six categories carried, and 26 the principles add.
+⚑ *2026-10-01, later the same day: **65 classes**, with 11 found by research and
+probe (`## Classes found 2026-10-01`). Three of them hold by construction and owe
+a negative fixture to be gated, and the other eight sit at `none` or `part`.
+The tables below count the original 28.*
 
 The 28, by rung:
 
