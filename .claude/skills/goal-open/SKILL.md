@@ -80,8 +80,6 @@ arc file schedules nothing, and saying so in the goal is what keeps the goal
 honest. `docs/goals/display.md` carries five conditions of which four are marked
 unopened, and that is the shape.
 
-Five or fewer. A goal with nine conditions is two goals.
-
 ### The shape condition, where one governs
 
 Where the author has stated a constraint that governs every arc under the goal,
