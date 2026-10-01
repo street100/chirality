@@ -1,0 +1,1463 @@
+Closure-Free Functional Programming in a Two-Level Type
+Theory
+ANDRÁS KOVÁCS,University of Gothenburg, Sweden
+Many abstraction tools in functional programming rely heavily on general-purpose compiler optimization
+to achieve adequate performance. For example, monadic binding is a higher-order function which yields
+runtime closures in the absence of sufficient compile-time inlining and beta-reductions, thereby significantly
+degrading performance. In current systems such as the Glasgow Haskell Compiler, there is no strong guarantee
+that general-purpose optimization can eliminate abstraction overheads, and users only have indirect and
+fragile control over code generation through inlining directives and compiler options. We propose a two-stage
+language to simultaneously get strong guarantees about code generation and strong abstraction features. The
+object language is a simply-typed first-order language which can be compiled without runtime closures. The
+compile-time language is a dependent type theory. The two are integrated in a two-level type theory.
+We demonstrate two applications of the system. First, we develop monads and monad transformers. Here,
+abstraction overheads are eliminated by staging and we can reuse almost all definitions from the existing
+Haskell ecosystem. Second, we develop pull-based stream fusion. Here we make essential use of dependent
+types to give a concise definition of a concatMap operation with guaranteed fusion. We provide an Agda
+implementation and a typed Template Haskell implementation of these developments.
+CCS Concepts: • Theory of computation→ Type theory; • Software and its engineering→ Source
+code generation.
+Additional Key Words and Phrases: two-level type theory, staged compilation
+ACM Reference Format:
+András Kovács. 2024. Closure-Free Functional Programming in a Two-Level Type Theory. Proc. ACM Program.
+Lang. 8, ICFP, Article 259 (August 2024), 34 pages. https://doi.org/10.1145/3674648
+1 Introduction
+Modern functional programming supports many convenient abstractions. These often come with
+significant runtime overheads. Sometimes the overheads are acceptable, but in other cases compiler
+optimization is crucial. Monads in Haskell is an example for the latter. Even the Reader monad,
+which is one of the simplest in terms of implementation, yields large overheads when compiled
+without optimizations. Consider the following:
+f :: Int→ Reader Bool Int
+f x = do{b← ask; if b then return(x+ 10) else return(x+ 20)}
+With optimizations enabled, GHC compiles this roughly to the code below:
+f :: Int→ Bool→ Int
+f =𝜆 x b. if b then x+ 10 else x+ 20
+Author’s Contact Information: András Kovács, University of Gothenburg, Gothenburg, Sweden, andrask@chalmers.se.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee
+provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and
+the full citation on the first page. Copyrights for third-party components of this work must be honored. For all other uses,
+contact the owner/author(s).
+© 2024 Copyright held by the owner/author(s).
+ACM 2475-1421/2024/8-ART259
+https://doi.org/10.1145/3674648
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:2 András Kovács
+Without optimizations we roughly get:
+f =𝜆 x.(> >=) monadReader(ask monadReaderReader)(𝜆 b. if b
+then return monadReader(x+ 10)
+else return monadReader(x+ 20))
+Here, monadReader and monadReaderReader are runtime dictionaries, respectively for theMonad
+and MonadReader instances, and, for example,(> >=) monadReader is a field projection from the
+dictionary. This results from the dictionary-passing elaboration of type classes [Wadler and Blott
+1989]. We get a runtime closure from the𝜆 b.... function, and(> >=), ask and return also produce
+additional closures.
+The difference between optimized and unoptimized code is already large here, and it gets even
+larger when we consider monad transformers or code that is polymorphic over monads. In Haskell,
+such code is pervasive, even in fairly basic programs which do not use fancy abstractions. Consider
+the mapM function from the Haskell Prelude:
+mapM :: Monad m⇒( a→ m b)→[ a]→ m[b]
+This is a third-order rank-2 polymorphic function in disguise, because its monad dictionary argu-
+ment contains the polymorphic second-order method(> >=). Compiling mapM efficiently relies on
+inlining the instance dictionary, then inlining the methods contained there, and also inlining the
+functions that the higher-order binding is applied to.
+GHC’s optimization efforts are respectable, and it has gotten quite adept over its long history of
+development. However, there is no strong guarantee that certain optimizations will happen. Control
+over optimizations remains tricky, fragile and non-compositional. INLINE and REWRITE pragmas
+can be used to control code generation [GHC developers 2024a], but without strong guarantees,
+and their advanced usage requires knowledge of GHC internals. For example, correctly specifying
+the ordering of certain rule applications is often needed. We also have to care about formal function
+arities. Infamously, the function composition operator is defined as(.) f g =𝜆 x→ f(g x) in the base
+libraries, instead of as(.) f g x = f(g x), to get better inlining behavior [GHC developers 2024b]. It is
+common practice in high-performance Haskell programming to visually review GHC’s optimized
+code output.
+1.1 Closure-Free Staged Compilation
+In this paper we use staged compilation to address issues of robustness. The idea is to shift as much
+work as possible from general-purpose optimization to metaprograms.
+Metaprograms can be deterministic, transparent, and can be run efficiently, using fast interpreters
+or machine code compilation. In contrast, general-purpose optimizers are slower to run, less
+transparent and less robust. Also, metaprogramming allows library authors to exploit domain-
+specific optimizations, while it is not realistic for general-purpose optimizers to know about all
+domains.
+On the other hand, metaprogramming requires some additional care and input from program-
+mers. Historically, there have been problems with ergonomics as well. In weakly-typed staged
+systems, code generation might fail too late in the pipeline, producing incomprehensible errors.
+Or, tooling that works for an object language (like debugging, profiling, IDEs) may not work for
+metaprogramming, or metaprogramming may introduce heavy noise and boilerplate, obscuring
+the logic of programs and imposing restrictions on code structure.
+We use two-level type theory (2LTT) [Annenkov et al. 2019; Kovács 2022] to sweeten the deal
+of staged compilation, aiming for a combination of strong guarantees, good ergonomics, high level
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:3
+of abstraction and easy-to-optimize code output. We develop a particular two-level type theory for
+this purpose, which we call CFTT, short for “closure-free type theory”. This consists of:
+• A simply-typed object theory with first-order functions, general recursion and finitary
+algebraic data types. This language is easy to optimize and compile in the downstream
+pipeline, but it lacks many convenience features.
+• A dependent type theory for the compile-time language. This allows us to recover many
+features by metaprogramming.
+Since the object language is first-order, we guarantee that all programs in CFTT can be ultimately
+compiled without any dynamic closures, using only calls and jumps to statically known code.
+Why emphasize closures? They are the foundation to almost all abstraction tools in functional
+programming:
+• Higher-order functions in essentially all functional languages are implemented with closures.
+• Type classes in Haskell use dictionary-passing, which relies on closures for function methods
+[Wadler and Blott 1989].
+• Functors and first-class modules in OCaml [Leroy et al. 2023] and other ML-s rely on closures.
+Hence, doing functional programming without closures is a clear demonstration that we can get
+rid of abstraction overheads.
+Perhaps surprisingly, little practical programming relies essentially on closures. Most of the
+time, programmers use higher-order functions for abstraction, such as when mapping over lists,
+where it is expected that the mapping function will be inlined. We note though that our setup is
+compatible with closures as well, and it can support two separate type formers for closure-based
+and non-closure-based “static” functions. Having both of these would be desirable in a practical
+system. In the current work we focus on the closure-free case because it is much less known and
+developed, and it is interesting to see how far we can go with it.
+1.2 Contributions
+• In Section 2 we present the two-level type theory CFTT, where the object level is first-order
+simply-typed and the meta level is dependently typed. The object language supports an
+operational semantics without runtime closures, and can be compiled with only statically
+known function calls. We provide a supplementary Agda formalization of the operational
+semantics of the object language.
+• In Section 3 we build a staged library for monad transformers [Liang et al. 1995]. We believe
+that this is a good demonstration, because monads and monad transformers are the most
+widely used effect system in Haskell, and at the same time their compilation to efficient code
+can be surprisingly difficult. The continuation monad is well-known in staged compilation
+[Bondorf 1992], and staged state monads have also been used [Carette and Kiselyov 2011;
+Kiselyov et al. 2004; Swadi et al. 2006]. These works used specific monads as tools for domain-
+specific code generation. In contrast, we propose ubiquitous staging for general-purpose
+monadic programming, where users can write code that looks similar to monadic code in
+Haskell but with deterministic and robust compilation to efficient code.
+• In Section 4 we build a pull-based stream fusion library. Here, we demonstrate essential
+usage of dependent types, in providing guaranteed fusion for arbitrary combinations of
+concatMap and zip. We use a state machine representation that is based on sums-of-products
+of object-level values. We show that CFTT is compatible with a generativity axiom, which
+internalizes the fact that metaprograms cannot inspect the structure of object-level terms.
+We use this to show that the universe of sums-of-products is closed under Σ-types. This in
+turn enables a very concise definition of concatMap.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:4 András Kovács
+• We adapt the contents of the paper to typed Template Haskell [Xie et al. 2022], with some
+modifications, simplifications and fewer guarantees about generated code. In particular,
+Haskell does not have enough dependent types for the simple concatMap definition, but we
+can still work around this limitation. We also provide a precise Agda embedding of CFTT and
+our libraries as described in this paper. Here, the object theory is embedded as a collection of
+postulated operations, and we can use Agda’s normalization command to print out generated
+object code.
+2 Overview of CFTT
+In the following we give an overview of CFTT features. We first review the meta-level language,
+then the object-level one, and finally the staging operations which bridge between the two.
+2.1 The Meta Level
+MetaTy is the universe of types in the compile-time language. We will often use the term “metatype”
+to refer to inhabitants of MetaTy, and use “metaprogram” for inhabitants of metatypes. MetaTy
+supports dependent functions, Σ-types and indexed inductive types [Dybjer 1994].
+Formally, MetaTy is additionally indexed by universe levels (orthogonally to staging), and we
+have MetaTy𝑖 : MetaTy𝑖+1. However, universe levels add noise and they are not too relevant to the
+current paper, so we will omit them.
+Throughout this paper we use a mix of Agda and Haskell syntax for CFTT. Dependent functions
+and implicit arguments follow Agda. A basic example:
+id :{A : MetaTy}→ A→ A
+id =𝜆 x. x
+Here, the type argument is implicit, and it gets inferred when we use the function. For example,
+id Trueis elaborated to id{Bool} True, where the braces mark an explicit application for the implicit
+argument. Inductive types can be introduced using a Haskell-like ADT notation, or with a GADT-
+style one:
+data BoolM : MetaTy where
+data BoolM : MetaTy = TrueM| FalseM TrueM : BoolM
+FalseM : BoolM
+Note that we added an M subscript to the type; when analogous types can be defined both on the
+meta and object levels, we will sometimes use this subscript to disambiguate the meta-level version.
+We use Haskell-like newtype notation, such as in newtype Wrap A = Wrap{unWrap : A}, and
+also a similar notation for (dependent) record types, for instance as in
+data Record = Record{field1 : A, field2 : B}.
+All construction and elimination rules for type formers inMetaTy stay within MetaTy. For example,
+induction on meta-level values can only produce meta-level values.
+2.2 The Object Level
+Ty is the universe of types in the object language. It is itself a metatype, so we have Ty : MetaTy.
+All construction and elimination rules of type formers in Ty stay within Ty. We further split Ty to
+two sub-universes.
+First, ValTy : MetaTy is the universe of value types. ValTy supports parameterized algebraic data
+types, where parameters can have arbitrary types, but all constructor field types must be in ValTy.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:5
+Since ValTy is a sub-universe of Ty, we have that when A : ValTy then also A : Ty. Formally, this is
+specified as an explicit embedding operation, but we will use implicit subtyping for convenience.
+Second, CompTy : MetaTy is the universe of computation types. This is also a sub-universe ofTy
+with implicit coercions. For now, we only specify that CompTy contains functions whose domains
+are value types:
+–→ – : ValTy→ Ty→ CompTy
+For instance, if Bool : ValTy is defined as an object-level ADT, then Bool→ Bool : CompTy, hence
+also Bool→ Bool : Ty. However,(Bool→ Bool)→ Bool is ill-formed, since the domain is not a
+value type. Let us look at an example for an object-level program, where we already have natural
+numbers declared as data Nat := Zero| Suc Nat:
+add : Nat→ Nat→ Nat
+add := letrec go n m := case n of
+Zero → m;
+Suc n→ Suc(go n m);
+go
+Recursive definitions are introduced with letrec . The general syntax is letrec x : A := t; u, where
+the A type annotation can be omitted. letrec can be only used to define computations, not values
+(hence, only functions can be recursive so far).
+Object-level definitions use := as notation, instead of the = that is used for meta-level ones. We
+also have non-recursive let, which can be used to define computations and values alike, and can be
+used to shadow binders:
+f : Nat→ Nat
+f x := let x := x+ 10; let x := x+ 20; x∗ 10
+We also allow newtype definitions, both in ValTy and CompTy. These are assumed to be erased
+at runtime. In the Haskell and Agda implementations they are important for guiding instance
+resolution, and we think that the explicit wrapping makes many definitions more comprehensible
+in CFTT as well.
+Values are call-by-value at runtime; they are computed eagerly in function applications andlet-s.
+let-definitions can be used to define inhabitants of any type, and the type of the let body can be
+also arbitrary. Additionally, the right hand sides of case branches can also have arbitrary types. So
+the following is well-formed:
+f : Bool→ Nat→ Nat
+f b := case b of True→( 𝜆 x. x+ 10); False→( 𝜆 x. x∗ 10)
+In contrast, computations are call-by-name, and the only way we can compute with functions is
+to apply them to value arguments. The call-by-name strategy is fairly benign here and does not
+lead to significant duplication of computation, because functions cannot escape their scope; they
+cannot be passed as arguments or stored in data constructors. This makes it possible to run object
+programs without using dynamic closures. This point is not completely straightforward; consider
+the previous f function which has𝜆-expressions under a case.
+However, the call-by-name semantics lets us transformf to𝜆 b x. case b of True→ x+10; False→
+x∗ 10, and more generally we can transform programs so that every function call becomessaturated.
+This means that every function call is of the form f t1 t2... t𝑛, where f is a function variable and the
+definition of f immediately𝜆-binds𝑛 arguments. We do not detail this here. We provide formal
+syntax and operational semantics of the object language in the Agda supplement. We formalized the
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:6 András Kovács
+specific translation steps that are involved in call saturation, but only specified the full translation
+informally.
+Why not just make the object language less liberal, e.g. by disallowing 𝜆 under case or let,
+thereby making call saturation easier or more obvious? There is a trade-off between making the
+object language more restricted, and thus easier to compile, and making metaprogramming more
+convenient. We will see that the ability to insertlet-s without restriction is very convenient in code
+generation, and likewise the ability to have arbitrary object expressions incase bodies. In this paper
+we go with the most liberal object syntax, at the cost of needing more downstream processing.
+2.2.1 Object-level definitional equality. This is a distinct notion from runtime semantics. Object
+programs are embedded in CFTT, which is a dependently typed language, so sometimes we need
+to decide definitional equality of object programs during type checking. The setup is simple: we
+have no𝛽 or𝜂 rules for object programs at all, nor any rule for let-unfolding. The main reason is
+the following: we care about the size and efficiency of generated code, and these properties are
+not stable under𝛽𝜂-conversion and let-unfolding. Moreover, since the object language has general
+recursion, we do not have a sensible and decidable notion of program equivalence anyway.
+2.2.2 Comparison to call-by-push-value. We took inspiration from call-by-push-value (CBPV) [Levy
+1999], and there are similarities to our object language, but there are also significant differences.
+Both systems have a value-computation distinction, with call-by-name computations and call-
+by-value values. However, our object theory supports variable binding at arbitrary types while
+CBPV only supports value variables. In CBPV, a let-definition for a function is only possible by
+first packing it up as a closure value (or “thunk”), which clearly does not suit our applications.
+Investigating the relation between CBPV and our object language could be future work.
+2.3 Staging
+With what we have seen so far, there is no interaction between the meta and object levels. We
+make such interaction possible with the following primitives.
+• For A : Ty, we have⇑A : MetaTy, pronounced as “lift A”. This is the type of metaprograms
+that produce A-typed object programs.
+• For A : Ty and t : A, we have⟨t⟩ :⇑A, pronounced “quote t”. This is the metaprogram which
+immediately returns t.
+• For t :⇑A, we have∼t :𝐴, pronounced “splice t”. This inserts the result of a metaprogram
+into an object term. Notation: splicing binds stronger than function application, so f∼x is
+parsed as f(∼x). We borrow this from MetaML [Taha and Sheard 2000].
+• We have⟨∼t⟩≡ t and∼⟨t⟩≡ t as definitional equalities.
+We use unstaging to refer to the process of extracting object code from CFTT programs, by
+evaluating all metaprograms in splices. This term has been sporadically used in the literature, see
+e.g. [Rompf and Odersky 2012], or [Choi et al . 2011], with a somewhat different meaning in a
+multi-stage context. The main precursor to this paper used “staging” instead of our “unstaging”
+[Kovács 2022]; we use the latter because the former conflicts with other common usages of “staging”.
+Let us look at some basic examples. Recall the meta-level identity function; it can be used at the
+object-level too, by applying it to quoted terms:
+let n : Nat :=∼(id⟨10+ 10⟩);...
+Here, id is used at type⇑Nat. During unstaging, the expression in the splice is evaluated, so we get
+∼⟨10+ 10⟩, which is definitionally the same as 10+ 10, which is our code output here. Boolean
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:7
+short-circuiting is another basic use-case:
+and :⇑Bool→⇑ Bool→⇑ Bool
+and x y =⟨case∼x of True→∼y; False→ False⟩
+Since the𝑦 expression is inlined under a case branch at every use site, it is only computed at
+runtime when𝑥 evaluates to True. In many situations, staging can be used instead of laziness to
+implement short-circuiting, and often with better runtime performance, avoiding the overhead of
+thunking. Consider the map function now:
+map :{A B : ValTy}→(⇑ A→⇑ B)→⇑( List A)→⇑( List B)
+map f as =⟨letrec go as := case as of
+Nil → Nil;
+Cons a as→ Cons∼(f⟨a⟩)( go as);
+go∼as⟩
+For example, this can be used as let f as : List Nat→ List Nat :=∼(map(𝜆 x.⟨∼x+ 10⟩)⟨as⟩). This
+is unstaged to a recursive definition where the mapping function is inlined into the Cons case
+as Cons a as→ Cons(a+ 10)( go as). Note that map has to abstract over value types, since lists
+can only contain values, not functions. Also, the mapping function has type⇑A→⇑ B, instead of
+⇑(A→ B). The former type is often preferable to the latter; the former is a metafunction with useful
+computational content, while the latter is merely a black box that computes object code. If we have
+f :⇑(A→ B), and f computes to⟨𝜆 x. t⟩, then∼f u is unstaged to an undesirable “administrative”
+𝛽-redex(𝜆 x. t) u.
+Comparison to defunctionalization. Defunctionalization is a program translation which represents
+higher-order functions using only first-order functions and inductive data [Danvy and Nielsen
+2001; Reynolds 1998]. The idea is to represent each closure as a constructor of an inductive type,
+and implement closure application as a top-level first-order function which switches on all possible
+closure constructors. Hence, like our unstaging algorithm, defunctionalization produces first-order
+code from higher-order code. We summarize the differences.
+• Defunctionalization mainly supports compiler optimizations, by making closures transparent
+to analysis. It is not an optimization by itself; it does not change the amount of dynamic
+control flow or dynamic allocations in a program. A dynamic closure call becomes a dynamic
+case-switch and a heap-allocated “functional” closure becomes a heap-allocated inductive
+constructor.
+• Staging mainly supports optimization by programmers by providing control over code gener-
+ation. Unstaging does not translate higher-order functions to anything in particular. Instead,
+unstaging is the execution of higher-order metaprograms which produce first-order programs.
+2.4 Staged Semantics of CFTT
+To obtain an unstaging algorithm, together with its correctness, the main task is to extend [Kovács
+2022] with identity types and inductive families in the metalanguage, since we use those types in
+this paper. For inductive types, it is the most sensible to add W-types, since all inductive families
+can be faithfully derived from them in our setting [Hugunin 2020].
+This however requires a substantial amount of technical background from [Kovács 2022], so we
+relegate it to Appendix A. Here we only give an overview.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:8 András Kovács
+• The input of unstaging is a CFTT term with an object-level type, which only depends on
+object-level free variables. The output is a term in the object theory. In the other direction,
+there is an evident embedding of object-theoretic terms as CFTT terms.
+• Soundness means that unstaging followed by embedding is the identity map, up to conversion.
+In other words, unstaging respects conversion of CFTT terms.
+• Stability means that embedding followed by unstaging is the identity map. In other words,
+unstaging has no action on terms which are already purely object-level (i.e. contain no
+splices).
+In [Kovács 2022], there is one more property, called strictness, which means that unstaging does
+not perform𝛽𝜂-conversion in the object theory, but this holds trivially in our case since we do not
+have such conversion rules.
+However, for CFTT we slightly depart from the above notion of soundness, for the following
+reason. We would like to assume certain propositional identities as axioms in the metalanguage,
+without blocking unstaging as a computation. We use such an axiom to good effect in Section 4.3.
+Axioms clearly block computation, so they are incompatible with the mentioned notion of
+soundness. But we are only interested in equations which hold definitionally during unstaging.
+Hence, we can do the following: first, we erase all identity proofs and their transports from CFTT
+programs, then we proceed with unstaging as in [Kovács 2022]. This erasure can be formalized as a
+syntactic translation [Boulier et al. 2017] from CFTT to CFTT extended with the equality reflection
+principle, which says that propositional equality implies definitional equality (see e.g. [Hofmann
+1995]). Thus, soundness of staging for CFTT holds up to erasure of identity proofs.
+3 Monads & Monad Transformers
+In this section we build a library for monads and monad transformers. We believe that this is a
+good demonstration of CFTT’s abilities, since monads are ubiquitous in Haskell programming and
+they also introduce a great amount of abstraction that should be optimized away.
+3.1 Binding-Time Improvements
+We do a preliminary overview before getting to monads. In the staged compilation and partial
+evaluation literature, the term binding time improvement is used to refer to such conversions, where
+the “improved” version supports more compile-time computation [Jones et al. 1993, Chapter 12].
+Translation from⇑A→⇑ B to⇑(A→ B) is a basic binding-time improvement, as an𝜂-expansion
+[Danvy et al. 1996]. The two types are equivalent during unstaging, up to the runtime equivalence
+of object programs, and we can convert back and forth in CFTT, the same way as in MetaML [Taha
+and Sheard 2000, Section 9]:
+up :⇑(A→ B)→⇑ A→⇑ B down :(⇑A→⇑ B)→⇑( A→ B)
+up f a =⟨∼f∼a⟩ down f =⟨𝜆 a.∼(f⟨a⟩)⟩
+We cannot show internally, using propositional equality, that these functions are inverses, since we
+do not have𝛽𝜂-rules for object functions; but we will not need this proof in the rest of the paper.
+A general strategy for generating efficient “fused” programs, is to try to work as much as possible
+with improved representations, and only convert back to object code at points where runtime
+dependencies are unavoidable. Let us look at binding-time-improvement for product types now:
+up :⇑(A, B)→(⇑ A,⇑B) down :(⇑A,⇑B)→⇑( A, B)
+up x =(⟨fst∼x⟩,⟨snd∼x⟩) down(x, y) =⟨(∼x,∼y)⟩
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:9
+Here we overload Haskell-style product type notation, both for types and the pair constructor, at
+both levels. There is a problem with this conversion though: up uses x :⇑(A, B) twice, which can
+increase code size and duplicate runtime computations. For example, down(up⟨f x⟩) is staged to
+⟨(fst(f x), snd(f x))⟩. It would be safer to first let-bind an expression with type⇑(A, B), and then
+only use projections of the newly bound variable. This is called let-insertion in staged compilation.
+But it is impossible to use let-insertion in up because the return type is in MetaTy, and we cannot
+introduce object binders in meta-level code.
+3.2 The Code Generation Monad
+A principled solution to the previous issue is to write code generators in continuation-passing style,
+as first proposed by Bondorf [Bondorf 1992]. This can be structured as a continuation monad, and
+later works used explicit monadic notation for it [Carette and Kiselyov 2011; Kiselyov et al. 2004;
+Swadi et al. 2006]. Our definition is as follows:
+newtype Gen(A : MetaTy) = Gen{unGen :{R : Ty}→( A→⇑ R)→⇑ R}
+This is a monad in MetaTy in a standard sense:
+instance Monad Genwhere
+return a = Gen $𝜆 k. k a
+ga > >= f = Gen $𝜆 k. unGen ga(𝜆 a. unGen(f a) k))
+In [Kiselyov et al. 2004],[Carette and Kiselyov 2011] and [Swadi et al. 2006], the answer type is
+a parameter to the continuation monad, while we have it as polymorphic. We have found that
+polymorphic answer types are more convenient, because we do not have to anticipate the type of
+the code output when are defining a code generator. We can “run” actions as follows:
+runGen : Gen(⇑A)→⇑ A
+runGen ma = unGen ma id
+From now on, we reuse Haskell-style type classes and do-notation in CFTT. We will use type
+classes in an informal way, without precisely specifying how they work. However, type classes are
+used in essentially the same way in the Agda and Haskell implementations, with modest technical
+differences. From the Monad instance, the Functor and Applicative instances can be also derived.
+We reuse(<$>) and(<∗>) for applicative notation as well.
+We can let-bind object expressions in Gen:
+gen :{A : Ty}→⇑ A→ Gen(⇑A)
+gen a = Gen $𝜆 k.⟨let x : A :=∼a;∼(k⟨x⟩)⟩
+And also recursive definitions of computations:
+genRec :{A : CompTy}→(⇑ A→⇑ A)→ Gen(⇑A)
+genRec f = Gen $𝜆 k.⟨letrec x : A :=∼(f⟨x⟩);∼(k⟨x⟩)⟩
+Now, using do-notation, we may write do{x← gen⟨10+ 10⟩; y← gen⟨20+ 20⟩}; return⟨x+ y⟩},
+for a Gen(⇑Nat) action. Running this with runGen yields⟨let x := 10+ 10; let y := 20+ 20; x+ y⟩.
+We can also define a “safer” binding-time improvement for products, using let-insertion:
+up :⇑(A, B)→ Gen(⇑A,⇑B) down : Gen(⇑A,⇑B)→⇑( A, B)
+up x = do x← gen x down x = runGen $ do(a, b)← x
+return(⟨fst∼x⟩,⟨snd∼x⟩) return⟨(∼a,∼b)⟩
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:10 András Kovács
+Working in Gen is convenient, since we can freely generate object code and also have access to
+the full metalanguage. Also, the point of staging is that eventually all metaprograms will be used
+for the purpose of code generation, so we eventually runGen all of our actions. So why not just
+always work in Gen? The implicit nature of Gen may make it harder to reason about the size and
+content of generated code. This is a bit similar to the IO monad in Haskell [Jones 2001], where
+eventually everything needs to run in IO, but we may not want to write all of our code in IO.
+3.3 Monads
+First, following the style of Haskell’s monad transformer library mtl [mtl developers 2024], we
+define a class for monads that support code generation.
+class Monad M⇒ MonadGen Mwhere
+liftGen : Gen A→ M A
+We also redefine gen and genRec to work in any MonadGen, so from now on we have:
+gen : MonadGen M⇒⇑ A→ M(⇑A)
+genRec : MonadGen M⇒(⇑ A→⇑ A)→ M(⇑A)
+In the rest of this paper, we only present ReaderT, MaybeT and StateT as monad transformers. For
+all of these, we can define the MonadGen instance simply by liftGen = lift◦ liftGen.
+Let us look at the Maybe monad now. We have data Maybe A := Nothing| Just A, and Maybe
+itself is available as a ValTy→ ValTy metafunction. However, we cannot directly fashion a monad
+out of Maybe, since we do not have polymorphism in ValTy, nor can we store functions inside
+Maybe. We could try to use the following type for binding:
+(> >=) :⇑(Maybe A)→(⇑ A→⇑( Maybe B))→⇑( Maybe B)
+This would work, but the definition would necessarily use runtime case splits on Maybe values,
+many of which could be optimized away during staging. Also, not having a “real” monad is
+inconvenient for the purpose of code reuse.
+Instead, our strategy is to only use proper monads in MetaTy, and convert between object types
+and meta-monads when necessary, as a form of binding-time improvement. We define a class for
+this conversion:
+class MonadGen M⇒ Improve(F : ValTy→ Ty)( M : MetaTy→ MetaTy) where
+up :{A : ValTy}→⇑( F A)→ M(⇑A)
+down :{A : ValTy}→ M(⇑A)→⇑( F A)
+Assume that MaybeM is the standard meta-level monad, and MaybeTM is the standard monad
+transformer, defined as follows:
+newtype MaybeTM M A = MaybeTM{runMaybeTM : M(MaybeM A)}
+Now, the binding-time improvement of Maybe is as follows:
+instance Improve Maybe(MaybeTM Gen) where
+up ma = MaybeTM $ Gen $𝜆 k.
+⟨case∼ma of Nothing→∼(k NothingM); Just a→∼(k(JustM⟨a⟩))⟩
+down(MaybeTM(Gen ma)) =
+ma(𝜆 x. case x of NothingM→⟨Nothing⟩; JustM a→⟨Just∼a⟩)
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:11
+With this, we get the Monad instance for free from MaybeTM and Gen. A small example:
+let n : Maybe Nat :=∼(down $ do{x← return⟨10⟩; y← return⟨20⟩; return⟨x+ y⟩)}) ; ...
+Since MaybeTM is meta-level, its monadic binding fully computes at unstaging time. Thus, the
+above code is computed to
+let n : Maybe Nat := Just(10+ 20); ...
+We can also use gen for let-insertion in MaybeT Gen, since it has a MonadGen instance.
+Case splitting in monads. We often want to case-split on object-level data inside a monadic action,
+and perform different actions in different branches. At first, this may seem problematic, because we
+cannot directly compute metaprograms from object-level case splits. Fortunately, with a little bit
+more work, this is possible in any MonadGen, for any value type, using a variation of the so-called
+“trick” [Danvy et al. 1996].
+We demonstrate this for lists. An object-level case on lists introduces two points where code
+generation can continue. We define a metatype which gives us a “view” on these points:
+data SplitList A = Nil′| Cons′(⇑A)(⇑( List A))
+We can generate code for a case split, returning a view on it:
+split :⇑(List A)→ Gen(SplitList A)
+split as = Gen $𝜆 k.⟨case∼as of Nil→∼(k Nil′); Cons a as→∼(k(Cons′⟨a⟩⟨ as⟩))⟩
+Now, in any MonadGen, assuming as :⇑(List A), we may write
+do{sp← liftGen(split as);(case sp of Nil′→...; Cons′ a as→...)}
+This can be generalized to splitting on any object value. In the Agda and Haskell implementations,
+we overload it with a class similar to the following:
+class Split(A : ValTy) where
+SplitTo : MetaTy
+split :⇑A→ Gen SplitTo
+In a native implementation of CFTT it may make sense to extend do-notation, so that we elaborate
+case on object values to an application of the appropriate splitting function. We adopt this in the rest
+of the paper, so when working in a MonadGen, we can write case as of Nil→...; Cons a as→...,
+binding a :⇑A and as :⇑(List A) in the Cons case.
+3.4 Monad Transformers
+At this point, it makes sense to aim for a monad transformer library where binding-time im-
+provement is defined compositionally, by recursion on the transformer stack. The base case is the
+following:
+newtype Identity A := Identity{runIdentity : A}
+instance Improve Identity Genwhere
+up x = return⟨runIdentity∼x⟩
+down x = unGen x$𝜆 a.⟨Identity∼a⟩
+We recover the object-level Maybe as MaybeT Identity, from the following MaybeT:
+newtype MaybeT(M : ValTy→ Ty)( A : ValTy) := MaybeT{runMaybeT : M(Maybe A)}
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:12 András Kovács
+With this, improvement can be generally defined for MaybeT:
+instance Improve F M⇒ Improve(MaybeT F)( MaybeTM M) where
+up x = MaybeTM $ do
+ma← up⟨runMaybeT∼x⟩
+case ma of Nothing→ return NothingM
+Just a → return(JustM a)
+down(MaybeTM x) =⟨MaybeT∼(down $ x > >=𝜆 case
+NothingM→ return⟨Nothing⟩
+JustM a → return⟨Just∼a⟩)⟩
+In the case in up, we use our syntax sugar for matching on a Maybe value inside an M action. This
+is legal, since we know from the Improve F M assumption that M is a MonadGen. In down we also
+use𝜆 case... to shorten𝜆 x. case x of....
+On the meta level, we can borrow essentially all definitions from mtl. Only the continuation
+monad transformer fails to support binding-time-improvement in CFTT, because of the obvious
+need for dynamic closures. In the following we only present StateT and ReaderT.
+We start with StateT. We assume StateTM as the standard meta-level definition. The object-level
+StateT has type(S : ValTy)( F : ValTy→ Ty)( A : ValTy)→ ValTy; the state parameter S has to be
+a value type, since it is an input to an object-level function.
+instance Improve F M⇒ Improve(StateT S F)( StateTM(⇑S) M) where
+up x = StateTM $𝜆 s. do
+as← up⟨runStateT∼x∼s⟩
+case as of(a, s)→ return(a, s)
+down x =⟨StateT(𝜆 s.∼(down $ do
+(a, s)← runStateTM x⟨s⟩
+return⟨(∼a,∼s)⟩))⟩
+Like before in MaybeT, we rely on object-level case splitting in the definition of up. For Reader,
+the environment parameter also has to be a value type, and we define improvement as follows.
+instance Improve F M⇒ Improve(ReaderT R F)( ReaderTM(⇑R) M) where
+up x = ReaderTM $𝜆 r. up⟨runReaderT∼x∼r⟩
+down x =⟨ReaderT(𝜆 r.∼(down(runReaderTM x⟨r⟩)))⟩
+State and Reader operations. If we use the modify function that we already have in StateM, a
+curious thing happens. The meaning of modify(𝜆 x.⟨∼x+∼x⟩) is to replace the current state x,
+as an object expression, with the expression⟨∼x+∼x⟩, and this happens at unstaging time. This
+behaves as an “inline” modification which replaces every subsequent mention of the state with a
+different expression. For instance, ignoring newtype wrappers for now,
+down $ do{modify(𝜆 x.⟨∼x+∼x⟩); modify(𝜆 x.⟨∼x+∼x⟩); return⟨()⟩}
+is unstaged to
+⟨𝜆 x.((),(x+ x)+( x+ x))⟩
+which duplicates the evaluation of x+ x. The duplication can be avoided by let-binding the result
+in the object language. A similar phenomenon happens with the local function in Reader. So we
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:13
+define “stricter” versions of these operations. We also return⇑() from actions instead of() — the
+former is more convenient, because the down operation can be immediately used on it.
+put′ :(MonadState(⇑S) M, MonadGen M)⇒⇑ S→ M(⇑())
+put′ s = do{s← gen s; put s; return⟨()⟩}
+modify′ :(MonadState(⇑S) M, MonadGen M)⇒(⇑ S→⇑ S)→ M(⇑())
+modify′ f = do{s← get; put′(f s)}
+local′ :(MonadReader(⇑R) M, MonadGen M)⇒(⇑ R→⇑ R)→ M A→ M A
+local′ f ma = do{r← ask; r← gen(f r); local(𝜆 _. r) ma}
+Now,
+down $ do{modify′(𝜆 x.⟨∼x+∼x⟩); modify′(𝜆 x.⟨∼x+∼x⟩)}
+is unstaged to
+⟨𝜆 x. let x := x+ x; let x := x+ x;((), x)⟩.
+3.5 Joining Control Flow in Monads
+There is a deficiency in our library so far. Consider:
+f : Bool→ StateT Nat(MaybeT Identity)()
+f b :=∼(down $ do
+case⟨b⟩ of True→ put′⟨10⟩; False→ put′⟨20⟩
+modify′(𝜆 x.⟨∼x+∼x⟩))
+This is unstaged to the following (omitting newtype wrappers):
+f b s := case b of
+True→ let s := 10; let s := s+ s; Just((), s)
+False→ let s := 20; let s := s+ s; Just((), s)
+Notice that the final state modification gets inlined into both branches. This duplication follows
+from the definition of monadic binding in Gen and the split function in the desugaring of case.
+Code generation is continued in both branches with the same action. If we have multiple Boolean
+case splits sequenced after each other, that yields exponential code size. A possible fix is to let-bind
+the branching action:
+f b :=∼(down $ do
+act← gen $ down $ case⟨b⟩ of True→ put′⟨10⟩; False→ put′⟨20⟩
+up act
+modify(𝜆 x.⟨∼x+∼x⟩))
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:14 András Kovács
+However, this yields suboptimal code:
+f b s :=
+let act s := case b of True→ let s := 10; Just((), s)
+False→ let s := 20; Just((), s);
+case act sof
+Just(_, s)→ let s := s+ s; Just((), s)
+Nothing → Nothing
+This solution is fairly good when we only haveState or Reader effects, where down only introduces
+a runtime pair constructor, and it is feasible to compile object-level pairs as unboxed data, without
+overheads. However, for Maybe, down introduces a runtime Just or Nothing, and up introduces a
+runtime case split. A better solution would be to introduce two let-bound join points before the
+offending case, one for returning a Just and one for returning Nothing, but fusing away the actual
+runtime constructors:
+f b s :=
+let joinNothing s := Nothing;
+let joinJust s := let s := s+ s; Just((), s);
+case b of
+True→ let s := 10; joinJust s
+False→ let s := 20; joinJust s
+Here, joinNothing happens to be dead code, but it is easy to clean up in downstream compilation.
+Such “fused” returns are possible whenever we have aGen A action at the bottom of the transformer
+stack, such that A is isomorphic to a meta-level finite sum of value types. Recall that Gen A is
+defined as{R : ValTy}→( A→⇑ R)→⇑ R. Here, if A is a finite sum, we can rearrange A→⇑ R to
+a finite product of functions.
+We could proceed with finite sums, but we will need finite sums-of-products (SOP in short) later
+in Section in 4, so we develop SOP-s. SOPs have been used in generic and staged programming; see
+e.g. [de Vries and Löh 2014a] and [Pickering et al. 2020]. We view SOP-s as a Tarski-style universe
+consisting of a type of descriptions and a way of interpreting descriptions into MetaTy (“El” for
+“elements” of the type).
+USOP : MetaTy El SOP : USOP→ MetaTy
+USOP = List(List ValTy) ElSOP A =...
+A type description is a list of lists of value types. We decode this to a sum of products of value
+types. For example, ElSOP[[Bool, Bool],[]] (using Haskell-like list notation) is isomorphic to
+Either(⇑Bool,⇑Bool)() . USOP is closed under value types, finite product types and finite sum
+types. For instance, we have EitherSOP : USOP→ USOP→ USOP together with LeftSOP : ElSOP A→
+ElSOP(EitherSOP A B), RightSOP : ElSOP B→ ElSOP(EitherSOP A B) and a case splitting operation. It
+is more convenient to work with type formers in MetaTy, and only convert to SOP representations
+when needed, so we define a class for the representable types:
+class IsSOP(A : MetaTy) where
+Rep : USOP
+rep : A≃ ElSOP Rep
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:15
+Above, A≃ Rep denotes a record containing a pair of back-and-forth functions, together with
+proofs (as propositional equalities) that they are inverses. We will overload rep as the forward
+conversion function with type A→ ElSOP Rep, and write rep−1 for its inverse.
+In 2LTT literature, a metatype A is called cofibrant if A→ B is isomorphic to an object type
+whenever B is isomorphic to an object type [Annenkov et al. 2019]. We conjecture that our IsSOP
+types are exactly the cofibrant types in this sense. However, “cofibrant” is not very descriptive in
+our setting, so we shall keep writing IsSOP.
+Accordingly, we define an isomorphic presentation of ElSOP A→⇑ R as a product of object-level
+functions:
+FunSOP⇑ : USOP→ Ty→ MetaTy
+FunSOP⇑ Nil R =()
+FunSOP⇑(Cons A B) R =(⇑( foldr(→) R A), FunSOP⇑ B R)
+tabulate :(ElSOP A→⇑ R)→ FunSOP⇑ A R
+index : FunSOP⇑ A R→( ElSOP A→⇑ R)
+We omit here the definitions of tabulate and index. We will also need to let-bind all functions in a
+FunSOP⇑:
+genFunSOP⇑ :{A : USOP}→ FunSOP⇑ A R→ FunSOP⇑ A R
+genFunSOP⇑{Nil} () = return()
+genFunSOP⇑{Cons _ A}(f, fs) =(,) <$> gen f <∗> genFunSOP⇑{A} fs
+We introduce a class for monads that support control flow joining.
+class Monad M⇒ MonadJoin Mwhere
+join : IsSOP A⇒ M A→ M A
+The most interesting instance is the “base case” for Gen:
+instance MonadJoin Genwhere
+join ma = Gen $𝜆 k. runGen $ do
+joinPoints← genFunSOP⇑(tabulate(k◦ rep−1))
+a← ma
+return $ index joinPoints(rep a)
+Here we first convert k : A→⇑ R to a product of join points and let-bind each one of them.
+Then we generate code that returns to the appropriate join point for each return value. Other
+MonadJoin instances are straightforward. InStateTM, we need the extraIsSOP S constraint because
+S is returned as a result value.
+instance(MonadJoin M)⇒ MonadJoin(MaybeTM M) where
+join(MaybeTM ma) = MaybeTM(join ma)
+instance(MonadJoin M)⇒ MonadJoin(ReaderTM R M) where
+join(ReaderTM ma) = ReaderTM(join◦ ma)
+instance(MonadJoin M, IsSOP S)⇒ MonadJoin(StateTM S M) where
+join(StateTM ma) = StateTM(join◦ ma)
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:16 András Kovács
+letrec f : Tree Nat→ StateT(List Nat)( MaybeT Identity)( Tree Nat)
+f t :=∼down $ case t of
+Leaf→ return⟨Leaf⟩
+Node n l r→ do
+case⟨∼n == 0⟩ of True→ fail
+False→ return()
+ns← get
+n ← join $ case ns of Nil → return n
+Cons n ns→ do{put ns; return n}
+l← up⟨f∼l⟩
+r← up⟨f∼r⟩
+return⟨Node∼n∼l∼r⟩
+Fig. 1. Monadic source code
+Now, the following definition yields the previously seen code output withjoinNothing and joinJust.
+f b :=∼(down $ do
+join $ case⟨b⟩ of True→ put′⟨10⟩; False→ put′⟨20⟩
+modify′(𝜆 x.⟨∼x+∼x⟩))
+It might make sense to also have a simple “desugaring” rule that inserts a join whenever we have
+an object-level case split with more than one branch. At worst, this generates some noise and dead
+code that is easy to remove by conservative code optimization.
+3.6 Code Example
+We look at a slightly larger code example in Figure 1. We define annotated binary trees as
+data Tree A := Leaf| Node A(Tree A)( Tree A).
+We write fail : M A for returning Nothing in any monad transformer stack that contains MaybeT.
+We define a function which traverses a tree and replaces values with values taken from a list. If the
+tree contains 0, we throw an error. If we run out of list elements, we leave values unchanged. Here,
+all of the case matches are done on object-level values, so they are all desugared to applications of
+split.
+• Note the join: without it, the recursive Node traversal code would be inlined in both case
+branches.
+• We do not use join when checking⟨∼𝑛 == 0⟩. Here, it happens to be superfluous, since
+the fail “destroys” all subsequent code generation in the branch, by short-circuiting at the
+meta-level.
+• Also, we can use put instead of the “stricter” put′ because the state modification immediately
+gets sequenced by the enclosing join point.
+• To make object-level recursive calls, we just need to wrap them in up.
+Here, we intentionally tuned the definition for a nice-looking unstaged output. However, we could
+also just default to “safe” choices everywhere: we could use a joint point in every case with two or
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:17
+letrec f : Tree Nat→ StateT(List Nat)( MaybeT Identity)( Tree Nat)
+f :=𝜆 t ns. case t of
+Leaf→ Just(Leaf, ns)
+Node n l r→ case(n == 0) of
+True→ Nothing
+False→
+let joinNothing :=𝜆 _. Nothing;
+let joinJust :=𝜆 n ns. case f l nsof
+Nothing → Nothing
+Just(l, ns)→ case f r nsof
+Nothing → Nothing
+Just(r, ns)→ Just(Node n l r, ns);
+case ns of
+Nil → joinJust n ns
+Cons n ns→ joinJust n ns
+Fig. 2. Unstaged monadic code
+more branches, and use the strict state modifications everywhere, and leave it up to the downstream
+compiler to clean up the code.
+We show the unstaging output on Figure 2. We omit newtype wrappers and use nested pattern
+matching on pairs, but otherwise this is exactly the code that we get in our Agda implementation.
+Again, the only flaw in this code is the dead binding for joinNothing.
+3.7 Discussion
+So far, we have a monad transformer library with the following features:
+• Almost all definitions from the well-known Haskell ecosystem of monads and monad trans-
+formers can be directly reused, in the meta level.
+• We can pattern match on object-level values in monadic code, insert object-level let-s with
+gen and avoid code duplication with join.
+• In monadic code, object-level data constructors are only ever created bydown, and matching
+on object-level data is only created by split and up. Monadic operations are fully fused, and
+all function calls can be compiled to statically known saturated calls.
+As to potential weaknesses, first, the system as described in this section has some syntactic noise
+and requires extra attention from programmers. We believe that the noise can be mitigated very
+effectively in a native CFTT implementation. It was demonstrated in a 2LTT implementation in
+[Kovács 2022] that almost all quotes and splices are unambiguously inferable, if we require that
+stages of let-definitions are always specified (as we do here). Moreover, up and down should be
+also effectively inferable, using bidirectional elaboration. With such inference, monadic code in
+CFTT would look only slightly more complicated than in Haskell.
+Second, in CFTT we cannot store computations (e.g. functions or State actions) in runtime data
+structures, nor can we have computations in State state or in Reader environments. However, it
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:18 András Kovács
+would be possible to extend CFTT with a closure type former that converts computations to values,
+in which case there is no such limitation anymore. Here, closure-freedom would be still available;
+we would be able to pick where to use or avoid the closure type former.
+3.8 Agda & Haskell Implementations
+We implemented everything in this section in both Agda and typed Template Haskell. We summarize
+features and differences:
+• The Haskell implementation can be used to generate code that can be further compiled
+by GHC; here the object language is taken to be Haskell itself. Since Haskell does not
+distinguish value and computation types, we do not track them in the library, and we do not
+get guaranteed closure-freedom from GHC.
+• In Agda, we postulate all types and terms of the object theory in a faithful way (i.e. equivalently
+to the CFTT syntax presented here), and take Agda itself to be the metalanguage. Here, we
+can test “staging” by running Agda programs which compute object expressions. However,
+we can only inspect staging output and cannot compile or run object programs.
+• For sums-of-products in Haskell, we make heavy use ofsingleton types [Eisenberg and Weirich
+2012] to emulate dependent types. This adds significant noise. Also, in IsSOP instances we
+can only define the conversion functions and cannot prove that they are inverses, because
+Haskell does not have enough support for dependent types.
+4 Stream Fusion
+Stream fusion refers to a collection of techniques for generating efficient code from declarative
+definitions involving streams of values, where intermediate data structures are eliminated. Stream
+fusion can be broadly grouped into push fusion, which is based on Church-encodings of inductive
+lists, and pull fusion, which is based on Church-encodings of coinductive lists; see e.g. [Hinze et al.
+2010]. The two styles have different trade-offs, and in practical programming it is a good idea to
+support both, but in this section we focus on pull streams.
+The reason is that pull streams have been historically more difficult to efficiently compile, and
+we can demonstrate significant improvements in CFTT. We also use dependent types in a more
+essential way than in the previous section.
+4.1 Streams
+A pull stream is a meta-level specification of a state machine:
+data Step S A = Stop| Skip S| Yield A S
+data Pull(A : MetaTy) : MetaTy where
+Pull :(S : MetaTy)→ IsSOP S⇒ Gen S→( S→ Gen(Step S A))→ Pull A
+In the Pull constructor, S is the type of the internal state which is required to be a sum-of-products
+of value types by the IsSOP S constraint. The next field with type Gen S is the initial state, while
+transitions are represented by theS→ Gen(Step S A) field. Possible transitions are stopping (Stop),
+transitioning to a new state while outputting a value (Yield) and making a silent transition to a
+new state (Skip).
+Our definition roughly follows the non-staged stream fusion setup of Coutts [Coutts 2011]; the
+difference is the addition of IsSOP and Gen in our version. Also, borrowing terminology from
+Coutts, we call each product in the state a state shape.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:19
+Let us see some operations on streams now. Pull is evidently a Functor. It is not quite a “zippy”
+applicative functor, because its application operator requires an extra IsSOP constraint:
+repeat : A→ Pull A
+repeat a = Pull()( return())( 𝜆 _. return $ Yield a())
+(<∗>Pull) : IsSOP A⇒ Pull(A→ B)→ Pull A→ Pull B
+(<∗>Pull)( Pull S seed step)( Pull S′ seed′ step′) =
+Pull(S, S′, Maybe A)(( ,) <$> seed<∗>((, Nothing) <$> seed′) $𝜆 case
+(s, s′, Just a)→ step s > >=𝜆 case
+Stop → return Stop
+Skip s → return $ Skip(s, s′, Just a)
+Yield f s → return $ Yield(f a)( s, s′, Nothing)
+(s, s′, Nothing)→ step′ s′ > >=𝜆 case
+Stop → return Stop
+Skip s′ → return $ Skip(s, s′, Nothing)
+Yield a s′→ return $ Skip(s, s′, Just a)
+In repeat, the state is the unit type, while in(<∗>Pull) we take the product of states, and also
+add another Maybe A that is used to buffer a single value while we are stepping the Pull(A→ B)
+stream. The IsSOP constraints for the new machine states are implicitly dispatched by instance
+resolution; this works in the Agda and Haskell versions too. We can derivezip and zipWith from
+(<∗>Pull) and(<$>) for streams, with the restriction that the zipped streams must all produce
+IsSOP values.
+Pull is also a monoid with stream appending as the binary operation.
+empty : Pull A
+empty = Pull()( return())( 𝜆 _. return Stop)
+(<>) : Pull A→ Pull A→ Pull A
+(<>)( Pull S seed step)( Pull S′ seed′ step′) = Pull(Either S S′)( Left <$> seed)𝜆 case
+Left s → step𝑠 > >=𝜆 case Stop →( Skip◦ Right) <$> seed′
+Skip s → return $ Skip(Left s)
+Yield a s→ return $ Yield a(Left s)
+Right s′→ step𝑠′ > >=𝜆 case Stop → return Stop
+Skip s′ → return $ Skip(Right s′)
+Yield a s′→ return $ Yield a(Right s′)
+These definitions are standard for streams; compared to the non-staged definitions in previous
+literature, the only additional noise is just the Gen monad in the initial states and the transitions.
+Likewise, we can give standard definitions for usual stream functions such as filter, take or drop.
+4.2 Running Streams With Mutual Recursion
+How do we generate object code from streams? The stateS is given as a finite sums of products, but
+the sums and the products are on the meta level, so we cannot directly useS in object code. Similarly
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:20 András Kovács
+as in the the treatment of join points, we tabulate the S→ Gen StepS A transition function to a
+product of functions. However, these functions need to be mutually recursive, since it is possible to
+transition from any state to any other state, and each such transition is represented as a function
+call. This problem of generating well-typed mutual blocks was addressed in [Yallop and Kiselyov
+2019]. In contrast to this work, which used control effects and mutable references in MetaOCaml,
+we present a solution that does not use side effects in the metalanguage.
+The solution is to extend CompTy with finite products of computations, i.e. assume() : CompTy
+and(,) : CompTy→ CompTy→ CompTy, together with pairing and projections. These types, like
+functions, are call-by-name in the runtime semantics, and they also cannot escape the scope of
+their definition. Hence, we can also “saturate” programs that involve computational product types:
+every computation definition at type(A, B) can be translated to a pair, and every projection of a
+let-defined variable can be statically matched up with a pairing in the variable definition. Thus,
+a recursive let-definition at type(A→ B, A→ B) can be always compiled to a pair of mutual
+functions.
+We redefine the previous FunSOP⇑ to return a computation type instead:
+FunSOP⇑ : USOP→ Ty→ CompTy
+FunSOP⇑ Nil R =()
+FunSOP⇑(Cons A B) R =(foldr(→) R A, FunSOP⇑ B R)
+tabulate :(ElSOP A→⇑ R)→⇑( FunSOP⇑ A R)
+index :⇑(FunSOP⇑ A R)→( ElSOP A→⇑ R)
+Even for join points, this is just as efficient as the previous FunSOP⇑ version, since a definition of a
+product of functions will get compiled to a sequence of function definitions. In addition, we can
+use it to generate object code from streams. There are several choices for this, but in CFTT the
+foldr function is as good as we can get.
+foldr :{A : MetaTy}{B : Ty}→( A→⇑ B→⇑ B)→⇑ B→ Pull A→⇑ B
+foldr{A}{ B} f b(Pull S seed step) =⟨
+letrec fs : FunSOP⇑(Rep{S}) B :=∼tabulate $𝜆 s. unGen(step(rep−1 s)) $𝜆 case
+Stop → b
+Skip s → index⟨fs⟩(rep s)
+Yield a s→ f a(index⟨fs⟩(rep s));
+∼unGen seed$𝜆𝑠. index⟨fs⟩(rep s)⟩
+This foldr is quite flexible because it can produce object terms with computation types. For instance,
+we can define foldl from foldr:
+foldl :{A : MetaTy}{B : ValTy}→(⇑ B→ A→⇑ B)→⇑ B→ Pull A→⇑ B
+foldl f b as=∼(foldr(𝜆 a g.⟨𝜆 b.∼g∼(f⟨b⟩∼ a)⟩)⟨𝜆 b. b⟩ as)∼b
+Note that since we abstract B in a runtime function, it must be a value type. Here, each Stop and
+Yield in the transition function gets interpreted as a𝜆-expression in the output. However, those
+𝜆-s will be lifted out in the scope, yielding a proper mutually tail-recursive definition with an
+accummulator for B. Contrast this to the GHC base library, wherefoldl for lists is also defined from
+foldr, to enable push-based fusion, but where a substantial arity analysis is used in the compiler to
+(incompletely) eliminate the intermediate closures [Breitner 2014].
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:21
+4.3 concatMap for Streams
+Can we have a list-like Monad instance for streams, with singleton streams for return and
+concatMap for binding? This is not possible. Aiming at
+concatMap :(A→ Pull B)→ Pull A→ Pull B,
+the A→ Pull B function can contain an infinite number of different machine state types, which
+cannot be represented in a finite amount of object code. Here by “infinite” we mean the notion
+that is internally available in the meta type theory. For instance, we can define a NatM→ Pull B
+function which for each n : NatM produces a concatenation of n streams. Hence, we shall have the
+following function instead:
+concatMap : IsSOP A⇒( A→ Pull B)→ Pull A→ Pull B
+The idea is the following: if USOP is closed under Σ-types, we can directly define this concatMap,
+by taking the appropriate dependent sum of the A→ USOP family of machine states, which
+we extract from the A → Pull B function. Let us write Σ A B : MetaTy for dependent sums,
+for A : MetaTy and B : A → MetaTy, and reuse (,) for pairing. We also use the following
+field projection functions: projS : Pull A→ MetaTy, projSeed :(as : Pull A) →projS as, and
+projStep : (as : Pull A) →projS as→ Gen(Step(projS as) A). For now, we assume that the
+following instance exists:
+instance(IsSOP A,{a : A}→ IsSOP(B a))⇒ IsSOP(Σ A B)
+Above,{a : A}→ IsSOP(B a) is a universally quantified instance constraint; this can be also
+represented in Agda. The definition of concatMap is as follows.
+concatMap : IsSOP A⇒( A→ Pull B)→ Pull A→ Pull B
+concatMap{A}{ B} f(Pull S seed step) =
+Pull(S, Maybe(Σ A(projS◦ f)))(( ,) <$> seed <∗> return Nothing) $𝜆 case
+(s, Nothing)→ step s > >=𝜆 case
+Stop → return Stop
+Skip s → return $ Skip(s, Nothing)
+Yield a s→ do{s′← projSeed(f a); return $ Skip(s, Just(a, s′))}
+(s, Just(a, s′))→ projStep(f a) s′ > >=𝜆 case
+Stop → return $ Skip(s, Nothing)
+Skip s′ → return $ Skip(s, Just(a, s′))
+Yield b s′→ return $ Yield b(s, Just(a, s′))
+Here, Nothing marks the states where we are in the “outer” loop, running the Pull A stream until
+we get its next value. Just marks the states of the “inner” loop, where we have a concrete a : A
+value and we run the(f a) stream until it stops. In the inner loop, the machine state type depends
+on the a : A value, hence the need for Σ. How do we get IsSOP for Σ? The key observations are:
+• Metaprograms cannot inspect the structure of object terms.
+• Object types do not depend on object terms.
+Hence, we expect that during unstaging, every f :⇑ A→ ValTy function has to be constant. More
+generally in the semantics in Appendix A, every function whose domain is a product of object types
+and whose codomain is a constant presheaf, is a constant function. We may call these constancy
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:22 András Kovács
+statements generativity axioms, since they reflect the inability of metaprograms to inspect terms,
+and “generativity” often refers to this property in the staged compilation literature.
+Let us write UP = List ValTyand ElP : UP→ MetaTy for a universe of finite products of value
+types. Concretely, in CFTT and the Agda implementation, we assume the following:
+Axiom (generativity). For every f : ElP A→ USOP and a, a′ : ElP A, we have that f a = f a′.
+See Section A.5 in Appendix 𝐴 for a validation of this axiom. We remark that there is no risk
+of staging getting stuck, because propositional equality proofs get erased, as we described in
+Section 2.4. We also remark that although generativity is inconsistent with inspecting the structure
+of object terms, it is consistent with inspecting the structure of object types.
+From generativity, we derive ΣSOP :(A : USOP)→( B : ElSOP A→ USOP)→ USOP as follows.
+First, for each A : UP, we define loopA : ElP A as a product of non-terminating object programs.
+This is only needed to get arbitrary inhabitants with which we can call ElP𝐴→ USOP functions.
+Then, ΣSOP A B is defined as the concatenation of A𝑖× B(injecti loopAi) for each A𝑖∈ A, where
+(×) is the product type former in USOP and injecti has type ElP A𝑖→ ElSOP A. This is similar to the
+definition of non-dependent products inUSOP, except that we have to get rid of the type dependency
+by instantiating B with arbitrary programs.
+Then, we can show using the generativity axiom that ΣSOP supports projections, pairing and the
+𝛽𝜂-rules. These are all needed when we define the IsSOP instance, when we have to prove that
+encoding via rep is an isomorphism. Concretely, assuming IsSOP A and{a : A}→ IsSOP(B a), we
+define Rep and rep for Σ A B as follows:
+Rep{Σ A B} = Σ(Rep{A})(𝜆 x. Rep{B(rep−1 x)})
+rep{Σ A B}( a, b) =(rep{A} a, rep{B(rep−1(rep x))} b)
+Note that rep is only well-typed up to the fact that rep−1◦ rep = id; the Agda definition contains
+an additional transport that we omit here. This is, in fact, our reason for including the isomorphism
+equations in IsSOP.
+This, in turn, necessitates using SOP instead of finite sums, for the following reason. We can
+define a product type former for finite sums of value types, by taking the pairwise products of
+components, but in this case the products would be object-level products, which do not support𝛽𝜂
+rules. This implies that we cannot prove𝛽𝜂-rules for the derived product type in finite sums. In
+contrast, when we define products for SOP-s, we take meta-level pairwise products of components,
+which does support𝛽 and𝜂.
+We skip the full definition of ΣSOP here. The reader may refer to the SOP module in the Agda
+implementation, which is altogether 260 lines with all IsSOP instances.
+4.4 Let-Insertion & Case Splitting in Monadic Style
+While Pull is not a monad, and hence also not a MonadGen, we can still use a monadic style of
+stream programming with good ergonomics. First, we need singleton streams for “returning”:
+single : A→ Pull A
+single a = Pull BoolM True $𝜆 b. return $ if b then Yield a Falseelse Stop
+Now, we should use this operation with care, since it has two states and can contribute to a code size
+blow-up. For example, concatMap over single introduces at least a doubling of the number of state
+shapes. Although let-insertion and case splitting could be derived as concatMap over single, to
+avoid the size explosion we give more specialized definitions instead. First, we define an embedding
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:23
+of Gen operations in streams.
+bindGen : IsSOP A⇒ Gen A→( A→ Pull B)→ Pull B
+bindGen ga f =
+Pull(Σ A(projS◦ f))( do{a← ga; s← projSeed(f a); return(a, s)}) $𝜆 case
+(a, s)→ projStep(f a) s > >=𝜆 case
+Stop → return Stop
+Skip s → return $ Skip(a, s)
+Yield b s→ return $ Yield b(a, s)
+We recover let-insertion and case splitting as follows:
+genPull :⇑A→(⇑ A→ Pull B)→ Pull B
+genPull a = bindGen(gen a)
+casePull :(Split A, IsSOP(SplitTo{A}))⇒⇑ A→( SplitTo{A}→ Pull B)→ Pull B
+casePull a = bindGen(split a)
+Let us look at small example. We write forEach for concatMap with flipped arguments.
+forEach(take⟨100⟩(countFrom⟨0⟩)) $𝜆 x.
+genPull⟨∼x∗ 2⟩ $𝜆 y.
+casePull⟨∼x < 50⟩ $𝜆 case
+True→ take y(countFrom𝑥)
+False→ single y
+Here, in every forEach iteration, genPull⟨∼x∗ 2⟩ evaluates the given expression and saves the result
+to the machine state. Then, casePull branches on an object-level Boolean expression. If we use foldr
+to generate object code from this definition, we get four mutually defined functions. We get two
+state shapes from single y and one from take y(countFrom𝑥); we sum these to get three for the
+casePull, then finally we get an extra shape from forEach which introduces an additional Maybe.
+4.5 Discussion
+Our stream library has a strong support for programming in a monadic style, even though Pull is
+not literally a monad. We can bind object values with concatMap, and we can also do let-insertion
+and case splitting for them. We also get guaranteed well-typing, closure-freedom, and arbitrary
+mixing of zipping and concatMap.
+We highlight the usage of the generativity axiom as well. Previously in staged compilation,
+intensional analysis (i.e. the ability to analyze object code) has been viewed as a desirable feature
+that increases the expressive power of a system. To our knowledge, our work is the first one that
+exploits the lack of intensional analysis in metaprogramming. This is a bit similar to parametricity
+in type theories, where the inability to analyze types has a payoff in the form of “free theorems”
+[Wadler 1989].
+Regarding the practical application of our stream library, we think that it would make sense to
+support both push and pull fusion in a realistic implementation, and allow users to benefit from the
+strong points of both. Push streams, which we do not present in this paper, have properMonad
+and MonadGen instances and are often more convenient to use in CFTT. They are also better for
+deep traversals of structures where they can utilize unbounded stack allocations, while pull streams
+need heap allocations for unbounded space in the machine state.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:24 András Kovács
+4.6 Agda & Haskell Implementations
+In Agda, to avoid computation getting stuck on the generativity axiom, we use the primTrustMe
+built-in [Agda developers 2024] to automatically erase the axiom when the sides of the equation
+are definitionally equal. Otherwise the implementation closely follows this section.
+In Haskell there are some limitations. First, in concatMap, the projection function projS cannot
+be defined, because Haskell is not dependently typed, and the other field projections are also out of
+reach. We only have a weaker “positive” recursion principle for existential types. It might be the
+case that a strongly typed concatMap is possible with only weak existentials, but we attempted
+this and found that it introduces too much technical complication.
+So instead of giving a single generic definition for concatMap for IsSOP types, we define
+concatMap just for object types,1 and define casePull separately for each object type, as an over-
+loaded class method. In each of these definitions, we only need to deal with a concrete finite number
+of machine state types, which is feasible to handle with weak existentials.
+Also, the generativity axiom is false in Template Haskell, since it is possible to look inside quoted
+expressions. Instead, we use type coercions that can fail at unstaging time. If library users do
+not violate generativity, these coercions disappear and the code output will not contain unsafe
+coercions.
+5 Related Work
+Two-level calculi. Two-level lambda calculi were first developed in the context of abstract inter-
+pretation and partial evaluation [Nielson 1984; Nielson and Nielson 1992]. This line of research
+is characterized by simple types, having the same language features at different stages, and an
+emphasis on binding time analysis, i.e. automatically inferring stage annotations as part of a pipeline
+for partial evaluation and program optimization.
+Later and independently, the same notion of level appeared in homotopy type theory, first in
+Voevodsky’s Homotopy Type System [Voevodsky 2013], and subsequently developed as 2LTT in
+[Annenkov et al. 2019]. Here, dependent types are essential, and we have different theories at
+the two stages. The application of 2LTT to staged compilation was developed in [Kovács 2022].
+Binding-time analysis has not been developed in this setting; 2LTT-s have been meant to be used
+as surface languages to directly work in.
+Higher-order abstract syntax and logical frameworks. Hofmann’s work on the semantics of higher-
+order abstract syntax (HOAS) is an important precursor to our work [Hofmann 1999]. It anticipates
+many of the later developments in logical frameworks and two-level type theories. In particular, we
+build on Hofmann’s presheaf model for our 2LTT semantics, and his sketch of adequacy for HOAS
+corresponds to our definition of unstaging and its soundness proof. In general, there is a close
+correspondence between logical frameworks that represent object languages in HOAS style (e.g.
+[Harper et al. 1993]) and two-level type theories, and in some cases the two kinds of presentations
+are inter-derivable [Kovács 2023, Section 3.3]. In fact, our Agda implementation of CFTT also uses
+a HOAS embedding of the object theory.
+Cocon is a logical framework that has a dependently typed meta level (“computation” level)
+and an object language that is configured by a signature [Pientka et al. 2019]. Cocon, like 2LTTs,
+can be used as a dependently typed metaprogramming language, but there are several differences.
+First, Cocon supports and emphasizes intensional analysis (i.e. the ability to do structural induction
+on object code), which is made possible through a contextual modality [Nanevski et al . 2008].
+In contrast, intensional analysis is missing from 2LTTs so far. However, in Cocon, we can only
+1Recall that we do not distinguish value and computation types in Haskell.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:25
+manipulate object terms at the meta level by specifying their concrete object-level contexts (i.e.
+possible free variables), while in 2LTTs the object-level contexts are implicit and are only computed
+during code generation. The latter style is more convenient for staged compilation applications,
+where explicit context tracking would add a significant amount of bureaucracy.
+Nonetheless, it seems to be possible and useful to have a system which simultaneously supports
+intensional analysis through contextual types and the 2LTT-style implicit contexts, and it would be
+interesting to consider in future work.
+CPS and monads in staged programming. Writing code generators in continuation-passing style
+was first proposed by Bondorf [Bondorf 1992]. Flanagan et al. ’s ANF translation algorithm uses
+CPS for let-insertion as well [Flanagan et al. 1993], similarly to our gen function. These sources do
+no use explicit monadic notation though. Jones et al. discuss CPS and binding-time improvement
+in partial evaluation in [Jones et al. 1993]. In [Kiselyov et al. 2004], [Swadi et al. 2006] and [Carette
+and Kiselyov 2011], the composition of state and continuation monads was used, similarly to our
+StateT𝑆 Gen, but without polymorphic answer types. The definition of let-insertion here is again
+similar to ours.
+Tracking function arities and closures in types. Downen et al. ’s intermediate languageIL has similar
+motivations as our object language [Downen et al . 2020]. In both systems, function types are
+distinguished from closure types, enjoy universal𝜂-conversion and have an explicit calling arity.
+In fact, our object language can be almost viewed as a small simply-typed fragment ofIL , with
+only letrec missing fromIL .
+Sums-of-products. SOP was proposed for generic Haskell programming by De Vries and Löh
+[de Vries and Löh 2014b]. Our own SOP implementation in Haskell is mostly the same as in ibid.
+The SOP-of-object-code representation appeared as well in typed Template Haskell in [Pickering
+et al. 2020].𝜂-expansion for object-level finite sums is known as “the trick” [Danvy et al. 1996].
+Join points. The use join points in GHC’s core language is partly motivated by avoiding code
+duplication in case-of-case transformations [Maurer et al. 2017]. In our monad library, case-of-case
+is implicitly and eagerly computed during staging, and we similarly use join points to avoid code
+duplication.
+Stream fusion. The staged stream fusion library strymonas by Kiselyov et al. is the primary prior art
+[Kiselyov et al. 2017]. Here, streams are represented as a sum type of push and pull representations,
+allowing both zipping and concatMap-ing. However, fusion is not guaranteed for all combinations;
+zipping two concatMap-s reifies one of the streams in a runtime closure. In newer versions of
+the library, fusion is complete [Kobayashi and Kiselyov 2024], however, an exposition of this has
+not yet been published. Additionally, strymonas heavily relies on mutable references in the object
+language, and also uses some switching on object-level data to implement control flow. This style of
+code output can be still reliably optimized by downstream compilers (C or OCaml), but our solution
+is more conservative in that it does not use any mutation or runtime switching. This “purity” of our
+streams also makes them easier to generalize, e.g. by using arbitrary MonadGen monads instead of
+Gen in stream internals.
+Machine fusion [Robinson and Lippmeier 2017] supports splitting streams to multiple streams
+while avoiding duplicated computation; this is not possible in strymonas or our library. Machine
+fusion also supports concatMap and zipping. However, its state machine representation is sig-
+nificantly more complicated than ours, and its fusion algorithm is not guaranteed to succeed on
+arbitrary stream programs.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:26 András Kovács
+Coutts developed pull stream fusion in depth in [Coutts 2011]. We borrowed the basic design and
+the basic stream combinator definitions from there. This account is also close to existing stream
+implementations in Haskell. We find it interesting that our staged definitions are very close to the
+non-staged versions there; essentially all of the additional complexity is compartmentalized in our
+SOP module. Coutts characterized fusibility in a non-staged setting, in terms of “good consumers”
+and “good producers”, but this scheme does not cover concatMap.
+6 Conclusions and Future Work
+We believe that a programming language in the style of this paper would be highly useful, especially
+in high-performance functional programming and domain-specific programming. In particular, the
+pipeline for using and compiling monads could look like the following.
+• Users write definitions in a style similar to Haskell, without quotes, splices, up-s and down-s,
+only marking stages in type annotations and in let-definitions, with:= and =. Storing monadic
+actions at runtime requires an explicit boxing operation that yields a closure type.
+• Type- and stage-directed elaboration adds the missing operations, and also desugars case
+splitting using join and the underlying splitting function.
+• In the downstream compiler, fast & conservative optimization passes are sufficient, since
+abstraction overheads are already eliminated by staging. Eliminating dead code and unused
+arguments would be important, as we have not yet addressed this through staging.
+• A systematic way to de-duplicate code would be also needed, probably already during staging.
+Going a bit further, we believe that a 2LTT-based language could be a good design point for
+programming in general, buying us plenty of control over code generation for a modest amount of
+extra complexity.
+Also, rebuilding known abstractions in staged programming is valuable because it provides a
+semantic explanation of how abstractions can be compiled, and provides insights that could be
+reused even in non-staged settings. For instance, in this paper we demonstrated that compiling
+monadic code can be done by using the same monads in the metalanguage, extended with code
+generation as an effect.
+Continuing this line of thought, it could be interesting to also adapt to 2LTT the style of
+binding-time analysis that is well-known in partial evaluation. For example, we might do program
+optimization in the following way. First, start with monadic code in a non-staged language. Second,
+try to infer stages, inventing quotes, splices, up-s and down-s, thereby translating definitions to a
+2LTT. Third, perform staging and proceed from there. This would be more fragile than unambiguous
+stage inference, but we would still benefit from shifting a lot of machinery into staging (which is
+deterministic and efficient).
+We also find it interesting how little impact closure-freedom had on the developments in this
+paper. This provides some evidence that in staged functional programming, closures can be an
+opt-in feature instead of the pervasive default.
+In this paper we only briefly looked at two applications. Both monad transformers and streams
+could be further developed, and many other programming abstractions could be revisited in the
+staged setting.
+• We did not discuss the issue of tail calls in monadic code. For example, a tail call in Maybe
+should not case split on the result, while in our current library, making a call with up always
+does so. We did develop an abstraction for tail calls in the Agda and Haskell implementations,
+but omitted it here partly for lack of space, and partly because we have not yet explored
+much of the design space.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:27
+• In a practical stream library, it would be useful to further try to minimize the size of the
+machine state. In the Agda and Haskell versions, we additionally track whether streams can
+Skip, to provide more efficient zipping for non-skipping “synchronous” streams. However,
+this could be refined in many ways, and we could also try to represent the transition graph
+in an observable way, thereby enabling merging or deleting states.
+• It seems promising to look for synergies between push streams, pull streams and monad
+transformers. It seems that pull streams could be generalized from Gen to different monads,
+in the representation of transitions and initial states. This would allow putting a Pull on the
+top of a monad transformer stack. On the other hand, push streams form a proper monad,
+but they cannot be used to “transform” other monads, so they can be placed at the bottom of
+a transformer stack.
+• We could try to lean more heavily on datatype-generic programming and generalize abstrac-
+tions for more object types. For example, push and pull streams could be generalized to
+inductive and coinductive Church-codings of arbitrary value types.
+Acknowledgements
+I thank the anonymous reviewers, Sebastian Graf and Jacques Carette, for their comments and
+suggestions on draft versions of this paper. This work was supported by grant 2019.0116 of the
+Knut and Alice Wallenberg Foundation.
+Data Availability Statement
+The Agda and Haskell artifacts are available in [Kovács 2024].
+Appendix A Staged Semantics for CFTT
+In this appendix we describe the semantics of CFTT, from which the unstaging algorithm is obtained,
+and also describe the soundness and stability of the algorithm. We borrow the setup from [Kovács
+2022]; we use terminology and definitions from there by default, and focus on differences and
+extensions.
+Notation 1. In the following, we work in a mostly unspecified extensional type theory, writing Set
+for universes (omitting universe levels),(𝑥 :𝐴)→ 𝐵 for Π-types,(𝑥 :𝐴)× 𝐵 for Σ-types and – = –
+for extensional identity.
+A.1 Models and Syntax of CFTT
+We give an algebraic [Cartmell 1978; Kovács 2023] specification for the models of CFTT and define
+the syntax of CFTT to be the initial model. In the following, all type and term formers are implicitly
+assumed to be stable under substitution.
+Definition A.1. A model of CFTT consists of the following.
+• A category with a terminal object; in the syntax this is the category of contexts and parallel
+substitutions. We use Con : Set for contexts, Sub : Con→ Con→ Set for morphisms and
+• : Con for the terminal object (which is the empty context in the syntax).
+• A family structure in the sense of category-with-families [Dybjer 1995], specifying metatypes
+and terms. This structure is additionally indexed by universe levels, so we have MetaTy𝑖 :
+Con→ Set and MetaTm𝑖 :(Γ : Con)→ MetaTy𝑖 Γ→ Set for𝑖∈ N. We support basic type
+formers, identity types and W-types. We write Γ ⊲𝐴 for an extended context. Additionally,
+we have Coquand-style universes, i.e. U𝑖 : MetaTy𝑖+1 Γ such that there is an isomorphism
+MetaTm Γ U𝑖≃ MetaTy𝑖 Γ. We use El and code to denote the components of this isomor-
+phism.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:28 András Kovács
+• For object-level types, we have Ty : MetaTy0 Γ, ValTy : MetaTy0 Γ and CompTy : MetaTy0 Γ,
+together with all object-level type formers and inclusion operations V : MetaTm Γ ValTy→
+MetaTm Γ Ty and C : MetaTm Γ CompTy→ MetaTm Γ Ty.
+• For object-level terms, we have Tm : MetaTm Γ Ty→ Set, supporting context extension, i.e.
+we have Γ ⊲𝐴 for𝐴 : MetaTm Γ Ty such that Sub Γ(Δ ⊲𝐴) is isomorphic to(𝜎 : Sub Γ Δ)×
+Tm Γ(𝐴[𝜎]). All object-level term formers are supported in Tm.
+• Staging operations: we have⇑ : MetaTm Γ Ty→ MetaTy Γ together with isomorphisms
+Tm Γ𝐴≃ MetaTm Γ(⇑𝐴). We write⟨–⟩ and∼– for the components of the isomorphism.
+This presentation is a bit more verbose than the surface syntax used in the paper. First, the meta
+level uses explicit coding and decoding for universes, while the surface syntax assumes Russell-style
+universes. Second, the object level has ValTy and CompTy as Tarski-style universes with explicit
+inclusions V and C into Ty, while the surface syntax used implicit coercions.
+Also, this is not the only possible presentation. Here, we follow the style of the informal syntax by
+having a separate sort for object-level terms, together with explicit quoting and splicing. However,
+we do not have a sort for object types and instead specify them as terms of metatypes. This is a
+mixture of two styles:
+• The “classic” 2LTT style would have separate sorts and staging operations for all of Ty,
+CompTy and ValTy. Here the two levels are specified independently and level-mixing is only
+possible through staging operations.
+• The “higher-order abstract syntax” (HOAS) or “logical framework” style would only have
+metatypes and metaterms, no quoting or splicing, and would reuse metafunctions to represent
+object-level binders. Our Agda implementation follows this style.
+In the context of CFTT, the choice between HOAS and 2LTT styles is a matter of taste, and the two
+are inter-derivable [Kovács 2023, Section 3.3].
+A.2 Presheaf Model
+Unstaging is defined as evaluation of the syntax of CFTT in a particular presheaf model.
+• The object theory is the simple type theory supporting only value types and computation
+types as described in Section 2.2 and also in the Agda formalization. Object-theoretic terms
+are not quotiented by𝛽𝜂-conversion. Substitution is a recursively defined operation on terms.
+• O is the category whose objects are contexts of the object theory, and morphisms are parallel
+substitutions, as lists of terms. With this, object-theoretic types form a constant presheaf
+which we denote as TyO : Oop→ Set, and terms form a dependent presheaf over TyO which
+we write as TmO.
+• In the presheaf model of CFTT, every typing context (and also every closed type) is modeled
+as a presheaf over O. The interpretation of meta-level type formers is standard, following
+[Hofmann 1997] and [Huber 2016].
+• Ty : MetaTy0 Γ is the displayed presheaf which is constantly TyO. ValTy and CompTy are
+modeled analogously.
+•⇑ 𝐴 : MetaTy0 Γ is modeled as follows. We have that𝐴 : MetaTy Γ Ty, but sinceTy is defined as
+constantly TyO, it follows that𝐴 is a natural transformation from Γ to TyO. Hence, we define
+⇑𝐴 : MetaTy0 Γ to be TmO[𝐴], where[ –] is substitution in presheaves, i.e. the reindexing of
+a displayed presheaf by a natural transformation.
+• Tm Γ𝐴 is simply defined to be MetaTy Γ(⇑𝐴) in the model. Hence, quotation and splicing
+are both interpreted as identity maps.
+Now, we can take a closed term𝑡 : Tm•𝐴 in CFTT and evaluate it in the presheaf model to obtain
+an object-theoretic term whose type is the result of evaluating𝐴.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:29
+A.3 W-Types
+So far we have stayed close to [Kovács 2022], with only cosmetic changes. Supporting W-types, as
+a way to get inductive families [Hugunin 2020], is the biggest extension here. We extend Section
+5 of [Kovács 2022]. The formal specification of syntactic W−elim is rather gnarly, because of the
+usage of explicit substitutions, but we write it out here anyways.
+Notation 2. We use p𝑁 for𝑁 -fold weakening and we also use numerals as De Bruijn indices, to
+abbreviate q[p𝑁]. We write app and lam for Π application and abstraction. We write –⇒– for
+non-dependent function types. Finally, for the sake of brevity we omit the component maps of the
+isomorphism R⊲ : R(Γ ⊲𝐴)≃(( 𝛾 : R Γ)× R𝐴𝛾).
+In the syntax of CFTT, W-types are as follows.
+W :(𝐴 : MetaTy𝑖 Γ)→ MetaTy𝑗(Γ ⊲ 𝐴)→ MetaTymax(𝑖,𝑗) Γ
+sup :(𝑎 : MetaTm Γ𝐴)→ MetaTm Γ(𝐵[id, 𝑎]⇒ W𝐴𝐵)→ MetaTm Γ(W𝐴𝐵)
+W−elim :(𝑃 : MetaTy(Γ ⊲ W𝐴𝐵))
+→ MetaTm(Γ ⊲ 𝐴 ⊲ 𝐵⇒( W𝐴𝐵)[𝑝] ⊲ Π(𝐵[𝑝])( 𝑃[p3, app 1 0]))( 𝑃[p3, sup 2 1))
+→( 𝑤 : MetaTm Γ(W𝐴𝐵))→ MetaTm Γ(𝑃[id,𝑤])
+W𝛽 : W−elim𝑃𝑠(sup𝑎𝑓) =𝑠[id, 𝑎, 𝑓,lam(W−elim(𝑃[p2, q])( 𝑠[p])( app𝑓 0)]
+We shall omit the𝑖 and 𝑗 universe levels in the following. In cSet, i.e. internally to presheaves over
+O, we also have the standard W-type.
+bW :(𝐴 : cSet)→( 𝐴→ cSet)→ cSet
+dsup :(𝑎 :𝐴)→( 𝐵𝑎→ bW𝐴𝐵)→ bW𝐴𝐵
+W−elim :(𝑃 : bW𝐴𝐵→ cSet)
+→(( 𝑎 :𝐴)(𝑓 :𝐵𝑎→ bW𝐴𝐵)→(( 𝑏 :𝐵𝑎)→ 𝑃(𝑓 𝑏))→ 𝑃(dsup𝑎𝑓))
+→( 𝑤 : bW𝐴𝐵)→ 𝑃𝑤
+bW𝛽 : W−elim𝑃𝑠(dsup𝑎𝑓) =𝑠𝑎𝑓 (𝜆𝑏. W−elim𝑃𝑠(𝑓 𝑏))
+In the presheaf model we interpret W using bW.
+E(W𝐴𝐵)𝛾 := bW(E𝐴𝛾)(𝜆𝛼. E𝐵(𝛾, 𝛼))
+E(sup𝑎𝑓)𝛾 := dsup(E𝑎𝛾)(𝜆𝛽. E𝑓(𝛾,𝛽))
+E(W−elim𝑃𝑠𝑤)𝛾 := W−elim(𝜆𝑤. E𝑃(𝛾,𝑤))( 𝜆𝑎𝑓 𝑔. E𝑠(𝛾, 𝑎, 𝑓,𝑔))( E𝑤𝛾)
+Now, assuming𝐴 : MetaTy Γ and𝐵 : MetaTy(Γ ⊲ 𝐴), we consider R(W𝐴𝐵) :(𝛾 : R Γ)→ cSet.
+Externally, the elements of R(W𝐴𝐵)𝛾 are CFTT terms with a W-type in purely object-level
+contexts. We call such terms restricted. Now, we internalize the restriction of the sup constructor:
+Rsup :(𝛼 : R𝐴𝛾)→ R(𝐵⇒(𝑊 𝐴𝐵)[ p])(𝛾, 𝛼)→ R(𝑊 𝐴𝐵)𝛾
+Externally, Rsup applies sup to restricted terms. Note that in R(𝐵⇒(𝑊 𝐴𝐵)[ p])(𝛾, 𝛼), the type
+𝐵⇒(𝑊 𝐴𝐵)[ p] is in the context(Γ ⊲ 𝐴), which makes it possible to pass(𝛾, 𝛼) as argument; this
+“instantiates”𝐵 to𝛼. With this, we can also show that R preserves sup:
+R(sup𝑡𝑢)𝛾 = Rsup(R𝑡𝛾)( R𝑢𝛾)
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:30 András Kovács
+Note that the type of R𝑢𝛾 is R(𝐵[id, 𝑡]⇒ W𝐴𝐵)𝛾, which is equal to
+R((𝐵⇒( W𝐴𝐵)[ p])[ id, 𝑡])𝛾
+which is in turn equal to R(𝐵⇒( W𝐴𝐵)[ p])(𝛾, R𝑡𝛾) by R’s preservation of substitutions, which
+makes the above equation well-typed.
+Next, we give a logical relation interpretation for W. We inductively define a relation in cSet as
+follows.
+W≈ : Γ≈𝛾𝛾′→ E(W𝐴𝐵)𝛾→ R(W𝐴𝐵)𝛾′→ cSet
+sup≈ : {𝛼 : E𝐴𝛾}{𝛼′ : R𝐴𝛾′}(𝛼≈ :𝐴≈𝛾≈𝛼𝛼′)
+→{ 𝑓 : E𝐵(𝛾, 𝛼)→ E(W𝐴𝐵)𝛾}
+→{ 𝑓′ : R(𝐵⇒( W𝐴𝐵)[ p])(𝛾′, 𝛼′)}
+→( 𝑓≈ :(𝐵⇒( W𝐴𝐵)[ p])≈(𝛾≈, 𝛼≈)𝑓 𝑓′)
+→ W≈𝛾≈(dsup𝛼𝑓)( Rsup𝛼′𝑓′)
+Here,(𝐵⇒( W𝐴𝐵)[ p])≈ is the relational interpretation of the function type, which unfolds to
+pointwise preservation of relations. We also define(W𝐴𝐵)≈𝛾≈𝑡𝑡′ to be W≈𝛾≈𝑡𝑡′. In short, W≈
+expresses thatdsup𝛼𝑓 is related toRsup𝛼′𝑓′ when the arguments are (inductively) related. Similarly,
+we interpret(sup𝑡𝑢)≈𝛾≈ as sup≈(𝑡≈𝛾≈)(𝑢≈𝛾≈). It only remains to interpret W-elimination and
+its𝛽-rule. We need to define
+(W−elim𝑃𝑠𝑤)≈𝛾≈ :𝑃≈(𝛾≈,𝑤 ≈𝛾≈)( E(W−elim𝑃𝑠𝑤)𝛾)( R(W−elim𝑃𝑠𝑤)𝛾′).
+We do this by induction on𝑤≈𝛾≈ : W≈𝛾≈(E𝑤𝛾)( R𝑤𝛾′). At this point it becomes rather tedious
+to compute and unfold the involved types, so we only give a compact definition together with some
+informal explanation:
+(W−elim𝑃𝑠𝑤)≈𝛾≈ :=
+W≈−elim(𝜆𝑤≈. 𝑃≈(𝛾≈,𝑤 ≈)( E(W−elim𝑃𝑠𝑤)𝛾)( R(W−elim𝑃𝑠𝑤)𝛾′))
+(𝜆𝑎≈𝑓≈ hyp. 𝑠≈(𝛾≈, 𝑎≈, 𝑓≈, hyp))
+(𝑤≈𝛾≈)
+W≈−elim is the eliminator for W≈. Its first argument is the induction motive, which matches the
+goal type. The second argument is the method for sup≈; its𝑎≈ and𝑓≈ inputs are the relatedness
+witnesses stored in a sup≈, while hyp is induction hypothesis, witnessing the inductive motive
+for every output of𝑓≈. In the body here, we need to witness the motive in the case where𝑤≈𝛾≈
+is a sup≈, which causes both E(W−elim𝑃𝑠𝑤)𝛾 and R(W−elim𝑃𝑠𝑤)𝛾′ to compute further to
+applications of E𝑠𝛾 and R𝑠𝛾′ respectively. Hence, we use𝑠≈ to relate the two sides. This definition
+also respects W𝛽, by the𝛽 rule for W≈.
+A.4 Identity Type
+In this section we assume an extensional identity type in CFTT. As we mentioned in Section 2.4, we
+can show soundness of staging with extensional identity and certain postulated identities, but we
+cannot do the same with intensional identity. Hence, we formulate unstaging as consisting of two
+steps: first, a translation of intensional identity to extensional (which amounts to proof erasure),
+followed by evaluation in the presheaf model.
+Extensional identity in CFTT type is interpreted as the standard extensional identity in presheaves,
+i.e. we have E(Id𝐴𝑡𝑢)𝛾 := E𝑡𝛾 = E𝑢𝛾 . This supports refl, transport, uniqueness of identity and
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:31
+equality reflection; we omit the fairly trivial definitions here. We choose the relational interpretation
+to be trivial as well, i.e.(Id𝑡𝑢)≈𝛾≈𝑝𝑝′ :=⊤.
+This is because both E(Id𝑡𝑢)𝛾 and R(Id𝑡𝑢)𝛾′ are mere propositions — the latter because of
+equality reflection in the syntax. In particular, if we have a witness of R(Id𝑡𝑢)𝛾′, we also have
+R𝑡𝛾′ = R𝑢𝛾′ by equality reflection. Thus, the rest of the relational interpretation of Id is also
+trivial. Another way to think about this: soundness expresses a form of canonicity, but if we have
+equality reflection then terms with identity types are always canonical.
+A.5 Generativity
+The generativity axiom from Section 4.3 has the following type, in internal CFTT syntax:
+(𝐴 : UP)(𝑓 : ElP𝐴→ USOP)(𝑥𝑦 : ElP𝐴)→ 𝑓 𝑥= 𝑓 𝑦
+In the presheaf model, we have the following:
+• cUP is the set (constant presheaf) of lists of object-theoretic types.
+• USOP is the set of lists of lists of object-theoretic types.
+• ElP𝐴 is the presheaf such that ElP𝐴 Γ is the set of products of object-theoretic terms in
+context Γ, with types of components taken from𝐴.
+Unfolding the type of generativity in the presheaf model, it suffices to show that assuming
+• 𝐴 : cUP, Γ : ConO,𝑥,𝑦 : ElP𝐴 Γ
+• and𝑓 :(Δ : ConO)→ SubO Δ Γ→ ElP𝐴 Δ→ USOP such that 𝑓 is natural with respect to
+object-theoretic substitution,
+we have that𝑓 Γ id𝑥 = 𝑓 Γ id𝑦.
+Now, ElP𝐴 is a representable presheaf since it is a finite product of object-theoretic terms. Also,
+since𝑓 is a natural transformation from the representable presheafSubO – Γ× ElP𝐴 to the constant
+presheaf USOP, the Yoneda lemma implies that𝑓 is constant and hence the generativity axiom is
+validated.
+Finally, since the logical relation interpretation of the identity type is trivial, the logical relation
+interpretation for the generativity axiom is also trivial.
+A.6 Summary
+By the presheaf and logical relations interpretation of CFTT as shown in this appendix, we obtain
+unstaging and soundness of unstaging, following [Kovács 2022].
+Strictness of unstaging holds trivially, since there are no 𝛽 and𝜂 rules in the object theory.
+Stability of unstaging is shown by straightforward induction on the syntax of the object theory,
+the same way as in [Kovács 2022], and we omit it here.
+References
+Agda developers. 2024. Agda documentation. https://agda.readthedocs.io/en/v2.6.4.2/
+Danil Annenkov, Paolo Capriotti, Nicolai Kraus, and Christian Sattler. 2019. Two-Level Type Theory and Applications.
+ArXiv e-prints (may 2019). http://arxiv.org/abs/1705.03307
+Anders Bondorf. 1992. Improving Binding Times Without Explicit CPS-Conversion. In Proceedings of the Conference on Lisp
+and Functional Programming, LFP 1992, San Francisco, California, USA, 22-24 June 1992 , Jon L. White (Ed.). ACM, 1–10.
+https://doi.org/10.1145/141471.141483
+Simon Boulier, Pierre-Marie Pédrot, and Nicolas Tabareau. 2017. The Next 700 Syntactical Models of Type Theory. In
+Proceedings of the 6th ACM SIGPLAN Conference on Certified Programs and Proofs (Paris, France) (CPP 2017). ACM, New
+York, NY, USA, 182–194. https://doi.org/10.1145/3018610.3018620
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:32 András Kovács
+Joachim Breitner. 2014. Call Arity. InTrends in Functional Programming - 15th International Symposium, TFP 2014, Soesterberg,
+The Netherlands, May 26-28, 2014. Revised Selected Papers (Lecture Notes in Computer Science, Vol. 8843) , Jurriaan Hage and
+Jay McCarthy (Eds.). Springer, 34–50. https://doi.org/10.1007/978-3-319-14675-1_3
+Jacques Carette and Oleg Kiselyov. 2011. Multi-stage programming with functors and monads: Eliminating abstraction
+overhead from generic code. Sci. Comput. Program. 76, 5 (2011), 349–375. https://doi.org/10.1016/J.SCICO.2008.09.008
+John Cartmell. 1978. Generalised algebraic theories and contextual categories . Ph. D. Dissertation. Oxford University.
+Wontae Choi, Baris Aktemur, Kwangkeun Yi, and Makoto Tatsuta. 2011. Static analysis of multi-staged programs via
+unstaging translation. In Proceedings of the 38th ACM SIGPLAN-SIGACT Symposium on Principles of Programming
+Languages, POPL 2011, Austin, TX, USA, January 26-28, 2011 , Thomas Ball and Mooly Sagiv (Eds.). ACM, 81–92. https:
+//doi.org/10.1145/1926385.1926397
+Duncan Coutts. 2011. Stream fusion : practical shortcut fusion for coinductive sequence types . Ph. D. Dissertation. University
+of Oxford, UK. http://ora.ox.ac.uk/objects/uuid:b4971f57-2b94-4fdf-a5c0-98d6935a44da
+Olivier Danvy, Karoline Malmkjær, and Jens Palsberg. 1996. Eta-Expansion Does The Trick. ACM Trans. Program. Lang.
+Syst. 18, 6 (1996), 730–751. https://doi.org/10.1145/236114.236119
+Olivier Danvy and Lasse R. Nielsen. 2001. Defunctionalization at Work. InProceedings of the 3rd international ACM SIGPLAN
+conference on Principles and practice of declarative programming, September 5-7, 2001, Florence, Italy . ACM, 162–174.
+https://doi.org/10.1145/773184.773202
+Edsko de Vries and Andres Löh. 2014a. True sums of products. In Proceedings of the 10th ACM SIGPLAN workshop on Generic
+programming, WGP 2014, Gothenburg, Sweden, August 31, 2014 , José Pedro Magalhães and Tiark Rompf (Eds.). ACM,
+83–94. https://doi.org/10.1145/2633628.2633634
+Edsko de Vries and Andres Löh. 2014b. True sums of products. In Proceedings of the 10th ACM SIGPLAN workshop on Generic
+programming, WGP 2014, Gothenburg, Sweden, August 31, 2014 , José Pedro Magalhães and Tiark Rompf (Eds.). ACM,
+83–94. https://doi.org/10.1145/2633628.2633634
+Paul Downen, Zena M. Ariola, Simon Peyton Jones, and Richard A. Eisenberg. 2020. Kinds are calling conventions. Proc.
+ACM Program. Lang. 4, ICFP (2020), 104:1–104:29. https://doi.org/10.1145/3408986
+Peter Dybjer. 1994. Inductive Families. Formal Aspects Comput. 6, 4 (1994), 440–465. https://doi.org/10.1007/BF01211308
+Peter Dybjer. 1995. Internal Type Theory. In Types for Proofs and Programs, International Workshop TYPES’95, Torino, Italy,
+June 5-8, 1995, Selected Papers (Lecture Notes in Computer Science, Vol. 1158) , Stefano Berardi and Mario Coppo (Eds.).
+Springer, 120–134. https://doi.org/10.1007/3-540-61780-9_66
+Richard A. Eisenberg and Stephanie Weirich. 2012. Dependently typed programming with singletons. In Proceedings of the
+5th ACM SIGPLAN Symposium on Haskell, Haskell 2012, Copenhagen, Denmark, 13 September 2012 , Janis Voigtländer (Ed.).
+ACM, 117–130. https://doi.org/10.1145/2364506.2364522
+Cormac Flanagan, Amr Sabry, Bruce F. Duba, and Matthias Felleisen. 1993. The Essence of Compiling with Continuations. In
+Proceedings of the ACM SIGPLAN’93 Conference on Programming Language Design and Implementation (PLDI), Albuquerque,
+New Mexico, USA, June 23-25, 1993 , Robert Cartwright (Ed.). ACM, 237–247. https://doi.org/10.1145/155090.155113
+GHC developers. 2024a. GHC documentation. https://downloads.haskell.org/ghc/9.8.2/docs/users_guide/
+GHC developers. 2024b. GHC.Base source. https://hackage.haskell.org/package/base-4.19.1.0/docs/src/GHC.Base.html#.
+Robert Harper, Furio Honsell, and Gordon Plotkin. 1993. A framework for defining logics. J. ACM 40, 1 (Jan. 1993), 143–184.
+https://doi.org/10.1145/138027.138060
+Ralf Hinze, Thomas Harper, and Daniel W. H. James. 2010. Theory and Practice of Fusion. InImplementation and Application
+of Functional Languages - 22nd International Symposium, IFL 2010, Alphen aan den Rijn, The Netherlands, September 1-3,
+2010, Revised Selected Papers (Lecture Notes in Computer Science, Vol. 6647) , Jurriaan Hage and Marco T. Morazán (Eds.).
+Springer, 19–37. https://doi.org/10.1007/978-3-642-24276-2_2
+Martin Hofmann. 1995. Conservativity of Equality Reflection over Intensional Type Theory.. In TYPES 95. 153–164.
+Martin Hofmann. 1997. Syntax and Semantics of Dependent Types. In Semantics and Logics of Computation . Cambridge
+University Press, 79–130.
+Martin Hofmann. 1999. Semantical Analysis of Higher-Order Abstract Syntax. In Proceedings of the 14th Annual IEEE
+Symposium on Logic in Computer Science (LICS ’99) . IEEE Computer Society, Washington, DC, USA, 204–. http:
+//dl.acm.org/citation.cfm?id=788021.788940
+Simon Huber. 2016. Cubical Interpretations of Type Theory . Ph. D. Dissertation. University of Gothenburg.
+Jasper Hugunin. 2020. Why Not W?. In 26th International Conference on Types for Proofs and Programs, TYPES 2020, March
+2-5, 2020, University of Turin, Italy (LIPIcs, Vol. 188) , Ugo de’Liguoro, Stefano Berardi, and Thorsten Altenkirch (Eds.).
+Schloss Dagstuhl - Leibniz-Zentrum für Informatik, 8:1–8:9. https://doi.org/10.4230/LIPICS.TYPES.2020.8
+Neil D. Jones, Carsten K. Gomard, and Peter Sestoft. 1993. Partial evaluation and automatic program generation . Prentice
+Hall.
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+Closure-Free Functional Programming in a Two-Level Type Theory 259:33
+Simon Peyton Jones. 2001. Tackling the awkward squad: monadic input/output, concurrency, exceptions, and foreign-
+language calls in Haskell. NATO SCIENCE SERIES SUB SERIES III COMPUTER AND SYSTEMS SCIENCES 180 (2001),
+47–96.
+Oleg Kiselyov, Aggelos Biboudis, Nick Palladinos, and Yannis Smaragdakis. 2017. Stream fusion, to completeness. In
+Proceedings of the 44th ACM SIGPLAN Symposium on Principles of Programming Languages, POPL 2017, Paris, France,
+January 18-20, 2017, Giuseppe Castagna and Andrew D. Gordon (Eds.). ACM, 285–299. https://doi.org/10.1145/3009837.
+3009880
+Oleg Kiselyov, Kedar N. Swadi, and Walid Taha. 2004. A methodology for generating verified combinatorial circuits. In
+EMSOFT 2004, September 27-29, 2004, Pisa, Italy, Fourth ACM International Conference On Embedded Software, Proceedings ,
+Giorgio C. Buttazzo (Ed.). ACM, 249–258. https://doi.org/10.1145/1017753.1017794
+Tomoaki Kobayashi and Oleg Kiselyov. 2024. Complete Stream Fusion for Software-Defined Radio. In Proceedings of the
+2024 ACM SIGPLAN International Workshop on Partial Evaluation and Program Manipulation, PEPM 2024, London, UK, 16
+January 2024, Gabriele Keller and Meng Wang (Eds.). ACM, 57–69. https://doi.org/10.1145/3635800.3636962
+András Kovács. 2022. Staged Compilation with Two-Level Type Theory. Proc. ACM Program. Lang. 6, ICFP (2022), 540–569.
+https://doi.org/10.1145/3547641
+András Kovács. 2023. Type-Theoretic Signatures for Algebraic Theories and Inductive Types. CoRR abs/2302.08837 (2023).
+https://doi.org/10.48550/ARXIV.2302.08837 arXiv:2302.08837
+András Kovács. 2022. Demo implementation for the paper "Staged Compilation With Two-Level Type Theory". https:
+//doi.org/10.5281/zenodo.6757373
+András Kovács. 2024. Artifacts for the paper "Closure-Free Functional Programming in a Two-Level Type Theory".
+https://doi.org/10.5281/zenodo.12656335
+Xavier Leroy, Damien Doligez, Alain Frisch, Jacques Garrigue, Didier Rémy, KC Sivaramakrishnan, and Jérôme Vouillon.
+2023. The OCaml system release 5.1: Documentation and user’s manual. https://v2.ocaml.org/manual/
+Paul Blain Levy. 1999. Call-by-Push-Value: A Subsuming Paradigm. In Typed Lambda Calculi and Applications, 4th Inter-
+national Conference, TLCA’99, L’Aquila, Italy, April 7-9, 1999, Proceedings (Lecture Notes in Computer Science, Vol. 1581) ,
+Jean-Yves Girard (Ed.). Springer, 228–242. https://doi.org/10.1007/3-540-48959-2_17
+Sheng Liang, Paul Hudak, and Mark P. Jones. 1995. Monad Transformers and Modular Interpreters. In Conference Record of
+POPL’95: 22nd ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages, San Francisco, California, USA,
+January 23-25, 1995, Ron K. Cytron and Peter Lee (Eds.). ACM Press, 333–343. https://doi.org/10.1145/199448.199528
+Luke Maurer, Paul Downen, Zena M. Ariola, and Simon L. Peyton Jones. 2017. Compiling without continuations. In
+Proceedings of the 38th ACM SIGPLAN Conference on Programming Language Design and Implementation, PLDI 2017,
+Barcelona, Spain, June 18-23, 2017 , Albert Cohen and Martin T. Vechev (Eds.). ACM, 482–494. https://doi.org/10.1145/
+3062341.3062380
+mtl developers. 2024. mtl documentation. https://hackage.haskell.org/package/mtl
+Aleksandar Nanevski, Frank Pfenning, and Brigitte Pientka. 2008. Contextual modal type theory. ACM Trans. Comput. Log.
+9, 3 (2008), 23:1–23:49. https://doi.org/10.1145/1352582.1352591
+Flemming Nielson. 1984. Abstract interpretation using domain theory . Ph. D. Dissertation. University of Edinburgh, UK.
+https://ethos.bl.uk/OrderDetails.do?uin=uk.bl.ethos.350060
+Flemming Nielson and Hanne Riis Nielson. 1992. Two-level functional languages. Cambridge tracts in theoretical computer
+science, Vol. 34. Cambridge University Press.
+Matthew Pickering, Andres Löh, and Nicolas Wu. 2020. Staged sums of products. In Proceedings of the 13th ACM SIGPLAN
+International Symposium on Haskell, Haskell@ICFP 2020, Virtual Event, USA, August 7, 2020 , Tom Schrijvers (Ed.). ACM,
+122–135. https://doi.org/10.1145/3406088.3409021
+Brigitte Pientka, Andreas Abel, Francisco Ferreira, David Thibodeau, and Rébecca Zucchini. 2019. Cocon: Computation in
+Contextual Type Theory. CoRR abs/1901.03378 (2019). arXiv:1901.03378 http://arxiv.org/abs/1901.03378
+John C. Reynolds. 1998. Definitional Interpreters for Higher-Order Programming Languages. High. Order Symb. Comput. 11,
+4 (1998), 363–397. https://doi.org/10.1023/A:1010027404223
+Amos Robinson and Ben Lippmeier. 2017. Machine fusion: merging merges, more or less. In Proceedings of the 19th
+International Symposium on Principles and Practice of Declarative Programming, Namur, Belgium, October 09 - 11, 2017 ,
+Wim Vanhoof and Brigitte Pientka (Eds.). ACM, 139–150. https://doi.org/10.1145/3131851.3131865
+Tiark Rompf and Martin Odersky. 2012. Lightweight modular staging: a pragmatic approach to runtime code generation
+and compiled DSLs. Commun. ACM 55, 6 (2012), 121–130. https://doi.org/10.1145/2184319.2184345
+Kedar N. Swadi, Walid Taha, Oleg Kiselyov, and Emir Pasalic. 2006. A monadic approach for avoiding code duplication when
+staging memoized functions. InProceedings of the 2006 ACM SIGPLAN Workshop on Partial Evaluation and Semantics-based
+Program Manipulation, 2006, Charleston, South Carolina, USA, January 9-10, 2006 , John Hatcliff and Frank Tip (Eds.). ACM,
+160–169. https://doi.org/10.1145/1111542.1111570
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.
+259:34 András Kovács
+Walid Taha and Tim Sheard. 2000. MetaML and multi-stage programming with explicit annotations. Theor. Comput. Sci. 248,
+1-2 (2000), 211–242. https://doi.org/10.1016/S0304-3975(00)00053-0
+Vladimir Voevodsky. 2013. A simple type system with two identity types. (2013). Unpublished note.
+Philip Wadler. 1989. Theorems for free!. In Functional Programming Languages and Computer Architecture . ACM Press,
+347–359.
+Philip Wadler and Stephen Blott. 1989. How to Make ad-hoc Polymorphism Less ad-hoc. InConference Record of the Sixteenth
+Annual ACM Symposium on Principles of Programming Languages, Austin, Texas, USA, January 11-13, 1989 . ACM Press,
+60–76. https://doi.org/10.1145/75277.75283
+Ningning Xie, Matthew Pickering, Andres Löh, Nicolas Wu, Jeremy Yallop, and Meng Wang. 2022. Staging with class: a
+specification for typed template Haskell. Proc. ACM Program. Lang. 6, POPL (2022), 1–30. https://doi.org/10.1145/3498723
+Jeremy Yallop and Oleg Kiselyov. 2019. Generating mutually recursive definitions. In Proceedings of the 2019 ACM SIGPLAN
+Workshop on Partial Evaluation and Program Manipulation, PEPM@POPL 2019, Cascais, Portugal, January 14-15, 2019 ,
+Manuel V. Hermenegildo and Atsushi Igarashi (Eds.). ACM, 75–81. https://doi.org/10.1145/3294032.3294078
+Received 2024-02-28; accepted 2024-06-18
+Proc. ACM Program. Lang., Vol. 8, No. ICFP, Article 259. Publication date: August 2024.

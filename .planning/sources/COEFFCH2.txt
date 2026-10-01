@@ -1,0 +1,1053 @@
+\chapter{Pathways to coeffects}
+\label{ch:pathways}
+
+There are many different directions from which the concept of \emph{coeffects} can be approached
+and, indeed, discovered. In the previous chapter, we motivated it by practical applications, but
+coeffects also naturally arise as an extension to a number of programming language theories.
+Thanks to the Curry-Howard-Lambek correspondence, we can approach coeffects from the perspective of
+type theory, logic and also category theory. This chapter gives an overview of the most
+important directions.
+
+We start (Section~\ref{sec:path-binding}) by discussing how coeffects arise from the most common
+notion of context-dependence -- variable binding. Next, we look at coeffects as the dual of effect
+systems (Section~\ref{sec:path-eff}) and we extend the duality to category theory, looking at
+\emph{comonads} (Section~\ref{sec:path-sem}). We also consider type systems inspired by linear
+and bunched logic, which are closely related to our structural coeffects (Section~\ref{sec:path-logic}).
+Finally, we also consider practical motivations for context-aware programming (Section~\ref{sec:path-cop}).
+
+This chapter serves two purposes. Firstly, it provides a high-level overview of the  related work,
+although technical details are often postponed until later. Secondly it recasts existing ideas in
+a way that naturally leads to the coeffect systems developed later in the thesis. For this reason,
+we are not always faithful to the referenced work. We present the work through the coeffect view
+and so we sometimes focus on aspects that authors consider unimportant or we present the work
+differently than originally intended. When we do so, this is explicitly stated in the text.
+
+
+%===================================================================================================
+%
+%    ######
+%    #     # # #    # #####  # #    #  ####
+%    #     # # ##   # #    # # ##   # #    #
+%    ######  # # #  # #    # # # #  # #
+%    #     # # #  # # #    # # #  # # #  ###
+%    #     # # #   ## #    # # #   ## #    #
+%    ######  # #    # #####  # #    #  ####
+%
+%===================================================================================================
+
+\section{Coeffects via static and dynamic binding}
+\label{sec:path-binding}
+
+Accessing a variable is arguably the simplest form of context-dependence, to the extent that we
+do not normally think of variables as a notion of context. However, variables fit well with our
+earlier description of context in programming: a block of code that accesses a variable can only
+be executed in an environment where the variable is available.
+
+In this section, we look at variable binding through the perspective of context-requirements.
+We discuss ordinary variable binding and Haskell's implicit parameters \cite{app-implicit-parameters},
+which provide an interesting point in the design space. Implicit parameters give an example of
+an ambiguity that arises more generally in context-aware programming, as well as one way of
+resolving it through \emph{type-directed semantics}.
+
+For a more general context-aware programming example, consider a program
+running on a laptop that accesses an implicit parameter representing a printer. When printing, the
+text may appear on my home printer (corresponding to static binding), or it may appear on the
+nearest printer based on my physical location (corresponding to dynamic binding).
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Variable binding}
+\label{sec:path-binding-var}
+
+Variable access represents a form of context-dependence. For example, an expression $x+y$ can be
+only evaluated if the environment provides values for variables $x$ and $y$. A variable
+\emph{requirement} can be satisfied in two standard ways that are characterized as \emph{dynamic}
+and \emph{static} (or lexical) variable binding. Consider the following simple program:
+%
+\begin{equation*}
+\begin{array}{l}
+\kvd{let}~\ident{x}=10~\kvd{in}\\[-0.25em]
+\kvd{let}~\ident{f}=\lambda \ident{y}\rightarrow \ident{x}+\ident{y}~\kvd{in}\\[-0.25em]
+\kvd{let}~\ident{x}=5~\kvd{in}\\
+\ident{f}~0
+\end{array}
+\end{equation*}
+%
+The program can be evaluated in two ways, depending on the variable binding mechanism:
+%
+\begin{itemize}
+\item \textsc{Static (lexical) binding.} In a language with static binding (such as ML or Java),
+  the variable \ident{x} inside the body of the lambda function is statically bound to the
+  declaration in the lexical scope -- that is, the variable on the second line -- and the
+  expression evaluates to 10.
+
+\item \textsc{Dynamic binding.} In a language with dynamic binding (some variants of LISP), the
+  variable value is dynamically bound to the topmost value for the available kept on the stack 
+  during program execution. Thus, the \ident{x} variable inside the lambda function refers to
+  \ident{x} defined on line 5 of the sample and the expression evaluates to 5.
+\end{itemize}
+
+\noindent
+When we view variable access as a context requirement, we can see that the body of the function
+($\ident{x}+\ident{y}$) requires a context that provides values for variables \ident{x} and
+\ident{y}. In static binding, the context demands of the body can be placed on the scope in
+which the function is defined (declaration site). In dynamic binding, the requirements are
+\emph{delayed} and are placed on the scope in which the function is called (call site).
+
+In static and dynamic scoping, all variable requirements are always placed on one site. However,
+those are not the only two options. It is conceivable that a language would use a mechanism that
+splits variable requirements differently and combines aspects of dynamic and static binding. For
+example, the language could use static binding by default, but resort to dynamic binding if a
+variable is not available in the lexical scope. One such system is implicit parameters
+discussed in the next section.
+
+Languages with static scoping resolve variable bindings at compile-time. In contrast,
+languages with dynamic variable binding cannot resolve variables at compile-time. They 
+typically perform runtime checks -- if a program attempts to access a variable that is not 
+available in the environment, a runtime error occurs. Implementing static checking for dynamic
+binding is also possible, but it requires a more sophisticated type system 
+(Section~\ref{sec:path-effects-coeff}), while implementing static binding \emph{without} checking 
+would be cumbersome and so dynamically scoped languages are often dynamically typed.
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Implicit parameter binding}
+\label{sec:path-binding-impl}
+
+Haskell uses static binding for ordinary variables, but GHC additionally provides a feature named
+\emph{implicit parameters} \cite{app-implicit-parameters} that adds a special kind of variables,
+written as \ident{?param}, which use a particular combination of static and dynamic binding.
+
+The following two examples are variations on the one discussed in Section~\ref{sec:path-binding-var},
+obtained by replacing a variable \ident{x} with an implicit parameter \ident{?x}. On the left, the
+implicit parameter is declared both in the static scope and in the dynamic scope. On the right, the
+implicit parameter is available only in the dynamic scope:
+
+\begin{equation*}
+\begin{array}{l}
+\kvd{let}~\ident{f}=\\[-0.25em]
+\qquad\kvd{let}~\ident{?x}=10~\kvd{in}\\[-0.25em]
+\qquad\lambda \ident{y}\rightarrow \ident{?x}+\ident{y}~\kvd{in}\\[-0.25em]
+\kvd{let}~\ident{?x}=5~\kvd{in}\\
+\ident{f}~0
+\end{array}\hspace{5em}\begin{array}{l}
+\kvd{let}~\ident{f}=\\[-0.25em]
+\qquad\lambda \ident{y}\rightarrow \ident{?x}+\ident{y}~\kvd{in}\\[-0.25em]
+\kvd{let}~\ident{?x}=5~\kvd{in}\\
+\ident{f}~0
+\end{array}
+\end{equation*}
+%
+The binding rules for Haskell's implicit parameters can be summarized as ``\emph{static binding when possible,
+dynamic binding when needed}''. If an implicit parameter is available in static scope, then the value
+is statically bound and the context requirement is satisfied using the declaration site context.
+Otherwise, the context requirement is delayed and has to be satisfied at the call site.
+In the example on the left, \ident{?x} is bound to $10$ and so the function \ident{f} has no
+delayed context demands and thus the expression evaluates to $10$. On the right,
+the context demand for \ident{?x} is \emph{delayed} and is satisfied via dynamic binding when calling
+the function. The expression evaluates to $5$.
+
+In Haskell, the type system checks that bindings for all required implicit parameters are
+available and so no runtime errors can occur. The type of the function \ident{f} on the left is
+$\kvd{int}\rightarrow\kvd{int}$, while the type of the \ident{f} function on the right is
+$\{\ident{?x}:\kvd{int}\}\Rightarrow\kvd{int}\rightarrow\kvd{int}$.
+The part before $\Rightarrow$ specifies the required implicit parameters that need to be available
+in the environment when calling the function. It is worth noting that the syntax is similar to the
+one used by type-class constraints. Those can be viewed as context demands too
+(Section~\ref{sec:applications-flat-impl}).
+
+\paragraph{Thesis perspective.}
+The three different binding mechanisms discussed so far can be seen as different ways of splitting
+context demands of a particular kind into static and dynamic parts. Dynamic and static binding
+represent the opposite ends of the design spectrum and Haskell's implicit parameters are an
+interesting point inside the wider spectrum.
+
+In this thesis, we consider various notions of context, using implicit parameters as one
+of several motivating examples. Implicit parameters are a particularly valuable example, because they
+clearly illustrate the ambiguity inherent in context-aware programs -- the context demands of
+a function can be satisfied using the context available at declaration site or using the context
+available at the call site. Recall our earlier printer example -- a language that
+provides access to resources in the context needs to provide enough flexibility in handling such
+ambiguities, be it implicit parameter values available in scope or printers available in the
+physical environment.
+
+We aim to find a description of context-aware languages that does not make ad-hoc decisions
+about how context demands are split between the declaration site and the call site. While
+Haskell's solution for implicit parameters might be the most reasonable one for that particular
+case, this thesis argues that other notions of context require different domain-specific choices
+and the general framework of context-aware programming should make that possible.
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Resolving ambiguity}
+\label{sec:path-binding-amb}
+
+In many practical programming languages, the value and semantics of an expression depends on its
+type derivation. In order to assign unique semantics to an expression, the choice is typically
+hidden behind a mechanism that selects one preferred type derivation.
+
+This mechanism serves as an inspiration for our approach to resolving ambiguity inherent in
+context-aware programs. This section discusses a brief example using the F\# language \cite{app-fsharp},
+before revisiting the implicit parameters example.
+
+Consider an F\# lambda expression $(\lambda\ident{x}\rightarrow\ident{x.Length})$, which takes
+an object $\ident{x}$ and returns the value of its \ident{Length} property. F\# is a nominally-typed
+language meaning that, in isolation, the function has an ambiguous meaning\footnote{In contrast,
+in a structurally-typed language, the function would have a unique typing in isolation. In OCaml,
+the type would be $\langle \ident{Length}:\ident{'a}\rangle \rightarrow \ident{'a}$.}. It can be
+a function taking an array, it can be a function taking a string, or it can be a function taking
+one of the other .NET types that are equipped with the \ident{Length} property.
+
+The semantics of the function depends on the typing derivation. For example, for arrays, it is
+compiled using the \ident{ldlen} intermediate language (IL) instruction, while or strings, it is
+compiled using \ident{call} instruction (calling the property getter). In F\#, the compiler chooses
+an appropriate typing derivation. For example:
+%
+\begin{equation*}
+\begin{array}{l}
+  \lbrack \str{hello};\str{world} \rbrack ~|\hspace{-0.25em}>\;\ident{List.map}~(\lambda\ident{s}\rightarrow\ident{s.Length})\\
+  \lbrack \ident{Array.empty};~\ident{Array.create}~\num{100}~\num{0}\; \rbrack ~|\hspace{-0.25em}>\;\ident{List.map}~(\lambda\ident{s}\rightarrow\ident{s.Length})\\
+\end{array}
+\end{equation*}
+%
+The $|\hspace{-0.25em}>$ operator passes the value on the left to the function on the right. In
+the first case, the compiler infers that the type of the input is a list of strings and so the
+type of the lambda function becomes $\ident{string}\rightarrow\ident{int}$. In the second case,
+the list contains two arrays (an empty array and an array containing one hundred zero values) and so
+the type of the lambda function is $\ident{int}\lbrack\,\rbrack\rightarrow\ident{int}$.
+The important points about the example are:
+%
+\begin{enumerate}
+\item The semantics of the function $(\lambda\ident{x}\rightarrow\ident{x.Length})$
+  depends on its type. For arrays, it is compiled using a special IL instruction, while for
+  strings, it calls a property getter.
+
+\item The compiler chooses an appropriate typing derivation. In the above case, this is done
+  based on the context in which the expression appears, but other options are possible
+  (in some cases, there is a \emph{default} resolution; often, the compiler requires an
+  explicit typing annotation).
+
+\item An expression without a type derivation does not have semantics. For example, given
+  $\ident{List.map}~(\lambda\ident{s}\rightarrow\ident{s.Length})$, the F\# compiler fails to
+  infer a type; the expression is not well-typed and does not have a semantics.\footnote{Alternatively,
+  the compiler could choose default typing among multiple options. The F\# compiler does this
+  for the $+$ operator, which can be used on \ident{float} and \ident{int} types, but the compiler
+  chooses \ident{int} as the default.}
+\end{enumerate}
+%
+The function $\lambda\ident{y}\rightarrow\ident{?x}+\ident{y}$ in Haskell also has multiple
+possible typing derivations and its semantics varies depending on its type. If the lexical
+scope contains a binding for $\ident{?x}$, the function type is $\kvd{int}\rightarrow\kvd{int}$
+and it captures the value from the lexical scope. Otherwise, the type of the function is
+$\{\ident{?x}:\kvd{int}\}\Rightarrow\kvd{int}\rightarrow\kvd{int}$ and it reads the parameter
+value from a hidden dictionary that is passed together with the input from the call site.
+
+\paragraph{Thesis perspective.}
+Just like the F\# function in the above example, certain expressions in context-aware languages
+developed in this thesis have multiple valid typing derivations and their semantics depends on the
+type. In F\#, the compiler determines a unique typing derivation based on other parts of the program
+(if type is not uniquely determined, it either chooses a default or fails). In our languages, we
+also determine a unique typing derivation. However, rather than relying on type information from
+other parts of the program, we explicitly define an algorithm that chooses the preferred unique
+derivation (Section~\ref{sec:flat-unique} and Section~\ref{sec:struct-unique}).
+
+This approach decouples two important aspects of context-aware programming and lets us study them
+independently -- the semantics of context-aware programs and the domain-specific way of resolving
+ambiguities in how context demands are satisfied. In our treatment of implicit parameters, we consider
+multiple typing derivations (representing a range with static and dynamic scoping at opposite ends),
+but we uniquely choose one preferred typing (mimicking the behaviour of GHC for implicit parameters).
+
+
+
+%===================================================================================================
+%
+%    #######
+%    #       ###### ###### ######  ####  #####     ####  #   #  ####  ##### ###### #    #  ####
+%    #       #      #      #      #    #   #      #       # #  #        #   #      ##  ## #
+%    #####   #####  #####  #####  #        #       ####    #    ####    #   #####  # ## #  ####
+%    #       #      #      #      #        #           #   #        #   #   #      #    #      #
+%    #       #      #      #      #    #   #      #    #   #   #    #   #   #      #    # #    #
+%    ####### #      #      ######  ####    #       ####    #    ####    #   ###### #    #  ####
+%
+%===================================================================================================
+
+\section{Coeffects via type and effect systems}
+\label{sec:path-eff}
+
+Introduced by Gifford and Lucassen \cite{effects-gifford,effects-polymorphic}, type and effect
+systems have been designed to track effectful operations performed by computations. Examples
+include tracking of reading and writing from and to memory locations \cite{effects-talpin-et-al},
+communication in message-passing systems \cite{effects-messagepassing} and atomicity in concurrent
+applications \cite{effects-atomicity}.
+
+Type and effect systems are usually specified as judgements of the form $\Gamma \vdash e : \tau, \cclrd{r}$,
+meaning that the expression $e$ has a type $\tau$ in a (free-variable) context $\Gamma$ and
+additionally may have effects described by $\cclrd{r}$. Effect systems are typically added to a
+language that already supports effectful operations as a way of increasing the safety -- the type
+and effect system provides stronger guarantees than a plain type system. Filinski
+\cite{effects-comprehensive} refers to this approach as \emph{descriptive}\footnote{In contrast
+to \emph{prescriptive} effect systems that implement computational effects in a pure language
+-- such as monads in Haskell.}.
+
+%---------------------------------------------------------------------------------------------------
+
+\begin{figure}[t]
+\begin{equation*}
+\tyrule{var}
+  {x\!:\!\tau \in \Gamma }
+  {\Gamma \vdash x : \tau, \cclrd{\emptyset} }
+\end{equation*}
+\begin{equation*}
+\tyrule{write}
+  {\Gamma \vdash e : \tau, \cclrd{r} & l:\ident{ref}_\rho~\tau\in \Gamma}
+  {\Gamma \vdash l \leftarrow e : \ident{unit}, \cclrd{r} \cup \cclrd{\{\ident{write}(\rho)\}} }
+\end{equation*}
+\begin{equation*}
+\tyrule{abs}
+  {\Gamma, x\!:\!\tau_1 \vdash e : \tau_2, \cclrd{r} }
+  {\Gamma \vdash \lambda x.e : \tau_1 \xrightarrow{\cclrd{r}} \tau_2, \cclrd{\emptyset} }
+\end{equation*}
+\begin{equation*}
+\tyrule{app}
+  {\Gamma \vdash e_1 : \tau_1 \xrightarrow{\cclrd{r}} \tau_2, \cclrd{s} &
+   \Gamma \vdash e_2 : \tau_1, \cclrd{t} }
+  {\Gamma \vdash e_1~e_2 : \tau_2, \cclrd{r} \cup \cclrd{s} \cup \cclrd{t} }
+\end{equation*}
+
+\figcaption{Simple effect system}
+\label{fig:path-eff}
+\end{figure}
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Simple effect system.}
+The structure of a simple effect system\footnote{Most work on effect systems uses $\sigma$ or $F$ for
+effect annotations. We use letters $\cclrd{r}, \cclrd{s}, \cclrd{t}$ and also distinguish effect
+or coeffect annotations by colour.} is demonstrated in Figure~\ref{fig:path-eff}. The example
+shows typing rules for a simply typed lambda calculus with an additional (effectful) operation
+$l \leftarrow e$ that writes the value of $e$ to a mutable location $l$. The type of locations
+($\ident{ref}_\rho~\tau$) is annotated with a \emph{memory region} $\rho$ of the location $l$.
+The effects tracked by the type and effect system over-approximate the actual effects and memory
+regions provide a convenient way to build such over-approximation. The effects are
+represented as a set of effectful actions that an expression may perform and the effectful action
+(\emph{write}) adds a primitive effect $\ident{write}(\rho)$.
+
+The remaining rules are shared by a majority of effect systems. Variable access (\emph{var})
+has no effects, application (\emph{app}) combines the effects of both expressions, together with
+the latent effects of the function to be applied. Finally, lambda abstraction (\emph{abs}) is a
+pure computation that turns the \emph{actual} effects of the body into \emph{latent} effects of
+the created function.
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Simple coeffect system.}
+\label{sec:path-effects-coeff}
+
+When writing the judgements of coeffect systems, we want to emphasize the fact that coeffect
+systems talk about \emph{context} rather than \emph{results}. For this reason, we write the
+judgements in the form $\coctx{\Gamma}{\cclrd{r}} \vdash e : \tau$, associating the additional
+information with the context (left-hand side) of the judgement rather than with the result
+(right-hand side) as in $\Gamma \vdash e : \tau, \cclrd{r}$. This change alone would not be
+very interesting -- we simply used different syntax to write a predicate with four arguments.
+The more interesting difference is how the lambda abstraction rule looks.
+
+The language in Figure~\ref{fig:path-coeff} extends simple lambda calculus with resources and
+with a construct $\kvd{access}~e$ that obtains the resource specified by the expression $e$.
+Most of the typing rules correspond to those of effect systems. Variable access (\emph{var})
+has no context demands, application (\emph{app}) combines context demands of the two
+sub-expressions and latent context-requirements of the function.
+The (\emph{abs}) rule is different than the corresponding rule for effect systems -- the
+resource requirements of the body $\cclrd{r} \cup \cclrd{s}$ are split between the \emph{immediate
+context-requirements} associated with the current context $\coctx{\Gamma}{\cclrd{r}}$ and the
+\emph{latent context-requirements} of the function.
+
+This is where context-aware languages permit multiple valid typing derivations as discussed in
+Section~\ref{sec:path-binding-amb}. In the example here, a resource can be captured
+when a function is declared (e.g.~when it is constructed on the server-side where database access
+is available), or when a function is called (\eg~when a function created on server-side requires
+access to current time-zone, it can use the resource available on the client-side). In other words,
+resources in this example support both static (lexical) and dynamic scoping. Out of the multiple
+valid typing derivation, we would choose one -- for example, capturing only those server-side
+resources that are not available on the client-side\footnote{This can be characterized as
+``\emph{dynamic binding when possible, static binding when needed}'' and it is, quite curiously, the
+opposite choice than the one used by Haskell's implicit parameters.}. We discuss this
+system in detail in Section~\ref{sec:applications-flat-impl}.
+
+%---------------------------------------------------------------------------------------------------
+
+\begin{figure}[t]
+\begin{equation*}
+\tyrule{var}
+  {x\!:\!\tau \in \Gamma }
+  {\coctx{\Gamma}{\cclrd{\emptyset}} \vdash x : \tau }
+\end{equation*}
+\begin{equation*}
+\tyrule{access}
+  {\coctx{\Gamma}{\cclrd{r}} \vdash e : \ident{res}_\rho~\tau }
+  {\coctx{\Gamma}{\cclrd{r} \cup \cclrd{ \{\ident{access}(\rho)\} }} \vdash \kvd{access}~e : \tau }
+\end{equation*}
+\begin{equation*}
+\tyrule{abs}
+  {\coctx{(\Gamma, x\!:\!\tau_1)}{\cclrd{r} \cup \cclrd{s}} \vdash e : \tau_2 }
+  {\coctx{\Gamma}{\cclrd{r}} \vdash \lambda x.e : \tau_1 \xrightarrow{\cclrd{s}} \tau_2}
+\end{equation*}
+\begin{equation*}
+\tyrule{app}
+  {\Gamma \vdash e_1 : \tau_1 \xrightarrow{\cclrd{r}} \tau_2, \cclrd{s} \\
+   \Gamma \vdash e_2 : \tau_1, \cclrd{t} }
+  {\Gamma \vdash e_1~e_2 : \tau_2, \cclrd{r}\cup\cclrd{s}\cup\cclrd{t}  }
+\end{equation*}
+
+\figcaption{Simple coeffect system}
+\label{fig:path-coeff}
+\end{figure}
+
+
+
+%===================================================================================================
+%
+%     #####
+%    #     # ###### #    #   ##   #    # ##### #  ####   ####
+%    #       #      ##  ##  #  #  ##   #   #   # #    # #
+%     #####  #####  # ## # #    # # #  #   #   # #       ####
+%          # #      #    # ###### #  # #   #   # #           #
+%    #     # #      #    # #    # #   ##   #   # #    # #    #
+%     #####  ###### #    # #    # #    #   #   #  ####   ####
+%
+%===================================================================================================
+
+\section{Coeffects via language semantics}
+\label{sec:path-sem}
+
+Another pathway to coeffects leads through the semantics of effectful and context-dependent
+computations. In a pioneering work, Moggi \cite{monad-notions} showed that effects (including
+partiality, exceptions, non-determinism and I/O) can be modelled using the category theoretic
+notion of \emph{monad}.
+
+When using monads, we distinguish effect-free values $\tau$ from programs, or
+computations $\mtyp{}{\tau}$. The \emph{monad} $\mtyp{}{}$ abstracts the \emph{notion of
+computation} and provides a way of constructing and composing effectful computations:
+%
+\begin{definition}
+A \emph{monad} over a category $\catc$ is a triple $(M, \ident{unit}, \ident{bind})$ where:
+\begin{compactitem}
+\item $M$ is a mapping on objects (types) $M : \catc \rightarrow \catc$
+\item $\ident{unit}$ is a mapping $\alpha \rightarrow \mtyp{}{\alpha}$
+\item $\ident{bind}$ is a mapping $(\alpha \rightarrow \mtyp{}{\beta})
+  \rightarrow (\mtyp{}{\alpha} \rightarrow \mtyp{}{\beta})$
+\end{compactitem}
+such that, for all $f:\alpha \rightarrow \mtyp{}{\beta}$ and $g:\beta \rightarrow \mtyp{}{\gamma}$:
+\begin{align}
+\tag{\emph{left identity}}
+  \ident{bind}~\ident{unit} &= \idf{}
+  \\
+\tag{\emph{right identity}}
+  \ident{bind}~f \circ \ident{unit} &= f
+  \\
+\tag{\emph{associativity}}
+  \ident{bind}~(\ident{bind}~g \circ f) &= (\ident{bind}~f) \circ (\ident{bind}~g)
+\end{align}
+\end{definition}
+
+\noindent
+Without providing much details, we note that well known examples of monads include the partiality
+monad ($\mtyp{}{\alpha} = \alpha + {\bot}$) also corresponding to the \ident{Maybe} type in
+Haskell and list monad ($\mtyp{}{\tau} = 1 + (\tau \times \mtyp{}{\tau})$).
+In programming language semantics, monads can be used in two distinct ways.
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Effectful languages and meta-languages}
+\label{sec:path-sem-langs}
+
+Moggi uses monads to define two formal systems. In the first formal system, a monad is used to model
+the \emph{language} itself. This means that the semantics of a language is given in terms of a
+one specific monad and the semantics can be used to reason about programs in that language. To quote
+\emph{``When reasoning about programs one has only one monad, because the programming language is
+fixed, and the main aim is to prove properties of programs''} \cite[p. 5]{monad-notions}.
+
+In the second formal system, monads are added to the programming language as type constructors,
+together with additional constructs corresponding to monadic \ident{bind} and \ident{unit}.
+A single program can use multiple monads, but the key benefit is the ability to reason
+about multiple languages. To quote \emph{``When reasoning about programming languages one has different
+monads, one for each programming language, and the main aim is to study how they relate to each
+other''} \cite[p. 5]{monad-notions}.
+
+In this thesis, we generally follow the first approach -- this means that we work with an existing
+programming language without needing to add additional constructs corresponding to the primitives
+of our semantics (the alternative is discussed in Section~\ref{sec:further-meta}). To clarify the
+difference, the following two sections show a minimal example of both formal systems. We follow
+Moggi and start with language where judgements have the form $x\!:\!\tau_1 \vdash e : \tau_2$ with
+exactly one variable\footnote{This simplifies the examples as we do not need \emph{strong} monad,
+but that is an orthogonal issue to the distinction between language semantics and meta-language.}.
+
+%---------------------------------------------------------------------------------------------------
+
+\paragraph{Language semantics.} When using monads to provide semantics of a language, we do not
+need to extend the language in any way -- we assume that the language already contains the
+effectful primitives (such as the assignment operator $x \leftarrow e$). A judgement
+of the form $x\!:\!\tau_1 \vdash e : \tau_2$ is interpreted as a morphism $\tau_1 \rightarrow \mtyp{}{\tau_2}$,
+meaning that any expression is interpreted as an effectful computation. The semantics of variable
+access and the application of a primitive function $f$ is interpreted as follows:
+%
+\begin{equation*}
+\begin{array}{rcl}
+ \sem{x\!:\!\tau_1 \vdash x : \tau_1} &=& \ident{unit}_\mtyp{}{}\\
+ \sem{x\!:\!\tau_1 \vdash f~e : \tau_3} &=& (\ident{bind}_\mtyp{}{}~f) \circ \sem{e}\\
+\end{array}
+\end{equation*}
+%
+Variable access is an effect-free computation, that returns the value of the variable, wrapped
+using $\ident{unit}_\mtyp{}{}$. In the second rule, we assume that $e$ is an expression using
+the variable $x$ and producing a value of type $\tau_2$ and that $f$ is a (primitive) function
+$\tau_2 \rightarrow \mtyp{}{\tau_3}$. The semantics lifts the function $f$ using $\ident{bind}_\mtyp{}{}$
+to a function $\mtyp{}{\tau_2} \rightarrow \mtyp{}{\tau_3}$ which is compatible with the
+interpretation of the expression $e$.
+
+%---------------------------------------------------------------------------------------------------
+
+\paragraph{Meta-language interpretation.} When designing a meta-language based on monads, we need to
+extend the lambda calculus with additional type(s) and expressions that correspond to monadic
+primitives:
+%
+\begin{align*}
+\tau &:= \ident{num} \sep \tau_1 \rightarrow \tau_2 \sep \mtyp{}{\tau} \\
+   e &:= x \sep f~e \sep \kvd{return}_\mtyp{}{}~e \sep \kvd{let}_\mtyp{}{}~x \Leftarrow e_1~\kvd{in}~e_2
+\end{align*}
+%
+The types consist of the primitive type, function type and a type constructor that
+represents monadic computations. Thus the expressions in the language can create both
+effect-free values, such as $\tau$ and computations $\mtyp{}{\tau}$. The additional expression
+$\kvd{return}_\mtyp{}{}$ is used to create a monadic computation (with no effects) from a
+value and $\kvd{let}_\mtyp{}{}$ sequences effectful computations. In the semantics,
+monads are not needed to interpret variable access and application, they are only used in the
+semantics of additional (monadic) constructs:
+%
+\begin{equation*}
+\begin{array}{rcl}
+\sem{x\!:\!\tau \vdash x : \tau} &=& \idf{}\\
+\sem{x\!:\!\tau_1 \vdash f~e : \tau_3} &=& f \circ \sem{e}\\
+\sem{x\!:\!\tau_1 \vdash \kvd{return}_\mtyp{}{}~e : \mtyp{}{\tau_2}} &=& \ident{unit}_\mtyp{}{} \circ \sem{e}\\
+\sem{x\!:\!\tau_1 \vdash \kvd{let}_\mtyp{}{}~y \Leftarrow e_1~\kvd{in}~e_2 : \mtyp{}{\tau_3}} &=&
+  \ident{bind}_\mtyp{}{}~\sem{e_2} \circ \sem{e_1}
+\end{array}
+\end{equation*}
+
+\noindent
+In this system, the interpretation of variable access becomes a simple identity function and
+application is just composition. Monadic computations are constructed explicitly using
+$\kvd{return}_\mtyp{}{}$ (interpreted as $\ident{unit}_\mtyp{}{}$) and they are also sequenced
+explicitly using the $\kvd{let}_\mtyp{}{}$ construct. As noted by Moggi, the first formal system
+can be easily translated to the latter by inserting appropriate monadic constructs.
+
+Moggi regards the meta-language system as more fundamental, because \emph{``its models are more
+general''}. This is a valid and reasonable perspective. Yet, we follow the first style,
+precisely because it is \emph{less general}. Our aim is to develop concrete context-aware
+programming languages (together with their type systems and semantics) rather than to build a
+general framework for reasoning about languages with contextual properties.
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Marriage of effects and monads}
+\label{sec:path-sem-effects}
+
+The work on effect systems and monads both tackle the same problem -- representing and tracking of
+computational effects. The two lines of research have been joined by Wadler and Thiemann
+\cite{monads-effects-marriage}. This requires extending the categorical structure. A monadic
+computation $\tau_1 \rightarrow \mtyp{}{\tau_2}$ means that the computation has \emph{some}
+effects while the judgement $x\!:\!\tau_1 \vdash e : \tau_2, \cclrd{r}$ specifies \emph{what} effects
+the computation has.
+
+To solve this mismatch, Wadler and Thiemann use a \emph{family} of monads $\mtyp{\cclrd{r}}{\tau}$
+with an annotation that specifies the effects that may be performed by the computation. In their
+system, an effectful function $\tau_1 \xrightarrow{\cclrd{r}} \tau_2$ is modelled as a pure
+function returning monadic computation $\tau_1 \rightarrow \mtyp{\cclrd{r}}{\tau_2}$. Similarly, the
+semantics of a judgement $x\!:\!\tau_1 \vdash e : \tau_2, \cclrd{r}$ can be given as a function
+$\tau_1 \rightarrow \mtyp{\cclrd{r}}{\tau_2}$.
+The precise nature of the family of monads has been later called \emph{indexed monads} by Tate
+\cite{effects-producer-semantics} and further developed by Atkey \cite{monads-parameterised-notions}
+in his work on \emph{parameterized monads} and Katsumata \cite{monads-parametric}.
+
+\paragraph{Thesis perspective.}
+The key takeaway for this thesis from the outlined line of research is that, if we want to develop a
+language with type system that captures context-dependent properties of programs more precisely,
+the semantics of the language also needs to be a more fine-grained structure (akin to indexed
+monads). While monads have been used to model effects, an existing research links context-dependence
+with \emph{comonads} -- the categorical dual of monads.
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Context-dependent languages and meta-languages}
+\label{sec:path-sem-contextdep}
+
+The theoretical parts of this thesis extend the work of Uustalu and Vene who use comonads
+to give the semantics of dataflow computations \cite{app-dataflow-essence} and more generally,
+notions of \emph{context-dependent computations} \cite{comonads-notions}. The computations discussed
+in the latter work include streams, arrays and containers. This is a more diverse set of examples,
+but they all mostly represent forms of collections. Ahman et al. \cite{comonads-containers} discuss
+the relation between comonads and \emph{containers} \cite{types-containers} in more details.
+
+The utility of comonads has been explored by a number of authors before. Brookes and Geva
+\cite{comonads-computational} use \emph{computational} comonads for intensional semantics\footnote{The
+structure of a computational comonad has been also used by the author of this thesis to abstract
+evaluation order of monadic computations \cite{comonads-malias}.}. In functional programming,
+Kieburtz \cite{comonads-and-codata} proposed to use comonads for stream programming, but also
+handling of I/O and interoperability.
+
+Biermann and de Paiva used comonads to model the necessity modality $\square$ in intuitionistic
+modal S4 \cite{logic-intuitionistic-modal}, linking programming languages derived from modal
+logics to comonads. One such language has been reconstructed by Pfenning and Davies
+\cite{logic-modal-reconstruction}. Nanevski et al. extend this work to Contextual Modal Type
+Theory (CMTT) \cite{logic-cmtt}, which again shows the importance of comonads for
+\emph{context-dependent} computations.
+
+While Uustalu and Vene use comonads to define the \emph{language semantics} (the first style
+of Moggi), Nanevski, Pfenning and Davies use comonads as part of meta-language, in the form
+of $\square$ modality, to reason about context-dependent computations (the second style of
+Moggi). Before looking at the details, we use the following definition of comonad:
+%
+\begin{definition}
+A \emph{comonad} over a category $\catc$ is a triple $(C, \ident{counit}, \ident{cobind})$ where:
+\begin{compactitem}
+\item $C$ is a mapping on objects (types) $C : \catc \rightarrow \catc$
+\item $\ident{counit}$ is a mapping $\ctyp{}{\alpha} \rightarrow \alpha$
+\item $\ident{cobind}$ is a mapping $(\ctyp{}{\alpha} \rightarrow \beta)
+  \rightarrow (\ctyp{}{\alpha} \rightarrow \ctyp{}{\beta})$
+\end{compactitem}
+%
+such that, for all $f:\ctyp{}{\alpha} \rightarrow \beta$ and $g:\ctyp{}{\beta} \rightarrow \gamma$:
+
+\begin{align}
+\tag{\emph{left identity}}
+  \ident{cobind}~\ident{counit} &= \idf{}
+  \\
+\tag{\emph{right identity}}
+  \ident{counit} \circ \ident{cobind}~f &= f
+  \\
+\tag{\emph{associativity}}
+  \ident{cobind}~(g \circ \ident{cobind}~f) &= (\ident{cobind}~g) \circ (\ident{cobind}~f)
+\end{align}
+\end{definition}
+
+\noindent
+The definition is dual to a monad. Intuitively, the $\ident{counit}$
+operation extracts a value $\alpha$ from a value that carries additional context $\ctyp{}{\alpha}$.
+The $\ident{cobind}$ operation turns a context-dependent function
+$\ctyp{}{\alpha} \rightarrow \beta$ into a function that takes a value with context, applies
+the context-dependent function to value(s) in the context and then propagates the context. The
+next section makes this intuitive definition more concrete. More detailed discussion about
+comonads can be found in Orchard's PhD thesis \cite{comonads-dom-thesis}.
+
+%---------------------------------------------------------------------------------------------------
+
+\paragraph{Language semantics.}
+To demonstrate the approach of Uustalu and Vene, we consider the non-empty list comonad
+$\ctyp{}{\tau} = \tau + (\tau \times \ctyp{}{\tau})$. A value of the type is either
+the last element $\tau$ or an element followed by another non-empty list $\tau \times \ctyp{}{\tau}$
+(consisting of the head $\tau$ and the tail $\ctyp{}{\tau}$). Note that the list must be non-empty,
+otherwise \ident{counit} would not be a complete function (it would be undefined on empty list). In
+the following, we write $(l_1, \ldots, l_n)$ for a list of $n$ elements:
+%
+\begin{equation*}
+\begin{array}{rcl}
+\ident{counit}~(l_1, \ldots, l_n) &=& l_1\\
+\ident{cobind}~f~(l_1, \ldots, l_n) &=& (f (l_1, \ldots, l_n), f (l_2, \ldots, l_n), \ldots, f (l_n))
+\end{array}
+\end{equation*}
+%
+The \ident{counit} operation returns the current (first) element of the (non-empty) list.
+The \ident{cobind} operation creates a new list by applying the context-dependent function $f$
+to the entire list, to the suffix of the list, to the suffix of the suffix and so on. Interestingly,
+it preserves the \emph{shape} of the list as it turns a list of $n$ elements into another list
+of $n$ elements.
+
+In causal dataflow, we can interpret the list as a list consisting of past values, with the
+current value in the head. Then, the $\ident{cobind}$ operation calculates the current value
+of the output based on the current and all past values of the input; the second element is
+calculated based on all past values and the last element is calculated based just on the initial
+input $(l_n)$. In addition to the operations of comonad, the model also uses some operations that
+are specific to causal dataflow:
+%
+\begin{equation*}
+\begin{array}{rcl}
+\ident{prev}~(l_1, \ldots, l_n) &=& (l_2, \ldots, l_n)\\
+\end{array}
+\end{equation*}
+%
+The operation drops the first element from the list. In the dataflow interpretation, this means
+that it returns the previous state of a value.
+
+Now, consider a simple dataflow language with single-variable contexts, variables,
+primitive built-in functions and a construct $\kvd{prev}~e$ that returns the previous
+value of the computation $e$. We omit the typing rules, but they are simple -- assuming $e$
+has a type $\tau$, the expression $\kvd{prev}~e$ has also type $\tau$. The fact that
+the language models dataflow and values are lists (of past values) is a matter of semantics,
+which is defined as follows:
+
+\begin{equation*}
+\begin{array}{rcl}
+\sem{x\!:\!\tau \vdash x : \tau} &=& \ident{counit}_\ctyp{}{}\\
+\sem{x\!:\!\tau_1 \vdash f~e : \tau_3} &=& f \circ (\ident{cobind}_\ctyp{}{} ~\sem{e})\\
+\sem{x\!:\!\tau_1 \vdash \kvd{prev}~e : \tau_2} &=& \ident{prev} \circ (\ident{cobind}_\ctyp{}{} ~\sem{e})\\
+\end{array}
+\end{equation*}
+%
+The semantics follows that of effectful computations using monads. A variable access is interpreted
+using $\ident{counit}_\ctyp{}{}$ (extract the variable value); composition
+uses $\ident{cobind}_\ctyp{}{}$ to propagate the context to the function $f$ and $\kvd{prev}$
+is interpreted using the primitive $\ident{prev}$ (which takes a list and returns a list).
+For example, the judgement $x\!:\!\tau \vdash \kvd{prev}~(\kvd{prev}~x) : \tau$ represents an
+expression that expects context with variable $x$ and returns a stream of values before the
+previous one. The semantics of the term expresses this behaviour:
+$(\ident{prev} \circ \ident{prev} \circ (\ident{cobind}_\ctyp{}{}~\ident{counit}_\ctyp{}{}))$.
+Note that the first operation is simply an identity function thanks to the comonad laws discussed
+earlier.
+
+In the outline presented here, we ignored lambda abstraction. Similarly to monadic semantics,
+where lambda abstraction requires a \emph{strong} monad, the comonadic semantics also requires
+additional structure called \emph{symmetric (semi)monoidal} comonads. This structure is
+responsible for the splitting of context-requirements in lambda abstraction. Note that this is
+what happens in the unusual (\emph{abs}) rule in Figure~\ref{fig:path-coeff}, which distinguishes
+coeffect systems from effect systems.
+
+We return to this topic when discussing lambda abstraction in Section~\ref{sec:applications-structure-lam}
+and semantics of flat coeffect systems in Section~\ref{sec:semantics-theory}.
+
+%---------------------------------------------------------------------------------------------------
+
+\paragraph{Meta-language interpretation.} To demonstrate the approach that employs comonads
+as part of a meta-language, we look at an example inspired by the work of Pfenning et al.
+\cite{logic-modal-reconstruction,logic-cmtt}. We do not attempt to provide a precise overview of
+their work. The main purpose of the following discussion is to provide a different intuition behind
+comonads, and to present an example of a language that includes comonad as a type constructor,
+together with language primitives corresponding to comonadic operations\footnote{In fact,
+Pfenning et al. never mention comonads explicitly. This is done in later work by Gabbay et al.
+\cite{logic-cmtt-semantics},  but the connection between the language and comonads
+is not as direct as in case of monadic or comonadic semantics covered in the previous section.}.
+
+In languages inspired by modal logics, types can have the form $\square \tau$. In the work of
+Pfenning and Davies, this is the type of a term that is provable with no assumptions. In the
+ML5 language by Murphy et al. \cite{app-distributed-ml5,logic-distributed-calculus}, the
+$\square \tau$ type means \emph{mobile code}, that is code that can be evaluated at any node of a
+distributed system (the evaluation corresponds to the axiom $\square \tau \rightarrow \tau$).
+Finally, Davies and Pfenning \cite{logic-modal-staged} consider staged computations and interpret
+$\square \tau$ as a type of unevaluated expressions of type $\tau$ (with no free variables).
+
+In Contextual Modal Type Theory, the modality $\square$ is further annotated with the free variables
+of the (unevaluated) expression. We write $\square^{\cclrd{\Psi}} \tau$ for a type of expressions
+that requires a context $\Psi$. The type is a comonadic counterpart to \emph{indexed monads} used by
+Wadler and Thiemann when linking monads and effect systems and, indeed, it gives rise to a language
+that tracks context-dependence of computations in a type system.
+
+In staged computation, the type $\ctyp{\cclrd{\Psi}}{\tau}$ represents an expression
+that requires the context $\Psi$ (i.e.~the expression is an open term that requires variables $\Psi$).
+The Figure~\ref{fig:modal-meta} shows two typing rules for such language. The rules directly
+correspond to the two operations of a comonad and can be interpreted as follows:
+
+\begin{itemize}
+\item (\emph{eval}) corresponds to $\ident{counit} : \ctyp{\cclrd{\emptyset}}{\alpha} \rightarrow \alpha$.
+  It indicates that we can evaluate a closed (unevaluated) term and obtain a value. Interestingly, the
+  rule requires a specific context annotation (empty set of free variables).
+  It is not possible to evaluate an open term.
+
+\item (\emph{letbox}) corresponds to $\ident{cobind} : (\ctyp{\cclrd{\Psi}}{\alpha} \rightarrow \beta)
+  \rightarrow \ctyp{\cclrd{\Psi}, \cclrd{\Phi}}{\alpha} \rightarrow \ctyp{\cclrd{\Phi}}{\beta}$.
+  Given a term which requires variable context $\cclrd{\Psi}, \cclrd{\Phi}$
+  (expression $e_1$) and a function that turns a term needing $\cclrd{\Psi}$ into an evaluated
+  value (expression $e_2$), we can construct a term that requires just $\cclrd{\Phi}$.
+\end{itemize}
+
+\noindent
+The fact that the (\emph{eval}) rule requires a specific context is an interesting relaxation
+from ordinary comonads where \ident{counit} needs to be defined for all values. Here, the indexed
+\ident{counit} operation needs to be defined \emph{only} on values annotated with $\emptyset$.
+
+The annotated \ident{cobind} operation that corresponds to (\emph{letbox}). An interesting aspect
+is that it propagates the context-requirements ``backwards''. The input expression (second parameter)
+requires a combination of contexts that are required by the two components -- those required by the
+input of the function (first argument) and those required by the resulting expression (result).
+This is another key aspect that distinguishes coeffects from effect systems. We return back to
+the meta-language approach of embedding comonads in Section~\ref{sec:further-meta}.
+
+%---------------------------------------------------------------------------------------------------
+
+\begin{figure}
+\begin{equation*}
+\inference[(eval)]
+  {\Gamma \vdash e : \square^{\cclrd{\emptyset}}{\tau}}
+  {\Gamma \vdash !e : \tau}
+\end{equation*}
+\begin{equation*}
+\inference[(letbox)]
+  { \Gamma \vdash e_1 : \square^{\cclrd{\Phi}, \cclrd{\Psi}}{\tau_1} &
+    \Gamma, x\!:\!\square^{\cclrd{\Phi}}{\tau_1} \vdash e_2 : \tau_2 }
+  { \Gamma \vdash \kvd{let~box}~x=e_1~\kvd{in}~e_2 : \square^{\cclrd{\Psi}}{\tau_2}}
+\end{equation*}
+
+\figcaption{Typing for a comonadic language with contextual staged computations}
+\label{fig:modal-meta}
+\end{figure}
+
+%---------------------------------------------------------------------------------------------------
+
+\paragraph{Thesis perspective.}
+As mentioned earlier, we are interested in designing context-dependent languages and so we
+use comonads for \emph{language semantics}. Uustalu and Vene present a semantics of
+context-dependent computations in terms of comonads. We provide the rest of the story known
+from the marriage of monads and effects. We develop coeffect calculus with a type system that
+tracks the context demands more precisely (by annotating the types) and we add indexing
+to comonads and link the two by giving a formal semantics. The indexing allows us to capture
+applications that do not fit into the model provided by plain comonads.
+
+The \emph{meta-language} approach of Pfenning et al. is closely related to
+our work. Most importantly, Contextual Modal Type Theory (CMTT) uses indexed $\square$ modality
+which corresponds to indexed comonads (in a similar way in which effect systems correspond to
+indexed monads). The relation between CMTT and comonads has been suggested by
+Gabbay et al. \cite{logic-cmtt-semantics}, but the meta-language employed by CMTT does not
+directly correspond to comonadic operations. For example, our (\emph{letbox}) typing rule from
+Figure~\ref{fig:modal-meta} is not a primitive of CMTT and would correspond to
+$\ident{box}(\cclrd{\Psi}, \ident{letbox}(e_1, x, e_2))$. Nevertheless, the indexing in
+CMTT provides a useful hint for adding indexing to the work of Uustalu and Vene.
+
+
+%===================================================================================================
+%
+%     #####
+%    #     # #    # #####   ####  ##### #####  #    #  ####  ##### #    # #####    ##   #
+%    #       #    # #    # #        #   #    # #    # #    #   #   #    # #    #  #  #  #
+%     #####  #    # #####   ####    #   #    # #    # #        #   #    # #    # #    # #
+%          # #    # #    #      #   #   #####  #    # #        #   #    # #####  ###### #
+%    #     # #    # #    # #    #   #   #   #  #    # #    #   #   #    # #   #  #    # #
+%     #####   ####  #####   ####    #   #    #  ####   ####    #    ####  #    # #    # ######
+%
+%===================================================================================================
+
+\section{Coeffects via substructural and bunched logics}
+\label{sec:path-logic}
+
+In the coeffect system for tracking resource usage outlined earlier, we associated additional
+contextual information (set of available resources) with the variable context of the typing
+judgement: $\coctx{\Gamma}{\cclrd{r}} \vdash e : \tau$. In other words, our work focuses on
+what is happening on the left hand side of $\vdash$.
+
+In the case of resources, the additional information about the context is added to the
+variable context (as a product), but we will later look at contextual properties that affect
+how variables are represented. More importantly, \emph{structural coeffects} link additional
+information to individual variables in the context, rather than the context as a whole.
+
+In this section, we look at type systems that reconsider $\Gamma$ in a number of ways.
+First of all, substructural type systems \cite{substruct-attpl-intro} restrict the use of variables
+in the language. Most famously linear type systems introduced by Wadler \cite{substruct-linear-change}
+can guarantee that a variable is used exactly once. This has interesting implications for memory
+management and I/O.
+
+In bunched typing developed by O'Hearn \cite{substruct-bunched}, the variable context is a tree
+formed by multiple different constructors (e.g.~one that allows sharing and one that does not).
+Most famously, bunched typing has contributed to the development of separation logic
+\cite{substruct-separation-logic} (starting a fruitful line of research in software verification),
+but it is also interesting on its own.
+
+%---------------------------------------------------------------------------------------------------
+
+
+\begin{figure}
+\begin{equation*}
+\tyrule{exchange}
+  {\Gamma, x\!:\!\tau_1, y\!:\!\tau_2 \vdash e : \gamma}
+  {\Gamma, y\!:\!\tau_2, x\!:\!\tau_1 \vdash e : \gamma}
+\end{equation*}
+\begin{equation*}
+\tyrule{weakening}
+  {\Gamma, \Delta \vdash e : \gamma}
+  {\Gamma, x\!:\!\tau, \Delta \vdash e : \gamma}
+\end{equation*}
+\begin{equation*}
+\tyrule{contraction}
+  {\Gamma, x\!:\!\tau_1, y\!:\!\tau_1, \Delta \vdash e : \tau_2}
+  {\Gamma, x\!:\!\tau_1, \Delta \vdash \subst{e}{y}{x} : \tau_2}
+\end{equation*}
+
+\figcaption{Exchange, weakening and contraction typing rules}
+\label{fig:substructural-rules}
+\end{figure}
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Substructural type systems.}
+
+Traditionally, $\Gamma$ is viewed as a set of assumptions and typing rules admit (or explicitly
+include) three transformations that manipulate the variable contexts which are shown in
+Figure~\ref{fig:substructural-rules}. The (\emph{exchange}) rule allows reordering of variables
+(which is implicit when assumptions are treated as set); (\emph{weakening}) makes it possible
+to discard an assumption -- this has the implication that a variable may be declared but never
+used. Finally, (\emph{contraction}) makes it possible to use a single variable multiple times
+(in the rule, this is done explicitly by joining multiple variables into a single one using
+substitution).
+
+In substructural type systems, the assumptions are typically treated as a list. As a result,
+they have to be manipulated explicitly. Different systems allow different subsets of the rules.
+For example, \emph{affine} systems allows exchange and weakening, leading to a system where
+variable may be used at most once; in \emph{linear} systems, only exchange is permitted and so
+every variable has to be used exactly once.
+
+When tracking context-dependent properties associated with individual variables, we need to
+be more explicit in how variables are used. Substructural type systems provide a way to do this.
+Even if we allow all three operations, we can use a variation on the three rules (exchange,
+weakening and contraction) to track which variables are used and how (and to track additional
+contextual information about variables).
+
+%---------------------------------------------------------------------------------------------------
+
+\subsection{Bunched type systems.}
+Bunched typing makes one more refinement to how $\Gamma$ is treated. Rather than having a list
+of assumptions, the context becomes a tree that contains variable typings (or special identity
+values) in the leaves and has multiple different types of nodes. The context can be defined,
+for example, as follows:
+%
+\begin{equation*}
+\Gamma, \Delta, \Sigma := x\!:\!\alpha \sep I \sep \Gamma, \Gamma \sep 1 \sep \Gamma; \Gamma
+\end{equation*}
+%
+The values $I$ and $1$ represent two kinds of ``empty'' contexts. More interestingly, non-empty
+variable contexts may be constructed using two distinct constructors -- $\Gamma, \Gamma$ and
+$\Gamma; \Gamma$ -- that have different properties. In particular, weakening and contraction is
+only allowed for the $;$ constructor, while exchange is allowed for both.
+
+The structural rules for bunched typing are shown in Figure~\ref{fig:substructural-bunched}.
+The syntax $\Gamma(\Delta)$ is used to mean an assumption tree that contains $\Delta$ as a
+sub-tree and so, for example, (\emph{exchange1}) can switch the order of contexts anywhere in the
+tree. The remaining rules are similar to the rules of linear logic.
+
+One important note about bunched typing is that it requires a different interpretation. The omission
+of weakening and contraction in linear logic means that variable must be used exactly once.
+In bunched typing, variables may still be duplicated, but only using the ``;'' separator.
+The type system can be interpreted as specifying whether a variable may be shared between the
+body of a function and the context where a function is declared.
+
+The system introduces two
+distinct function types $\tau_1 \rightarrow \tau_2$ and $\tau_1~ \textendash\!\!\!\ast \tau_2$
+(corresponding to ``;'' and ``,'' respectively). The key property is that only the first kind
+of functions can share variables with the context where a function is declared, while the second
+restricts such sharing. We do not attempt to give a detailed description here as it is not
+immediately related to coeffects -- for more information, refer to O'Hearn's introduction
+\cite{substruct-bunched}.
+
+\begin{figure}
+\begin{equation*}
+\tyrule{exchange1}
+  {\Gamma(\Delta, \Sigma) \vdash e : \alpha}
+  {\Gamma(\Sigma, \Delta) \vdash e : \alpha}
+\end{equation*}
+\begin{equation*}
+\tyrule{exchange2}
+  {\Gamma(\Delta; \Sigma) \vdash e : \alpha}
+  {\Gamma(\Sigma; \Delta) \vdash e : \alpha}
+\end{equation*}
+\begin{equation*}
+\tyrule{weakening}
+  {\Gamma(\Delta) \vdash e : \alpha}
+  {\Gamma(\Delta; \Sigma) \vdash e : \alpha}
+\end{equation*}
+\begin{equation*}
+\tyrule{contraction}
+  {\Gamma(\Delta; \Sigma) \vdash e : \alpha}
+  {\Gamma(\Delta) \vdash \subst{e}{\Sigma}{\Delta} : \alpha}
+\end{equation*}
+\figcaption{Exchange, weakening and contraction rules for bunched typing}
+\label{fig:substructural-bunched}
+\end{figure}
+
+%---------------------------------------------------------------------------------------------------
+
+\paragraph{Thesis perspective.}
+
+From the perspective of substructural and bunched types, our work can be viewed as annotating
+bunches. Such annotations then specify additional information about the context -- or, more
+specifically, about the sub-tree of the context. Although this is not the exact definition used in
+Chapter~\ref{ch:structural}, we could define contexts as follows:
+%
+\begin{equation*}
+\Gamma, \Delta, \Sigma := x\!:\!\alpha \sep 1 \sep \Gamma, \Gamma \sep \coctx{\Gamma}{\cclrd{r}}
+\end{equation*}
+%
+Now we can not only annotate an entire context with some information (as in the simple coeffect
+system for tracking resources that used judgements of a form $\cclrd{\Gamma}{\cclrd{r}} \vdash e : \tau$).
+We can also annotate individual components. For example, a context containing variables $x,y,z$
+where only $x$ is used could be written as $\coctx{(x\!:\!\tau_1)}{\ident{\cclrd{used}}}, \coctx{(y\!:\!\tau_2, z\!:\!\tau_3)}{\ident{\cclrd{unused}}}$.
+
+For the purpose of this introduction, we ignore important aspects such as how are nested annotations
+interpreted. The main goal is to show that coeffects can be easily viewed as an extension to the
+work on bunched logic. Aside from this principal connection, \emph{structural coeffects} also
+use some of the proof techniques from the work on bunched logics.
+
+
+
+%===================================================================================================
+%
+%     #####  ####### ######
+%    #     # #     # #     #
+%    #       #     # #     #
+%    #       #     # ######
+%    #       #     # #
+%    #     # #     # #
+%     #####  ####### #
+%
+%===================================================================================================
+
+\section{Context oriented programming}
+\label{sec:path-cop}
+
+The importance of context-aware computations is perhaps most obvious when considering mobile
+application, client/server web applications or even the internet of things. A pioneering work
+in the area using functional languages has been done by Serrano \cite{app-hop-diffuse,app-hop-lang}
+(which also inspired the motivating example presented in Chapter~\ref{ch:intro}). His HOP language supports
+cross-compilation and programs execute in different contexts. However, HOP is not statically
+type checked.
+
+In the software engineering community, a number of authors have addressed the
+problem of context-aware computations. Hirschfeld et al. propose \emph{Context-Oriented Programming}
+(COP) as a methodology \cite{app-cop-method}. The COP paradigm has been later implemented by
+programming language features. Costanza \cite{app-cop-contextl} develops a domain-specific LISP-like
+language ContextL and Bardram \cite{app-cop-javafwk} proposes a Java framework for COP.
+
+Finally, the subject of context-awareness has also been addressed in work focusing on the development
+of mobile applications \cite{app-cop-mobile,app-cop-mobile2}. Here, the \emph{context} focuses more
+on concrete physical context (obtained from the device sensors) than context as an abstract
+language feature.
+
+We approach the problem from a different perspective, building on the tradition of
+statically-typed functional programming languages, focusing on type systems as the primary way
+of capturing contextual properties.
+
+
+%===================================================================================================
+%
+%     #####
+%    #     # #    # #    # #    #   ##   #####  #   #
+%    #       #    # ##  ## ##  ##  #  #  #    #  # #
+%     #####  #    # # ## # # ## # #    # #    #   #
+%          # #    # #    # #    # ###### #####    #
+%    #     # #    # #    # #    # #    # #   #    #
+%     #####   ####  #    # #    # #    # #    #   #
+%
+%===================================================================================================
+
+\section{Summary}
+
+This chapter presented four different pathways leading to the idea of coeffects. We also
+introduced the most important related work, although presenting related work was not the
+primary goal of the chapter. The primary goal was to present the idea of coeffects as a logical
+follow up to a number of research directions. For this reason, we highlighted only certain aspects
+of the discussed related work -- the remaining aspects as well as important technical details are
+covered throughout the thesis.
+
+The first pathway follows as a generalization of static and dynamic variable binding. Variable
+binding can be seen as the most primitive form of context-dependence and coeffects provide a
+generalization that can capture different binding mechanisms in a unified way. In the second
+pathway, we looked at the dual of well-known work on effect systems. However, this is not simply
+a syntactic transformation. As we further discuss in the next chapter, coeffect systems treat lambda
+abstraction differently. The third pathway follows by extending comonadic semantics of context-dependent
+computations with indexing and building a type system analogous to effect system from the ``marriage of
+effects and monads''. Finally, the fourth pathway starts with substructural type systems. Coeffect
+systems naturally arise by annotating bunches in bunched logics with additional information. In this
+thesis, we mostly follow the first two approaches.

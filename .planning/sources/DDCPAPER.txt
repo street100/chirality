@@ -1,0 +1,1238 @@
+A Dependent Dependency Calculus
+Pritam Choudhury1 , Harley Eades III 2
+ , and Stephanie Weirich3
+1 University of Pennsylvania, Philadelphia, PA, USA, pritam@seas.upenn.edu
+2 Augusta University, Augusta, GA, USA
+3 University of Pennsylvania, Philadelphia, PA, USA
+Abstract. Over twenty years ago, Abadi et al. established the Depen-
+dency Core Calculus (DCC) as a general purpose framework for ana-
+lyzing dependency in typed programming languages. Since then, depen-
+dency analysis has shown many practical beneﬁts to language design: its
+results can help users and compilers enforce security constraints, elim-
+inate dead code, among other applications. In this work, we present a
+Dependent Dependency Calculus (DDC), which extends this general idea
+to the setting of a dependently-typed language. We use this calculus to
+track both run-time and compile-time irrelevance, enabling faster type-
+checking and program execution.
+Keywords: Dependent Types · Information Flow · Irrelevance
+1 Dependency Analysis
+Consider this judgment from a type system that has been augmented with de-
+pendency analysis.
+x :L Int, y :H Bool, z :M Bool⊣ if z then x else 3 :M Int
+In this judgment,L,M andH stand for low, medium and high security levels
+respectively. The computed value of the expression is meant to be a medium-
+security result. The inputs, x, y and z have been marked with their respective
+security levels. This expression type-checks because it is permissible for medium-
+security results to depend on both low and medium-security inputs. Note that
+the high-security boolean variable y is not used in the expression. However, if
+we replace z with y in the conditional, then the type checker would reject that
+expression. Even though the high-security input would not be returned directly,
+the medium-security result would still depend on it.
+Dependency analysis, as we see above, is an expressive addition to program-
+ming languages. Such analyses allow languages to protect sensitive informa-
+tion (Smith and Volpano, 1998; Heintze and Riecke, 1998), support run-time code
+generation (Thiemann, 1997), slice programs while preserving behavior (Tip,
+1995), etc. Several existing dependency analyses were uniﬁed by Abadi et al.
+(1999) in their Dependency Core Calculus (DCC). This calculus has served as a
+foundation for static analysis of dependencies in programming languages.
+2 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+What makes DCC powerful is the parameterization of the type system by a
+generic lattice of dependency levels. Dependency analysis, in essence, is about
+ensuring secure information ﬂow—that information never ﬂows from more se-
+cure to less secure levels. Denning (1976) showed that a lattice model, where
+increasing order corresponds to higher security, can be used to enforce secure
+ﬂow of information. DCC integrates this lattice model with the computational
+λ-calculus (Moggi, 1991) by grading the monad operator of the latter with ele-
+ments of the former. This integration enables DCC to analyze dependencies in
+its type system.
+However, even though many typed languages have included dependency anal-
+ysis in some form, this feature has seen relatively little attention in the context
+of dependently-typed languages. This is unfortunate because, as we show in this
+paper, dependency analysis can provide an elegant foundation for compile-time
+and run-time irrelevance, two important concerns in the design of dependently-
+typed languages. Compile-time irrelevance identiﬁes sub-expressions that are not
+needed for type checking while run-time irrelevance identiﬁes sub-expressions
+that do not aﬀect the result of evaluation. By ignoring or erasing such sub-
+expressions, compilers for dependently-typed languages increase the expressive-
+ness of the type system, improve on compilation time and produce more eﬃcient
+executables.
+Therefore, in this work, we augment a dependently-typed language with a
+primitive notion of dependency analysis and use it to track compile-time and
+run-time irrelevance. We call this language DDC, for Dependent Dependency
+Calculus, in homage to DCC. Although our dependency analyses are structured
+diﬀerently, we show that DDC can faithfully embed the terminating fragment
+of DCC and support its many well-known applications, in addition to our novel
+application of tracking compile-time and run-time irrelevance.
+More speciﬁcally, our work makes the following contributions:
+– We design a language SDC, for Simple Dependency Calculus, that can ana-
+lyze dependencies in a simply-typed language. We show that SDC is no less
+expressive than the terminating fragment of DCC. The structure of depen-
+dency analysis in SDC enables a relatively straightforward syntactic proof
+of non-interference. (Section 3)
+– We extend SDC to a dependent calculus, DDC⊤. Using this calculus, we
+analyze run-time irrelevance and show the analysis is correct using a non-
+interference theorem. DDC⊤ contains SDC as a sub-language. As such, it
+can be used to track other forms of dependencies as well. (Section 4)
+– We generalize DDC⊤ to DDC. Using this calculus, we analyze both run-
+time and compile-time irrelevance and show that the analyses are correct.
+To the best of our knowledge, DDC is the only system that can distinguish
+run-time and compile-time irrelevance as separate modalities, necessary for
+the proper treatment of projection from irrelevant Σ-types. (Section 5)
+– We have used the Coq proof assistant to mechanically verify the most impor-
+tant and delicate part of our designs, the non-interference and type sound-
+4 https://github.com/sweirich/graded-haskell
+A Dependent Dependency Calculus 3
+ness theorems for DDC. This mechanization is available online 4 and as a
+self-contained artifact (Choudhury et al., 2022a).
+2 Irrelevance and Dependent Types
+Run-time irrelevance (sometimes called erasure) and compile-time irrelevance
+are two forms of dependency analyses that arise in dependent type theories.
+Tracking these dependencies helps compilers produce faster executables and
+makes type checking more ﬂexible. (Pfenning, 2001; Miquel, 2001; Barras and
+Bernardo, 2008; Mishra-Linger and Sheard, 2008; Abel and Scherer, 2012; McBride,
+2016; Atkey, 2018; Nuyts and Devriese, 2018; Tejiˇ sˇ c´ ak, 2020; Moon et al., 2021).
+2.1 Run-time irrelevance
+Parts of a program that are not required during run time are said to be run-
+time irrelevant. Our goal is to identify such parts. Let’s consider some examples.
+We shall mark variables and arguments with ⊤ if they can be erased prior to
+execution and leave them unmarked if they should be preserved.
+For example, the polymorphic identity function can be marked as:
+id : Π x:⊤Type. x -> x
+id = λ⊤x. λy. y
+The ﬁrst parameter, x, of the identity function is only needed during type check-
+ing; it can be erased before execution. The second parameter, y, though, is
+required during runtime. When we apply this function to arguments, as in (id
+Bool⊤ True), we can erase the ﬁrst argument, Bool, but the second one, True,
+must be retained.
+Indexed data structures provide another example of run-time irrelevance.
+Consider the Vec datatype for length-indexed vectors, as it might look in a
+core language inspired by GHC (Sulzmann et al., 2007; Weirich et al., 2017).
+The Vec datatype has two parameters, n and a, that also appear in the types of
+the data constructors Nil and Cons. These parameters are relevant to Vec, but
+irrelevant to the data constructors. (In the types of the constructors, the equality
+constraints (n ∼ Zero) and (n ∼ Succ m) force n to be equal to the length of
+the vector.)
+Vec : Nat -> Type -> Type
+Nil : Π n:⊤Nat. Π a:⊤Type. (n ∼ Zero) => Vec n a
+Cons : Π n:⊤Nat. Π a:⊤Type. Π m:⊤Nat. (n ∼ Succ m) => a -> Vec m a
+-> Vec n a
+Now consider a function vmap that maps a given function over a given vector.
+The length of the vector and the type arguments are not necessary for running
+vmap; they are all erasable. So we assign them ⊤.
+4 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+vmap : Π n:⊤Nat.Π a b:⊤Type. (a -> b) -> Vec n a -> Vec n b
+vmap = λ⊤ n a b. λ f xs.
+case xs of
+Nil -> Nil
+Cons m⊤ x xs -> Cons m ⊤ (f x) (vmap m ⊤ a⊤ b⊤ f xs)
+Note that the⊤-marked variables m, a and b appear in the deﬁnition of vmap,
+but only in ⊤ contexts. By requiring that ‘unmarked’ terms don’t depend on
+terms marked with⊤, we can track run-time irrelevance and guarantee safe era-
+sure. Observe that even though these arguments are marked with ⊤ to describe
+their use in the deﬁnition of vmap, this marking does not reﬂect their usage in
+the type of vmap. In particular, we are free to use these variables with Vec in a
+relevant manner.
+2.2 Compile-time Irrelevance
+Some type constructors may have arguments which can be ignored during type
+checking. Such arguments are said to be compile-time irrelevant. For example,
+suppose we have a constant function that ignores its argument and returns a
+type.
+phantom : Nat ⊤ -> Type
+phantom = λ⊤ x. Bool
+To type check idp below, we must show that phantom 0 equals phantom 1 .
+Without compile-time irrelevance, we need to β-reduce both sides to show that
+the input and output types are equal.
+idp : phantom 0 ⊤ -> phantom 1 ⊤
+idp = λ x. x
+However, in the presence of compile-time irrelevance, we can use the de-
+pendency information contained in the type of a function to reason about it
+abstractly. Because the function f below ignores its argument, it is sound to
+equate the input and output types.
+ida : Π f :⊤(Nat⊤ -> Type). f 0 ⊤ -> f 1 ⊤
+ida = λ⊤ f. λ x. x
+In the absence of compile-time irrelevance, we cannot type-check ida. So
+compile-time irrelevance makes type checking more ﬂexible.
+Compile-time irrelevance can also make type checking faster when the types
+contain expensive computation that can be safely ignored. For example, consider
+the following program that type checks without compile-time irrelevance. How-
+ever, in that case, the type checker must show that fib 28 reduces to 317811,
+where fib represents the Fibonacci function.
+idn : Π f :⊤(Nat⊤ -> Type). f (fib 28) ⊤ -> f 317811 ⊤
+idn = λ⊤ f. λ x. x
+A Dependent Dependency Calculus 5
+So far, we have used two annotations on variables and terms:⊤ for irrelevant
+ones and ‘unmarked’ for relevant ones. We used⊤ to mark both arguments that
+can be erased at runtime and arguments that can be safely ignored by the type
+checker. However, sometimes we need a ﬁner distinction.
+2.3 Strong Irrelevant Σ-types
+Consider the typeΣm:⊤Nat. Vec m a , which contains pairs whose ﬁrst component
+is marked as irrelevant. This type might be useful, say, for the output of afilter
+function for vectors, where the length of the output vector cannot be calculated
+statically. If we never need to use this length at runtime, then it would be good
+to mark it with ⊤ so that it need not be stored. 5
+However, marking m with⊤ means that the ﬁrst component of the pair of this
+type must also be compile-time irrelevant. This results in a signiﬁcant limitation
+for strong Σ types: we cannot project the second component from the pair. Say
+we have ys:Σm:⊤Nat. Vec m a . The type of ( π1 ys) is a Nat that can only be
+used in irrelevant positions. However, note that the argument n in Vec n a must
+be compile-time relevant; otherwise the type checker would equate Vec 0 a with
+Vec 1 a , making the length index meaningless. The type of ( π2 ys) would then
+be Vec (π1 ys) a , which is ill-formed because an irrelevant term (π1 ys) appears
+in a relevant position.
+Therefore, we don’t want to mark the ﬁrst component of the output offilter
+with⊤. However, if we leave it unmarked, we cannot erase it at runtime, some-
+thing that we might want to. A way out of this quandry comes by considering
+terms that are run-time irrelevant but not compile-time irrelevant. Such terms
+exist between completely irrelevant and completely relevant terms. They should
+not depend upon irrelevant terms and relevant terms should not depend upon
+them. We mark such terms with a new annotation, C, with the constraints that
+‘unmarked’ terms do not depend on C andC terms do not depend on ⊤ terms.
+The three annotations, then, correspond to the three levels of a lattice modelling
+secure information ﬂow, with ⊥ < C <⊤, using ⊥ in lieu of ‘unmarked’. We
+call the lattice LI, for irrelevance lattice. Using this lattice, we can type check
+the following filter function.
+filter : Πn:⊤Nat.Πa:⊤Type.(a -> Bool) -> Vec n a -> Σm:C Nat. Vec m a
+filter = λ⊤ n a. λ f vec.
+case vec of
+Nil -> (Zero C , Nil)
+Cons n1⊤ x xs
+| f x -> ((Succ ( π1 ys))C , Cons ( π1 ys)⊤ x (π2 ys))
+where
+ys = filter n1 ⊤ a⊤ f xs
+| _ -> filter n1 ⊤ a⊤ f xs
+5 It is, however, safe for m to be used in a relevant position in the body of the Σ-type
+even when it is marked with ⊤. This marking indicates how the ﬁrst component of
+6 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+Eisenberg et al. (2021) observe that, in Haskell, it is important to use pro-
+jection functions to access the components of the pair that results from the
+recursive call (as in π1 ys and π2 ys) to ensure that filter is not excessively
+strict. If filter instead used pattern matching to eliminate the pair returned by
+the recursive call, it would have needed to ﬁlter the entire vector before returning
+the ﬁrst successful value. This filter function demonstrates the practical utility
+of strong irrelevant Σ-types because it supports the same run-time behavior of
+the usual list filter function but with a more richly-typed data structure.
+3 A Simple Dependency Analyzing Calculus
+Our ultimate goal is a dependent dependency calculus. However, we ﬁrst start
+with a simply-typed version so that we can explain our approach to dependency
+analysis and non-interference in a simpliﬁed setting.
+We call the calculus of this section SDC, for Simple Dependency Calculus.
+This calculus is parameterized by a lattice of labels or grades, which can also be
+thought of as security levels.6 An excerpt of this calculus appears in Figure 1; it
+is an extension of the simply-typed λ-calculus with a grade-indexed modal type
+T𝓁 A. The modal type T𝓁 A can be thought of as putting a security barrier of
+grade 𝓁 around the values of A. The calculus itself is also graded, which means
+that in a typing judgment, the derived term and every variable in the context
+carries a label or grade. (The speciﬁcation of the full system, which includes unit,
+products and sums, appears in the extended version of this paper (Choudhury
+et al., 2022b).)
+3.1 Type System
+The typing judgment has the form Ω⊣ a :𝓁 A which means that “𝓁 is allowed
+to observe a” or that “a is visible at 𝓁”. Selected typing rules for SDC appear in
+Figure 1. Most rules are straightforward and propagate the level of the sub-terms
+to the expression.
+The rule SDC-V arrequires that the grade of the variable in the context
+must be less than or equal to the grade of the observer. In other words, an
+observer at level 𝓁 is allowed to use a variable from level k if and only if k≤𝓁.
+If the variable’s level is too high, then this rule does not apply, ensuring that
+information can always ﬂow to more secure levels but never to less secure ones.
+Abstraction rule SDC-Abs uses the current level of the expression for the newly
+introduced variable in the context. This makes sense because the argument to
+the function is checked at the same level in rule SDC-App.
+The modal type, introduced and eliminated with rule SDC-Return and
+rule SDC-Bind respectively, manipulates the levels. The former says that, if
+a pair having this type is used, not how the bound variable m is used in the body of
+the type.
+6 We use the terms label, level and grade interchangeably.
+A Dependent Dependency Calculus 7
+(Grammar)
+labels 𝓁,k ::=⊥|⊤| k∧𝓁|k∨𝓁|...
+types A , B ::= Unit| A→ B|T 𝓁 A
+terms a , b ::= x|λx : A.a| a b variables and functions
+| η𝓁 a| bind𝓁 x = a in b graded modality
+contextsΩ ::= ∅|Ω, x :𝓁 A
+Ω⊣ a :𝓁 A (Typing rules)
+SDC-V ar
+𝓁0≤𝓁 x :𝓁0 A∈Ω
+Ω⊣ x :𝓁 A
+SDC-Abs
+Ω, x :𝓁 A⊣ b :𝓁 B
+Ω⊣ λx : A.b :𝓁 A→ B
+SDC-App
+Ω⊣ b :𝓁 A→ B
+Ω⊣ a :𝓁 A
+Ω⊣ b a :𝓁 B
+SDC-Return
+Ω⊣ a :𝓁∨𝓁0 A
+Ω⊣ η𝓁0 a :𝓁 T 𝓁0 A
+SDC-Bind
+Ω⊣ a :𝓁 T 𝓁0 A
+Ω, x :𝓁∨𝓁0 A⊣ b :𝓁 B
+Ω⊣ bind𝓁0 x = a in b :𝓁 B
+a ; a′ (Small step)
+SDCStep-Beta
+(λx :𝓁 A.a) b𝓁 ; a{b/x}
+SDCStep-BindBeta
+bind𝓁 x =η𝓁 a in b ; b{a/x}
+Fig. 1. Simple Dependency Calculus (Excerpt)
+a term is ( 𝓁∨𝓁0)-secure, then we can put it in an 𝓁0-secure box and release
+it at level 𝓁. An 𝓁0-secure boxed term can be unboxed only by someone who
+has security clearance for 𝓁0, as we see in the latter rule. The join operation in
+rule SDC-Bind ensures that b can depend on a only if b itself is 𝓁0-secure or
+𝓁0≤𝓁.
+3.2 Meta-theoretic Properties
+This type system satisﬁes the following properties related to levels.
+First, we can always weaken our assumptions about the variables in the
+context. If a term is derivable with an assumption held at some grade, then that
+term is also derivable with that assumption held at any lower grade. Below, for
+any two contextsΩ1,Ω 2, we say that Ω1≤Ω2 iﬀ they are the same modulo the
+grades and further, for any x, if x :𝓁1 A∈Ω1 and x :𝓁2 A∈Ω2, then 𝓁1≤𝓁2.
+Lemma 1 (Narrowing). If Ω′⊣ a :𝓁 A and Ω≤Ω′, then Ω⊣ a :𝓁 A.
+Narrowing says that we can always downgrade any variable in the context.
+Conversely, we cannot upgrade context variables in general, but we can upgrade
+them to the level of the judgment.
+Lemma 2 (Restricted Upgrading). If Ω1, x :𝓁0 A,Ω 2⊣ b :𝓁 B and 𝓁1≤ 𝓁,
+then Ω1, x :𝓁0∨𝓁1 A,Ω 2⊣ b :𝓁 B.
+8 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+The restricted upgrading lemma is needed to show subsumption. Subsump-
+tion states that, if a term is visible at some grade, then it is also visible at all
+higher grades.
+Lemma 3 (Subsumption). If Ω⊣ a :𝓁 A and 𝓁≤k, then Ω⊣ a :k A.
+Subsumption is necessary (along with a standard weakening lemma) to show
+that substitution holds for this language. For substitution, we need to ensure
+that the level of the variable matches up with that of the substituted expression.
+Lemma 4 (Substitution). If Ω1, x :𝓁0 A,Ω 2⊣ b :𝓁 B and Ω1⊣ a :𝓁0 A, then
+Ω1,Ω 2⊣ b{a/x} :𝓁 B.
+SDC terms are reduced using a call-by-name strategy. An excerpt of the
+small-step semantics appears in Figure 1. Note how the labels on the introduction
+form and the corresponding elimination form match up in rules SDCStep-Beta
+and SDCStep-BindBeta. Further, note that we could have also used a call-by-
+value strategy to reduce SDC terms; we chose a call-by-name strategy because
+our development is motivated by potential applications in Haskell.
+For a call-by-name operational semantics, the above lemmas allow us to
+prove, a standard progress and preservation based type soundness result, which
+we omit here.
+Next, we show that our type system is secure by proving non-interference.
+3.3 A Syntactic Proof of Non-interference
+When users with low-security clearance are oblivious to high-security data, we
+say that the system enjoys non-interference. Non-interference results from level-
+speciﬁc views of the world. The values ηH T rueandηH F alseappear the same
+to an L-user while an H-user can diﬀerentiate between them. To capture this
+notion of a level-speciﬁc view, we design an indexed equivalence relation on open
+terms,∼𝓁, called indexed indistinguishability, and shown in Figure 2. To deﬁne
+this relation, we need the labels of the variables in the context but not their
+types. So, we use grade-only contexts Φ, deﬁned as Φ ::= ∅| Φ, x : 𝓁. These
+contexts are like graded contexts Ω without the type information on variables,
+also denoted by|Ω|.
+Informally,Φ⊣ a∼𝓁 b means that a and b appear the same to an 𝓁-user. For
+example, ηH T rue∼L ηH F alsebut¬(ηH T rue∼H ηH F alse). We deﬁne this
+relation∼𝓁 by structural induction on terms. We think of terms as ASTs anno-
+tated at various nodes with labels, say 𝓁0, that determine whether an observer
+𝓁 is allowed to look at the corresponding sub-tree. If 𝓁0≤𝓁, then observer 𝓁 can
+start exploring the sub-tree; otherwise the entire sub-tree appears as a blob. So
+we can also read Φ⊣ a∼𝓁 b as: “a is syntactically equal to b at all parts of the
+terms marked with any label 𝓁0, where 𝓁0≤𝓁, but may be arbitrarily diﬀerent
+elsewhere.”
+A Dependent Dependency Calculus 9
+Φ⊣ a∼𝓁 b (Indexed Indistinguishability)
+SGEq-V ar
+x :𝓁0 inΦ 𝓁 0≤𝓁
+Φ⊣ x∼𝓁 x
+SGEq-Abs
+Φ, x :𝓁⊣ b1∼𝓁 b2
+Φ⊣λx : A.b1∼𝓁 λx : A.b2
+SGEq-App
+Φ⊣ b1∼𝓁 b2
+Φ⊣ a1∼𝓁 a2
+Φ⊣ b1 a1∼𝓁 b2 a2
+SGEq-Return
+Φ⊣𝓁0
+𝓁 a1∼ a2
+Φ⊣η𝓁0 a1∼𝓁 η𝓁0 a2
+SGEq-Bind
+Φ⊣ a1∼𝓁 a2
+Φ, x :𝓁0∨𝓁⊣ b1∼𝓁 b2
+Φ⊣ bind𝓁0 x = a1 in b1∼𝓁 bind𝓁0 x = a2 in b2
+Φ⊣𝓁0
+𝓁 a1∼ a2
+SEq-Leq
+𝓁0≤𝓁 Φ ⊣ a1∼𝓁 a2
+Φ⊣𝓁0
+𝓁 a1∼ a2
+SEq-Nleq
+¬(𝓁0≤𝓁)
+Φ⊣𝓁0
+𝓁 a1∼ a2
+Fig. 2. Indexed indistiguishability for SDC (Excerpt)
+Note the rule SGEq-Return in Figure 2. It uses an auxiliary relation,Φ⊣𝓁0
+𝓁
+a1∼ a2. This auxiliary extended equivalence relation Φ⊣𝓁0
+𝓁 a1∼ a2 formalizes
+the idea discussed above: if 𝓁0≤𝓁, then a1 and a2 must be indistinguishable at
+𝓁; otherwise, they may be arbitrary terms.
+Now, we explore some properties of the indistinguishability relation. 7
+If we remove the second component from an indistinguishability relation, Φ⊣
+a∼𝓁 b, we get a new judgment, Φ⊣ a : 𝓁, called grading judgment. Now, cor-
+responding to every indistinguishability rule, we deﬁne a grading rule where the
+indistinguishability judgments have been replaced with their grading counter-
+parts. Terms derived using these grading rules are called well-graded. We can
+show that well-typed terms are well-graded.
+Lemma 5 (Typing implies grading). If Ω⊣ a :𝓁 A then|Ω|⊣ a :𝓁.
+Lemma 6 (Equivalence). Indexed indistinguishability at 𝓁 is an equivalence
+relation on well-graded terms at 𝓁.
+The above lemma shows that indistinguishability is an equivalence relation.
+Observe that at the highest element of the lattice,⊤, this equivalence degenerates
+to the identity relation.
+Indistinguishability is closed under extended equivalence. The following is like a
+substitution lemma for the relation.
+7 Because this relation is untyped, its analogue for DDC is similar. For each lemma
+below, we include a reference to the location in the Coq development where it may
+10 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+Lemma 7 (Indistinguishability under substitution). If Φ, x :𝓁⊣ b1∼k b2
+and Φ⊣𝓁
+k a1∼ a2 then Φ⊣ b1{a1/x}∼ k b2{a2/x}.
+With regard to the above lemma, consider the situation when ¬(𝓁≤k), for
+example, when 𝓁 = H and k = L. In such a situation, for any two terms a1
+and a2, if Φ, x :𝓁⊣ b1∼k b2, then Φ⊣ b1{a1/x}∼ k b2{a2/x}. Let us work out
+a concrete example. For a typing derivation x :H A⊣ b :L Bool, we have, by
+lemmas 5 and 6, x :H⊣ b∼L b. Then, ∅⊣ b{a1/x}∼ L b{a2/x}. This is almost
+non-interference in action. What’s left to show is that the indistinguishability
+relation respects the small step semantics, written a1 ; a2. The small-step
+relation is standard call-by-name reduction.
+Theorem 1 (Non-interference). If Φ⊣ a1∼k a′
+1 and a 1 ; a2 then there
+exists some a′
+2 such that a′
+1 ; a′
+2 and Φ⊣ a2∼k a′
+2.
+Since the step relation is deterministic, in the above lemma, there is exactly
+one such a′
+2 that a′
+1 steps to. Now, going back to our last example, we see that
+b{a1/x} and b{a2/x} take steps in tandem and they are L-indistinguishable
+after each and every step. Since the language itself is terminating, both the terms
+reduce to boolean values, values that are themselves L-indistinguishable as well.
+But the indistinguishability for boolean values is just the identity relation. This
+means that b{a1/x} and b{a2/x} reduce to the same value.
+The indistinguishability relation gives us a syntactic method of proving non-
+interference for programs derived in SDC. Essentially, we show that a user with
+low-security clearance cannot distinguish between high security values just by
+observing program behavior.
+Next, we show that SDC is no less expressive than the terminating fragment of
+DCC.
+3.4 Relation with Sealing Calculus and Dependency Core Calculus
+SDC is extremely similar to the sealing calculus λ[] of Shikuma and Igarashi
+(2006). Like SDC, λ[] has a label on the typing judgment. 8 But unlike SDC, λ[]
+uses standard ungraded typing contextsΓ . Both the calculi have the same types.
+As far as terms are concerned, there is only one diﬀerence. The sealing calculus
+has an unseal term whereas SDC uses bind. We present the rules for sealing
+and unsealing terms in λ[] below.9
+Sealing-Seal
+Γ⊣ a :𝓁∨𝓁0 A
+Γ⊣η𝓁0 a :𝓁 T𝓁0 A
+Sealing-Unseal
+Γ⊣ a :𝓁 T𝓁0 A
+𝓁0≤𝓁
+Γ⊣ unseal𝓁0a :𝓁 A
+be found for the dependent system.
+8 Note that our labels correspond to observer levels of Shikuma and Igarashi (2006),
+which can be viewed as a lattice.
+9 We take the liberty of making small cosmetic changes in the presentation.
+A Dependent Dependency Calculus 11
+Shikuma and Igarashi (2006) have shown that λ[] is equivalent to DCC pc,
+an extension of the terminating fragment of DCC. Therefore, we compare SDC
+to DCC by simulating λ[] in SDC. For this, we deﬁne a translation ¯·, from λ[]
+to SDC. Most of the cases are handled inductively in a straightforward manner.
+For unseal, we have, unseal𝓁a := bind𝓁 x = a in x.
+With this translation, we can give a forward and a backward simulation
+connecting the two languages. The reduction relation ; below is full reduction
+for both the languages, the reduction strategy used by Shikuma and Igarashi
+(2006) for λ[]. Full reduction is a non-deterministic reduction strategy whereby
+a β-redex in any sub-term may be reduced.
+Theorem 2 (F orward Simulation). If a ; a′ in λ[], then a ; a′ in SDC.
+Theorem 3 (Backward Simulation). For any term a in λ[], if a ; b in
+SDC, then there exists a ′ in λ[] such that b = a′ and a ; a′.
+The translation also preserves typing. In fact, a source term and its target
+have the same type. Below, for an ordinary context Γ , the graded context Γ𝓁
+denotes Γ with the labels for all the variables set to 𝓁.
+Theorem 4 (T ranslation Preserves Typing). If Γ⊣ a :𝓁 A, then Γ𝓁⊣ a :𝓁
+A.
+The above translation shows that the terminating fragment of DCC can be
+embedded into SDC. Therefore SDC is at least as expressive as the terminating
+fragment of DCC. Further, SDC lends itself nicely to syntactic proof techniques
+for non-interference. This approach generalizes to more expressive systems, as
+we shall see in the next section, where we extend SDC to a general dependent
+dependency calculus.
+4 A Dependent Dependency Analyzing Calculus
+a, A, b, B ::= s| unit| Unit sorts and unit
+| Πx :𝓁 A.B| x|λx :𝓁 A.a| a b 𝓁 dependent functions
+| Σx:𝓁A.B| (a 𝓁, b)| let (x 𝓁, y) = a in b dependent pairs
+| A + B| inj1 a| inj2 a| case a of b1; b2 disjoint unions
+Fig. 3. Dependent Dependency Calculus Grammar (Types and Terms)
+Here and in the next section, we present dependently-typed languages, with
+dependency analysis in the style of SDC. The ﬁrst extension, called DDC⊤ is a
+straightforward integration of labels and dependent types. This system subsumes
+12 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+SDC, and so can be used for the same purposes. Here, we show how it can be used
+to analyze run-time irrelevance. Then, in Section 5, we generalize this system to
+DDC, which allows deﬁnitional equality to ignore unnecessary sub-terms, thus
+also enabling compile-time irrelevance. We present the system in this way both
+to simplify the presentation and to show that DDC⊤ is an intermediate point
+in the design space.
+Both DDC⊤ and DDC are pure type systems (Barendregt, 1993). They share
+the same syntax, shown in Figure 3, combining terms and types into the same
+grammar. They are parameterized by a set of sorts s, a set of axioms A(s1, s2)
+which is a binary relation on sorts, and a set of rules R(s1, s2, s3) which is a
+ternary relation on sorts. For simplicity, we assume, without loss of generality,
+that for every sort s1, there is some sort s2, such thatA(s1, s2).10
+We annotate several syntactic forms with grades for dependency analysis. The
+dependent function type, written Πx :𝓁 A.B, includes the grade of the argument
+to a function having this type. Similarly, the dependent pair type, written Σx:𝓁
+A.B, includes the grade of the ﬁrst component of a pair having this type. 11
+We can interpret these types as a fusion of the usual, ungraded dependent types
+and the graded modality T𝓁 A we saw earlier. In other words, Πx :𝓁 A.B acts
+like the type Πy : (T𝓁 A).bind x = y in B and Σx :𝓁 A.B acts like the type
+Σy : (T𝓁 A).bind x = y in B. Because of this fusion, we do not need to add the
+graded modality type as a separate form—we can deﬁne T𝓁 A as Σx:𝓁A.Unit.
+Using Πx :𝓁 A.B instead of Πy : (T𝓁 A).bind x = y in B has an advantage: the
+former allows x to be held at diﬀering grades while type checking B and the
+body of a function having this Π-type while the latter requires x to be held at
+the same grade in both the cases. We utilize this ﬂexibility in Section 5.
+4.1 DDC ⊤ : Π-types
+The core typing rules for DDC⊤ appear in Figure 4. As in the simple type sys-
+tem, the variables in the context are labelled and the judgement itself includes
+a label 𝓁. Rule DCT-V aris similar to its counterpart in the simply-typed lan-
+guage: the variable being observed must be graded less than or equal to the level
+of the observer. Rule DCT-Pi propagates the level of the expression to the sub-
+terms of the Π-type. Note that this type is annotated with an arbitrary label
+𝓁0: the purpose of this label 𝓁0 is to denote the level at which the argument to
+a function having this type may be used.
+In rule DCT-Abs, the parameter of the function is introduced into the con-
+text at level 𝓁0∨𝓁 (akin to rule SDC-Bind). In rule DCT-App, the argument
+10 This assumption does not lead to any loss in generality because given a pure type
+system ( S′, A′, R′) that does not meet the above condition, we can provide an-
+other pure type system ( S′′, A′′, R′′), where S′′ = S′∪{ D} (given D /∈ S′) and
+A′′ = A′∪{ (s, D)|s∈ S′′} and R′′ = R′, such that there exists a straightforward
+bisimulation between the two systems.
+11 We use standard abbreviations whenx is not free inB: we write 𝓁A→ B forΠx :𝓁 A.B
+and 𝓁A× B for Σx:𝓁A.B.
+A Dependent Dependency Calculus 13
+Ω⊣ a :𝓁 A (Typing)
+DCT-V ar
+𝓁0≤𝓁 x :𝓁0 A∈Ω
+Ω⊣ x :𝓁 A
+DCT-Type
+A(s1, s2)
+Ω⊣ s1 :𝓁 s2
+DCT-Pi
+Ω⊣ A :𝓁 s1
+Ω, x :𝓁 A⊣ B :𝓁 s2 R(s1, s2, s3)
+Ω⊣Πx :𝓁0 A.B :𝓁 s3
+DCT-Abs
+Ω, x :𝓁0∨𝓁 A⊣ b :𝓁 B
+Ω⊣ (Πx :𝓁0 A.B) :⊤ s
+Ω⊣λx :𝓁0 A.b :𝓁 Πx :𝓁0 A.B
+DCT-App
+Ω⊣ b :𝓁 Πx :𝓁0 A.B
+Ω⊣ a :𝓁0∨𝓁 A
+Ω⊣ b a 𝓁0 :𝓁 B{a/x}
+DCT-Conv
+Ω⊣ a :𝓁 A
+|Ω|⊣ A≡⊤ B
+Ω⊣ B :⊤ s
+Ω⊣ a :𝓁 B
+Fig. 4. DDC⊤ type system (core rules)
+to the function is checked at level 𝓁0∨𝓁 (akin to rule SDC-Return). Note that
+theΠ-type is checked at⊤ in rule DCT-Abs. In DDC⊤, level⊤ corresponds to
+‘compile time’ observers and motivates the superscript⊤ in the language name.
+Rule DCT-Conv converts the type of an expression to an equivalent type.
+The judgment |Ω|⊣ A≡⊤ B is a label-indexed deﬁnitional equality relation
+instantiated to⊤. This relation is the closure of the indexed indistinguishability
+relation (Section 3.3) under small-step call-by-name evaluation. When instanti-
+ated to⊤, the relation degenerates to β-equivalence. So the rule DCT-Conv is
+essentially casting a term to a β-equivalent type; however, in the next section,
+we utilize the ﬂexibility of label-indexing to cast a term to a type that may not
+be β-equivalent. Also, note that the equality relation itself is untyped. As such,
+we need the third premise to guarantee that the new type is well-formed.
+4.2 DDC ⊤ : Σ-types
+The language DDC⊤ includes Σ types, as speciﬁed by the rules below.
+DCT-WSigma
+Ω⊣ A :𝓁 s1
+Ω, x :𝓁 A⊣ B :𝓁 s2 R(s1, s2, s3)
+Ω⊣Σx:𝓁0A.B :𝓁 s3
+DCT-WPair
+Ω⊣ a :𝓁0∨𝓁 A
+Ω⊣ b :𝓁 B{a/x} Ω⊣Σx:𝓁0A.B :⊤ s
+Ω⊣ (a𝓁0, b) :𝓁 Σx:𝓁0A.B
+LikeΠ-types, Σ-types include a grade that is not related to how the bound
+variable is used in the body of the type. The grade indicates the level at which
+the ﬁrst component of a pair having the Σ-type may be used. In rule DCT-
+WPair, we check the ﬁrst component a of the pair at a level raised by 𝓁0, the
+level annotating the type, akin to rule SDC-Return. The second component b
+is checked at the current level.
+14 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+DCT-LetPair
+Ω⊣ a :𝓁 Σx:𝓁0A.B
+Ω, x :𝓁0∨𝓁 A, y :𝓁 B⊣ c :𝓁 C{(x𝓁0, y)/z} Ω, z :⊤ (Σx:𝓁0A.B)⊣ C :⊤ s
+Ω⊣ let (x𝓁0, y) = a in c :𝓁 C{a/z}
+The rule DCT-LetPair eliminates pairs using dependently-typed pattern
+matching. The pattern variables x and y are introduced into the context while
+checking the body c. Akin to rule SDC-Bind, the level of the ﬁrst pattern
+variable, x, is raised by 𝓁0. The result type C is reﬁned by the pattern match,
+informing the type system that the pattern ( x𝓁0, y) is equal to the scrutinee a.
+Because of this reﬁnement in the result type, we can deﬁne the projection
+operations through pattern matching. In particular, the ﬁrst projection,π𝓁0
+1 a :=
+let (x𝓁0, y) = a in x while the second projection,π𝓁0
+2 a := let (x𝓁0, y) = a in y.
+These projections can be type checked according to the following derived rules:
+DCT-Proj1
+Ω⊣ a :𝓁 Σx:𝓁0A.B 𝓁0≤𝓁
+Ω⊣π𝓁0
+1 a :𝓁 A
+DCT-Proj2
+Ω⊣ a :𝓁 Σx:𝓁0A.B
+Ω⊣π𝓁0
+2 a :𝓁 B{π𝓁0
+1 a/x}
+Note that the derived rule DCT-Proj1 limits access to the ﬁrst component
+through the premise𝓁0≤𝓁, akin to rule Sealing-Unseal. This condition makes
+sense because it aligns the observability of the ﬁrst component of the pair with
+the label on the Σ-type.
+4.3 Embedding SDC into DDC ⊤
+Here, we show how to embed SDC into DDC⊤.
+We deﬁne a translation function, ·, that takes the types and terms in SDC
+to terms in DDC⊤. For types, the translation is deﬁned as: A→ B :=⊥A→ B,
+A× B :=⊥A×B andT𝓁 A :=Σx:𝓁A.Unit. For terms, the translation is straight-
+forward except for the following cases:η𝓁 a := (a
+𝓁
+, unit) and bind𝓁 x = a in b :=
+let (x𝓁, y) = a in b, where y is a fresh variable. By lifting the translation to
+contexts, we show that translation preserves typing.
+Theorem 5 (T rans. Preserves Typing). If Ω⊣ a :𝓁 A, then Ω⊣ a :𝓁 A.
+Next, assuming a standard call-by-name small-step semantics for both the
+languages, we can provide a bisimulation.
+Theorem 6 (F orward Simulation). If a ; a′ in SDC, then a ; a′ in
+DDC⊤.
+Theorem 7 (Backward Simulation). For any term a in SDC, if a ; b in
+DDC⊤, then there exists a ′ in SDC such that b = a′ and a ; a′.
+Hence, SDC can be embedded into DDC⊤, preserving meaning. As such,
+DDC⊤ can analyze dependencies in general.
+A Dependent Dependency Calculus 15
+4.4 Run-time Irrelevance
+Next, we show how to track run-time irrelevance using DDC⊤. We use the two
+element lattice{⊥,⊤} with⊥ <⊤ such that⊥ and⊤ correspond to run-time
+relevant and run-time irrelevant terms respectively. So, we need to erase terms
+marked with⊤. However, we ﬁrst deﬁne a general indexed erasure function,⌊·⌋𝓁,
+on DDC⊤ terms, that erases everything an𝓁-user should not be able to see. The
+function is deﬁned by straightforward recursion in most cases. For example,
+⌊x⌋𝓁 := x and⌊Πx :𝓁0 A.B⌋𝓁 :=Πx :𝓁0⌊A⌋𝓁.⌊B⌋𝓁 and⌊λ𝓁0x.b⌋𝓁 :=λ𝓁0x.⌊b⌋𝓁.
+The interesting cases are:
+⌊b a𝓁0⌋𝓁 := (⌊b⌋𝓁⌊a⌋𝓁0
+𝓁 ) if 𝓁0≤𝓁 and (⌊b⌋𝓁 unit𝓁0) otherwise,
+⌊(a𝓁0, b)⌋𝓁 := (⌊a⌋𝓁0
+𝓁 ,⌊b⌋𝓁) if 𝓁0≤𝓁 and (unit𝓁0,⌊b⌋𝓁) otherwise.
+They are so deﬁned because if ¬(𝓁0≤𝓁), an 𝓁-user should not be able to see a,
+so we replace it with unit.
+This erasure function is closely related to the indistinguishability relation,
+we saw in Section 3.3, extended to a dependent setting. (This deﬁnition appears
+in the extended version of this paper (Choudhury et al., 2022b).) The erasure
+function maps the equivalence classes formed by the indistinguishability relation
+to their respective canonical elements. We have veriﬁed the following lemmas
+using the Coq proof assistant. Footnotes mark the ﬁle and lemma name of the
+corresponding mechanized results.
+Lemma 8 (Canonical Element 12). If Φ⊣ a1∼𝓁 a2, then⌊a1⌋𝓁 =⌊a2⌋𝓁.
+Further, a well-graded term and its erasure are indistinguishable.
+Lemma 9 (Erasure Indistinguishability 13). If Φ⊣ a : 𝓁, then Φ⊣ a ∼𝓁
+⌊a⌋𝓁.
+Next, we can show that erased terms simulate the reduction behavior of their
+unerased counterparts.
+Lemma 10 (Erasure Simulation 14). If Φ⊣ a : 𝓁 and a ; b, then ⌊a⌋𝓁 ;
+⌊b⌋𝓁. Otherwise, if a is a value, then so is ⌊a⌋𝓁.
+This lemma follows from Lemma 9 and the non-interference theorem (Theo-
+rem 1). Therefore, it is safe to erase, before run time, all sub-terms marked with
+⊤.
+This shows that we can correctly analyze run-time irrelevance using DDC⊤.
+However, supporting compile-time irrelevance requires some changes to the sys-
+tem. We take them up in the next section.
+12 erasure.v:Canonical element. 13 erasure.v:Erasure Indistinguishability
+14 erasure.v:Step erasure,Value erasure
+16 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+5 DDC: Run-time and Compile-time Irrelevance
+5.1 T owards Compile-time Irrelevance
+Recall that terms which may be safely ignored while checking for type equality
+are said to be compile-time irrelevant. In DDC⊤, the conversion rule DCT-
+Conv checks for type equality at⊤.
+DCT-Conv
+Ω⊣ a :𝓁 A |Ω|⊣ A≡⊤ B Ω⊣ B :⊤ s
+Ω⊣ a :𝓁 B
+The equality judgment used in this rule Φ⊣ a≡⊤ b is an instantiation of the
+general judgment Φ⊣ a≡𝓁 b, which is the closure of the indistinguishability re-
+lation at𝓁 underβ-equivalence. When𝓁 is⊤, indistinguishability is just identity.
+As such, the equality relation at ⊤ degenerates to standard β-equivalence. So,
+rule DCT-Conv does not ignore any part of the terms when checking for type
+equality.
+To support compile-time irrelevance then, we need the conversion rule to
+use equality at some grade strictly less than ⊤ so that⊤-marked terms may be
+ignored. For the irrelevance latticeLI, the level C can be used for this purpose.
+For any other lattice L, we can add two new elements, C and⊤, above every
+other existing element, such thatL<C <⊤, and thereafter use level C for this
+purpose. So, for any lattice, we can support compile-time irrelevance by equating
+types at C.
+Referring back to the examples in Section 2.2, note that for phantom :
+Nat⊤ -> Type , we have phantom 0⊤≡C phantom 1⊤. With this equality, we can
+type-check idp : phantom 0 ⊤ -> phantom 1 ⊤ = λ x. x , even without knowing
+the deﬁnition of phantom.
+Now, observe that in rule DCT-Conv, the new type B is also checked at
+⊤. If we want to check for type equality at C, we need to make sure that the
+types themselves are checked at C. However, checking types at C would rule
+out variables marked at⊤ from appearing in them. This would restrict us from
+expressing many examples, including the polymorphic identity function.
+To move out of this impasse, we take inspiration from EPTS (Mishra-Linger
+and Sheard, 2008; Mishra-Linger, 2008). The key idea, adapted from Mishra-
+Linger and Sheard (2008), is to use a judgment of the form C∧Ω⊣ a :C A
+instead of a judgment of the form Ω⊣ a :⊤ A. The operation C∧Ω takes the
+point-wise meet of the labels in the context Ω with C, essentially reducing any
+label marked as ⊤ to C, making it available for use in a C-expression. This
+operation, called truncation, makes ⊤ marked variables available at C. Other
+systems also use similar mechanisms for tracking irrelevance — for example,
+we can see a relation between this idea and analogous ones in Pfenning (2001)
+and Abel and Scherer (2012). In these systems, “context resurrection” operation
+makes proof variables and irrelevant variables in the context available for use,
+similar to how C∧Ω makes⊤-marked variables in the context available for use.
+A Dependent Dependency Calculus 17
+5.2 DDC: Basics
+Next, we design a general dependency analyzing calculus, DDC, that takes ad-
+vantage of compile-time irrelevance in its type system. DDC is a generalization
+of DDC⊤ and EPTS• (Mishra-Linger and Sheard, 2008). When C equals⊤,
+DDC degenerates to DDC⊤, that does not use compile-time irrelevance. When
+C equals⊥, DDC degenerates to EPTS•, that identiﬁes compile-time and run-
+time irrelevance. A crucial distinction between EPTS • and DDC is that while
+the former is tied to a two element lattice, the latter can use any lattice. Thus,
+not only can DDC distinguish between run-time and compile-time irrelevance,
+but also it can simultaneously track other dependencies.
+Ω⊣ a :𝓁 A ( DDC core typing rules)
+T-V ar
+𝓁0≤𝓁
+x :𝓁0 A∈Ω 𝓁 ≤C
+Ω⊣ x :𝓁 A
+T-Type
+𝓁≤C A(s1, s2)
+Ω⊣ s1 :𝓁 s2
+T-Pi
+Ω⊣ A :𝓁 s1
+Ω, x :𝓁 A⊣ B :𝓁 s2
+R(s1, s2, s3)
+Ω⊣Πx :𝓁0 A.B :𝓁 s3
+T-AbsC
+Ω, x :𝓁0∨𝓁 A⊣ b :𝓁 B
+Ω ⊩ (Πx :𝓁0 A.B) :⊤ s
+Ω⊣λx :𝓁0 A.b :𝓁 Πx :𝓁0 A.B
+T-AppC
+Ω⊣ b :𝓁 Πx :𝓁0 A.B
+Ω ⊩ a :𝓁0∨𝓁 A
+Ω⊣ b a 𝓁0 :𝓁 B{a/x}
+T-ConvC
+Ω⊣ a :𝓁 A
+|C∧Ω|⊣ A≡C B
+Ω ⊩ B :⊤ s
+Ω⊣ a :𝓁 B
+Ω ⊩ a :𝓁 A (Truncate at⊤)
+CT-Leq
+Ω⊣ a :𝓁 A 𝓁≤C
+Ω ⊩ a :𝓁 A
+CT-Top
+C∧Ω⊣ a :C A C <𝓁
+Ω ⊩ a :𝓁 A
+Fig. 5. Dependent type system with compile-time irrelevance (core rules)
+The core typing rules of DDC appear in Figure 5. Compared to DDC⊤,
+this type system maintains the invariant that for any Ω ⊣ a :𝓁 A, we have
+𝓁≤ C. To ensure that this is the case, rule T-Type and rule T-V arinclude
+this precondition. This restriction means that we cannot really derive any term
+at⊤ in DDC. We can get around this restriction by deriving C∧Ω⊣ a :C A in
+place of Ω⊣ a :⊤ A.
+Wherever DDC⊤ uses⊤ as the observer level on a typing judgment, DDC
+uses truncation and level C instead. If DDC⊤ uses some grade other than ⊤
+as the observer level, DDC leaves the derivation as such. So a DDC⊤ judgment
+18 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+Ω⊣ a :𝓁 A is replaced with a truncated-at-top judgment, Ω ⊩ a :𝓁 A which can
+be read as: if 𝓁 =⊤, use the truncated version C∧Ω⊣ a :C A; otherwise use
+the normal version Ω⊣ a :𝓁 A, as we see in Figure 5. In the typing rules, uses of
+this new judgment have been highlighted in gray to emphasize the modiﬁcation
+with respect to DDC⊤.
+5.3 Π-types
+Rule T-Pi is unchanged. The lambda rule T-AbsC now checks the type at C
+after truncating the variables in the context toC. The application rule T-AppC
+checks the argument using the truncated-at-top judgment. Note that if 𝓁0 =⊤,
+the term a can depend upon any variable in Ω. Such a dependence is allowed
+since information can always ﬂow from relevant to irrelevant contexts.
+To see how irrelevance works in this system, let’s consider the deﬁnition and
+use of the polymorphic identity function.
+id : Π x:⊤Type. x -> x
+id = λ⊤x. λ y. y
+In DDC⊤, the type Π x:⊤Type. x -> x is checked at ⊤. However, here it
+must be checked at level C, which requires the premise x:C Type ⊣ x -> x : C
+Type. Note that if we used the same grade for the bound variable x in rule T-Pi
+and rule T-AbsC, we would have been in trouble because variable x is compile-
+time relevant while we check the type, even though it is irrelevant in the term.15
+Finally, observe that rule T-ConvC uses the deﬁnitional equality at C in-
+stead of⊤ and that the new type is checked after truncation.
+5.4 Σ-types
+T-WPairC
+Ω ⊩ a :𝓁0∨𝓁 A
+Ω⊣ b :𝓁 B{a/x}
+Ω ⊩Σx:𝓁0A.B :⊤ s
+Ω⊣ (a𝓁0, b) :𝓁 Σx:𝓁0A.B
+T-LetPairC
+Ω⊣ a :𝓁 Σx:𝓁0A.B
+Ω, x :𝓁0∨𝓁 A, y :𝓁 B⊣ c :𝓁 C{(x𝓁0, y)/z}
+Ω, z :⊤ (Σx:𝓁0A.B) ⊩ C :⊤ s
+Ω⊣ let (x𝓁0, y) = a in c :𝓁 C{a/z}
+We also need to modify the typing rules forΣ types accordingly. In particular,
+when we create a pair, we check the ﬁrst component using the truncated-at-top
+judgment. This is akin to how we check the argument in ruleT-AppC. Note that
+if 𝓁0 =⊤, the ﬁrst component a is compile-time irrelevant. In such a situation,
+we cannot type-check the second projection since it requires the ﬁrst projection,
+as we see in the derived16 projection rules below. So pairs having type Σx:⊤A.B
+15 This is why we fuse the graded modality with the dependent types. If they were
+separated, and we had to bind here, it would be a problem since a dependent function
+and its type have diﬀerent restrictions vis-` a-vis the bound variable.
+16 strong exists.v:T wproj1,T wproj2
+A Dependent Dependency Calculus 19
+can only be eliminated via pattern matching if B mentions x. However, pairs
+having type Σx:CA.B can be eliminated via projections.
+For example, for an output of the filter function, ys :Σm:C Nat. Vec m Bool ,
+we haveπ1 ys :C Nat andπ2 ys : Vec ( π1 ys) Bool . Note that (π1 ys) is visible
+atC and is used in the type of (π2 ys). We can substitute (π1 ys) for m in (Vec m
+Bool) because m : C Nat ⊣ Vec m Bool :C Type. However, (π1 ys) cannot be used
+at⊥, so it will be erasable then.
+T-Proj1
+Ω⊣ a :𝓁 (x:𝓁0A) &B 𝓁0≤𝓁
+Ω⊣π𝓁0
+1 a :𝓁 A
+T-Proj2C
+Ω⊣ a :𝓁 Σx:𝓁0A.B 𝓁0≤C
+Ω⊣π𝓁0
+2 a :𝓁 B{π𝓁0
+1 a/x}
+5.5 Non-interference
+DDC satisﬁes an analogous noninterference theorem to the one presented for
+SDC, using suitable deﬁnitions for the grading relation, written Φ⊣ a : 𝓁, and
+indexed indistiguishability , written Φ ⊣ b1 ∼𝓁 b2. The complete deﬁnition of
+these judgements appears in the extended version of this paper (Choudhury
+et al., 2022b).
+Lemma 11 (Typing implies grading 17). If Ω⊣ a :𝓁 A then|Ω|⊣ a :𝓁.
+Lemma 12 (Equivalence 18). Indexed indistinguishability at 𝓁 is an equiva-
+lence relation on well-graded terms at 𝓁.
+Lemma 13 (Indistinguishability under substitution 19). IfΦ, x :𝓁⊣ b1∼k
+b2 and Φ⊣𝓁
+k a1∼ a2 then Φ⊣ b1{a1/x}∼ k b2{a2/x}.
+Theorem 8 (Non-interference for DDC 20). If Φ⊣ a1∼k a′
+1 and a 1 ; a2
+then there exists some a ′
+2 such that a′
+1 ; a′
+2 and Φ⊣ a2∼k a′
+2.
+5.6 Consistency of Equality
+The equality relation of DDC incorporates compile-time irrelevance. To show
+that the type system is sound, we need to show that the equality relation is
+consistent. Consistency of deﬁnitional equality means that there is no derivation
+that equates two types having diﬀerent head forms. For example, it should not
+equate Nat with Unit.
+Note that if ⊤ inputs can interfere with C outputs, the equality relation
+cannot be consistent. To see why, let x :⊤ A⊣ b :C Bool and for a1, a2 :A, let
+the terms b{a1/x} and b{a2/x} reduce to T rueand F alserespectively. Now,
+(λ⊤x.if b then Nat else Unit) a1⊤≡C (λ⊤x.if b then Nat else Unit) a2⊤. But
+then, by β-equivalence Nat≡C Unit.
+17 typing.v:Typing Grade 18 geq.v:GEq refl,GEq symmetry,GEq trans
+19 subst.v:CEq GEq equality substitution 20 geq.v:CEq GEq respects Step
+20 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+To prove consistency, we construct a standard parallel reduction relation
+and show that this relation is conﬂuent. Thereafter, we prove that if two terms
+are deﬁnitionally equal at 𝓁, then they are joinable at 𝓁, meaning they reduce,
+through parallel reduction, to two terms that are indistinguishable at 𝓁. Next,
+we show that joinability at 𝓁 implies consistency. Therefore, we conclude that
+for any 𝓁, the equality relation at 𝓁 is consistent. This implies that the equality
+relation at C, that ignores sub-terms marked with ⊤, is sound. Hence, DDC
+tracks compile-time irrelevance correctly. Note that DDC can track run-time
+irrelevance the same way as DDC⊤.
+We formally state consistency in terms of head forms , i.e. syntactic forms
+that correspond to types such as sorts s, Unit, Πx :𝓁 A.B, etc.
+Theorem 9 (Consistency 21). IfΦ⊣ a≡𝓁 b, and a and b both are head forms,
+then they have the same head form.
+5.7 Soundness theorem
+DDC is type sound and we have checked this and other results using the Coq
+proof assistant. Below, we give an overview of the important lemmas in this
+development.
+The properties below are stated for DDC, but they also apply to DDC⊤
+since DDC degenerates to DDC⊤ whenever C =⊤. First, we list the proper-
+ties related to grading that hold for all judgments: indexed indistinguishability,
+deﬁnitional equality, and typing. (We only state the lemmas for typing, their
+counterparts are analogous.) These lemmas are similar to their simply-typed
+counterparts in Section 3.2.
+Lemma 14 (Narrowing 22). If Ω⊣ a :𝓁 A and Ω′≤Ω, then Ω′⊣ a :𝓁 A
+Lemma 15 (W eakening 23). If Ω1,Ω 2⊣ a :𝓁 A then Ω1,Ω,Ω 2⊣ a :𝓁 A.
+Lemma 16 (Restricted upgrading 24). If Ω1, x :𝓁0 A,Ω 2⊣ b :𝓁 B and 𝓁1≤𝓁
+then Ω1, x :𝓁0∨𝓁1 A,Ω 2⊣ b :𝓁 B.
+Next, we list some properties that are speciﬁc to the typing judgment. For
+any typing judgment in DDC, the observer grade 𝓁 is at most C. Further, the
+observer grade of any judgment can be raised up to C.
+Lemma 17 (Bounded by C 25). If Ω⊣ a :𝓁 A then 𝓁≤C.
+Lemma 18 (Subsumption 26). If Ω ⊣ a :𝓁 A and 𝓁≤ k and k ≤ C then
+Ω⊣ a :k A
+21 consist.v:DefEq Consistent 22 narrowing.v:Typing narrowing
+23 weakening.v:Typing weakening 24 pumping.v:Typing pumping
+25 pumping.v:Typing leq C 26 typing.v:Typing subsumption
+A Dependent Dependency Calculus 21
+Note that we don’t require contexts to be well-formed in the typing judgment;
+we add context well-formedness constraints, as required, to our lemmas. The
+following lemmas are true for well-formed contexts. A context Ω is well-formed,
+expressed as⊣Ω, iﬀ for any assumption x :𝓁 A inΩ, we haveΩ′ ⊩ A :⊤ s, where
+Ω′ is the preﬁx of Ω that appears before the assumption.
+Lemma 19 (Substitution 27). If Ω1, x :𝓁0 A,Ω 2⊣ b :𝓁 B and ⊣ Ω1 and Ω1 ⊩
+a :𝓁0 A then Ω1,Ω 2{a/x}⊣ b{a/x} :𝓁 B{a/x}
+Next, if a term is well-typed in our system, the type itself is also well-typed.
+Lemma 20 (Regularity 28). If Ω⊣ a :𝓁 A and⊣Ω then Ω ⊩ A :⊤ s.
+Finally, we have the two main lemmas proving type soundness.
+Lemma 21 (Preservation 29). If Ω ⊣ a :𝓁 A and ⊣ Ω and a ; a′, then
+Ω⊣ a′ :𝓁 A.
+Lemma 22 (Progress 30). If ∅⊣ a :𝓁 A then either a is a value or there exists
+some a′ such that a ; a′.
+Hence, DDC is type sound. We have seen earlier that it tracks run-time and
+compile-time irrelevance correctly.
+DDC is parameterized by a generic pure type system and a generic lattice.
+When the parameterizing pure type system is strongly normalizing, such as the
+Calculus of Constructions, type-checking is decidable. In the next section, we
+provide a demonstration.
+6 Type Checking
+As a pure type system, not all instances of DDC admit decidable type checking.
+For example, in the presence of the type:type axiom, the system includes non-
+terminating computations via Girard’s paradox. As as a result, we cannot decide
+equality in that system, so type checking will be undecidable. However, if the
+sorts, axioms and rules are chosen such that the language is strongly normaliz-
+ing, then we can deﬁne a decidable type checking algorithm. This algorithm is
+standard, but relies on a decision procedure for the equality judgement.
+Our consistency proof, described in Section 5.6, gives us a start. This proof
+uses an auxiliary binary relation called joinability, which holds when two terms
+can use multiple steps of parallel reduction to reach two simpler terms that
+diﬀer only in their unobservable components. Joinability and deﬁnitional equality
+induce the same relation on DDC terms. We can show that two DDC terms
+are deﬁnitionally equal if and only if they are joinable 31, which means that a
+27 typing.v:Typing substitution CTyping 28 typing.v:Typing regularity
+29 typing.v:Typing preservation 30 progress.v:Typing progress
+31 consist.v:DefEq Joins,Joins DefEq
+22 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+decision procedure based on joinability will be sound and complete for DDC’s
+labeled deﬁnition of equivalence.
+Therefore, the decidability of type checking reduces to showing strong nor-
+malization. If we select the sorts, axioms and rules of DDC to match those of the
+Calculus of Constructions (Barendregt, 1993), we believe that this result holds,
+but leave a direct proof for future work. However, by translating this instance of
+DDC to ICC∗, we can show that a sublanguage of this instance is strongly nor-
+malizing. ICC∗ (Barras and Bernardo, 2008), is a version of the Implicit Calculus
+of Constructions with annotations that support decidable type checking, but be-
+cause it includes only (relevant and irrelevant) Π-types, so we must restrict our
+attention to the corresponding fragment of DDC.
+We deﬁne the following translation, written ~·, that converts DDC terms to
+ICC∗ terms. The key parts of this translation map arguments labeled C and
+below to relevant arguments, and those labeled greater than C, such as ⊤, to
+irrelevant arguments.32
+~x = x ~s = s ~Πx :𝓁 A.B =
+{
+Π(x : ~A). ~B if𝓁≤C
+Π[x : ~A]. ~B otherwise
+~λx :𝓁 A.b =
+{
+λ(x : ~A).~b if𝓁≤C
+λ[x : ~A].~b otherwise
+~b a𝓁 =
+{~b (~a) if 𝓁≤C
+~b [~a] otherwise
+Note that ICC∗ compares terms for equality after an erasure operation, writ-
+ten·∗, that removes all irrelevant arguments. Now, we can show that the above
+translation preserves deﬁnitional equality and typing. Here, ~Ω denotes Ω with
+the labels at the variable bindings omitted.
+Lemma 23 (T ranslation preservation). If Φ⊣ A≡C B, then ~A∗∼=βη ~B∗.
+If Ω⊣ a :𝓁 A, then ~Ω⊣ ~a : ~A.
+Next, observe that because β-reductions are preserved by the translation, any
+parallel reduction in DDC between terms a and b at levelC, where a⁄= b, would
+correspond to a sequence of reduction steps ~a→+
+βie
+~b in ICC∗. That means that
+an inﬁnite sequence of parallel reductions a0, a1, . . . , where each term diﬀers
+from the previous, corresponds to an inﬁnite sequence of reductions ~a0, ~a1 . . . in
+ICC∗. Therefore, as all well-typed ICC∗ terms are strongly normalizing, we can
+conclude that this is so for this instance of DDC.
+Non-terminating instances of DDC. For pure type systems that are not strongly
+normalizing, such as the type:type language, there is an alternative approach
+to developing a calculus with decidable type checking, following Weirich et al.
+(2017). The key idea is to develop an annotated version of DDC that book-keeps
+32 The syntax of ICC ∗ uses parentheses to indicate usual (relevant) arguments and
+square brackets to indicate arguments that are irrelevant at both run time and
+compile time.
+A Dependent Dependency Calculus 23
+additional information from typing and equality derivations. In such an anno-
+tated version, the conversion rule would include an explicit coercion annotation
+that witnesses the equality between the concerned types, thus avoiding the need
+for normalization.
+7 Discussions and Related Work
+7.1 Irrelevance in Dependent Type Theories
+Overall, compile-time and run-time irrelevance is a well-studied topic in the
+design of dependent type systems. In some systems, the focus is only on support
+for run-time irrelevance: see McBride (2016); Atkey (2018); Brady (2021); Miquel
+(2001); Mishra-Linger and Sheard (2008); Tejiˇ sˇ c´ ak (2020). In other systems,
+the focus is on compile-time irrelevance: see Pfenning (2001); Abel and Scherer
+(2012). Some systems support both, but require them to overlap, such as Barras
+and Bernardo (2008); Mishra-Linger (2008); Weirich et al. (2017); Nuyts and
+Devriese (2018). The system of Moon et al. (2021) does not require them to
+overlap but their type system does not make use of compile-time irrelevance in
+the conversion rule.
+To compare, systemDDC⊤, presented here, can support run-time irrelevance
+only and is similar to the core language of Tejiˇ sˇ c´ ak (2020). However, note that
+DDC⊤ can track dependencies in general while the system in Tejiˇ sˇ c´ ak (2020)
+tracks run-time irrelevance alone. DDC, on the other hand, is the only system
+that we are aware of that tracks run-time and compile-time irrelevance separately
+and makes use of the latter in the conversion rule. Further, DDC tracks these
+irrelevances in the presence of strong Σ-types with erasable ﬁrst components,
+something which, to the best of our knowledge, no prior work has been able to.
+Prior work has identiﬁed the diﬃculty in handling strong Σ-types with
+erasable ﬁrst components in a setting that tracks compile-time irrelevance. Abel
+and Scherer (2012) point out that strong irrelevant Σ-types make their theory
+inconsistent. Similarly, EPTS• (Mishra-Linger, 2008) cannot deﬁne the projec-
+tions for pairs having such Σ-types. The reason behind this is that EPTS • is
+hard-wired to work with a two-element lattice which identiﬁes compile-time and
+run-time irrelevance. As such, projections from such pairs lead to type unsound-
+ness. For example, considering the ﬁrst components to be run-time irrelevant,
+the pairs ( Int, unit) and ( Bool, unit) are run-time equivalent. Since EPTS •
+identiﬁes run-time and compile-time irrelevance, these pairs are also compile-
+time equivalent. Then, taking the ﬁrst projections of these pairs, one ends up
+with Int and Bool being compile-time equivalent. We resolve this problem by
+distinguishing between run-time and compile-time irrelevance, thus requiring a
+lattice with three elements.
+Next, we compare our work with existing literature with respect to the equal-
+ity relation. We analyze compile-time irrelevance to enable the equality relation
+to ignore unnecessary sub-terms. However, since our equality relation is untyped,
+we cannot include type-dependent rules in our system, such as η-equivalence for
+24 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+the Unit type. Several prior works on irrelevance (Miquel, 2001; Barras and
+Bernardo, 2008; Mishra-Linger, 2008; Tejiˇ sˇ c´ ak, 2020) use an untyped equality
+relation. However, some prior work, such as Pfenning (2001); Abel and Scherer
+(2012), do consider compile-time irrelevance in the context of typed-directed
+equality. But such systems require irrelevant arguments to functions appear only
+irrelevantly in the codomain type of the function, thus ruling out several exam-
+ples including the polymorphic identity function.
+7.2 Quantitative Type Systems
+Our work is closely related to quantitative type systems (Petricek et al., 2014;
+Ghica and Smith, 2014; Brunel et al., 2014; McBride, 2016; Atkey, 2018; Orchard
+et al., 2019; Abel and Bernardy, 2020; Choudhury et al., 2021; Moon et al., 2021).
+Such systems provide a ﬁne-grained accounting of coeﬀects, viewed as resources,
+for example, variable usage, linearity, liveness, etc. A typical judgment from a
+quantitative type system (Choudhury et al., 2021) may look like:
+x :1 Bool, y :1 Int, z :0 Bool⊣ ifx theny + 1 elsey− 1 : 1 Int
+The variable x is used once in the condition, the variable y is used once in each
+of the branches while the variable z is not used at all. As such, they are marked
+with these quantities in the context.
+This form of judgment is very similar to our typing judgments with quantities
+appearing in place of levels. However, there is a crucial diﬀerence: to the right of
+the turnstile, while any level may appear in our judgments, only the quantity 1
+can appear in typing judgments of quantitative systems. A quantitative system
+that allows an arbitrary quantity to the right of the turnstile is not closed under
+substitution (McBride, 2016; Atkey, 2018). As such, quantitative systems are tied
+to a ﬁxed reference while our systems can view programs from diﬀerent reference
+levels. This diﬀerence in form results from the diﬀerence in the purposes the two
+kinds of systems serve: quantitative systems count while our systems compare.
+Counting requires a ﬁxed standard or reference whereas comparison does not.
+Applications that require counting, like linearity tracking, are handled well by
+quantitative systems while applications that require comparison, like ensuring
+secure information ﬂow, are handled well by systems of our kind.
+From a type-theoretic standpoint, in general, quantitative systems cannot
+eliminate pairs through projections. This is so because there is no general way
+to split the resources of the context that type-checks a pair. Eliminating pairs
+through projections is straightforward in our systems because the grade on the
+typing judgment can control where the projections are visible.
+7.3 Dependency Analysis and Dependent Type Theory
+Dependency analysis and dependent type theories have come together in some
+existing work.
+A Dependent Dependency Calculus 25
+Like our system, Prost (2000) extends theλ-cube so that it may track depen-
+dencies. However, unlike our system, this work uses sorts to track dependencies.
+It is inspired by the distinction between sorts in the Calculus of Constructions
+where computationally relevant and irrelevant terms live in sorts Set and Prop
+respectively. As Mishra-Linger (2008) points out, such an approach ties up two
+distinct language features, sorts and dependency analysis, which can be treated
+in a more orthogonal manner.
+Bernardy and Guilhem (2013) is very related to our work. They use colors
+to erase terms while we use grades. Colors and grades both form a lattice struc-
+ture and their usage in the respective type systems are quite similar. However,
+Bernardy and Guilhem (2013) use internalized parametricity to reason about
+erasure; so it is important that their type theory is logically consistent. Our
+work does not rely on the normalizing nature of the theory; we take a direct
+route to analyzing erasure.
+Like our work, Louren¸ co and Caires (2015) track information ﬂow in a de-
+pendent type system. But Louren¸ co and Caires (2015) focus on more imperative
+features, like modeling of state while we focus on irrelevance. A distinguishing
+feature of their system is that they allow security labels to depend upon terms,
+something that we don’t attempt here.
+8 Conclusion
+We started with the aim of designing a dependent calculus that can analyze
+dependencies in general, and run-time and compile-time irrelevance in partic-
+ular. Towards this end, we designed a simple dependency calculus, SDC, and
+then extended it to two dependent calculi, DDC⊤ and DDC. DDC⊤ can track
+run-time irrelevance while DDC can track both run-time and compile-time irrel-
+evance along with other dependencies.
+In future, we would like to explore how irrelevance interacts with other de-
+pendencies. We also want to explore whether our systems can be integrated with
+existing graded type systems, especially quantitative type systems. Yet another
+interesting direction for research is that how they compare with graded eﬀect
+systems.
+Our work lies in the intersection of dependency analysis and irrelevance track-
+ing in dependent type systems. Both these areas have rich literature of their
+own. We hope that the connections established in this paper will be mutually
+beneﬁcial and help in the future exploration of dependencies and irrelevance in
+dependent type systems.
+9 Acknowledgments
+The ﬁrst two authors were supported by the National Science Foundation under
+Grant Nos. 1703835 and 1521539. The second author was supported by the
+National Science Foundation under Grant No. 2104535.
+Bibliography
+Abadi, M., Banerjee, A., Heintze, N., Riecke, J.G.: A core calculus of depen-
+dency. In: Proceedings of the 26th ACM SIGPLAN-SIGACT Symposium on
+Principles of Programming Languages, p. 147–160, POPL ’99, Association
+for Computing Machinery, New York, NY, USA (1999), ISBN 1581130953,
+https://doi.org/10.1145/292540.292555
+Abel, A., Bernardy, J.P.: A uniﬁed view of modalities in type systems. Proc.
+ACM Program. Lang. 4(ICFP) (Aug 2020), https://doi.org/10.1145/3408972
+Abel, A., Scherer, G.: On irrelevance and algorithmic equality in predica-
+tive type theory. Logical Methods in Computer Science 8(1) (mar 2012),
+https://doi.org/10.2168/lmcs-8(1:29)2012
+Atkey, R.: Syntax and semantics of quantitative type theory. In: Proceedings of
+the 33rd Annual ACM/IEEE Symposium on Logic in Computer Science, p.
+56–65, LICS ’18, Association for Computing Machinery, New York, NY, USA
+(2018), ISBN 9781450355834, https://doi.org/10.1145/3209108.3209189
+Barendregt, H.P.: Lambda Calculi with Types, p. 117–309. Oxford University
+Press, Inc., USA (1993), ISBN 0198537611
+Barras, B., Bernardo, B.: The implicit calculus of constructions as a program-
+ming language with dependent types. In: Amadio, R. (ed.) Foundations of
+Software Science and Computational Structures, pp. 365–379, FOSSACS 2008,
+Springer Berlin Heidelberg, Budapest, Hungary (2008)
+Bernardy, J.P., Guilhem, M.: Type-theory in color. SIGPLAN Not. 48(9), 61–72
+(Sep 2013), ISSN 0362-1340, https://doi.org/10.1145/2544174.2500577
+Brady, E.: Idris 2: Quantitative Type Theory in Practice. In: Møller, A.,
+Sridharan, M. (eds.) 35th European Conference on Object-Oriented Pro-
+gramming (ECOOP 2021), Leibniz International Proceedings in Informatics
+(LIPIcs), vol. 194, pp. 9:1–9:26, Schloss Dagstuhl – Leibniz-Zentrum f¨ ur Infor-
+matik, Dagstuhl, Germany (2021), ISBN 978-3-95977-190-0, ISSN 1868-8969,
+https://doi.org/10.4230/LIPIcs.ECOOP.2021.9
+Brunel, A., Gaboardi, M., Mazza, D., Zdancewic, S.: A core quantitative coeﬀect
+calculus. In: Shao, Z. (ed.) Programming Languages and Systems, pp. 351–370,
+Springer Berlin Heidelberg, Berlin, Heidelberg (2014)
+Choudhury, P., Eades III, H., Eisenberg, R.A., Weirich, S.: A graded depen-
+dent type system with a usage-aware semantics. Proc. ACM Program. Lang.
+5(POPL) (Jan 2021), https://doi.org/10.1145/3434331
+Choudhury, P., Eades III, H., Weirich, S.: Artifact associated with ”A Dependent
+Dependency Calculus” (Jan 2022a), https://doi.org/10.5281/zenodo.5903726
+Choudhury, P., Eades III, H., Weirich, S.: A dependent dependency calculus
+(extended version) (2022b), URL https://arxiv.org/abs/2201.11040
+Denning, D.E.: A lattice model of secure information ﬂow. Commun. ACM19(5),
+236–243 (May 1976), ISSN 0001-0782, https://doi.org/10.1145/360051.360056
+Eisenberg, R.A., Duboc, G., Weirich, S., Lee, D.: An existential crisis resolved:
+Type inference for ﬁrst-class existential types. Proc. ACM Program. Lang.
+A Dependent Dependency Calculus 27
+5(ICFP) (Aug 2021), URL https://richarde.dev/papers/2021/exists/
+exists.pdf
+Ghica, D.R., Smith, A.I.: Bounded linear types in a resource semiring. In: Eu-
+ropean Symposium on Programming Languages and Systems, pp. 331–350,
+Springer (2014)
+Heintze, N., Riecke, J.G.: The slam calculus: Programming with secrecy and
+integrity. In: Proceedings of the 25th ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, p. 365–377, POPL ’98, Association
+for Computing Machinery, New York, NY, USA (1998), ISBN 0897919793,
+https://doi.org/10.1145/268946.268976
+Louren¸ co, L., Caires, L.: Dependent information ﬂow types. In: Proceed-
+ings of the 42nd Annual ACM SIGPLAN-SIGACT Symposium on Prin-
+ciples of Programming Languages, p. 317–328, POPL ’15, Association for
+Computing Machinery, New York, NY, USA (2015), ISBN 9781450333009,
+https://doi.org/10.1145/2676726.2676994
+McBride, C.: I Got Plenty o’ Nuttin’, pp. 207–233. Springer International Pub-
+lishing, Cham (2016)
+Miquel, A.: The implicit calculus of constructions extending pure type systems
+with an intersection type binder and subtyping. In: Abramsky, S. (ed.) Typed
+Lambda Calculi and Applications, pp. 344–359, Springer Berlin Heidelberg,
+Berlin, Heidelberg (2001), ISBN 978-3-540-45413-7
+Mishra-Linger, N., Sheard, T.: Erasure and polymorphism in pure type systems.
+In: Proceedings of the Theory and Practice of Software, 11th International
+Conference on Foundations of Software Science and Computational Struc-
+tures, p. 350–364, FOSSACS’08/ETAPS’08, Springer-Verlag, Berlin, Heidel-
+berg (2008), ISBN 3540784977
+Mishra-Linger, R.N.: Irrelevance, Polymorphism, and Erasure in Type Theory.
+Ph.D. thesis, Portland State University, Department of Computer Science
+(2008), https://doi.org/10.15760/etd.2669
+Moggi, E.: Notions of computation and monads. Information and Computation
+93(1), 55–92 (1991), ISSN 0890-5401, URL https://www.sciencedirect.
+com/science/article/pii/0890540191900524, selections from 1989 IEEE
+Symposium on Logic in Computer Science
+Moon, B., Eades III, H., Orchard, D.: Graded modal dependent type theory. In:
+Yoshida, N. (ed.) Programming Languages and Systems, pp. 462–490, Springer
+International Publishing, Cham (2021), ISBN 978-3-030-72019-3
+Nuyts, A., Devriese, D.: Degrees of relatedness: A uniﬁed framework for para-
+metricity, irrelevance, ad hoc polymorphism, intersections, unions and al-
+gebra in dependent type theory. In: Dawar, A., Gr¨ adel, E. (eds.) Proceed-
+ings of the 33rd Annual ACM/IEEE Symposium on Logic in Computer Sci-
+ence, LICS 2018, Oxford, UK, July 09-12, 2018, pp. 779–788, ACM (2018),
+https://doi.org/10.1145/3209108.3209119, URL https://doi.org/10.1145/
+3209108
+Orchard, D., Liepelt, V.B., Eades III, H.: Quantitative program reasoning
+with graded modal types. Proc. ACM Program. Lang. 3(ICFP) (Jul 2019),
+https://doi.org/10.1145/3341714
+28 Pritam Choudhury, Harley Eades III, and Stephanie Weirich
+Petricek, T., Orchard, D., Mycroft, A.: Coeﬀects: A calculus of context-
+dependent computation. In: Proceedings of International Conference on Func-
+tional Programming, ICFP 2014 (2014)
+Pfenning, F.: Intensionality, extensionality, and proof irrelevance in modal type
+theory. In: Proceedings of the 16th Annual IEEE Symposium on Logic in Com-
+puter Science, pp. 221–, LICS ’01, IEEE Computer Society, Washington, DC,
+USA (2001), URL http://dl.acm.org/citation.cfm?id=871816.871845
+Prost, F.: A static calculus of dependencies for the λ-cube. In:
+Proceedings Fifteenth Annual IEEE Symposium on Logic in
+Computer Science (Cat. No.99CB36332), pp. 267–276 (2000),
+https://doi.org/10.1109/LICS.2000.855775
+Shikuma, N., Igarashi, A.: Proving noninterference by a fully complete transla-
+tion to the simply typed λ-calculus. In: Proceedings of the 11th Asian Com-
+puting Science Conference on Advances in Computer Science: Secure Software
+and Related Issues, p. 301–315, ASIAN’06, Springer-Verlag, Berlin, Heidelberg
+(2006), ISBN 3540775048
+Smith, G., Volpano, D.: Secure information ﬂow in a multi-threaded imperative
+language. In: Proceedings of the 25th ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, p. 355–364, POPL ’98, Association
+for Computing Machinery, New York, NY, USA (1998), ISBN 0897919793,
+https://doi.org/10.1145/268946.268975
+Sulzmann, M., Chakravarty, M.M.T., Jones, S.P., Donnelly, K.: System f with
+type equality coercions. In: Proceedings of the 2007 ACM SIGPLAN Inter-
+national Workshop on Types in Languages Design and Implementation, p.
+53–66, TLDI ’07, Association for Computing Machinery, New York, NY, USA
+(2007), ISBN 159593393X, https://doi.org/10.1145/1190315.1190324
+Tejiˇ sˇ c´ ak, M.: A dependently typed calculus with pattern matching and
+erasure inference. Proc. ACM Program. Lang. 4(ICFP) (Aug 2020),
+https://doi.org/10.1145/3408973
+Thiemann, P.: A uniﬁed framework for binding-time analysis. In: Proceedings of
+the 7th International Joint Conference CAAP/FASE on Theory and Practice
+of Software Development, p. 742–756, TAPSOFT ’97, Springer-Verlag, Berlin,
+Heidelberg (1997), ISBN 3540627812
+Tip, F.: A survey of program slicing techniques. Journal of Programming Lan-
+guages 3 (1995)
+Weirich, S., Voizard, A., de Amorim, P.H.A., Eisenberg, R.A.: A speciﬁcation for
+dependent types in Haskell. Proc. ACM Program. Lang. 1(ICFP), 31:1–31:29
+(Aug 2017), ISSN 2475-1421, https://doi.org/10.1145/3110275
+Open Access This chapter is licensed under the terms of the Creative Commons
+Attribution 4.0 International License ( http://creativecommons.org/licenses/by/
+4.0/), which permits use, sharing, adaptation, distribution and reproduction in any
+medium or format, as long as you give appropriate credit to the original author(s) and
+the source, provide a link to the Creative Commons license and indicate if changes
+were made.
+A Dependent Dependency Calculus 29
+The images or other third party material in this chapter are included in the chapter’s
+Creative Commons license, unless indicated otherwise in a credit line to the material. If
+material is not included in the chapter’s Creative Commons license and your intended
+use is not permitted by statutory regulation or exceeds the permitted use, you will need
+to obtain permission directly from the copyright holder.
