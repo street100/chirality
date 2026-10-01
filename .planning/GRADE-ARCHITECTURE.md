@@ -42,6 +42,13 @@ queued. A decision note comes after the research below lands.
 > mathmatically are guaranteed able to solve everything below logic issues
 > which is hefty"
 
+> "i want to clarify i meant specifically doesnt compile unless error handled,
+> feedback is great even if tests arent thorough (because tests should be for
+> logic bugs anyway and we neee a specific different realm of thinking outside
+> of this to consider how to require meaningful logical tests as far as coverage
+> can be spread by humans and machines over time), and error handling is made
+> more convenient/straightforward for all cases we can detect"
+
 ## The model as stated
 
 | layer | is | today's nearest home |
@@ -122,6 +129,23 @@ extern refusal is flattened to text on the shipping path
 ([[bug-classes]], *A typed refusal is flattened on the shipping path*), so the
 feedback the author describes is designed and not yet delivered.
 
+**The author's requirement, 2026-10-01: a program does not compile unless every
+detectable error is handled, and handling is made convenient.** Three
+mechanisms meet it, and the first two are basic-semiring properties, so they
+hold in a helper that mentions no other pattern:
+
+| mechanism | what it refuses | state |
+|---|---|---|
+| an error result is linear: its error arm carries quantity 1 | dropping a result unconsumed, through `r-usage` | the usage rule is ENFORCED for binders; no carrier is declared linear, and `errors-as-values` states no requirement that a result cannot be dropped |
+| a case over a result is exhaustive | ignoring one error arm, through `jg-nonexhaustive` | ENFORCED |
+| a failure that crosses a boundary sits in the effect row, and the row is discharged by a handler before the profile boundary | an alarm that reaches `main` unhandled | the row is `enforcement/N25`, designed; handlers are E26's |
+
+Convenience is P4's: `bind` and `map-err` as declared combinators
+(`errors-as-values` requirement 1), handlers that keep the plumbing out of the
+body, and a refusal that names the missing arms with evidence (goal condition
+2). Tests stay with logic, and how a program's logic tests are required is
+recorded as territory nobody has ruled on, `records/lenses/unspoken.md` UNS-52.
+
 **What the mathematics guarantees, and what it does not.** A checker can be made
 sound for each class, so that it accepts no program with the failure. It cannot
 in general be complete as well: any non-trivial semantic property is
@@ -189,6 +213,7 @@ is what the row is checked as.
 | G2 | `research` FD-65: do published capability-safe type systems carry authority as a grade or coeffect, how attenuation, delegation and revocation map onto semiring operations, and whether any separates grade algebra, interpretation and runtime enforcement as layers | G1, since both append to `records/findings.md` |
 | G3 | a decision note on the frozen factor set and the three layers, for the author's ruling | G1, G2 |
 | G4 | the primitive outline, which the author asked to continue: every prelude primitive and extern with its pattern signature (basic only, or which patterns it mentions), its failure modes (bounds, zero divisor, overflow, junk parse) and what it does today on each, and the row that owns it. `enforcement/N20`'s census (E198) and [[bug-classes]] supply most of the rows; `.planning/PRIMITIVES-FOR-NATIVE-TOOLS.md` and `.planning/LANGUAGE-INVENTORY.md` are read first | nothing |
+| G5 | a [[bug-classes]] row for an error result discarded unhandled, and the requirement it owes in [[arcs/errors-as-values-arc]]: a declared carrier whose error arm is linear, so a dropped result does not compile | the rescoping |
 
 ## Rejected
 
