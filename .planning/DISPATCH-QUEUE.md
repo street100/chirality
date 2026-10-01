@@ -205,7 +205,8 @@ need first. In order, each with what it unblocks.
    class, `:540` and `:541` gate `N15`, `:542` gates `N16`. `:85` needs a clerical
    close. Two author-only calls the screen counted went unnamed and are
    screened again before the batch.
-4. **The grade factor set, `G2` then `G3` in `.planning/GRADE-ARCHITECTURE.md`.**
+4. ⚑ *Ruled 2026-10-01: `G2` is FD-65, and `G3` is ruled as recommended in [[records/author-calls]]. The decision note under `docs/decisions/` is owed before `N30` and `N25` are designed.*
+   **The grade factor set, `G2` then `G3` in `.planning/GRADE-ARCHITECTURE.md`.**
    `enforcement/N30` (`E38`) locks the factor list and `N25` gives the effect
    row; both read as provisional until the factor-set decision says whether
    authority and binding time are factors and what the row is checked as. The
