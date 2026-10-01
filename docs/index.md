@@ -118,7 +118,9 @@ allocator at scale; the native suite's own wall clock), see
   [[decision-formulation-distinctness]] (what makes two judges distinct enough
   that their agreement is evidence: formulation differs, closure is disjoint
   against the subject, the builder predates the artifact. A draft awaiting the
-  author)
+  author),
+  [[decision-full-enforcement]] (the enforcement goal claims every obligation
+  the principles imply, at ENFORCED or with its row saying why)
 - Trust discipline: [[certificate-discipline]] (trusted checker, untrusted producers
   — how a socket checks what plugs into it: re-run the work, do not spot-check) and
   [[split-role]] (where proof runs out, the split as a tiered substrate-provided role
