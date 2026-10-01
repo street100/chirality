@@ -1430,3 +1430,59 @@
 - checked:  2026-09-30
 - owner:    `checker-core/CK20`, unminted, homed 2026-09-30 by `records/checker-core.md` CK-05. Every linear handle (`Backend` and the other linear porttypes) can be used twice through a returned closure until it is fixed. ⚑ Corrected 2026-09-30: `memory-discipline/M8` now carries an unrestricted region handle under `M9`'s seal, so neither waits on this row
 - from:     none
+
+### PRB-102 the reader accepts bidirectional controls, invisible characters and confusable letters in source
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    lib/surface/sexp.chiral, the byte-directed reader
+- claim:    [[goals/readable-surface]] condition 4 asks that one shape carry one meaning at the surface, and [[goals/enforcement]] claims every failure class the principles imply. A source file whose displayed text differs from its parsed text breaks both, and it is the published Trojan Source class (CVE-2021-42574).
+- measured: **2026-10-01, four one-line probes through `bin/chirality run`, all over `(import "prelude/prelude")`.** A comment holding U+202E and U+2066 compiles and runs (exit 3). A string literal holding U+202E compiles and runs (exit 7). A def named with a Cyrillic U+0430 in place of a Latin a, `(def vаl (-> I64 I64) (lam (x) x))`, compiles, runs and is called under that name (exit 4), so two definitions can read identically and be distinct. A zero-width space glued to `+` is refused as `unknown name +` followed by the invisible character, so the refusal names a symbol the reader sees as defined.
+- evidence: re-runnable: the four programs above, each one def `compile-main` of type `(=> I64 I64)`. `lib/surface/sexp.chiral` holds no check on non-ASCII bytes outside strings (`grep -n 'utf\|ascii' lib/surface/sexp.chiral` returns nothing).
+- checked:  2026-10-01
+- owner:    none. Suggested [[arcs/surface-syntax-arc]], whose G2 is the reader.
+- from:     none
+
+### PRB-103 a reader error names a position in the resolved blob instead of the file the writer wrote
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    lib/surface/sexp.chiral position reporting, as relayed by bin/chirality
+- claim:    `docs/arcs/surface-syntax-arc.md` G2 records the reader as carrying line, column, depth and last-opened form on a failure. A position helps the writer only when it is a position in their file.
+- measured: **2026-10-01: a three-line file missing one close paren reports `load: parse: unclosed ( at 591:48 depth=1`, and with one paren too many `unexpected ) at 591:49 depth=0`.** The file has three lines. Line 591 is a line of the blob the resolver builds from the file and its imports, so the writer is pointed at text they never opened.
+- evidence: re-runnable: `(import "prelude/prelude")`, `(import "ports/ports")`, `(def compile-main (=> I64 I64) (lam (n) (+ n 1))` through `bin/chirality run`.
+- checked:  2026-10-01
+- owner:    none. Suggested [[arcs/diagnostics-arc]].
+- from:     none
+
+### PRB-104 the shipping refusals name neither the definition, the place, nor what was expected
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    the refusal text bin/chirality prints for a def-level refusal
+- claim:    [[goals/readable-surface]] condition 1: a diagnostic tells the reader what to do. [[arcs/errors-as-values-arc]] principle 2: the refusal is the feedback. `r-mismatch` carries `expected` and `actual` terms (`lib/typing/diag.chiral:127`).
+- measured: **2026-10-01, probes through `bin/chirality run`.** `(+ n "five")` prints `load: type mismatch`, with neither type. A two-argument function called with one argument prints the same `type mismatch`. A case over a three-constructor sum missing `blue` prints `non-exhaustive case`, naming neither the function nor `blue`. `(pos -3)` against `(refine I64 (> 0))` prints `cannot prove refinement`. A linear socket left unconsumed and a linear socket closed twice both print `field binder usage mismatch`, so a leak and a double use read the same. `put` without `(import "ports/ports")` prints `unknown name put` with no hint of where it lives. None of the eight carries a line. The one actionable refusal is E171's `effectful application at a pure seat (use => not ->)`.
+- evidence: re-runnable: one-line programs of the shapes above. The flattening that removes the structure is at `lib/surface/parse.chiral:580` and `:673` ([[bug-classes]], *A typed refusal is flattened on the shipping path*).
+- checked:  2026-10-01
+- owner:    `errors-as-values/EV15` for the flattening. The missing names, positions and missing arms have no row; suggested [[arcs/diagnostics-arc]].
+- from:     none
+
+### PRB-105 `do` binds every `<-` linearly and requires every plain step to return Unit, and its refusals name constructs the writer never wrote
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    lib/surface/surface.chiral elab-do
+- claim:    `lib/surface/surface.chiral:265` reads *"do: linear (q=1) let-sequencing. (<- x e) binds; a plain step is let-and-destruct"*. Nothing at the surface says so, and `do` reads as general sequencing.
+- measured: **2026-10-01.** `(do (<- a (+ 3 4)) (put (i64->str a)) (put "\n") 0)` is refused `let binder usage mismatch`: `a` is bound at quantity 1 and passed to `i64->str`, an ordinary function, so an integer bound by `<-` cannot reach a function call. The same body under `let` runs. `(do (report x) (report y))` with `report` returning `I64` is refused `case scrutinee has a non-data type`, because each plain step is cased on `unit`. The writer wrote no `let` and no `case`, and neither refusal names `do`, `<-` or `a`.
+- evidence: re-runnable: the two programs above over `prelude/prelude` and `ports/ports`. `lib/surface/surface.chiral:265-286`.
+- checked:  2026-10-01
+- owner:    none. Suggested [[arcs/surface-syntax-arc]]: whether `do` is the linear sequencer by design and wants a non-linear sibling, or a general sequencer.
+- from:     none
