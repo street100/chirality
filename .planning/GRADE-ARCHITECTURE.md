@@ -24,6 +24,14 @@ queued. A decision note comes after the research below lands.
 > do the ceremony stuff and the logic carries to extending or making new brokers
 > and extending interpretation"
 
+> "lets continue discussion so this is clear before we do this large rescoping.
+> Like i want to make sure that basic semiring can be used, like if something
+> runs by itself outside of an capability or user model simiring integrate, able
+> to use the basic semiring we have now (because a lot doesnt need the
+> interpretation at primitives right? Just making sure we can code some
+> primitives like ceremony to have full auth and capability semiring but a tiny
+> thing that runs under something with special semiring can just use basic?"
+
 ## The model as stated
 
 | layer | is | today's nearest home |
@@ -56,6 +64,34 @@ audit reconciliation against live state, and grants decided on runtime facts.
 This is `decision-brokers`' own line, *push everything statically decidable into
 the type system* (`docs/decisions/decision-brokers.md:30-31`), carried to the
 invariants the broker currently holds.
+
+## The basic semiring embeds
+
+The author's requirement: code that mentions only usage, the 0/1/ω semiring
+`lib/typing/qtt.chiral:14` holds today, keeps checking unchanged and runs under
+a context with richer patterns. A ceremony primitive declares the full
+authority and capability patterns; a helper it calls declares none of them.
+
+The shape that meets it: a term written against the basic semiring is read in
+the product with every pattern it does not mention left **polymorphic**, taking
+its caller's value, and interpretation fixes each pattern's default.
+
+| pattern | default for a term that does not mention it | why that default |
+|---|---|---|
+| usage | the term's own 0/1/ω | it is the basic semiring |
+| authority | none needed | a term that originates no authority is the pure case; authority it is handed as a parameter it carries and never originates, which is the no-ambient-authority property |
+| information flow | the caller's label | a fixed `public` default would let a basic helper launder a secret it was handed |
+| binding time | either stage | a primitive runs at compile time or run time alike |
+| time, space | inferred, or unbounded where no bound is required | a missing claim is no claim, and a context that requires a bound refuses an unbounded callee |
+
+What this buys: primitives consult no interpretation, since every pattern they
+leave unmentioned is polymorphic; the checker pays for a pattern only where a
+term mentions it; and the 0/1/ω programs in the tree today embed with no change.
+
+The condition it rests on: each pattern needs a default that is safe to assume
+for a term that never mentions it. Information flow shows a fixed default can be
+unsafe, so the default is chosen per pattern in interpretation, and a pattern
+with no safe default makes every term mention it.
 
 ## Extendible with ceremony
 
@@ -98,6 +134,9 @@ is what the row is checked as.
 3. Whether interpretation is in the trusted base, and how small it stays.
 4. How a broker is added: what it must declare against interpretation, and what
    the judgment refuses it.
+5. Whether every pattern admits a safe default, so the basic semiring embeds
+   with the rest polymorphic. Information flow needs the caller's label, never
+   a fixed one. A pattern with no safe default would end the embedding.
 
 ## Queue
 
