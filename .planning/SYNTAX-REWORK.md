@@ -189,28 +189,114 @@ its target) and each element and sub-element inside it are declared positions
 the reader checks. FD-70 asks what the field publishes on keeping a grammar
 small and unambiguous.
 
-## Research in flight
+## What the field documents, landed 2026-10-01
 
-Five `research` runs dispatched 2026-10-01, one finding each, merged serially
-into `records/findings.md`:
+The five runs returned the same day and their rows are in `records/findings.md`
+under *What the field documents about surface syntax, its parser and its
+reader*: 194 pins, every citation resolving. Each row carries its quotes; this
+section carries the conclusions and points at the row.
 
-| id | question |
-|---|---|
-| FD-66 | which defect classes the record attributes to surface syntax, and whether removing the construct removed the class |
-| FD-67 | whether LangSec's design rules for parsers reach a programming language's source reader |
-| FD-68 | whether a complete, implementable policy for Unicode in source exists, and how much of it compilers ship |
-| FD-69 | what controlled evidence says about syntax and readability, s-expressions included |
-| FD-70 | how to specify a grammar provably unambiguous and small with a verifiable parser, and a canonical s-expression form |
+| id | answer in one line | coverage |
+|---|---|---|
+| FD-66 | six defect classes are attributed to C-family syntax, each with its construct (CWE-483, 481, 480, 783, 484, 1007); seven languages removed a construct; no source measures a class disappearing afterwards | taxonomy and compiler mitigations well covered; incidents partly; measurement thin |
+| FD-67 | LangSec's rules (recognize fully first, deterministic context-free or weaker, refuse malformed input, bound depth, size and expansion) are written for protocols and files; no source applies them as a set to a source reader, Lisp's included | protocols and files well covered; source readers thin |
+| FD-68 | Unicode publishes most of a source policy as numbered, selectable requirements with versioned data; compilers each ship a subset, Elixir the nearest whole; what a reader does with an invisible character inside a literal is specified nowhere | identifiers and normalization well covered; bidi display partly; invisible characters in literals thin |
+| FD-69 | controlled syntax studies exist, small and mostly on students in Java, C and Pascal; two headline effects failed replication; no study of any kind compares s-expressions with an alternative | mainstream details partly covered; s-expressions absent |
+| FD-70 | a deterministic grammar class gives unambiguity by construction and a verified parser closes the gap (CompCert C, CakeML); Rivest's s-expressions are RFC 9804 with a two-rule canonical form; nothing measures how small a usable grammar can be | formal results and production practice well covered; size and usability unmeasured |
+
+**Read as a whole.** How to make a reader safe is documented well, in pieces
+nobody has put together for a source reader. How to make a surface readable is
+documented thinly, and for s-expressions against anything else it is not
+measured at all. A rework can therefore build its safety on published rules and
+has to measure any readability claim it makes.
+
+## The reader the five findings support
+
+Each rule is supported by at least one finding, and the rows hold the quotes.
+Together they are a reader specification no single source states.
+
+1. **The reader reads data and runs nothing.** No read-time evaluation, no
+   reader extension chosen from inside the file, no macro expansion in editors
+   over untrusted source. Impossible by construction, since Common Lisp and
+   Clojure guard it with a flag that defaults on (FD-66, FD-67, FD-70).
+2. **The datum grammar is deterministic, LL(1), and checked by a tool.** Every
+   disambiguation sits in a production. There are no precedence declarations,
+   no ordered choice and no rule resolved in prose. Parsing takes no feedback
+   from bindings (FD-67, FD-70).
+3. **Recognize the whole file before anything reads it,** and hand the
+   compiler a type that cannot hold an unread form (FD-67).
+4. **Refuse rather than repair, one spelling per datum.** Numbers carry an
+   explicit radix prefix, and a leading `0` before a digit is refused (FD-66,
+   FD-67, FD-70).
+5. **Bound nesting depth, token length, file size and any expansion,** with a
+   refusal naming the bound. Untrusted symbols stay out of any global
+   intern table (FD-66, FD-67).
+6. **A declared Unicode policy** (FD-68):
+   - name the Unicode version and the UAX #31 requirements met, by number;
+   - identifiers are XID-based under a declared profile with NFC, refusing
+     non-NFC or equating it, and NFKC is avoided;
+   - the twelve `Bidi_Control` code points are refused outside literals and
+     comments, and inside them either when unpaired or always;
+   - invisible characters outside literals are a hard error naming the code
+     point;
+   - UTS #39 Restricted characters and mixed-script identifiers are refused,
+     and confusables are detected by `bidiSkeleton`;
+   - all seven line terminators end a line, or NEL, LS and PS are refused.
+7. **Source equals its canonical print.** One printer driven by the tree, a
+   reader and printer proved inverse in the shape of HOL4's `parse_print`, and
+   indentation that disagrees with the parentheses refused. Columns, where any
+   rule reads them, do not depend on tab width (FD-66, FD-69, FD-70).
+8. **The syntax tree is lossless, with an exact offset in the writer's file on
+   every node** (FD-70). This answers PRB-103.
+9. **Every error state has a message listing what was expected,** and the
+   states are enumerated, as Menhir and CompCert do. Known paren misuse is
+   refused by name (FD-69, FD-70). This answers PRB-104 at the reader.
+10. **Any human notation added over the canonical form maps one to one onto the
+    tree, carries no hidden precedence, and has its readability measured**
+    before a gain is claimed, by PLIERS or Stefik's placebo design (FD-69).
+11. **"No syntax-caused vulnerability" is shown class by class:** a refusal
+    test per named class, since no source measures a class disappearing
+    (FD-66).
+
+**What the sources leave open, and so the author or a measurement settles:**
+what a reader does with U+200B, U+2060, variation selectors or tag characters
+inside a string literal; whether bidi controls in literals are refused when
+unpaired or always; whether a confusable is a warning or an error, and over
+what scope; which bounds a reader carries and their values; whether
+s-expressions read harder or easier than infix or indentation for anyone.
+
+## How the session's read stands against the findings
+
+Dated 2026-10-01, after the five rows landed. The read above stays as given.
+
+- *"S-expressions remove precedence, the dangling `else`, fallthrough, `=` for
+  `==`"*: SRFI-105 drops precedence on purpose, and the rest is the session's
+  inference. FD-66 finds no source measuring any class disappearing for any
+  language. The claim stands by construction only.
+- *"For universal readability, plain s-expressions are a barrier"*: FD-69
+  finds no controlled evidence either way. Every Lisp-family move off
+  parentheses rested on adoption judgment or case study. The claim is the
+  field's folklore and goes unmeasured.
+- *"Source equals its canonical print"*: supported by three rows (FD-66,
+  FD-69, FD-70) and by RFC 9804's canonical form.
+- *"Keep s-expressions canonical and add a projection"*: consistent with every
+  row, and FD-69 attaches a condition, that the projection's readability is
+  measured.
+
+## Next
+
+- A `revisit` of [[arcs/surface-syntax-arc]] against FD-66 to FD-70, folding
+  the reader rules above into its roster as rows, with PRB-102 to PRB-104 as
+  their evidence. Queued as `SR6` in `.planning/DISPATCH-QUEUE.md`.
+- `SY1` goes to the author with the findings behind it.
 
 ## Open
 
 1. `SY1`: graduate the s-expression surface, or add a second notation over the
    same core. The author's.
-2. Whether "source equals its canonical print" becomes a reader rule.
-3. The Unicode policy: which characters a reader accepts in identifiers,
-   strings, comments and whitespace, and what it does with each of the rest.
-4. Whether the surface becomes declared records throughout, per the section
-   above.
+2. The Unicode choices the sources leave open, listed above.
+3. Whether the surface becomes declared records throughout, per the section on
+   the requirements structure.
 
 ## Rejected
 

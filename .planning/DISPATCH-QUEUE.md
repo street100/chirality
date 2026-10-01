@@ -169,6 +169,13 @@ serial cadence above. Each writes pins under its own prefix and its row to the
 session's scratch directory, and the rows are merged into
 `records/findings.md` one at a time.
 
+⚑ *All five landed and merged 2026-10-01 (`38eee3a`, `7099e6a`, `90e17ad`,
+`d56c5aa`, `9af6319`).* Next from them:
+
+| # | run | serves | waits on |
+|---|---|---|---|
+| SR6 | `revisit` [[arcs/surface-syntax-arc]] against FD-66 to FD-70: the eleven reader rules in `.planning/SYNTAX-REWORK.md` §The reader the five findings support become roster rows, PRB-102 to PRB-104 their evidence, and the arc's goal line gains [[goals/enforcement]] condition 1 for the syntax classes | [[goals/readable-surface]] condition 4 | nothing |
+
 ## Held from before the waves
 
 These keep their order and join a wave when their arc's turn comes.
