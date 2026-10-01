@@ -32,6 +32,16 @@ queued. A decision note comes after the research below lands.
 > primitives like ceremony to have full auth and capability semiring but a tiny
 > thing that runs under something with special semiring can just use basic?"
 
+> "Can i also confirm if programming full error handling feedback enough to pre
+> prevent if someone rights a basic one under a specifically capable one and
+> doesnt do anything about what if someone does some shit they cant? We have
+> like. Basically all the information possible in basically all scenarios for a
+> lot of error handling and i need primitives to continue to be outlined"
+
+> "I want it to be kinda hard to be able to get a broken program. P sure we
+> mathmatically are guaranteed able to solve everything below logic issues
+> which is hefty"
+
 ## The model as stated
 
 | layer | is | today's nearest home |
@@ -93,6 +103,39 @@ for a term that never mentions it. Information flow shows a fixed default can be
 unsafe, so the default is chosen per pattern in interpretation, and a pattern
 with no safe default makes every term mention it.
 
+## Where a broken program is stopped
+
+The author's aim is that a broken program is hard to get. Under the patterns,
+a failure lands in one of two places, and neither is a handler the writer can
+forget.
+
+| what goes wrong | where it is stopped | built today |
+|---|---|---|
+| a basic term reaches for authority it was never handed | refused at check: its inferred requirement exceeds its declared one, which is none | the one bit, E171 and E204, Phases 36 and 37; the authority pattern is planned |
+| a term handed a capability does more than the capability allows | refused at check, by subtyping on the narrowed type | the mechanism exists, unwired to grants ([[status-ledger]], the Subtyping row) |
+| a grant is revoked, expires or is denied while the program runs | a typed result the caller must case on, and a missing arm is refused | `jg-nonexhaustive`, ENFORCED; the result carrier is `errors-as-values/EV1` (E202), specced |
+| a one-shot continuation is dropped | refused at check by linearity | planned, `enforcement/N25` |
+
+What the refusal tells the writer is goal condition 2's subject: a judgment with
+evidence naming the right that was missing and where. Today a def, declare or
+extern refusal is flattened to text on the shipping path
+([[bug-classes]], *A typed refusal is flattened on the shipping path*), so the
+feedback the author describes is designed and not yet delivered.
+
+**What the mathematics guarantees, and what it does not.** A checker can be made
+sound for each class, so that it accepts no program with the failure. It cannot
+in general be complete as well: any non-trivial semantic property is
+undecidable, so soundness is bought by restricting the language (total by
+default, bounded refinements), by asking the writer for an annotation or a
+proof, or by refusing some correct programs. P4 names that price as the
+conservative checker's tax (`PRINCIPLES.md:137-142`). Four things stay outside
+the guarantee whatever the language does: a specification that says the wrong
+thing, which is the logic error the author already excludes; the checker's own
+correctness, which `docs/decisions/decision-self-verification.md` makes
+relative and gives to independent judgment cores; channels with no port, such
+as timing and cache (`PRINCIPLES.md:108-111`); and the hardware below the
+floor.
+
 ## Extendible with ceremony
 
 `decision-graded-kernel` froze the factor width so that adding a factor later
@@ -145,6 +188,7 @@ is what the row is checked as.
 | G1 | `research` FD-64, binding time and the lift, with the author's grade strand. **Done 2026-10-01**: every lift surveyed uses a stage marker kept apart from erasure, defined per type and refused at function types and resources; no erasure discipline lets erased data reach run time; no source puts binding time in a grade beside usage counts, and DCC places it beside information flow; the parameter-level marker (Zig `comptime`, Rust const generics) is a smaller complete two-level shape | done |
 | G2 | `research` FD-65: do published capability-safe type systems carry authority as a grade or coeffect, how attenuation, delegation and revocation map onto semiring operations, and whether any separates grade algebra, interpretation and runtime enforcement as layers | G1, since both append to `records/findings.md` |
 | G3 | a decision note on the frozen factor set and the three layers, for the author's ruling | G1, G2 |
+| G4 | the primitive outline, which the author asked to continue: every prelude primitive and extern with its pattern signature (basic only, or which patterns it mentions), its failure modes (bounds, zero divisor, overflow, junk parse) and what it does today on each, and the row that owns it. `enforcement/N20`'s census (E198) and [[bug-classes]] supply most of the rows; `.planning/PRIMITIVES-FOR-NATIVE-TOOLS.md` and `.planning/LANGUAGE-INVENTORY.md` are read first | nothing |
 
 ## Rejected
 
