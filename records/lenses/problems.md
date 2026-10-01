@@ -1486,3 +1486,45 @@
 - checked:  2026-10-01
 - owner:    none. Suggested [[arcs/surface-syntax-arc]]: whether `do` is the linear sequencer by design and wants a non-linear sibling, or a general sequencer.
 - from:     none
+
+### PRB-106 a refinement atom with an operator outside four spellings silently means not-equal
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    lib/module/loader.chiral op->symop
+- claim:    `(refine I64 (= 0))` reads as a type holding zero. The parser accepts any symbol in an atom's operator slot, and the loader maps every operator other than `>=`, `>`, `<=` and `<` to not-equal, so the type holds every value except zero, and a misspelled operator means not-equal too.
+- measured: **2026-10-01.** `(def f (-> (refine I64 (= 0)) I64) (lam (x) x))` checks with the call `(f 5)` and refuses `(f 0)` as `cannot prove refinement`, the reverse of what the type reads as. `op->symop` at `lib/module/loader.chiral:21-25` ends in `(s-ne)` as its fallthrough arm. Found by the form inventory's probes and re-run by hand.
+- evidence: re-runnable: the program above over `prelude/prelude`. `lib/module/loader.chiral:21-25`, `lib/surface/parse.chiral:385-410`.
+- checked:  2026-10-01
+- owner:    none. Suggested [[arcs/checker-core-arc]], with the operator slot as a closed set the parser refuses outside of, per `.planning/FORM-INVENTORY.md`.
+- from:     none
+
+### PRB-107 a `declare` and a later full `def` with a different type both load, and the program crashes where a call was checked against the declared type
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    lib/surface/parse.chiral handle-def4
+- claim:    The checker accepts a program whose run segfaults. A `(declare f (-> I64 I64))` lets an earlier definition call `f` at `I64`, and a later four-item `(def f (-> Str Str) ...)` installs its own type without comparing it to the declared one.
+- measured: **2026-10-01.** The program `(declare f (-> I64 I64))`, `(def g (=> I64 I64) (lam (n) (f 7)))`, `(def f (-> Str Str) (lam (x) (str-cat x "!")))`, `(def compile-main (=> I64 I64) (lam (n) (g 0)))` over `prelude/prelude` and `ports/ports` passes `bin/chirality check` and exits 139 under `bin/chirality run`. `handle-def4` at `lib/surface/parse.chiral:568-583` loads the four-item form through `load-def` with the type it was given; the two-item completion `handle-finish` at `:589-598` is the path that reads the declared type.
+- evidence: re-runnable: the program above. `lib/surface/parse.chiral:568-598`.
+- checked:  2026-10-01
+- owner:    none. Suggested [[arcs/checker-core-arc]]: an accepted program that crashes is the class the checker exists to refuse.
+- from:     none
+
+### PRB-108 an integer literal past the `I64` range wraps silently, under a comment saying the range was validated
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    lib/surface/sexp.chiral digits->i64
+- claim:    `lib/surface/sexp.chiral:128` reads *"is-i64-lit has already validated the range"*. The validator at `:117-124` checks that the bytes are digits with an optional leading `-`, and the fold at `:129-133` multiplies with no bound, so an out-of-range literal becomes a different number.
+- measured: **2026-10-01.** A program printing `(i64->str 99999999999999999999999)` prints `200376420520689663`. Nothing refuses the literal.
+- evidence: re-runnable: the program above over `prelude/prelude` and `ports/ports`. `lib/surface/sexp.chiral:117-133`.
+- checked:  2026-10-01
+- owner:    none. Suggested [[arcs/surface-syntax-arc]]: refuse rather than repair, per FD-66 and FD-70.
+- from:     none
