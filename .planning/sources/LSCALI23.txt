@@ -1,0 +1,784 @@
+         A Survey of Parser Differential Anti-Patterns
+                                Sameed Ali                                              Sean W. Smith
+                    Department of Computer Science                            Department of Computer Science
+                          Dartmouth College                                         Dartmouth College
+                            Hanover, USA                                              Hanover, USA
+                      sameed.ali.gr@dartmouth.edu                                 sws@cs.dartmouth.edu
+
+
+
+
+    Abstract—Parser differentials emerge when two (or more)           known parser differentials that fall under it. Therefore, in our
+parsers interpret the same input in different ways. Differences       analysis, the parser differential vulnerabilities considered in
+in parsing behavior are difficult to detect due to (1) challenges     this paper function as representatives of design anti-patterns
+in abstracting out the parser from complex code-bases and (2)
+proving the equivalence of parsers. Parser differentials remain       that give rise to parser differential vulnerabilities. We have,
+understudied as they are a novel unexpected bug resulting             thus, carried out an analysis of the selected parser differentials
+from the interaction of software components—sometimes even            and isolated their root-cause to demonstrate common patterns
+independent modules—which may individually appear bug-free.           of parser differential vulnerabilities. To our knowledge, this
+    We present a survey of many known parser differentials            is the first contribution in the area of parser differentials that
+and conduct a root-cause analysis of them. We do so with
+an aim to uncover insights on how we can best conceptualize           aims to carry out such an analysis for a broad range of known
+the underlying causes of their emergence. In studying these           parser differentials and provides a categorization to aid our
+differentials, we have isolated certain design anti-patterns that     understanding of parser differentials further.
+give rise to parser differentials in software systems. We show           We hope such an analysis will prove beneficial to re-
+how these differentials do not fit nicely into the state-of-the-art
+                                                                      searchers developing automated tools for detecting parser
+model of parser differentials and thus propose improvements to
+it.                                                                   differentials. In addition, we hope it will function as advice
+    Index Terms—parsing, parser differentials, LangSec                to software engineers and system architects to be aware of
+                                                                      anti-patterns that rise to parser differentials.
+                        I. I NTRODUCTION                                 To this end, we make the following contributions:
+   Parser differentials emerge due to differences in parsing be-         • We present a survey of known parser differentials.
+havior of multiple parsers. Prior literature (e.g. [1]) credits the      • We conduct a root-cause analysis for the parser differen-
+idea to the study by Kaminsky et al of X.509 certificates [2].             tials under consideration to discover why they occurred.
+However, one can dig up earlier examples—e.g., eXtropia                  • We conceptualize the root-causes and discover anti-
+WebStore in 2000 [3] or IE in 2003 [4], and even argue that                patterns that give rise to parser differentials.
+ancient SQL injection vulnerabilities qualify. Subsequent to             • We suggest improvements to the conceptual model of
+the seminal X.509 work, parser differentials have since been               parse tree differential analysis in light of our research.
+discovered in many other places, such as HTTP (e.g. [5]),
+URLs (e.g. [6]), PDF (e.g. [7]) and various other formats                                   II. BACKGROUND
+(e.g. [8–10]). The continued emergence of parser differentials
+                                                                         Software developers and system designers often assume that
+in a wide variety of software demands a thorough study of
+                                                                      input will be formatted correctly, and that parsers for the same
+their underlying causes.
+                                                                      input format will interpret the same input the same way. They
+   Although prior results have demonstrated the existence of
+                                                                      then code as if differences in the interpretation of a file either
+parser differentials, a study to classify them has not yet
+                                                                      do not exist—or if they do exist, then they do not impact the
+been conducted. A study of the root-causes of known parser
+                                                                      safety of the system in a significant way. This assumption
+differentials will help illuminate the common anti-patterns that
+                                                                      was explicitly challenged by the discovery of PKI Layer
+give rise to them. Additionally, it will provide insight for
+                                                                      Cake vulnerabilities [2], where the differences in interpretation
+discovering advanced techniques to detect parser differentials
+                                                                      between parsers was shown to be exploitable. Moreover, it was
+in software systems.
+                                                                      demonstrated that ambiguity in a specification could result in
+   In this study, we do not claim to present an exhaustive
+                                                                      vulnerabilities even among standard-compliant parsers.
+list of all known parser differentials. Instead, we present and
+                                                                         In terms of formal grammars and parsers, one might initially
+categorize a selection of known bugs whose root-cause could
+                                                                      model parser differentials as follows:
+be ascertained with confidence from the publicly available
+information about the vulnerability. Additionally, we have               • Parsers P1 and P2 both accept some input language L.
+
+limited the number of parser differentials per category as our           • For some valid input w ∈ L, P1 and P2 both accept w
+
+goal is to illustrate the underlying reason for the emergence of            but build different parse trees.
+the parser differentials in that category rather than to list all     Throughout the paper, we will revisit and revise this model.
+   These discoveries naturally led to research on determining                   A. Programming Bugs: Overflow, Signed ints, off-by-one er-
+the absence of variations in parsers. Determining the absence                   rors
+of variations required proving the equivalence of the input                       Parser differentials caused by logic bugs in code or pro-
+languages of the parsers under test. Standard results from                      gramming mistakes made by the programmers when writing
+formal language theory (e.g., the computer science view of the                  the parser would fall in this category.
+Chomsky Hierarchy) state that equivalence was only decidable
+for some grammars and not others (although it appears that                            Example 1: Android Master Key Parser Differential 1:
+decidability for deterministic context-free grammars (CFGs)                     Freeman [13] documented a parser differential exploiting the
+was not established [11] until 1997). Sassaman et al [12],                      Android Master Key bug. This parser differential occurred
+therefore, made a proposal for keeping the complexity of                        when the two parsers differed in parsing the local file headers
+input languages within those bounds where the equivalence is                    of the APK archive. The local headers have a structure that is
+decidable namely, deterministic context-free languages. They                    as follows: it begins with a fixed sized header, followed by a
+also proposed a novel method for discovering differences                        name field, followed by an extra header field, followed by the
+among parsers which they called a parse tree differential                       data. The extra header field is of variable length; its length is
+attack. This attack, illustrated in Figure 1, works by giving                   provided in the initial header field. The structure of this header
+two parser implementations of the same format (or protocol)                     (and an example exploit) is shown in Figure 3.
+the same input data and then observing the differences in the                      The Android OS has two parsers for APK files. One of
+generated parse trees. Differences in the generated parse trees                 them, written in C++, is responsible for file extraction. The
+are indicative of potential vulnerabilities.                                    second, written in Java, is responsible for verification.
+                                                                                   If these two parsers differ on interpretation of the data bytes
+                                                                                contained in the archive, the verifier would verify a different
+                                                                                set of bytes from the ones extracted. An attacker can then
+                      Comparision of AST
+                                                                                exploit this difference to provide a benign set of bytes to be
+                                                                                verified and a malicious set of bytes to be extracted.
+                                                                                   The root cause of this parser differential was due to the
+                                                                                verifier reading the length of the extra field erroneously. As
+      Parser 1                                       Parser 2
+                                                                                mentioned earlier, this length value is parsed from the header.
+                                                                                However, the verifier read those bytes as 16-bit signed integers
+                                                                                rather than unsigned ones. Consequently, if a large enough
+         w1                                             w1
+                                                                                value was provided as the extra field’s length, the value read
+                                                                                by the verifier would wrap around and become negative due
+                                                                  Input         to the two’s complement based signed integer representation
+                       w1 , w2 , w3 , w4 ...
+                                                                Language        of Java. The verifier would, thus, miscalculate the start of the
+                                                                                data bytes.
+                                                                                   Figure 3 shows how the two parsers view the same file
+Fig. 1. A parse tree differential analysis involves comparing the parse trees   differently. It shows how if the value of the extra length field
+generated from the parsers for differences.                                     is read as negative three by the verifier, it results in the data
+                                                                                bytes starting from a different position than that of the other
+                                                                                parser.
+                           III. C ATEGORIES                                        This parser differential is a result of a logical bug/program-
+   This section categorizes the parser differentials according to               ming error. Parsing unsigned integer values as signed caused
+their root-causes. We first note that a single parser differential              them to overflow which resulted in a miscalculated offset.
+can be caused by multiple factors. For example, the Zoom                              Example 2: Psychic Paper: In 2020, parser differentials
+Stanza Smuggling vulnerability below arose because faulty                       among XML parsers in iOS lead to a zero day vulnerability.
+parsing of the Unicode resulted in a higher-order parser                        Security researcher Siguza, who discovered these vulnera-
+differential in the XML parser. Therefore, when we list a                       bilities, notes [14] that an XML document with an invalid
+parser differential under a category, we do not claim that                      XML comment (“<!--->”) was accepted by multiple parsers
+it exclusively belongs to that category only. The aim of the                    within iOS but was not interpreted by them in an identical way.
+categorization is to provide examples for an underlying anti-                   The invalid XML comment was read by one parser as a start
+pattern that causes parser differentials so that it can be better               comment tag, by another as a start comment tag followed by an
+understood. By focusing on one root-cause or anti-pattern at                    end comment tag. This difference causes one parser to treat
+a time we aim to emphasise it in order to show how that                         parts of the XML as comments and ignore them while the
+particular pattern exhibits itself in multiple parser differentials.            second parser does not treat them as comments and consumes
+   Table I summarises the examples of parser differential we                    those parts.
+will consider. And figure 2 shows where the categories emerge                      More specifically, one parser after reading the “!--” part
+in the software development process.                                            of the invalid XML comment advances the pointer by three
+                                                                              TABLE I
+                                                           PARSER DIFFERENTIALS AS DISCUSSED IN S ECTION III
+
+   Name        Programming Bug             Delimiter     Higher-Order      Canonical      Ignored Semantics        Ambiguous Semantics         Human       Ambiguous Spec
+     1                  ✓
+     2                  ✓
+     3                  ✓                                      ✓
+     4                                        ✓
+     5                                        ✓
+     6                                        ✓
+     7                  ✓                                      ✓
+     8                                                                         ✓
+     9                                                                                             ✓
+     10                                                        ✓
+     11                                                                                                                       ✓                                     ✓
+     12                                                                                                                       ✓
+     13                                                                                                                       ✓
+     14                                                                                                                                           ✓
+     15                                                                                                                                           ✓
+     16                                                                                                                                           ✓
+     17                                                                                                                                           ✓
+     18                                                                                                                                                             ✓
+
+
+
+
+              Specification Design                           Software Design                           Implementation                           User Interaction
+
+
+                                                       1. Composition of parsers leads          1. Programing Bugs.                        1. How data is displayed to
+          1. Ambiguous specification
+          2. Multiple specifications for               to higher order parser differences.      2. Truncation (ambiguous delimiter). user leads to differential.
+            one format.                                2. Parsers differ on canonical forms.    3. Differences in specification interpretation.
+                                                                                                4. Shotgun parsing design pattern.
+                                                                                                5. Parser ignores semantics
+
+
+
+Fig. 2. This figure shows where in the software development process parser differential anti-patterns can come about. It shows the phase of software
+development where the root cause emerges: specification design: the process to writing down the specification of the protocol/format; software design: the
+process of defining the software architecture, and high level design of the software; implementation: writing out the code of the software; user interaction: The
+part when the software is in use and a user interacts with the software. The parser differential anti-patterns impact different stages of the software engineering
+process thus they are not mutually exclusive. This diagram lists the anti-patterns.
+
+
+
+characters. It therefore does not read the remaining “->” as a                                 name within an X.509 certificate. In its binary ASN.1 encoding
+comment end. On the other hand, the second parser advances                                     an X.509 certificate’s common name is an ASN.1 BER Se-
+the pointer by two characters. It therefore reads the second                                   quence which consists of an Object Identifier (OID) followed
+“-” character twice and thus sees both “<!--” and a “-->”                                      by a String containing the name of the website. The OID is
+which leads it to believe the data represents a start and an end                               encoded as an unbounded integer. They found that if the value
+comment tag.                                                                                   of an integer was large enough, then (for some consumers) it
+   As iOS represents permissions in XML, these differences                                     could overflow and get wrapped around. An attacker could,
+were quite useful to an attacker. These attacks were possible                                  thus, exploit this bug by creating OID-String pair that some
+because the parser was more permissive in accepting an input                                   parsers would read as having an OID value identical to the
+than required by the specification.                                                            common name leading to different interpretations for the
+                                                                                               common name.
+       Example 3: Multiple Common Name Fields in Certifi-                                         Similarly, they found leading zeros in OIDs could be a
+cates: The PKI Layer Cake work [2] also gives some instances                                   source of disagreement among parsers. The leading zeros in an
+of this anti-pattern, compounded with others we will discuss                                   OID are ignored in some parsers and those OIDs are resolved
+later.                                                                                         to a common name whereas in other parsers OIDs with leading
+   Kaminsky et al discovered that parsers with integer over-                                   zeros are treated as a different OID.
+flow vulnerabilities could be exploited to create a source of                                     They also reported that OpenSSL treats the leading zeros
+disagreement among parsers about what constitutes a common                                     in an OID as significant when parsing but omits those in its
+  Format                          Headers                      Name                             Extra                                       Data
+
+
+
+                                Headers                       Name                     Extra = 64K bytes                                  Data
+  Parser 1
+  (extract)
+
+ Example                         ...                      Classes.dex \x00\x01...                                            dex\x00...
+ Data Bytes
+
+
+ Parser 2
+ (verify)                        Headers                       Name                                               Data
+
+                                                                 Extra = -3 bytes
+
+
+Fig. 3. This diagram shows a parser differential exploit for the Android Master Key vulnerability. Two parsers parse the same file differently, leading to
+differences between the data that is verified and the data that is extracted. The vulnerability occurs because Parser 2 misreads the length of the extra section
+as −3 which causes it to add −3 to the file pointer when it tries to calculate the start of the data section. This results in subtraction and hence Parser 2 thinks
+the data section starts from the third last character of the name bytes.
+
+
+
+textual representation. Thus, OIDs with leading zeros—which                        character and read the entire URL. However, when the open
+OpenSSL internally treats as distinct—will appear as having                        file call is issued the underlying language treats the “%00”
+the same OID when displayed. Consequently, an application                          as the end of string delimiter resulting in it returning the
+using OpenSSL (via a command-line) to convert ASN.1 into                           “inetd.conf” file—a forbidden resource.
+an ASCII string representation, and then parsing the ASCII
+                                                                                        Example 5: IE URL parsing: In an IE vulnerability from
+representation of ASN.1 to read the certificate would be
+                                                                                   2003 [4], one part of the browser parses the URL to figure out
+susceptible to a parser differential attack.
+                                                                                   what site name to show to the user, and another parses it to
+B. Ambiguous Delimiters (Truncation)                                               figure out what to fetch. When given a crafted URL such as
+   Sometimes parsers disagree on the delimiters of fields in a                       http://www.trusted site.com%01%00@malicious site.com/
+format when parsing input data. If parsers differ on delimiters,                                           malicious.html
+then they may either prematurely terminate parsing and thus
+                                                                                   the parser responsible for displaying the URL would stop pars-
+only parse a truncated input—or they may parse more data
+                                                                                   ing when it encountered the URL-encoded null-byte “%00”
+than they should.
+                                                                                   whereas the parser responsible for fetching the URL resource
+   That is: given input w,
+                                                                                   read the entire URL. As a result, the browser informed the
+   • one parser acts correctly,                                                    user that they were browsing “trusted site.com” while they
+   • but another sees w as some w1 w2 (for nonempty w2 ) and                       were actually visiting “malicious site.com.”
+     parses only the prefix w1 (e.g., due to some confusing
+     characters).                                                                        Example 6: PKI Layer Cake: Kaminksy et al [2] pro-
+                                                                                   vide more examples of this pattern in a section entitled
+     Example 4: exTropia: In a vulnerability announced in                          “Early null terminators.” When parsing X.509 certificates.
+2000 [3], a parser differential in a web application resulted in                   if null bytes are included in the domain name, then ambi-
+the access of restricted web resources. The web application                        guity over the string termination delimiter causes the cer-
+checked if the requested file was a valid html file by only                        tificate parsers to diverge. For instance, a CA may see
+checking if the string ended in the characters “html.” If it did,                  www.bank.com[NULL].badguy.com as “badguy.com” and is-
+the application considers it an html file and requested the file                   sue a cert for it. A victim’s browser, going to badguy.com,
+to returned. However, for a URL of the form                                        would succeed in validating badguy.com against the certificate
+                                                                                   the CA issued for it. However, due to a parser differential,
+ http://example.com/cgi-bin/Web store/web store.cgi?page=
+                                                                                   the browser will display “bank.com” as the validated website
+           ../../../../../../../../etc/inetd.conf%00.html
+                                                                                   being visited to the user. (In some scenarios, yet another
+something interesting happened. The web application (written                       player is involved: parser confusion at the DNS with which
+in Perl) treated the “%00” character as just any other ordinary                    the browser interacts.)
+C. Higher Order Parser Differentials                              note that this byte is an invalid input as it does not confirm to
+                                                                  the UTF-8 specification.
+   Sassaman et al [12] introduced the concept of order of            One XML parser interpreted it as a single UTF-8 character
+a parser differential. A 0th-order differential involves only     (which is three bytes in size) and thus consumes two bytes
+one protocol; a higher-order parser differential is a parser      following the first byte as part of the same UTF-8 character.
+differential involving multiple protocols or data formats. A      However, the other XML parser interprets it as three UTF-8
+higher-order parser differential occurs when the transformation   characters (each of which is a single byte in size). Conse-
+of data from one data format to another impacts the encoding      quently, if an XML tag boundary falls on such a ambiguous
+or decoding of another one; Sassaman et al proposed a nicely      UTF-8 character, then one parser interprets it as a single XML
+behaved linear sequence.                                          tag and another interprets the XML as having multiple tags.
+      Example 7: Zoom Stanza Smuggling: Zoom is a cross              The root cause of this parser differential was due to a
+platform video-conferencing application. It has a built-in chat   mistake in implementing the Unicode spec. Both parsers were
+feature which allows the participants to send text-based mes-     accepting an invalid UTF-8 sequence. They, however, differed
+sages to each other. Internally, the Zoom client application      in how they interpreted this invalid sequence of UTF-8 bytes
+uses XML to encode the messages along with some metadata          leading to this parser differential. Going through the bug fix
+before sending it to the Zoom server. The Zoom server, after      for this vulnerability on GitHub [16], one notices a missing
+receiving this XML input from the client application, processes   validation check to be the cause of this erroneous behavior.
+its contents and crafts an XML with the message embedded             Sassaman et al [12] would call this a first-order differential:
+in it and forwards it to the recipient.                           a difference in UTF-8 parsing leads to a difference in XML
+                                                                  parsing. However, we note there’s an additional wrinkle here:
+   The overall software architecture of Zoom has multiple
+                                                                  the “higher-level” XML code at the server generates lower-
+XML parsers and requires the XML parsers to have an
+                                                                  level strings that preserve the buggy UTF-8, which are then
+identical understanding of the same XML to function correctly.
+                                                                  sent on to the second XML parser; it’s not just a simple one-
+This implicit assumption, regarding the parsing behaviour of
+                                                                  direction channel.
+its constituent parts, was demonstrated to be false and was a
+                                                                     We note that this example also differs from the simple model
+source of multiple vulnerabilities in the summer of 2022[15].
+                                                                  of Section II—the initial w here (the malformatted UTF-8)
+   It was discovered that the zoom application allowed ma-        is actually not in the “correct” language. Both parsers are
+licious adversaries to inject arbitrary data into the XML         accepting strings beyond the correct language, and parsing
+stanzas used to transfer the chat messages. This XML injection    things in this superset differently.
+allowed a malicious adversary to inject XML into the input
+such that it was parsed differently by the server’s XML parser    D. Differences in conversion to a canonical form
+and the receiving client’s XML parser.                               Differences in the conversion to a canonical form (or
+   Exploiting these differences in the XML parsers allows an      normalization) of a protocol (or file format) specification by
+adversary to craft an XML message such that the receiving         software developers can lead to diverging parser behaviors.
+zoom client would interpret it as two separate XML messages.      Conversion to a canonical or normal form is the standard-
+This attack was named “XML stanza smuggling” because it           ization of an input by transforming it according to a set of
+resulted in an XML stanza smuggled across the Zoom server         predefined transformation rules in a consistent manner. For
+to the receiving zoom client which interpreted the received       example, many web browsers convert the domain characters
+XML as two XML stanzas instead of one. The zoom system            and URL scheme to lowercase before fetching a web resource.
+architecture and the crafted XML document attack is shown         If the canonical form is modelled as a formal language, then
+in Figure 4.                                                      it should be the identical in the different software systems
+   The root cause of interpreting the XML stanzas as two          processing it. Parser differentials may occur if they are not.
+messages by one XML parser and one message by another                   Example 8: TMUI RCE vulnerability: For instance, a
+XML parser was a logic bug in the UTF-8 encoding of the           parser differential was caused by the differing normalization
+XML characters. The UTF-8 encoding is a variable length           of a URL in the TMUI RCE vulnerability (CVE-2020-5902)
+character encoding. The starting bits of a UTF-8 encoded          discovered in F5 networks [17], [18].
+character encode how many bytes of data are going to encode          In this case, there were two http servers, Apache httpd and
+that particular character. For instance, if the first byte of a   Apache Tomcat. The former was configured as a reverse proxy
+UTF-8 character starts with 1110, then it is a three bytes long   server whose job was to forward a subset of the received HTTP
+encoded character. Additionally, the UTF-8 spec requires the      requests to the Tomcat server if the requests matched a certain
+most significant bits of the remaining two bytes to start with    criteria. This architecture is illustrated in Fig 5.
+10.                                                                  The vulnerability was due to differing URL normalization
+   In case of a crafted UTF-8 character where the first           of Apache httpd server and the Apache Tomcat server. The
+byte started with 1110—thus signaling a three byte UTF-8          difference lies in the parsing of the URL path parameters.
+character—but the remaining two bytes did not start with 10,      Path segments of a URL are those parts of a URL that
+the two XML parsers behaved differently. It is important to       are delimited by slashes and a URL can have optional path
+                                                     Server
+                                                                                   AST
+                                                                                                                                     Client
+
+                                                                                                                                     Unicode parser
+                                                      XML parser                                XML unparser
+
+   Malicious XML
+                                                                                                                                       XML parser
+                                                    Unicode parser                        Unicode unparser
+
+                                                                                                                                              AST
+
+Fig. 4. This diagram illustrates the zoom video conferencing system architecture and the malicious XML sent by an attacker to the Zoom server. It shows
+the locations of the parsers inside the server and the client. It also shows how the XML and Unicode parsers interact with each other.
+
+
+
+
+                                               Reverse Proxy Server                                                 Backend Server
+
+                                                               Parse URL                                                          Parse URL
+                                  1                                                                       1
+                                                                    1
+                                             
+                                               
+                                                             Convert URL     to   
+                                                                                             Convert URL to
+               Client                                        canonical form                                                    canonical form
+                                                                                                        L1 ≠ L2
+                                                                         L1                                                     L2        2
+                                                                    1
+                                                                                                                              Resolve “../” in path
+                                                        If URL matches pattern
+                                                           proxy request                                                                  3
+                                                        else
+                                                           self-process request                                                Process Request
+                                                                                                   /etc/passwd
+                                                                                                   returned
+
+
+
+
+                                            
+                                 
+                                          
+                                             
+
+                                        
+
+
+
+
+Fig. 5. This figure illustrates the parser differential which caused the TMUI F5 vulnerability (CVE-2020-5902). The reverse proxy server and the backend
+server both processed the URL into a canonical form but this form was not identical. Disagreement in understanding of URL led to the parser differential, as
+shown by the red arrow. The numbers show what the input URL looks like at various stages of the system.
+
+
+
+parameters at the end of a path segment. Path parameters start                          Apache Tomcat removed the URL contents from the “;” to the
+after a semicolon character “;” and can contain non-slash, non-                         next forward slash when processing a URL because it consid-
+semicolon characters.                                                                   ered these a path delimiter. After removing the semicolons, it
+                                                                                        normalized the path and executed the request. Fig 5 shows an
+  When the Apache httpd server parsed URL 1 shown in Fig 5
+                                                                                        overview of the inner workings of the parsers involved. Thus,
+and converted it to a canonical form, it allowed the semicolon
+                                                                                        in this case the parser differential resulted because of differing
+character “;” to remain in the http path. On the other hand,
+notions of canonical forms conversion of the URLs between         such syntactical parsing difference. It is, instead, a semantic
+the reverse proxy and the backend server.                         difference.
+                                                                     The simple model of parser differentials fails to capture such
+E. Semantic Parser Differentials: Ignoring Semantics
+                                                                  semantic differentials. Parser differentials of this kind would
+   Semantic parser differentials occur when two parsers may       not be detected by checking if the parse trees generated by
+produce the same tree, but then differ in their semantic          the parsers are identical. Furthermore, such examples show
+interpretations of that tree.                                     that merely looking at the Chomsky hierarchy is not enough.
+      Example 9: GitLab: HTTP reverse proxies are web             We need to consider semantics of a grammar to prevent parser
+servers which sit in front of the backend servers and relay       differentials.
+HTTP traffic to the backend servers. They are often imple-
+mented to increase security, performance and reliability of a     F. Semantic Parser Differentials: Semantic Ambiguities (Du-
+service.                                                          plicate Keys)
+   These reverse proxies are often configured to act as request      Semantically ambiguous parser differentials are caused by
+sanitizers—whose job is to only allow certain types of HTTP       an input which is syntactically valid but is semantically
+requests to the backend server. They achieve this by rewriting    ambiguous. A semantic ambiguity could result in parsers
+the HTTP requests as they proxy them to the backend server.       interpreting the same input differently and generating differing
+   If parsing differences exist between the HTTP request parser   parse trees from it.
+of the proxy server and the backend server, then the reverse         For instance, in our analysis of known parser differen-
+proxy may allow those HTTP requests that it considers benign      tials, we came across parser differentials where the input
+to pass through but which result in malicious behaviour when      language was designed to express key-value pairs. The parsers
+the HTTP backend server processes them.                           processing these input languages assumed the uniqueness of
+   This was the case for the file upload GitLab security          keys when processing the input. It was, however, possible
+vulnerability [19]. The GitLab reverse proxy was configured       to construct syntactically valid inputs which had duplicate
+to rewrite all PUT requests to the backend server. Thus, under    keys. These inputs were syntactically valid but semantically
+normal system operating conditions PUT requests were not          ambiguous. When faced with input with duplicate entries (i.e.
+allowed to go through from the reverse proxy to the backend       multiple entries with the same key value), a parser has to
+server without being processed first.                             chose an entry among the duplicates which will provide the
+   To understand how the vulnerability came about one needs       value for the key under consideration resulting in a semantic
+to mention that some HTTP servers provide a way to override       ambiguity. A parser differential results when different parsers
+the HTTP method of a request by passing custom headers            chose different entries and the selected entries have different
+in the request. These custom headers specify the HTTP             values.
+method name which takes precedence over the HTTP method              The occurrence of this anti-pattern in wide variety of areas
+specified at the beginning of the HTTP request. This additional   suggests a common anti-pattern of parser differentials.
+functionality exists in some web frameworks to allow them to
+bypass restrictive web application firewalls [20]. Other times          Example 10: Android Master Key Vulnerability 2:
+this functionality is added for compatibility reasons: some       The Android APK format—the file format used by Android
+existing HTTP libraries, for example, do not allow the creation   applications—follows the ZIP format description. The ZIP
+of HTTP methods other than GET and PUT. Thus, in those            format allows defining two files with the same name in a
+situations an alternative way to specify the additional HTTP      ZIP archive but does not specify which should be used in
+methods is needed. This technique is referred to as “verb         case of duplicates. In the case of a maliciously crafted APK,
+tunneling”.                                                       which has two files of the same name, Android OS verifies
+   The GitLab differential was due to the reverse proxy HTTP      the signature the first file of that name, whereas the Package
+parser ignoring the HTTP method override header and the           Installer would use the second file of that name for installation.
+backend’s HTTP parser not doing so. The reverse proxy in          As a consequence, an attacker is able to install unsigned code
+this case was written in Go. The backend server was written in    by placing the first file with a valid signature and the second
+the Ruby programming language and used the Ruby On Rails          file with the malicious code in it.
+web framework which supported the HTTP method override               A root-cause analysis of the bug reveals that it was due a
+functionality. When a PUSH request with a HTTP method             difference in the hash-table data structure used to store the
+override header—asking the request to be considered a PUT         parsed data. In one parser, which was implemented in Java,
+request — was received by the reverse proxy, it was interpreted   a hashmap was used to store the parsed data. When multiple
+as an ordinary PUSH request and forwarded unmodified. The         items of the same key were added to the hashmap, the hashmap
+backend server upon receiving this request interpreted it as a    would store the last entry and ignored the previous entries.
+PUT request and processed it. Thus a crafted HTTP request            On the other hand, in the second parser, which was imple-
+was able to bypass the request rewriting of the reverse proxy.    mented in C, the parser used a hash table with linear probing.
+   In this example, the differences in the parsers are not        This data structure, returned the first entry when multiple
+due to misidentifying the correct delimiter or some other         entries of the same key were added to it.
+   
+     
+
+
+                                                                     
+
+
+
+                                       
+                 ­                                                                                          
+                                                                                                       
+                                                                                                      
+                                                                                                                           
+
+
+Fig. 6. This figure shows how the GitLab parser differential works. A post request with a method override is forwarded by the proxy server because it thinks
+it is a post request but the backend server interprets it as a put request.
+
+
+
+   Thus, when a ZIP file having multiple files with the same                   conditions for a successful parse — such as rejecting JSON
+name in it was parsed by the Java parser, the last file of the                 objects with duplicates or rejecting JSON with integer values
+same name was considered by the parser. However, in the C                      in a field which are out of a semantically meaningful range
+parser, the first file of that name was considered. Consequently,              — can also be susceptible to semantic parser differentials if
+the interpretation of the ZIP archive differed between the two                 all parsers in the system do not have the same criterion of
+parsers resulting in the vulnerability.                                        accepting or rejecting JSON objects.
+   The parsers made the implicit assumption that a ZIP archive
+                                                                                    Example 12: Duplicate HTTP parameters: Consider the
+will not have duplicates, but that was not the case as it was
+                                                                               following HTTP URL
+allowed by the ZIP format. Thus we note this is another
+example where a simple linear order for differentials does not                          http://www.example.com/search?foo=1&foo=123
+quite work: another view of a root cause here is one protocol
+                                                                               From the URL it is not clear what value should the parameter
+(where key-values should be unique) borrowing a format from
+                                                                               “foo” take? Should it be 1 or 123 or both?
+another protocol (which permits duplicates) — a phenomenon
+                                                                                  As early as 2009 [22], researchers have pointed out that
+we suggest calling a “side-order” differential.
+                                                                               HTTP requests with multiple parameters having the same
+      Example 11: Duplicate Keys in JSON:                                      name results in differing parsing behavior among parsers of
+   JSON is a lightweight data-interchange format, widely used                  known HTTP servers.
+on the internet to transfer data. The data format consists of                     The Go language’s HTTP package says in its documentation
+key-value pairs and arrays. In this data format it is possible to              that it will return the first parameter value [23] it sees (i.e.
+construct inputs which are syntactically valid but semantically                foo is 1). However, in Django (a python web framework)
+ambiguous by defining multiple keys of the same name with                      multiple values are stored in a dictionary, which returns the
+different values. The JSON specification, according to Section                 last value (foo = 123). Django implementations save the parsed
+4 of RFC 8259 [21], states that the names within an object                     values in a QueryDict structure This structure is designed to
+should be unique. However, it does not require them to be so.                  handle multiple values and this has been mentioned in the
+The RFC, additionally, requires that all inputs conforming to                  documentation [24].
+the specification be accepted.                                                    In this case, the parser differential is due to an implemen-
+   When JSON parsers are given JSON with duplicate keys                        tation difference because of the type of data structure used.
+having non-identical values as input to parse, their parse results             However, this difference is intentional as the expected behavior
+are often not identical to other JSON parsers. Parsers have to                 of the data structures is noted in the source code comments and
+prefer one entry among the duplicate ones as the authoritative                 the documentation of the framework themselves. Nevertheless,
+entry. Often, parsers do not give precedence to the same entry                 if the system designer overlooks this difference would result
+which leads to parser differentials. Prior security research [10]              in a vulnerable system.
+has documented the existence of such parser differentials.
+                                                                                    Example 13: Email Sender Spoofing: A similar pattern
+   In this example, we note the ambiguity which is the cause
+                                                                               appears in emails sent with multiple From: header entries.
+of the parser differential stems from the format specification
+                                                                               Shen et al [25] report that if multiple From: headers are
+itself. By considering duplicate keys in JSON as valid, not
+                                                                               provided when sending an email, some mail user agents verify
+specifying a criteria for precedence among them and requiring
+                                                                               one email address via DMARC but display the other one to the
+parsers to parse all valid JSON, the specification leaves enough
+                                                                               user. This parser differential may allow an attacker to spoof
+details ambiguous and unclear that causes parser differentials
+                                                                               their email address.
+to emerge. Further, parsers which enforce additional semantic
+     Other Examples: The seminal PKI Layer Cake paper [2]                Example 17: PDF Shadow Attack: The Shadow at-
+documents many instances of trouble (some building on Ex-          tacks [7] are yet another example of a parser differential that
+ample 3 above) due to differing interpretations of an X.509        falls in this category. The attacks involve modifying a signed
+item with multiple common names.                                   PDF document with an incremental update. The PDF viewer
+                                                                   tells the user that the document is signed. However this can
+G. Parser Differentials Involving Human Interaction                be interpreted in two ways: (1) the document was signed then
+                                                                   updated or (2) the document was updated then signed. The
+   Earlier in this paper we argued that parser differentials
+                                                                   user cannot easily distinguish between the two and they might
+occur when two computers differ in their understanding of the
+                                                                   erroneously interpret the displayed document as (2) whereas
+same data. A similar situation may also occur when humans
+                                                                   the computer understands (1).
+and computer interact with the same data and differ in their
+understanding of what that data means.                             H. Ambiguous Specifications
+   In an adversarial scenario, these parser differentials can be
+                                                                      The simple model from Section II implicitly assumed that
+defined as those that occur when an attacker sends crafted
+                                                                   all parsers (and their developers) were targeting a clearly
+input to an application such that when the application parses
+                                                                   defined language. However, this is not all the case. As our
+the input and displays it renders the input in manner that puts
+                                                                   discussion in Example 11shows ambiguity of the specification
+the user at risk of interpreting the displayed data differently
+                                                                   can lead to parser differentials.
+than how the computers understands it.
+                                                                        Example 18: Underscores in Email Addresses: Some
+      Example 14: Information in Invalid Certificates: In an-      email parsers do not allow the underscore character (“ ”) in
+cient times, one such example was when a browser encoun-           the host name part of an email [28], but others do (such
+tered an invalid or unsigned SSL certificate and warned the        as Python’s standard library’s email parser). Going through
+user. However, the warning repeated information from the           discussions of developers online [29], [30], one finds confusion
+unverified certificate—so if the adversary crafted a fake cer-     and disagreement among the developers regarding the use of
+tificate from “Trustworthy Corporation,” the user was told the     underscore in an email addresses host name. The root of the
+the browser “could not verify this certificate from Trustworthy    confusion lies in the difference in a domain name and the
+Corporation,” and the user would conclude it was OK.               host name. A domain name is a identifier of a resource on a
+     Example 15: PDF malware campaign: A more recent               DNS database but a host name is a special type of domain
+example is the PDF malware campaign reported by HP in              name which identifies internet hosts. Domain names allow
+May 2022 [26]. The attacker crafted a malicious PDF with an        underscores but host names do not. The RFC2181 [31] makes
+embedded docx file. However, the attacker sneakily named the       a distinction between a domain name and a host name. A host
+file                                                               name must follow all rules for a domain name but in addition
+                                                                   to those rules it should also satisfy the additional requirements
+         has been verified. However PDF, Jpeg, xlsx                of a host name. Whereas, a domain name only needs to satisfy
+When the PDF reader then displays a prompt to confirm              the domain name requirements. Thus, when writing a parser
+from the user whether this is trustworthy, it appears as if        for email, one needs to be aware of three specifications: the
+the filename was part of the text from the reader, not the         email specification, the domain name specification and the host
+filename. Fig 7 shows the window. The user is at risk of           name specification. When developers have to follow multiple
+parsing the displayed sentence in a way that is at odds with       specifications for a format then the clarity of a specification de-
+how the computer understands the displayed message. The            creases. An otherwise clear specification becomes ambiguous
+user is, hence, at risk of unknowingly accept the prompt and       in practice because many people misinterpret or misunderstand
+opening the embedded file.                                         it.
+   Interestingly, in the attack, the prompt is not grammatical—         Other Examples: Example 9 above (GitLab) also mani-
+we have yet another case of a parser—the human—“helpfully”         fests this problem. The HTTP 1.1 spec [32] itself does not
+correcting the input.                                              mention verb tunneling or method override. However, this
+                                                                   functionality is a part of numerous HTTP web frameworks.
+     Example 16: Unicode Trojan Source: Boucher et al [27]
+                                                                   This divergence from the specification for practicality is an-
+have shown how the bidirectionality of Unicode characters can
+                                                                   other reason that caused that parser differential to emerge.
+be utilized to create source code which looks innocuous to a
+programmer reading the displayed text but is actually code                          IV. R EVISITING THE M ODEL
+instructing the compiler to do something different.
+                                                                     In light of these examples, we now revisit the thinking of
+   The attack, which also referred to as the Unicode Trojan
+                                                                   Section II.
+source code attack, is another interesting example of a differ-
+ential where the user’s understanding of what the computer         A. Hunting Differentials in Practice
+is presenting differs from how the computer understands the
+presented data.                                                       Looking at programs in the wild leads us to emphasize:
+                                                                   discovering parser differentials in practice is hard. Not only
+Fig. 7. This figure shows the prompt generated by the crafted malicious PDF file. The prompt is deliberately crafted to easily be misread by the end user.
+It achieves this by crafting a phrase which changes the meaning of the sentence presented by the prompt if careful attention is not paid when reading the
+prompt. This image is from [26].
+
+
+
+do clearly defined abstract syntax trees often not exist in code;             which they should reject. Often, the parsers themselves have
+but parsers also often carry out “shotgun parsing” [33] which                 been designed (implicitly or explicitly) for different languages;
+is a coding pattern where parsing and input validation code                   that, combined with overly liberal acceptance, leads to lots of
+is spread across code that processes the input. Additionally,                 combinations of where the crafted w should lie.
+programs in the wild are under no obligation to use standard
+                                                                              C. Orders
+parsing algorithms for parsing the input (and typically do not
+do so). Instead, they often parse input in unexpected and                        Prior thinking suggested a simple linear order for differen-
+unintuitive ways. For instance, in one parser we observed                     tials: if we have n > 1 levels of protocols and a differential
+the command line program grep was used to search for a                        in parsing protocol P1 leads to a differential in Pn , then we
+keyword in the given input for the sake of parsing the input.                 have a differential of order n − 1.
+Therefore, carrying out a parser differential attack as described                However, we see that the flow can be more complicated
+in Section II is ultimately limited in practice because software              than that. A P1 problem can go to P2 , then back to P1 , then
+do not neatly convert the given input into clearly defined ab-                on to a second consumer of P2 , where the difference is finally
+stract syntax trees which can then be compared and contrasted                 manifested. For both protocol formats and specifications, we
+with each other. Prior research [5] has used grammar based                    also see side-order differentials: a differential arises because
+differential fuzzing to search for parser differentials. These                one instance borrows structure from a peer instance.
+approaches have been successful in discovering many parser                    D. Differentials and Decidability
+differentials. However, fuzzers do not ensure they have discov-
+                                                                                 As the literature observes, we might view testing if two
+ered all parser differentials in a systems. Moreover, fuzzers
+                                                                              parsers do the same thing as testing if they accept the same
+too rely on our understanding of how a parser differential
+                                                                              language. If we view the parser as a grammar, this means
+operates, and if our conceptual understanding of how a parser
+                                                                              testing the equivalence of two grammars. As noted earlier,
+differential behaves is limited, then it impacts the fuzzers we
+                                                                              standard formal language theory tells us that such testing
+construct to discover them. For instance, in the prior work
+                                                                              is undecidable for non-determinstic CFGs and higher, but
+only those differentials are noticed which have different parse
+                                                                              decidable for deterministic CFGs and lower.
+trees, whereas we show how intermediate representations, and
+                                                                                 However, in some prior literature [11], [34],
+data structure differences (that may go unnoticed by a fuzzer)
+                                                                                 • weak equivalence is when two grammars accept the same
+can also produce differentials. Therefore, to build better au-
+tomated discovery tools, we first need to better comprehend                         language
+                                                                                 • structural equivalence (sometimes called strong equiva-
+how parser differentials operate. Prior work by Sassaman et
+al [12] provides a beneficial abstract model for understanding                      lence) is when two grammars not only accept the same
+the assumptions made by software systems and how they                               language, but also generate congruent parse trees for each
+should operate in an ideal scenario. Therefore, we suggest                          accepted string
+improvements to that model for the sake of better conceptual                  The standard textbook results, rephrased in terms of these def-
+clarity in light of the parser differentials discussed in the                 initions, only refer to weak equivalence. However, for parser
+sections above.                                                               differentials, one can argue that what we really care about
+                                                                              is strong equivalence. Furthermore, the literature for strong
+B. The Basic Language Model                                                   equivalence [34] hides a surprising result: strong equivalence
+  Looking at real examples, we see the characterization “for                  of CFGs is decidable—even of non-deterministic CFGs! This
+some valid input w ∈ L, P1 and P2 both accept w but                           work goes further: suppose we define the parenthesized ver-
+build different parse trees” is insufficient. Often, the w is                 sion of a CFG by
+outside the language being targeted—the parsers accept that                      • adding two new non-terminals [ and ]
+  •  then replacing each rule A −→ w with A −→ [w]
+                                                                                                                                Intermediate
+Then two CFGs are strongly equivalent exactly when their                                       v1 , v2 , v3 , v4 ...
+parenthesized versions are weakly equivalent. Basically, the                                                                       Language
+parentheses embody the parse tree structure. The more recent
+Reghizzi et al monograph [11] goes even further and observes:
+parenthesized CFGs are deterministic. Together, this suggests a              v1           Comparision of Output            v1
+decision procedure for parser differentials of the same format.
+Consider the CFGs G1 and G2 which represent the same
+format and are, hence, nearly identical albeit with minor differ-                                                      Unparser 2
+                                                                        Unparser 1
+ences. We can parenthesize them (and get deterministic CFGs),
+and then test for weak equivalence. If weak equivalence holds,
+then G1 and G2 accept the same things with the same parse
+trees. If weak equivalence does not hold, then we have at least                          Comparision of AST
+one of the following:
+   • L(G1 ) ̸= L(G2 )
+   • there exists some w which G1 and G2 both accept, but
+     parse differently.                                                   Parser 1                                      Parser 2
+Using these strong-equivalence results and applying them
+towards parser differential analysis would be an interesting
+area for future work — although likely made messier by the                    w1                                           w1
+complications from Section IV-B above.
+                                                                                                                                     Input
+E. Semantics                                                                                 w1 , w2 , w3 , w4 ...
+                                                                                                                                    Language
+   Formal grammars which define the Chomsky hierarchy
+(i.e. regular, context free, context sensitive and recursively
+enumerable grammars) concern themselves with the syntax              Fig. 8. This figure shows how we can include the transformation of the
+of a formal language and not its semantics. However, the             input into an intermediate language into account in our model. In addition
+                                                                     to comparing the AST, one needs to compare the generated intermediate
+GitLab parser differential (Subsection III-E) shows us parser        language word to ensure both models are consistent.
+differentials can occur due semantic differences in parsing a
+message. If one were to look merely for syntactical differences
+in parsing of that malicious HTTP request one would not                 This would involve extending the model to include the con-
+find them. It is the semantics of the header that change             version of the abstract syntax tree to the intermediate language
+the method of the request. Similarly, the examples discussed         in our analysis. This means in addition to comparing the
+in Subsection III-F provide additional evidence that parser          abstract syntax tree, we also need to compare the intermediate
+differentials can be caused by inputs that are syntactically valid   language generated when an input is given to a parser to ensure
+but semantically ambiguous. In those cases it was the semantic       consistency. This is illustrated in Figure 8.
+ambiguity of duplicate key-values that caused the parsers to
+differ. Therefore, we suggest that one should consider model-                                  V. C ONCLUSION
+ing program input with grammars that are semantically aware.           We have shown how the various parser differentials do
+Attribute grammars, for instance, allow us to supplement a           not fit nicely into the parser differential model proposed by
+formal grammar with semantic information. Such grammars              Sassaman et al [12], and we propose improvements on the
+are able to capture the semantic aspects of the parser. Thus         model.
+allowing semantic parser differentials to become a part of our
+analysis.                                                                                    ACKNOWLEDGMENT
+
+F. Intermediate languages in programs                                   This material is based in part upon work supported by the
+                                                                     Defense Advanced Research Projects Agency (DARPA) under
+   Programs sometimes transform the input into an intermedi-         contracts HR001119C0075 and HR001119C0121. Any opin-
+ate form before processing it. As shown in Subsection III-D,         ions, findings, and conclusions or recommendations expressed
+the differences in this conversion can also lead to parser           in this material are those of the authors and do not necessarily
+differentials. In this case, we have a difference in the inter-      reflect the views of DARPA.
+mediate language generated from the input: the normalized
+URL. Thus, we suggest to consider not only the input and                                         R EFERENCES
+the abstract syntax tree of the input in our model but also
+                                                                      [1] L. Sassaman, M. L. Patterson, S. Bratus, and A. Shubina, “The halting
+consider the intermediate languages that systems implicitly               problems of network stack insecurity,” USENIX; login, vol. 36, no. 6,
+assume programs will have an identical understanding of.                  pp. 22–32, 2011.
+ [2] D. Kaminsky, M. L. Patterson, and L. Sassaman, “Pki layer cake: New               [27] N. Boucher and R. Anderson, “Trojan source: Invisible vulnerabilities,”
+     collision attacks against the global x. 509 infrastructure,” in International          arXiv preprint arXiv:2111.00169, 2021.
+     Conference on Financial Cryptography and Data Security. Springer,                 [28] salesforce fourm, “Allow underscores in email domain fields,”
+     2010, pp. 289–303.                                                                     https://ideas.salesforce.com/s/idea/a0B8W00000Gdf2gUAB/allow-
+ [3] f0bic, “Security advisory: extropia webstore directory traversal vulner-               underscores-in-email-domain-fields.
+     ability,” https://seclists.org/bugtraq/2000/Oct/134, 2000.                        [29] StackOverflow, “Can a subdomain have underscore in it?”
+ [4] Secunia Advisories, “Internet explorer url spoofing vulnerability,”                    https://stackoverflow.com/questions/2180465/can-domain-name-
+     https://web.archive.org/web/20041209035254/http://secunia.com/                         subdomains-have-an-underscore-in-it.
+     advisories/10395/, 2003.                                                          [30] google groups, “Underscores in Domain Names,” https:
+ [5] B. Jabiyev, S. Sprecher, K. Onarlioglu, and E. Kirda, “T-reqs: Http                    //groups.google.com/g/comp.protocols.dns.bind/c/kxJQspiOE8E.
+     request smuggling with differential fuzzing,” in Proceedings of the 2021          [31] Network Working Group, “Clarifications to the DNS Specification,”
+     ACM SIGSAC Conference on Computer and Communications Security,                         https://www.rfc-editor.org/rfc/rfc2181#section-11, 1997.
+     2021, pp. 1805–1820.                                                              [32] The Internet Society, “Hypertext transfer protocol,” https://www.rfc-
+ [6] J. Reynolds, A. Bates, and M. Bailey, “Equivocal urls: Understanding                   editor.org/rfc/rfc2616, 1999.
+     thenbsp;fragmented space ofnbsp;url parser implementations,” in                   [33] F. Momot, S. Bratus, S. M. Hallberg, and M. L. Patterson, “The seven
+     Computer Security – ESORICS 2022: 27th European Symposium on                           turrets of babel: A taxonomy of langsec errors and how to expunge
+     Research in Computer Security, Copenhagen, Denmark, September                          them,” in 2016 IEEE Cybersecurity Development (SecDev), 2016, pp.
+     26–30, 2022, Proceedings, Part III. Berlin, Heidelberg: Springer-                      45–52.
+     Verlag, 2022, p. 166–185. [Online]. Available: https://doi.org/10.1007/           [34] M. C. Paull and S. H. Unger, “Structural equivalence of context-free
+     978-3-031-17143-7 9                                                                    grammars,” Journal of Computer and System Sciences, vol. 2, no. 4,
+ [7] S. Ali, P. Anantharaman, Z. Lucas, and S. W. Smith, “What we have                      pp. 427–463, 1968. [Online]. Available: https://www.sciencedirect.com/
+     here is failure to validate: Summer of langsec,” IEEE Security & Privacy,              science/article/pii/S0022000068800376
+     vol. 19, no. 3, pp. 17–23, 2021.
+ [8] James Kettle, “Http desync attacks: Request smuggling reborn,”
+     https://portswigger.net/research/http-desync-attacks-request-smuggling-
+     reborn, 2019.
+ [9] David        Buchanan,         “Png      parser     differential,”     https://
+     www.da.vidbuchanan.co.uk/widgets/pngdiff/, 2021.
+[10] Jake Miller, “An exploration of json interoperability vulnerabilities,”
+     https://bishopfox.com/blog/json-interoperability-vulnerabilities, 2021.
+[11] Reghizzi, Stefano Crespi and Breveglieri, Luca and Morzenti, Angelo,
+     Formal languages and compilation. Springer, 2013.
+[12] L. Sassaman, M. L. Patterson, S. Bratus, and M. E. Locasto, “Security
+     applications of formal language theory,” IEEE Systems Journal, vol. 7,
+     no. 3, pp. 489–500, Sep. 2013.
+[13] Jay Freeman, “Android bug superior to master key,” http://
+     www.saurik.com/id/18, 2023.
+[14] Siguza, ““psychic paper”,” https://blog.siguza.net/psychicpaper/, 2020.
+[15] Ivan Fratric, “Zoom stanza smugglling or how i hacked zoom,”
+     https://www.blackhat.com/us-22/briefings/schedule/#xmpp-stanza-
+     smuggling-or-how-i-hacked-zoom-26618, 2022.
+[16] hartworkhartwork,             “[CVE-2022-25235]             lib:       Protect
+     against      malformed         encoding      (e.g.    malformed       UTF-8)
+     #562,”              https://github.com/libexpat/libexpat/pull/562/commits/
+     3f0a0cb644438d4d8e3294cd0b1245d0edb0c6c6, 2022.
+[17] Ollie Whitehouse, “Understanding the root cause of F5 Networks
+     K52145254,” https://research.nccgroup.com/2020/07/12/understanding-
+     the-root-cause-of-f5-networks-k52145254-tmui-rce-vulnerability-cve-
+     2020-5902/, 2020.
+[18] Mitre,            “Cve-2020-5902,”              https://cve.mitre.org/cgi-bin/
+     cvename.cgi?name=CVE-2020-5902, 2020.
+[19] Joern Schneeweisz, “How to exploit parser differentials,” https:
+     //about.gitlab.com/blog/2020/03/30/how-to-exploit-parser-differentials/,
+     2022.
+[20] Microsoft,      “X-http-method        in    ms-odata      protocol,”    https:
+     //learn.microsoft.com/en-us/openspecs/windows protocols/ms-odata/
+     bdbabfa6-8c4a-4741-85a9-8d93ffd66c41?redirectedfrom=MSDN,
+     2019.
+[21] Internet Engineering Task Force, “The javascript object notation data
+     interchange format,” https://www.rfc-editor.org/rfc/rfc8259, 2017.
+[22] Luca Carettoni, “Http parameter pollution,” https://owasp.org/www-pdf-
+     archive/AppsecEU09 CarettoniDiPaola v0.8.pdf, 2009.
+[23] Google Go Authors, “Go Package source code,” https:
+     //cs.opensource.google/go/go/+/master:src/net/url/url.go;drc=
+     0765da5884adcc8b744979303a36a27092d8fc51;l=885, 1999.
+[24] Django       Documentation         authors,     “Django       documentation,”
+     https://docs.djangoproject.com/en/4.1/ref/request-response/
+     #django.http.QueryDict.
+[25] K. Shen, C. Wang, M. Guo, X. Zheng, C. Lu, B. Liu, Y. Zhao,
+     S. Hao, H. Duan, Q. Pan et al., “Weak links in authentication chains:
+     A large-scale analysis of email sender spoofing attacks,” arXiv preprint
+     arXiv:2011.08420, 2020.
+[26] Patrick Schläpfer, “Pdf malware is not yet dead,” https:
+     //threatresearch.ext.hp.com/pdf-malware-is-not-yet-dead/, 2022.
+

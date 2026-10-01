@@ -1,0 +1,1047 @@
+\documentclass[preprint]{sigplanconf}
+
+% The following \documentclass options may be useful:
+
+% preprint      Remove this option only once the paper is in final form.
+% 10pt          To set in 10-point type instead of 9-point.
+% 11pt          To set in 11-point type instead of 9-point.
+% authoryear    To obtain author/year citation style instead of numeric.
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage[svgnames]{xcolor}
+\usepackage{bussproofs}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{marvosym}
+\usepackage{mathtools}
+%\usepackage[utf8x]{inputenc}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage{textcomp}
+\usepackage{attachfile2}
+%\usepackage{embedfile}
+%\usepackage{hypgotoe}
+\floatstyle{boxed}
+\restylefloat{figure}
+
+\renewcommand{\sectionautorefname}{Section}
+\renewcommand{\subsectionautorefname}{Subsection}
+
+%\DeclareUnicodeCharacter{8704}{\ensuremath{\forall}}
+%\DeclareUnicodeCharacter{8594}{\ensuremath{\rightarrow}}
+%\DeclareUnicodeCharacter{955}{\ensuremath{\lambda}}
+%\DeclareUnicodeCharacter{8712}{\ensuremath{\in}}
+
+% from http://tex.stackexchange.com/a/218441/2066
+\makeatletter
+\newcommand{\dashover}[2][\mathop]{#1{\mathpalette\df@over{{\dashfill}{#2}}}}
+\newcommand{\fillover}[2][\mathop]{#1{\mathpalette\df@over{{\solidfill}{#2}}}}
+\newcommand{\df@over}[2]{\df@@over#1#2}
+\newcommand\df@@over[3]{%
+  \vbox{
+    \offinterlineskip
+    \ialign{##\cr
+      #2{#1}\cr
+      \noalign{\kern1pt}
+      $\m@th#1#3$\cr
+    }
+  }%
+}
+\newcommand{\dashfill}[1]{%
+  \kern-.5pt
+  \xleaders\hbox{\kern.5pt\vrule height.4pt width \dash@width{#1}\kern.5pt}\hfill
+  \kern-.5pt
+}
+\newcommand{\dash@width}[1]{%
+  \ifx#1\displaystyle
+    2pt
+  \else
+    \ifx#1\textstyle
+      1.5pt
+    \else
+      \ifx#1\scriptstyle
+        1.25pt
+      \else
+        \ifx#1\scriptscriptstyle
+          1pt
+        \fi
+      \fi
+    \fi
+  \fi
+}
+\newcommand{\solidfill}[1]{\leaders\hrule\hfill}
+\makeatother
+
+\newcommand{\aswidthof}[2]{\rlap{#1}\hphantom{#2}}
+
+% allow bold in tt
+%\renewcommand*{\ttdefault}{lmtt}
+
+\newcommand{\Jason}[1]{\textcolor{blue}{\textbf{Jason}: #1}}
+\newcommand{\Adam}[1]{\textcolor{red}{\textbf{Adam}: #1}}
+\newcommand{\todoJason}[1]{\textcolor{blue}{\textbf{TODO} (Jason): #1}}
+\newcommand{\todoAdam}[1]{\textcolor{red}{\textbf{TODO} (Adam): #1}}
+\newcommand{\todoAdamOrJason}[1]{\textcolor{purple}{\textbf{TODO} (\textcolor{red}{Adam} \textcolor{black}{or} \textcolor{blue}{Jason}): #1}}
+
+\newcommand{\kw}[1]{{\fontfamily{pcr}\selectfont\textbf{#1}}}
+\newcommand{\str}[1]{\texttt{"\textcolor{DarkGreen}{#1}"}}
+\newcommand{\regex}[1]{\texttt{#1}}
+\newcommand{\nt}[1]{\texttt{#1}}
+\newcommand{\terminal}[1]{\texttt{\textquotesingle\textcolor{DarkGreen}{#1}\textquotesingle}}
+\newcommand{\production}[1]{[#1]}
+\newcommand{\productions}[1]{#1}
+\newcommand{\coqtype}[1]{\texttt{#1}}
+\newcommand{\False}{\ensuremath{\bot}}
+\newcommand{\True}{\ensuremath{\top}}
+\newcommand{\Unit}{\ensuremath{\top}}
+\newcommand{\true}{\texttt{true}}
+\newcommand{\false}{\texttt{false}}
+\newcommand{\unittt}{\texttt{()}}
+\newcommand{\String}{\texttt{String}}
+\newcommand{\Bool}{\texttt{Bool}}
+\newcommand{\textnbsp}{\ifmmode\else~\fi}
+\newcommand{\typeprodsep}{\ensuremath{\times}}
+\newcommand{\typeprod}[2]{#1\textnbsp\typeprodsep\textnbsp#2}
+\newcommand{\typesumsep}{\ensuremath{+}}
+\newcommand{\typesum}[2]{#1\textnbsp\typesumsep\textnbsp#2}
+\newcommand{\fname}[1]{\texttt{#1}}
+\newcommand{\farg}[1]{\textcolor{violet}{\texttt{#1}}}
+\newcommand{\oftypesep}{:}
+\newcommand{\oftype}[2]{#1\textnbsp\oftypesep\textnbsp#2}
+\newcommand{\nil}{\texttt{[]}}
+\newcommand{\cons}[2]{#1::#2}
+\newcommand{\hole}{\texttt{\_}}
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\testeq}{=}
+\newcommand{\booland}{\mathrel{\texttt{\&\&}}}
+\newcommand{\boolor}{\mathrel{\texttt{||}}}
+\newcommand{\letinlet}{\kw{let}~}
+\newcommand{\letin}[1]{\letinlet#1~\kw{in}}
+\newcommand{\strcat}[2]{#1#2}
+\newcommand{\llstrcat}[2]{#1 \ensuremath{\cdot} #2}
+\newcommand{\afun}[2]{\ensuremath{\lambda~#1.~#2}}
+\newcommand{\typeto}{\ensuremath{\to}}
+\newcommand{\indname}[1]{\texttt{#1}}
+\newcommand{\Type}{\kw{Type}}
+\newcommand{\constructorname}[1]{\texttt{#1}}
+\newcommand{\Nonterminal}{\indname{Nonterminal}}
+\newcommand{\Terminal}{\texttt{Char}}
+\newcommand{\parsetreetype}[2]{\ensuremath{\dashover[]{#2 \in #1}}}
+\newcommand{\minparsetreeannot}[2]{\ensuremath{<(#1,#2)}}
+\newcommand{\minparsetreetype}[4]{\ensuremath{\dashover[]{#4 \in #3}^{~\minparsetreeannot{#1}{#2}}}}
+\newcommand{\typelist}[1]{\texttt{[}#1\texttt{]}}
+\newcommand{\typelistp}[1]{\typelist{#1}} % parenthesized \typelist, if need be (so, `list (foo)` instead of `list foo`)
+\newcommand{\valuelist}[1]{\texttt{[}#1\texttt{]}}
+\newcommand{\valuelistm}[1]{\ensuremath{\big[#1\big]}} % math mode
+\newcommand{\typeoption}[2][~~]{\indname{option}#1#2}
+\newcommand{\typeoptionp}[1]{\typeoption[~]{(#1)}} % parenthesized \typeoption, if need be
+\newcommand{\None}{\constructorname{None}}
+\newcommand{\Some}[1]{\constructorname{Some}~#1}
+\newcommand{\Somep}[1]{\constructorname{Some}~(#1)}
+\newcommand{\ParseQuery}{\indname{ParseQuery}}
+\newcommand{\inl}[1]{\constructorname{inl}~#1}
+\newcommand{\inlp}[1]{\inl{(#1)}}
+\newcommand{\inr}[1]{\constructorname{inr}~#1}
+\newcommand{\inrp}[1]{\inr{(#1)}}
+\newcommand{\fst}[1]{\texttt{fst}~#1}
+\newcommand{\snd}[1]{\texttt{snd}~#1}
+\newcommand{\proj}[2]{#2\ensuremath{_{\kw{#1}}}}
+\newcommand{\caseof}[1]{\kw{case}~~~#1~~~\kw{of}}
+\newcommand{\acase}[3][\big]{~#1|{~{#2}~~\ensuremath{\to}~~{#3}}}
+\newcommand{\cif}{\kw{if}~~~}
+\newcommand{\cifindent}[1][]{\aswidthof{#1}{\kw{then}}~~~}
+\newcommand{\cthen}{\cifindent[\kw{then}]}
+\newcommand{\celse}{\cifindent[\kw{else}]}
+
+{\catcode`\_=12 \gdef\textunderscore{_}}
+\def\_{\textunderscore}
+
+% highlight overfull hboxes
+%\overfullrule=5pt
+
+\begin{document}
+
+\lstset{language=Haskell}
+
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+\conferenceinfo{ICFP '15}{September 1--3, 2015, Vancouver, BC, Canada}
+\copyrightyear{2015}
+%\copyrightdata{978-1-nnnn-nnnn-n/yy/mm}
+%\doi{nnnnnnn.nnnnnnn}
+
+% Uncomment one of the following two, if you are not going for the
+% traditional copyright transfer agreement.
+
+%\exclusivelicense                % ACM gets exclusive license to publish,
+                                  % you retain copyright
+
+%\permissiontopublish             % ACM gets nonexclusive license to publish
+                                  % (paid open-access papers,
+                                  % short abstracts)
+
+%\titlebanner{banner above paper title}        % These are ignored unless
+%\preprintfooter{short description of paper}   % 'preprint' option specified.
+
+\title{Parsing Parses}
+\subtitle{A Pearl of (Dependently Typed) Programming and Proof}
+
+\authorinfo{Jason Gross}
+           {MIT CSAIL}
+           {\href{mailto:jgross@mit.edu}{jgross@mit.edu}}
+\authorinfo{Adam Chlipala}
+           {MIT CSAIL}
+           {\href{mailto:adamc@csail.mit.edu}{adamc@csail.mit.edu}}
+
+\maketitle
+
+\begin{abstract}
+We present a functional parser for arbitrary context-free grammars, together with soundness and completeness proofs, all inside Coq.  By exposing the parser in the right way with parametric polymorphism and dependent types, we are able to use the parser to prove its own soundness, and, with a little help from relational parametricity, prove its own completeness, too.  Of particular interest is one strange instantiation of the type and value parameters: by parsing \emph{parse trees} instead of strings, we convince the parser to generate its own completeness proof.  We conclude with highlights of our experiences iterating through several versions of the Coq development, and some general lessons about dependently typed programming.
+\end{abstract}
+
+%\category{CR-number}{subcategory}{third-level}
+
+% general terms are not compulsory anymore,
+% you may leave them out
+%\terms
+%term1, term2
+
+%\keywords
+%parsers, dependent types, Coq
+
+%\embedfile{parsing-parses.tar.gz}
+
+\section{Introduction} \label{sec:intro}
+  Parsing is one of the fundamental problems of computer science, and in this paper we present an unusual way of implementing and proving the correctness of a general parser for arbitrary context-free grammars.  Our parser is implemented in Coq, making liberal use of dependent types; the adventurous reader is invited to browse the
+  %\href{gotoe:embedded=parsing-parses.tar.gz}{included source code}%
+  \aswidthof{\textattachfile[mimetype=text/plain,color=0 0 0]{parsing-parses.tar.txt}{included source code}}{}%
+  \hyperref[sec:intro]{\hphantom{included source code}}%
+  .  An especially surprising element of our parser is that we reuse the parsing algorithm to generate parts of its own soundness and completeness proofs.  That algorithm is phrased with parametric polymorphism, so that we can instantiate it not just to parse strings into parse trees, but also to ``parse'' parse trees into minimized parse trees (with certain wasteful detours eliminated); the existence of such a minimization algorithm is a key part of our completeness proof.
+
+  We begin with an overview of the general setting, and a description of our approach to parsing.
+
+  The job of a parser is to decompose a flat list of characters, called a \emph{string}, into a structured tree, called a \emph{parse tree}, on which further operations can be performed.  As a simple example, we can parse \str{ab} as an instance of the regular expression \regex{(ab)$^*$}, giving this parse tree, where we write $\cdot$ for string concatenation.
+  \begin{prooftree}
+    \AxiomC{}\UnaryInfC{\str{a} $\in$ \terminal{a}}
+    \AxiomC{}\UnaryInfC{\str{b} $\in$ \terminal{b}}
+    \AxiomC{} \UnaryInfC{\str{} $\in$ $\epsilon$}
+    \UnaryInfC{\str{} $\in$ \regex{(ab)$^*$}}
+    \TrinaryInfC{\llstrcat{\str{a}}{\llstrcat{\str{b}}{\str{}}} $\in$ \regex{ab(ab)$^*$}}
+    \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+  \end{prooftree}
+
+  Our parse tree is implicitly constructed from a set of general inference rules for parsing.  There is a naive approach to parsing a string $s$: run the inference rules as a logic program.  Several execution orders work: we may proceed bottom-up, by generating all of the strings that are in the language and not longer than $s$, checking each one for equality with $s$; or top-down, by splitting $s$ into smaller parts in a way that mirrors the inference rules.  In this paper, we present an implementation based on the second strategy, parameterizing over a ``splitting oracle'' that provides a list of candidate ways to split the string, based on the available inference rules.  To be sound, each ``split'' must be a genuine split of the string; (\str{a}, \str{b}) is not a split of the string \str{abc} nor of the string \str{zz}.  To be complete, if any split of the string yields a valid parse, the oracle must give at least one split that also yields a valid parse.  Different splitters yield different simple recursive-descent parsers. %~\cite{}. \todoAdamOrJason{Find a reference}
+
+  %We have implemented only the most naive and obvious splitter, which simply computes all possible splits of the string.
+
+  We eventually plan to synthesize optimized parsers.  We believe that parameterizing the parser over a splitter gives us enough expressiveness to implement essentially all optimizations of interest, while being a sufficiently simple language to make proofs relatively straightforward.  For example, to achieve linear parse time on the \regex{(ab)$^*$} grammar, we could have a splitter that, when trying to parse \llstrcat{\llstrcat{\terminal{\farg{c$_1$}}}{\terminal{\farg{c$_2$}}}}{\farg{s}} as \regex{ab(ab)$^*$}, splits the string into (\terminal{\farg{c$_1$}}, \terminal{\farg{c$_2$}}, \farg{s}); and when trying to parse \farg{s} as $\epsilon$, does not split the string at all.
+
+  %By making the splitter stateful and recording where in the tree we are, we can prevent backtracking by not returning the empty list of splits for some productions.
+
+  %Thus this construction can be instantiated to give both predictive recursive-descent parsers (which, by definition, are the non-backtracking ones~\cite{}), as well as being able to handle arbitrary context-free-grammars, which entirely predictive parsers cannot~\cite{}.
+
+  Proving completeness---that our parser succeeds whenever there is a valid parse tree---is conceptually straightforward: trace the algorithm, showing that if the parser returns \false\space at a given point, then assuming a corresponding parse tree exists yields a contradiction.  The one wrinkle in this approach is that the algorithm, the logic program, is not guaranteed to terminate.
+
+  \subsection{Infinite regress} \label{sec:loopy-grammar-example}
+    Since we have programmed our parser in Coq, our program must be terminating by construction.  However, naive recursive-descent parsers do not always terminate!
+
+    To see how such parsers can diverge, consider the following example.  When defining the grammar \regex{(ab)$^*$}, perhaps we give the following production rules:
+
+    \begin{center}
+      %\AxiomC{} %\RightLabel{\scriptsize(\str{})}
+      %\UnaryInfC{\str{} $\in$ $\epsilon$}
+    %\DisplayProof\qquad
+      \AxiomC{$s$ $\in$ $\epsilon$}
+      \RightLabel{\scriptsize($\epsilon$)}
+      \UnaryInfC{$s$ $\in$ \regex{(ab)$^*$}}
+    \DisplayProof\qquad
+      \AxiomC{$s_0$ $\in$ \terminal{a}}
+      \AxiomC{$s_1$ $\in$ \terminal{b}}
+      \RightLabel{\scriptsize(\str{ab})}
+      \BinaryInfC{\strcat{$s_0$}{$s_1$} $\in$ \regex{(ab)$^*$}}
+    \DisplayProof
+    \end{center}
+    \begin{center}
+      \AxiomC{$s_0$ $\in$ \regex{(ab)$^*$}}
+      \AxiomC{$s_1$ $\in$ \regex{(ab)$^*$}}
+      \RightLabel{\scriptsize(\regex{(ab)$^*$}\regex{(ab)$^*$})}
+      \BinaryInfC{\strcat{$s_0$}{$s_1$} $\in$ \regex{(ab)$^*$}}
+    \DisplayProof
+    \end{center}
+
+    Now, let us try to parse the string \str{ab} as \regex{(ab)$^*$}:
+    \begin{center}
+      \AxiomC{} \UnaryInfC{\str{} $\in$ $\epsilon$}
+      \UnaryInfC{\str{} $\in$ \regex{(ab)$^*$}}
+
+      \AxiomC{} \UnaryInfC{\str{} $\in$ $\epsilon$}
+      \UnaryInfC{\str{} $\in$ \regex{(ab)$^*$}}
+
+      \AxiomC{\reflectbox{$\ddots$}}
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+      \BinaryInfC{\llstrcat{\str{}}{\str{ab}} $\in$ \regex{(ab)$^*$}}
+
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+
+      \BinaryInfC{\llstrcat{\str{}}{\str{ab}} $\in$ \regex{(ab)$^*$}}
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+    \DisplayProof
+    \end{center}
+
+    Thus, by making a poor choice in how we split strings and choose productions, we can quickly hit an infinite regress.
+
+    Assuming we have a function $\oftype{\fname{split}}{\String \typeto \typelistp{\typeprod{\String}{\String}}}$ which is our splitting oracle, we may write out a potentially divergent parser specialized to this grammar.
+    \begin{align*}
+      & \fname{any\_parses} \oftypesep \typelistp{\typeprod{\String}{\String}} \typeto \Bool \\
+      & \fname{any\_parses}~\nil \defeq \false \\
+      & \fname{any\_parses}~(\cons{(\str{a}, \str{b})}{\hole}) \defeq \true \\
+      & \fname{any\_parses}~(\cons{(\farg{s$_1$}, \farg{s$_2$})}{\farg{rest\_splits}}) \\
+      & \phantom{\fname{any}} \defeq \left(\fname{parses}~\farg{s$_1$} \booland \fname{parses}~\farg{s$_2$}\right) \boolor \fname{any\_parses}~\farg{rest\_splits} \\
+      \\
+      & \fname{parses} \oftypesep \String \typeto \Bool \\
+      & \fname{parses}~\str{} \defeq \true \\
+      & \fname{parses}~\farg{str} \defeq \fname{any\_parses}~(\fname{split}~\farg{str})
+    \end{align*}
+
+    If \fname{split} returns $(\str{}, \str{ab})$ as the first item in its list when given \str{ab}, then the code given above will diverge in the way demonstrated above with the infinite derivation tree.
+
+  \subsection{Aborting early} \label{sec:solve-nontermination}
+
+    To work around this wrinkle, we keep track of what nonterminals we have not yet tried to parse the current string as, and we abort early if we see a repeat.  Note that this strategy only works for grammars with finite sets of nonterminals, in line with most formalizations of context-free grammars.  For our example grammar, since there is only one nonterminal, we only need to keep track of the current string.  We refactor the above code to introduce a new parameter \farg{prev\_s}, recording the previous string we were parsing.  We use $\farg{s} < \farg{prev\_s}$ to denote the test that \farg{s} is strictly shorter than \farg{prev\_s}. \label{sec:valid-param-parser}
+    \begin{align*}
+      & \fname{any\_parses} \oftypesep \String \typeto \typelistp{\typeprod{\String}{\String}} \typeto \Bool \\
+      & \fname{any\_parses}~~\hole~~\nil \defeq \false \\
+      & \fname{any\_parses}~~\hole~~(\cons{(\str{a}, \str{b})}{\hole}) \defeq \true \\
+      & \fname{any\_parses}~~\farg{prev\_s}~~(\cons{(\farg{s$_1$}, \farg{s$_2$})}{\farg{rest\_splits}}) \\
+      & \quad \defeq \left( \farg{s$_1$} < \farg{prev\_s} \booland \farg{s$_2$} < \farg{prev\_s} \right. \\
+      & \phantom{\quad \defeq \left(\right.} \left.\booland \fname{parses}~~\farg{s$_1$} \booland \fname{parses}~~\farg{s$_2$}\right) \\
+      & \phantom{\quad \defeq {}} \boolor \fname{any\_parses}~~\farg{prev\_s}~~\farg{rest\_splits} \\
+      \\
+      & \fname{parses} \oftypesep \String \typeto \Bool \\
+      & \fname{parses}~~\aswidthof{\str{}}{\farg{str}} \defeq \true \\
+      & \fname{parses}~~\farg{str} \defeq \fname{any\_parses}~~\farg{str}~~(\fname{split}~~\farg{str})
+    \end{align*}
+
+    We can convince Coq that this definition is total via well-founded recursion on the length of the string passed to \fname{parses}.  For a more-complicated grammar, we'd need to use a well-founded relation that also included the number of nonterminals not yet tried for this string; we do this in \autoref{fig:parser-impl} in \autoref{sec:parser-impl}.
+
+    %Correctness is still straightforward; we can still simply trace the parsing algorithm, generating the corresponding tree at each step.
+
+    With this refactoring, however, completeness is no longer straightforward.  We must show that aborting early does not eliminate good parse trees.
+
+    We devote the rest of this paper to describing an elegant approach to proving completeness.  Ridge~\cite{Ridge} carried out a proof about essentially the same algorithm in HOL4, a proof assistant that does not support dependent types.  We instead refine our parser to have a more general polymorphic type signature that takes advantage of dependent types, supporting a proof strategy with a different kind of aesthetic appeal.  Relational parametricity frees us from worrying about different control flows with different instantiations of the arguments: when care is taken to ensure that the execution of the algorithm does not depend on the values of the arguments, we are guaranteed that all instantiations succeed or fail together.  Freed from this worry, we convince our parser to prove its own soundness and completeness by instantiating its arguments correctly.
+
+\section{Standard Formal Definitions} \label{sec:standard-definitions}
+  Before proceeding, we pause to standardize on terminology and notation for context-free grammars and parsers.  In service of clarity for some of our later explanations, we formalize grammars via natural-deduction inference rules, a slightly nonstandard choice.
+
+  \subsection{Context Free Grammar}
+    A \emph{context-free grammar} consists of \emph{items}, which may be either \emph{terminals} (characters) or \emph{nonterminals}; plus a set of \emph{productions}, each mapping a nonterminal to a sequence of items.
+
+    \subsubsection{Example: \texorpdfstring{\regex{(ab)$^*$}}{(ab)*}}
+      The inference rules of the regular-expression grammar \regex{(ab)$^*$} are:
+
+      \noindent Terminals:
+      \begin{center}
+        \AxiomC{} %\RightLabel{\scriptsize \terminal{a}}
+        \UnaryInfC{\str{a} $\in$ \terminal{a}}
+      \DisplayProof\qquad
+        \AxiomC{} %\RightLabel{\scriptsize \terminal{b}}
+        \UnaryInfC{\str{b} $\in$ \terminal{b}}
+      \DisplayProof
+      \end{center}
+
+      \noindent Productions and nonterminals:
+      \begin{center}
+        \AxiomC{$s$ $\in$ $\epsilon$} %\RightLabel{\scriptsize\regex{(ab)$^*_0$}}
+        \UnaryInfC{$s$ $\in$ \regex{(ab)$^*$}}
+      \DisplayProof\qquad
+        \AxiomC{} %\RightLabel{\scriptsize$\epsilon$}
+        \UnaryInfC{\str{} $\in$ $\epsilon$}
+      \DisplayProof
+      \end{center}
+      \vspace{1ex}
+      \begin{center}
+        \AxiomC{$s_0$ $\in$ \terminal{a}}
+        \AxiomC{$s_1$ $\in$ \terminal{b}}
+        \AxiomC{$s_2$ $\in$ \regex{(ab)$^*$}}
+        %\RightLabel{\scriptsize\regex{ab(ab)$^*$}}
+        \TrinaryInfC{\strcat{\strcat{$s_0$}{$s_1$}}{$s_2$} $\in$ \regex{(ab)$^*$}}
+      \DisplayProof
+      \end{center}
+
+  \subsection{Parse Trees} \label{sec:formal-parse-tree-definition}
+    A string \farg{s} \emph{parses} as:
+    \begin{itemize}
+      \item a given terminal \farg{ch} iff $\farg{s} = \terminal{\farg{ch}}$.
+      \item a given sequence of items \farg{x$_i$} iff \farg{s} splits into a sequence of strings \farg{s$_i$}, each of which parses as the corresponding item \farg{x$_i$}.
+      \item a given nonterminal \farg{nt} iff \farg{s} parses as one of the item sequences that \farg{nt} maps to under the set of productions.
+    \end{itemize}
+
+    We may define mutually inductive dependent type families of \indname{ParseTreeOf}s and \indname{ParseItemsTreeOf}s for a given grammar:
+    \begin{align*}
+      \indname{ParseTreeOf} & \oftypesep \indname{Item} \typeto \String \typeto \Type \\
+      \indname{ParseItemsTreeOf} & \oftypesep \typelist{\indname{Item}} \typeto \String \typeto \Type
+    \end{align*}
+    For any terminal character \farg{ch}, we have the constructor
+    \begin{align*}
+      (\terminal{\farg{ch}}) & \oftypesep \indname{ParseTreeOf}~\terminal{\farg{ch}}~\str{\farg{ch}}
+    \end{align*}
+    For any production \farg{rule} mapping a nonterminal \farg{nt} to a sequence of items \farg{its}, and any string \farg{s}, we have this constructor:
+    \begin{align*}
+      & (\farg{rule}) \oftypesep \indname{ParseItemsTreeOf}~~\farg{its}~~\farg{s} \typeto \indname{ParseTreeOf}~~\farg{nt}~~\farg{s}
+    \end{align*}
+    We have the following two constructors of \indname{ParseItemsTree}.  In writing the type of the latter constructor, we adopt a common space-saving convention where we assume that all free variables are quantified implicitly with dependent function ($\Pi$) types.  We also write constructors in the form of schematic natural-deduction rules, since that notation will be convenient to use later on.
+    \begin{align*}
+      \overline{\str{}\in\epsilon} & \oftypesep \indname{ParseItemsTreeOf}~~\nil~~\str{} \\
+      \frac{\farg{s$_1$}\in \farg{it}\qquad \farg{s$_2$}\in \farg{its}}{\strcat{\farg{s$_1$}}{\farg{s$_2$}}\in \cons{\farg{it}}{\farg{its}}} & \oftypesep \indname{ParseTreeOf}~~\farg{it}~~\farg{s$_1$} \\
+      & \typeto \indname{ParseItemsTreeOf}~~\farg{its}~~\farg{s$_2$} \\
+      & \typeto
+      \indname{ParseItemsTreeOf}~~(\cons{\farg{it}}{\farg{its}})~~\strcat{\farg{s$_1$}}{\farg{s$_2$}}
+    \end{align*}
+
+    For brevity, we will sometimes use the notation \parsetreetype{\farg{X}}{\farg{s}} to denote both \indname{ParseTreeOf}~\farg{X}~\farg{s} and \indname{ParseItemsTreeOf}~\farg{X}~\farg{s}, relying on context to disambiguate based on the type of \farg{X}.  Additionally, we will sometimes fold the constructors of \indname{ParseItemsTreeOf} into the (\farg{rule}) constructors of \indname{ParseTreeOf}, to mimic the natural-deduction trees.
+
+    We also define a type of all parse trees, independent of the string and item, as this dependent-pair ($\Sigma$) type, using set-builder notation; we use \indname{ParseTree} to denote the type
+    $$\left\{\oftype{(\farg{nt}, \farg{s})}{\typeprod{\Nonterminal}{\String}}\ \middle|\ \indname{ParseTreeOf}~\farg{nt}~\farg{s}\right\}$$
+
+  \subsection{Parsers, Soundness, and Completeness}
+    Parsers come in a number of flavors.  The simplest flavor is the \emph{recognizer}, which simply says whether or not there exists a parse tree of a given string for a given nonterminal; it returns Booleans.  There is also a richer flavor of parser that returns inhabitants of \typeoption{\indname{ParseTree}}.
+
+    For any recognizer \oftype{\fname{has\_parse}}{\Nonterminal\space\typeto\space\String\space\typeto\space\Bool}, we may ask whether it is \emph{sound}, meaning that when it returns \true, there is always a parse tree; and \emph{complete}, meaning that when there is a parse tree, it always returns \true.  We may express these properties as theorems (alternatively, dependently typed functions) with the following type signatures:
+    \begin{align*}
+      \fname{has\_parse\_sound} & \oftypesep
+      (\oftype{\farg{nt}}{\Nonterminal})
+      \typeto (\oftype{\farg{s}}{\String}) \\
+      & \typeto \fname{has\_parse}~\farg{nt}~\farg{s} = \true \\
+      & \typeto \indname{ParseTreeOf}~\farg{nt}~\farg{s} \\
+      \fname{has\_parse\_complete} & \oftypesep
+      (\oftype{\farg{nt}}{\Nonterminal})
+      \typeto (\oftype{\farg{s}}{\String}) \\
+      & \typeto \indname{ParseTreeOf}~\farg{nt}~\farg{s} \\
+      & \typeto \fname{has\_parse}~\farg{nt}~\farg{s} = \true
+    \end{align*}
+
+    For any parser
+    $$\oftype{\fname{parse}}{\Nonterminal~\typeto~\String~\typeto~\typeoption{\indname{ParseTree}}},$$
+    we may also ask whether it is sound and complete, leading to theorems with the following type signatures, using \proj1{\farg{p}} to denote the first projection of \farg{p}:
+    \begin{align*}
+      \fname{parse\_sound} & \oftypesep
+      (\oftype{\farg{nt}}{\Nonterminal}) \\
+      & \typeto (\oftype{\farg{s}}{\String}) \\
+      & \typeto (\oftype{\farg{p}}{\indname{ParseTree}}) \\
+      & \typeto \fname{parse}~\farg{nt}~\farg{s} = \Some{\farg{p}} \\
+      & \typeto \proj1{\farg{p}} = (\farg{nt}, \farg{s}) \\
+      \fname{parse\_complete} & \oftypesep
+      (\oftype{\farg{nt}}{\Nonterminal}) \\
+      & \typeto (\oftype{\farg{s}}{\String}) \\
+      & \typeto \indname{ParseTreeOf}~\farg{nt}~\farg{s} \\
+      & \typeto \fname{parse}~\farg{nt}~\farg{s} \neq \None \\
+    \end{align*}
+
+    Since we are programming in Coq, this separation into code and proof actually makes for more awkward type assignments.  We also have the option of folding the soundness and completeness conditions into the types of the code.  For instance, the following type captures the idea of a sound and complete parser returning parse trees, using the type constructor $+$ for disjoint union (i.e., sum or variant type):
+    \begin{align*}
+      \fname{parse} & \oftypesep
+      (\oftype{\farg{nt}}{\Nonterminal}) \\
+      & \typeto (\oftype{\farg{s}}{\String}) \\
+      & \typeto \indname{ParseTreeOf}~\farg{nt}~\farg{s} + (\indname{ParseTreeOf}~\farg{nt}~\farg{s} \typeto \False)
+    \end{align*}
+
+    That is, given a nonterminal and a string, $\fname{parse}$ either returns a valid parse tree, or returns a \emph{proof} that the existence of any parse tree is \emph{contradictory} (i.e., implies $\False$, the empty type).  Our implementation follows this dependently typed style.  Our main goal in the project was to arrive at a $\fname{parse}$ function of just this type, generic in an arbitrary choice of context-free grammar, implemented and proven correct in an elegant way.
+
+
+\section{Proving Completeness: Conceptual Approach} \label{sec:conceptual-completeness} \label{sec:min:conceptual-intro}
+  Recall from \autoref{sec:solve-nontermination} that the essential difficulty with proving completeness is dealing with the cases where our parser aborts early; we must show that doing so does not eliminate good parse trees.
+
+  The key is to define an intermediate type, that of ``minimal parse trees.''  A ``minimal'' parse tree is simply a parse tree in which the same (string, nonterminal) pair does not appear more than once in any path of the tree.  Defining this type allows us to split the completeness problem in two; we can show separately that every parse tree gives rise to a minimal parse tree, and that having a minimal parse tree in hand implies that our parser succeeds (returns \true\space or \Some{\hole}).
+
+  Our dependently typed parsing algorithm subsumes the soundness theorem, the minimization of parse trees, and the proof that having a minimal parse tree implies that our parser succeeds.  We write one parametrically polymorphic parsing function that supports all three modes, plus the several different sorts of parsers (recognizers, generating parse trees, running semantic actions).  That level of genericity requires us to be flexible in which type represents ``strings,'' or inputs to parsers.  We introduce a parameter that is often just the normal \String{} type, but which needs to be instantiated as the type of \emph{parse trees themselves} to get a proof of parse tree minimizability.  That is, we ``parse'' parse trees to minimize them, reusing the same logic that works for the normal parsing problem.
+
+  Before presenting our algorithm's interface, we will formally define and explain minimal parse trees, which will provide motivation for the type signatures of our parser's arguments.
+
+\section{Minimal Parse Trees: Formal Definition} \label{sec:min:formal-definition}
+  In order to make tractable the second half of the completeness theorem, that having a minimal parse tree implies that parsing succeeds, it is essential to make the inductive structure of minimal parse trees mimic precisely the structure of the parsing algorithm.  A minimal parse tree thus might better be thought of as a parallel trace of parser execution.
+
+  As in \autoref{sec:formal-parse-tree-definition}, we define mutually inductive type families of \indname{MinParseTreeOf}s and \indname{MinItemsTreeOf}s for a given grammar.  Because our parser proceeds by well-founded recursion on the length of the string and the list of nonterminals not yet attempted for that string, we must include both of these in the types.  Let us call the initial list of all nonterminals \farg{unseen$_0$}.
+  \begin{align*}
+    \indname{MinParseTreeOf} & \oftypesep \String \typeto \typelist{\Nonterminal} \\
+    & \typeto \indname{Item} \typeto \String \typeto \Type \\
+    \indname{MinItemsTreeOf} & \oftypesep \String \typeto \typelist{\Nonterminal} \\
+    & \typeto \typelist{\indname{Item}} \typeto \String \typeto \Type
+  \end{align*}
+  Much as in the case of parse trees, for any terminal character \farg{ch}, any string \farg{s$_0$}, and any list of nonterminals \farg{unseen}, we have the constructor
+  \begin{align*}
+    \fname{min\_parse$_{\terminal{\farg{ch}}}$} & \oftypesep \indname{MinParseTreeOf}~~\farg{s$_0$}~~\farg{unseen}~~\terminal{\farg{ch}}~~\str{\farg{ch}}
+  \end{align*}
+
+  For any production \farg{rule} mapping a nonterminal \farg{nt} to a sequence of items \farg{its}, any string \farg{s$_0$}, any list of nonterminals \farg{unseen}, and any string \farg{s}, we have two constructors, corresponding to the two ways of progressing with respect to the well-founded relation.  Letting $\farg{unseen$'$}\defeq\farg{unseen} - \{\farg{nt}\}$, we have the following, where we interpret the $<$ relation on strings in terms of lengths.
+  \begin{align*}
+    (\farg{rule})_< & \oftypesep \farg{s} < \farg{s$_0$} \\
+    & \typeto \indname{MinItemsTreeOf}~~\farg{s}~~\farg{unseen$_0$}~~\farg{its}~~\farg{s} \\
+    & \typeto \indname{MinParseTreeOf}~~\farg{s$_0$}~~\farg{unseen}~~\farg{nt}~~\farg{s} \\
+    (\farg{rule})_= & \oftypesep \farg{s} = \farg{s$_0$} \\
+    & \typeto \farg{nt} \in \farg{unseen} \\
+    & \typeto \indname{MinItemsTreeOf}~~\farg{s$_0$}~~\farg{unseen$'$}~~\farg{its}~~\farg{s} \\
+    & \typeto \indname{MinParseTreeOf}~~\farg{s$_0$}~~\farg{unseen}~~\farg{nt}~~\farg{s}
+  \end{align*}
+  In the first case, the length of the string has decreased, so we may reset the list of not-yet-seen nonterminals, as long as we reset the base of well-founded recursion \farg{s$_0$} at the same time.  In the second case, the length of the string has not decreased, so we require that we have not yet seen this nonterminal, and we then remove it from the list of not-yet-seen nonterminals.
+
+  Finally, for any string \farg{s$_0$} and any list of nonterminals \farg{unseen}, we have the following two constructors of \indname{MinItemsTreeOf}.
+  \begin{align*}
+    \fname{min\_parse$_\nil$} & \oftypesep \indname{MinItemsTreeOf}~~\farg{s$_0$}~~\farg{unseen}~~\nil~~\str{} \\
+    \fname{min\_parse$_{\cons{}{}}$} & \oftypesep \strcat{\farg{s$_1$}}{\farg{s$_2$}} \le \farg{s$_0$} \\
+    & \typeto \indname{MinParseTreeOf}~~\farg{s$_0$}~~\farg{unseen}~~\farg{it}~~\farg{s$_1$} \\
+    & \typeto \indname{MinItemsTreeOf}~~\farg{s$_0$}~~\farg{unseen}~~\farg{its}~~\farg{s$_2$} \\
+    & \typeto
+    \indname{MinItemsTreeOf}~~\farg{s$_0$}~~\farg{unseen}~~(\cons{\farg{it}}{\farg{its}})~~\strcat{\farg{s$_1$}}{\farg{s$_2$}}
+  \end{align*}
+  The requirement that $\strcat{\farg{s$_1$}}{\farg{s$_2$}} \le \farg{s$_0$}$ in the second case ensures that we are only making well-founded recursive calls.
+
+  Once again, for brevity, we will sometimes use the notation \minparsetreetype{\farg{s$_0$}}{\farg{v}}{\farg{X}}{\farg{s}} to denote both \indname{MinParseTreeOf}~\farg{s$_0$}~\farg{v}~\farg{X}~\farg{s} and \indname{MinItemsTreeOf}~\farg{s$_0$}~\farg{v}~\farg{X}~\farg{s}, relying on context to disambiguate based on the type of \farg{X}.  Additionally, we will sometimes fold the constructors of \indname{MinItemsTreeOf} into the two (\farg{rule}) constructors of \indname{MinParseTreeOf}, to mimic the natural-deduction trees.
+
+\section{Parser Interface} \label{sec:parser-interface}
+  Roughly speaking, we read the interface of our general parser off from the types of the constructors for minimal parse trees.  Every constructor leads to one parameter passed to the parser, much as one derives the types of general ``fold'' functions for arbitrary inductive datatypes.  For instance, lists have constructors \constructorname{nil} and \constructorname{cons}, so a fold function for lists has arguments corresponding to \constructorname{nil} (initial accumulator) and \constructorname{cons} (step function).  The situation for the type of our parser is similar, though we need parallel success (managed to parse the string) and failure (could prove that no parse is possible) parameters for each constructor of minimal parse trees.
+
+  The type signatures in the interface are presented in \autoref{fig:parser-interface}.  We explain each type one by one, presenting various instantiations as examples.  Note that the interface we actually implemented is also parameterized over a type of \String s, which we will instantiate with parse trees later in this paper.  The interface we present here fixes \String, for conciseness.
+
+\begin{figure*} \caption{The dependently typed interface of our parser}\label{fig:parser-interface}
+We use \ParseQuery\space to denote the type of all propositions like ``\texttt{\str{a} $\in$ \terminal{a}}''; a query consists of a string and a grammar rule the string might be parsed into.  We use the same notation for \ParseQuery{} and \indname{ParseTree} inhabitants.  All \fname{*\_success} and \fname{*\_failure} type signatures are implicitly parameterized over a string \farg{s$_0$} and a list of nonterminals \farg{unseen}.  We assume we are given \oftype{\fname{unseen$_0$}}{\typelist{\Nonterminal}}.
+\begin{align*}
+  \fname{T$_{\fname{success}}$},~~\fname{T$_{\fname{failure}}$} & \oftypesep \String \typeto \typelist{\Nonterminal} \typeto \ParseQuery \typeto \Type \\
+  %\\
+  \fname{split} & \oftypesep \String \typeto \typelist{\Nonterminal} \typeto \ParseQuery \typeto \typelist{\typeprod{\String}{\String}} \\
+  \fname{split\_sound} & \oftypesep \forall~~\farg{s$_0$}~~\farg{unseen}~~\farg{query}~~\farg{s$_1$}~~\farg{s$_2$},~~(\farg{s$_1$}, \farg{s$_2$}) \in \fname{split}~~\farg{s$_0$}~~\farg{unseen}~~\farg{query} %\\
+  %& \phantom{{}\oftypesep \forall~~\farg{s$_0$}~~\farg{unseen}~~\farg{query}~~\farg{s$_1$}~~\farg{s$_2$},}~~~~
+  \typeto \strcat{\farg{s$_1$}}{\farg{s$_2$}} = \fname{string\_part}~~\farg{query} \\
+  \\
+  \fname{terminal\_success} & \oftypesep (\oftype{\farg{ch}}{\Terminal})
+   \typeto \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~ \left(\parsetreetype{\terminal{\farg{ch}}}{\str{\farg{ch}}}\right) \\
+  \fname{terminal\_failure} & \oftypesep (\oftype{\farg{ch}}{\Terminal})
+   \typeto (\oftype{\farg{s}}{\String})
+   \typeto \farg{s} \ne \str{\farg{ch}}
+   \typeto \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~ \left(\parsetreetype{\terminal{\farg{ch}}}{\farg{s}}\right) \\
+  %\\
+  \fname{nil\_success} & \oftypesep \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\epsilon}{\str{}}\right) \\
+  \fname{nil\_failure} & \oftypesep (\oftype{\farg{s}}{\String})
+   \typeto \farg{s} \neq \str{}
+   \typeto \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\epsilon}{\farg{s}}\right) \\
+   \\
+  \fname{cons\_success} & \oftypesep (\oftype{\farg{it}}{\indname{Item}})
+   \typeto (\oftype{\farg{its}}{\typelist{\indname{Item}}})
+   \typeto (\oftype{\farg{s$_1$}}{\String})
+   \typeto (\oftype{\farg{s$_2$}}{\String}) \\
+   & \typeto \strcat{\farg{s$_1$}}{\farg{s$_2$}} \le \farg{s$_0$} \\
+   & \typeto \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{it}}{\farg{s$_1$}}\right) \\
+   & \typeto \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{its}}{\farg{s$_2$}}\right) \\
+   & \typeto \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\cons{\farg{it}}{\farg{its}}}{\strcat{\farg{s$_1$}}{\farg{s$_2$}}}\right) \\
+  \fname{cons\_failure} & \oftypesep (\oftype{\farg{it}}{\indname{Item}})
+   \typeto (\oftype{\farg{its}}{\typelist{\indname{Item}}})
+   \typeto (\oftype{\farg{s}}{\String}) \\
+   & \typeto \farg{s} \le \farg{s$_0$} \\
+   & \typeto \big(\forall~(\farg{s$_1$}, \farg{s$_2$}) \in \fname{split}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\cons{\farg{it}}{\farg{its}}}{\farg{s}}\right), \\
+   & \phantom{{}\typeto\left(\forall\vphantom{\parsetreetype{}{}}{}\right.}~~
+     \typesum{\fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{it}}{\farg{s$_1$}}\right)}
+     {\fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{its}}{\farg{s$_2$}}\right)}\big) \\
+   & \typeto \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\cons{\farg{it}}{\farg{its}}}{\farg{s}}\right) \\
+   \\
+  \fname{production\_success$_<$} & \oftypesep
+   (\oftype{\farg{its}}{\typelist{\indname{Item}}})
+   \typeto (\oftype{\farg{nt}}{\Nonterminal})
+   \typeto (\oftype{\farg{s}}{\String}) \\
+   & \typeto \farg{s} < \farg{s$_0$} \\
+   & \typeto \left(\oftype{\farg{p}}{\text{a production mapping \farg{nt} to \farg{its}}}\right) \\
+   & \typeto \fname{T$_{\fname{success}}$}~~\farg{s}~~\fname{unseen$_0$}~~\left(\parsetreetype{\farg{its}}{\farg{s}}\right) \\
+   & \typeto \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{nt}}{\farg{s}}\right) \\
+  \fname{production\_success$_=$} & \oftypesep
+   (\oftype{\farg{its}}{\typelist{\indname{Item}}})
+   \typeto (\oftype{\farg{nt}}{\Nonterminal})
+   \typeto (\oftype{\farg{s}}{\String})
+   \\
+   %& \typeto \farg{s} = \farg{s$_0$} \\
+   & \typeto \farg{nt} \in \farg{unseen} \\
+   & \typeto \left(\oftype{\farg{p}}{\text{a production mapping \farg{nt} to \farg{its}}}\right) \\
+   & \typeto \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\left(\farg{unseen} - \{\farg{nt}\}\right)~~\left(\parsetreetype{\farg{its}}{\farg{s}}\right) \\
+   & \typeto \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{nt}}{\farg{s}}\right) \\
+  \fname{production\_failure$_<$} & \oftypesep
+   (\oftype{\farg{nt}}{\Nonterminal})
+   \typeto (\oftype{\farg{s}}{\String})
+   \\
+   & \typeto \farg{s} < \farg{s$_0$} \\
+   & \typeto \big(\forall~(\oftype{\farg{its}}{\typelist{\indname{Item}}})~(\oftype{\farg{p}}{\text{a production mapping \farg{nt} to \farg{its}}}),~
+     \fname{T$_{\fname{failure}}$}~~\farg{s}~~\fname{unseen$_0$}~~\left(\parsetreetype{\farg{its}}{\farg{s}}\right)\big) \\
+   & \typeto \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{nt}}{\farg{s}}\right) \\
+  \fname{production\_failure$_=$} & \oftypesep
+   (\oftype{\farg{nt}}{\Nonterminal})
+   \typeto (\oftype{\farg{s}}{\String}) \\
+   & \typeto \farg{s} = \farg{s$_0$} \\
+   & \typeto \big(\forall~(\oftype{\farg{its}}{\typelist{\indname{Item}}})~(\oftype{\farg{p}}{\text{a production mapping \farg{nt} to \farg{its}}}),~
+        \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\left(\farg{unseen} - \{\farg{nt}\}\right)~~\left(\parsetreetype{\farg{its}}{\farg{s}}\right)\big) \\
+   & \typeto \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{nt}}{\farg{s}}\right) \\
+  \fname{production\_failure$_{\not\in}$} & \oftypesep
+   (\oftype{\farg{nt}}{\Nonterminal})
+   \typeto (\oftype{\farg{s}}{\String}) \\
+   & \typeto \farg{s} = \farg{s$_0$} \\
+   & \typeto \farg{nt}\not\in \farg{unseen} \\
+   & \typeto \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{nt}}{\farg{s}}\right)
+\end{align*}
+\end{figure*}
+
+  Since we want to be able to specialize our parser to return either \Bool\space or \typeoption{\!\!\indname{ParseTree}}, we want to be able to reuse our soundness and completeness proofs for both.  Our strategy for generalization is to parameterize on dependent type families for ``success'' and ``failure'', so we can use relational parametricity to ensure that all instantiations of the parser succeed or fail together.  The parser has the rough type signature
+  $$\oftype{\fname{parse}}{\Nonterminal~\typeto~\String~\typeto~\typesum{\fname{T$_{\fname{success}}$}}{\fname{T$_{\fname{failure}}$}}}.$$
+
+  To instantiate the parser as a Boolean recognizer, we instantiate everything trivially; we use the fact that $\typesum{\Unit}{\Unit}\cong\Bool$.  Just to show how trivial everything is, here is a precise instantiation of the parser, still parameterized over the initial list of nonterminals and the splitter, where $\Unit$ is the one constructor of the one-element type~$\Unit$:
+  {\allowdisplaybreaks
+  \begin{align*}
+    & \fname{T$_{\fname{success}}$}~\hole~\hole~\hole \defeq \Unit \\
+    & \fname{T$_{\fname{failure}}$}~\hole~\hole~\hole \defeq \Unit \\
+    \\
+    & \fname{terminal\_success}~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{terminal\_failure}~\hole~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{nil\_success}~\hole~\hole \defeq \unittt \\
+    & \fname{nil\_failure}~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{cons\_success}~\hole~\hole~\hole~\hole~\hole~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{cons\_failure}~\hole~\hole~\hole~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{production\_success$_<$}~\hole~\hole~\hole~\hole~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{production\_success$_=$}~\hole~\hole~\hole~\hole~\hole~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{production\_failure$_<$}~\hole~\hole~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{production\_failure$_=$}~\hole~\hole~\hole~\hole~\hole~\hole \defeq \unittt \\
+    & \fname{production\_failure$_{\not\in}$}~\hole~\hole~\hole~\hole~\hole~\hole \defeq \unittt
+  \end{align*}}
+
+  To instantiate our parser so that it returns \typeoption{\!\!\indname{ParseTree}} (rather, the dependently typed flavor, \indname{ParseTreeOf}), we take advantage of the isomorphism $\typesum{T}{\Unit} \cong \typeoption{T}$.  We show only the \fname{success} instantiations, as the \fname{failure} ones are identical with the Boolean recognizer.  For readability of the code, we write schematic natural-deduction proof trees inline.
+
+  \begin{align*}
+    & \fname{T$_{\fname{success}}$}~~\hole~~\hole~~\left(\parsetreetype{\farg{X}}{\farg{s}}\right) \defeq \parsetreetype{\farg{X}}{\farg{s}} \\
+    \\
+    & \fname{terminal\_success}~~\hole~~\hole~~\farg{ch} \defeq (\terminal{\farg{ch}}) \\
+    & \fname{nil\_success}~~\hole~~\hole \defeq \overline{\str{}\in\epsilon} \\
+    & \fname{cons\_success}~~\hole~~\hole~~\farg{it}~~\farg{its}~~\farg{s$_1$}~~\farg{s$_2$}~~\hole~~\farg{d$_1$}~~\farg{d$_2$} \defeq \frac{\frac{\farg{d$_1$}}{\farg{s$_1$} \in \farg{it}}\qquad \frac{\farg{d$_2$}}{\farg{s$_2$} \in \farg{its}}}{\strcat{\farg{s$_1$}}{\farg{s$_2$}} \in \cons{\farg{it}}{\farg{its}}} \\
+    & \fname{production\_success$_<$}~~\hole~~\hole~~\farg{it}~~\farg{nt}~~\farg{s}~~\hole~~\farg{p}~~\farg{d} \defeq \frac{\frac{\farg{d}}{\farg{s} \in \farg{its}}}{\farg{s} \in \farg{nt}}{\text{\tiny\space(\farg{p})}} \\
+    & \fname{production\_success$_=$}~~\hole~~\hole~~\farg{it}~~\farg{nt}~~\farg{s}~~\hole~~\farg{p}~~\farg{d} \defeq \frac{\frac{\farg{d}}{\farg{s} \in \farg{its}}}{\farg{s} \in \farg{nt}}{\text{\tiny\space(\farg{p})}} \\
+  \end{align*}
+
+  What remains is to instantiate the parser in such a way that proving completeness is trivial.  The simpler of our two tasks is to show that when the parser fails, no minimal parse tree exists.  Hence we instantiate the types as follows, where $\False$ is the empty type (equivalently, the false proposition).
+
+  \begin{align*}
+    & \fname{T$_{\fname{success}}$}~~\hole~~\hole~~\hole \defeq \Unit \\
+    & \fname{T$_{\fname{failure}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\parsetreetype{\farg{X}}{\farg{s}}\right) \defeq \left(\minparsetreetype{\farg{s$_0$}}{\farg{unseen}}{\farg{X}}{\farg{s}}\right) \typeto \False
+  \end{align*}
+  Using \Lightning{} to denote deriving a contradiction, we can unenlighteningly instantiate the arguments as
+  \begin{align*}
+    & \fname{terminal\_success}~~\hole~~\hole~~\hole \defeq \unittt \\
+    & \fname{terminal\_failure}~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \text{\Lightning} \\
+    & \fname{nil\_success}~~\hole~~\hole \defeq \unittt \\
+    & \fname{nil\_failure}~~\hole~~\hole~~\hole~~\hole \defeq \text{\Lightning} \\
+    & \fname{cons\_success}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \unittt \\
+    & \fname{cons\_failure}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \text{\Lightning} \\
+    & \fname{production\_success$_<$}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \unittt \\
+    & \fname{production\_success$_=$}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \unittt \\
+    & \fname{production\_failure$_<$}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \text{\Lightning} \\
+    & \fname{production\_failure$_=$}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \text{\Lightning} \\
+    & \fname{production\_failure$_{\not\in}$}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole \defeq \text{\Lightning}
+  \end{align*}
+  A careful inspection of the proofy arguments to each \fname{failure} case will reveal that there is enough evidence to derive the appropriate contradiction.  For example, the $\farg{s}\neq\str{}$ hypothesis of \fname{nil\_failure} contradicts the equalities implied by the type signature of \fname{min\_parse$_{\nil}$}, and the use of \nil\space contradicts the equality implied by the use of \cons{\farg{it}}{\farg{its}} in the type signature of \fname{min\_parse$_{\nil}$}.  Similarly, the $\farg{s}\neq\str{\farg{ch}}$ hypothesis of \fname{terminal\_failure} contradicts the equality implied by the usage of the single identifier \farg{ch} in two different places in the type signature of \fname{min\_parse$_{\terminal{\farg{ch}}}$}.
+
+  \subsection{Parsing Parses}
+    We finally come to the most twisty part of the parser: parsing parse trees.  Recall that our parser definition is polymorphic in a choice of \String{} type.  We proceed with the straw-man solution of literally passing in parse trees as strings to be parsed, such that parsing generates \emph{minimal} parse trees, as introduced in \autoref{sec:min:conceptual-intro} and defined formally in \autoref{sec:min:formal-definition}.  Intuitively, we run a top-down traversal of the tree, pausing at each node before descending to its children.  During that pause, we \emph{eliminate one level of wastefulness}: if the parse tree is proving $\parsetreetype{\farg{X}}{\farg{s}}$, we look for any subtrees also proving $\parsetreetype{\farg{X}}{\farg{s}}$.  If we find any, we replace the original tree with \emph{the smallest duplicative subtree}.  If we do not find any, we leave the tree unchanged.  In either case, we then descend into ``parsing'' each subtree.
+
+    We define a function \fname{deloop} to perform the one step of eliminating waste:
+    \begin{align*}
+      \fname{deloop} & \oftypesep \indname{ParseTreeOf}~\farg{nt}~\farg{s} \typeto \indname{ParseTreeOf}~\farg{nt}~\farg{s}
+    \end{align*}
+    This transformation is straightforward to define by structural recursion.
+
+    To implement all of the generic parameters of the parser, we must actually augment the result type of \fname{deloop} with stronger types.  Define the predicate $\fname{Unloopy}(t)$ on parse trees $t$ to mean that, where the root node of $t$ proves $\parsetreetype{\farg{nt}}{\farg{s}}$, for every subtree proving $\parsetreetype{\farg{nt$'$}}{\farg{s}}$ (same string, possibly different nonterminal), (1) \farg{nt$'$} is in the set of allowed nonterminals, \farg{unseen}, associated to the overall tree with dependent types, and (2) if this is not the root node, then $\farg{nt$'$} \neq \farg{nt}$.
+
+    We augment the return type of \fname{deloop}, writing:
+    $$\{t : \indname{ParseTreeOf}~\farg{nt}~\farg{s} \; | \; \fname{Unloopy}(t)\}.$$
+    We instantiate the generic ``string'' type parameter of the general parser with this type family, so that, in implementing the different parameters to pass to the parser, we have the property available to us.
+
+    Another key ingredient is the ``string'' splitter, which naturally breaks a parse tree into its child trees.  We define it like so:
+    \begin{align*}
+    & \fname{split}~\hole~\hole~\left(\parsetreetype{\cons{\farg{it}}{\farg{its}}}{\farg{s}}\right) \defeq \\
+    & \quad \caseof{\fname{parse\_tree\_data}~~\farg{s}} \\
+    & \quad \acase{\frac{\frac{\farg{p$_1$}}{\farg{s$_1$}\in \farg{it}}\qquad \frac{\farg{p$_2$}}{\farg{s$_2$}\in \farg{its}}}{\strcat{\farg{s$_1$}}{\farg{s$_2$}} \in \cons{\farg{it}}{\farg{its}}}}
+    {\valuelistm{\left(\fname{deloop}~\farg{p$_1$}, \fname{deloop}~\farg{p$_2$}\right)}} \\
+    & \quad \acase{\hole}{\text{\Lightning}} \\
+    & \fname{split}~\hole~\hole~\hole \defeq \nil
+    \end{align*}
+    Note that we use \farg{it} and \farg{its} nonlinearly; the pattern only binds if its \farg{it} and \farg{its} match those passed as arguments to \fname{split}.  We thus return a nonempty list only if the query is about a nonempty sequence of items.  Because we use dependent types to enforce the requirement that the parse tree associated with a string match the query we are considering, we can derive contradictions in the non-matching cases.
+
+    This splitter satisfies two important properties.  First, it never returns the empty list on a parse tree whose list of productions is nonempty; call this property \emph{nonempty preservation}.  Second, it preserves \fname{Unloopy}.  We use both facts in the other parameters to the generic parser (and we leave their proofs as exercises for the reader---Coq solutions may be found in our source code).
+
+    Now recall that our general parser always returns a type of the form $\typesum{\fname{T$_{\fname{success}}$}}{\fname{T$_{\fname{failure}}$}}$, for some $\fname{T$_{\fname{success}}$}$ and $\fname{T$_{\fname{failure}}$}$.  We want our tree minimizer to return just the type of minimal trees.  However, we can take advantage of the type isomorphism $\typesum{T}{\False} \cong T$ and instantiate $\fname{T$_{\fname{failure}}$}$ with $\False$, the uninhabited type; and then apply a simple fix-up wrapper on top.  Thus, we instantiate the general parser like so:
+    \begin{align*}
+      & \fname{T$_{\fname{success}}$}~~\farg{s$_0$}~~\farg{unseen}~~\left(\oftype{\farg{d}}{\parsetreetype{\farg{X}}{\farg{s}}}\right) \defeq \minparsetreetype{\farg{s$_0$}}{\farg{unseen}}{\farg{X}}{\farg{s}} \\
+      & \fname{T$_{\fname{failure}}$}~~\hole~~\hole~~\hole \defeq \False
+    \end{align*}
+
+    The \fname{success} cases are instantiated in an essentially identical way to the instantiation we used to get \typeoption{\indname{ParseTree}}.  The \fname{terminal\_failure} and \fname{nil\_failure} cases provide enough information ($\farg{s}\neq\str{\farg{ch}}$ and $\farg{s}\neq\str{}$, respectively) to derive \False{} from the existence of the appropriately typed parse tree.  In the \fname{cons\_failure} case, we make use of the splitter's \emph{nonempty preservation} behavior, after which all that remains is \typesum{\False}{\False}~\typeto~\False, which is trivial.  In the \fname{production\_failure$_<$} and \fname{production\_failure$_=$} cases, it is sufficient to note that every nonterminal is mapped by some production to some sequence of items.  Finally, to instantiate the \fname{production\_failure$_{\not\in}$} case, we need to appeal to the \fname{Unloopy}-ness of the tree to deduce that $\farg{nt}\in \farg{unseen}$.  Then we can derive \False{} from the hypothesis that $\farg{nt}\not\in\farg{unseen}$, and we are done.
+
+    We instantiate the general parser with an input type that requires \fname{Unloopy}, so our final tree minimizer is really the composition of the instantiated parser with \fname{deloop}, ensuring that invariant as we kick off the recursion.
+
+  \subsection{Example} \label{sec:example-min-execution}
+
+\label{sec:parser-impl}
+\begin{figure*}\caption{Pseudo-Implementation of our parser.  We take the convention that dependent indices to functions (e.g., \fname{unseen}) are implicit.}\label{fig:parser-impl}
+  \begin{align*}
+    & \fname{parse}~~\farg{nt}~~\farg{s} \defeq \fname{parse$'$}~~(\farg{s$_0$}\defeq\farg{s})~~(\farg{unseen}\defeq\fname{unseen$_0$})~~(\parsetreetype{\farg{nt}}{\farg{s}}) \\
+    \\
+    & \fname{parse$'$}~~(\parsetreetype{\terminal{\farg{ch}}}{\str{\farg{ch}}}) \defeq \inl{~\fname{terminal\_success}} \\
+    & \fname{parse$'$}~~(\parsetreetype{\terminal{\farg{ch}}}{\hole}) \defeq \inrp{\fname{terminal\_failure}~\text{\Lightning{}}} \\
+    & \fname{parse$'$}~~(\parsetreetype{\epsilon}{\str{}}) \defeq \inl{~\fname{nil\_success}} \\
+    & \fname{parse$'$}~~(\parsetreetype{\epsilon}{\hole}) \defeq \inrp{\fname{nil\_failure}~\text{\Lightning{}}} \\
+    & \fname{parse$'$}~~(\parsetreetype{\cons{\farg{it}}{\farg{its}}}{\farg{s}}) \defeq \\
+    & \qquad\caseof{\fname{any\_parse}~~\farg{it}~~\farg{its}~~\left(\fname{split}~~(\parsetreetype{\cons{\farg{it}}{\farg{its}}}{\farg{s}})\right)} \\
+    & \qquad\acase{\inl{\farg{ret}}}{\inl{\farg{ret}}} \\
+    & \qquad\acase{\inr{\farg{ret}}}{\inrp{\fname{cons\_failure}~~\hole~~\farg{ret}}} \\
+    & \fname{parse$'$}~~(\parsetreetype{\farg{nt}}{\farg{s}}) \defeq \\
+    & \qquad \cif\farg{s} < \farg{s$_0$} \\
+    & \qquad \cthen\cif\left(\fname{parse$'$}~~(\farg{s$_0$}\defeq\farg{s})~~(\farg{unseen}\defeq\fname{unseen$_0$})~~(\parsetreetype{\farg{its}}{\farg{s}})\right)~~\text{succeeds returning}~~\farg{d} \\
+    & \qquad\cifindent\cifindent\qquad\qquad\text{for any production \farg{p} mapping \farg{nt} to \farg{its}}  \\
+    & \qquad\cifindent\cthen\inlp{\fname{production\_success$_<$}~~\hole~~\farg{p}~~\farg{d}} \\
+    & \qquad\cifindent\celse\inrp{\fname{production\_failure$_<$}~~\hole~~\hole} \\
+    & \qquad\celse\cif\farg{nt}\in\farg{unseen} \\
+    & \qquad\cifindent\cthen\cif\left(\fname{parse$'$}~~(\farg{unseen}\defeq\fname{unseen} - \{\farg{nt}\})~~(\parsetreetype{\farg{its}}{\farg{s}})\right)~~\text{succeeds returning}~~\farg{d} \\
+    & \qquad\cifindent\cifindent\cifindent\qquad\qquad\text{for any production \farg{p} mapping \farg{nt} to \farg{its}}  \\
+    & \qquad\cifindent\cifindent\cthen\inlp{\fname{production\_success$_=$}~~\hole~~\farg{p}~~\farg{d}} \\
+    & \qquad\cifindent\cifindent\celse\inrp{\fname{production\_failure$_=$}~~\hole~~\hole} \\
+    & \qquad\cifindent\celse\inrp{\fname{production\_failure$_{\not\in}$}~~\hole~~\hole} \\
+    \\
+    & \fname{any\_parse}~~\farg{it}~~\farg{its}~~\nil \defeq \inrp{\afun{\oftype{\hole}{(\hole\in\nil)}}{\text{\Lightning}}} \\
+    & \fname{any\_parse}~~\farg{it}~~\farg{its}~~\left(\cons{(\farg{s$_1$}, \farg{s$_2$})}{\farg{xs}}\right) \defeq \\
+    & \qquad\caseof{\fname{parse$'$}~~(\parsetreetype{\farg{it}}{\farg{s$_1$}})
+        \textbf{,}~~\fname{parse$'$}~~(\parsetreetype{\farg{its}}{\farg{s$_2$}})
+        \textbf{,}~~\fname{any\_parse}~~\farg{it}~~\farg{its}~~\farg{xs}} \\
+    & \qquad\acase{\inl{\farg{ret$_1$}}
+        \textbf{,}~~\inl{\farg{ret$_2$}}
+        \textbf{,}~~\aswidthof{\hole}{\inl{\farg{ret$'$}}}}
+        {\inlp{\fname{cons\_success}~~\hole~~\farg{ret$_1$}~~\farg{ret$_2$}}} \\
+    & \qquad\acase{\aswidthof{\hole}{\inr{\farg{ret$_1$}}}
+            \textbf{,}~~\aswidthof{\hole}{\inr{\farg{ret$_2$}}}
+            \textbf{,}~~\inl{\farg{ret$'$}}}
+            {\inl{\farg{ret$'$}}} \\
+    & \qquad\acase{\aswidthof{\farg{ret$_1$}}{\inr{\farg{ret$_1$}}}
+        \textbf{,}~~\aswidthof{\farg{ret$_2$}}{\inr{\farg{ret$_2$}}}
+        \textbf{,}~~\inr{\farg{ret$'$}}}
+        {\inr{\hole}}
+  \end{align*}
+  where the hole on the last line constructs a proof of
+  $$\forall~(\farg{s$'_1$}, \farg{s$'_2$}) \in \left(\cons{(\farg{s$_1$}, \farg{s$_2$})}{\farg{xs}}\right),~~\typesum{\fname{T$_{\fname{failure}}$}~~\hole~~\hole~~(\parsetreetype{\farg{it}}{\farg{s$'_1$}})}{\fname{T$_{\fname{failure}}$}~~\hole~~\hole~~(\parsetreetype{\farg{its}}{\farg{s$'_2$}})}$$
+  by using \farg{ret$'$} directly when $(\farg{s$'_1$}, \farg{s$'_2$})\in \farg{xs}$, and using whichever one of \farg{ret$_1$} and \farg{ret$_2$} is on the right when $(\farg{s$'_1$}, \farg{s$'_2$}) = (\farg{s$_1$}, \farg{s$_2$})$.  While straightforward, the use of sum types makes it painfully verbose without actually adding any insight; we prefer to elide the actual term.
+  %% \begin{align*}
+  %%   & \qquad\acase{\inr{\farg{ret$_1$}}
+  %%     \textbf{,}~~\aswidthof{\hole}{\inr{\farg{ret$_2$}}}
+  %%     \textbf{,}~~\inr{\farg{ret$'$}}}
+  %%       {\inrp{\afun{\left((\farg{s$'_1$}, \farg{s$'_2$}) \in \left(\cons{(\farg{s$_1$}, \farg{s$_2$})}{\farg{xs}}\right)\right)}{\fname{helper}~~(\farg{s$'_1$}, \farg{s$'_2$})~~(\farg{s$_1$}, \farg{s$_2$})~~\farg{xs}~~\left(\inl{\farg{ret$_1$}}\right)~~\farg{ret$'$}}}} \\
+  %%   & \qquad\acase{\aswidthof{\hole}{\inr{\farg{ret$_1$}}}
+  %%     \textbf{,}~~\inr{\farg{ret$_2$}}
+  %%     \textbf{,}~~\inr{\farg{ret$'$}}}
+  %%       {\inrp{\afun{\left((\farg{s$'_1$}, \farg{s$'_2$}) \in \left(\cons{(\farg{s$_1$}, \farg{s$_2$})}{\farg{xs}}\right)\right)}{\fname{helper}~~(\farg{s$'_1$}, \farg{s$'_2$})~~(\farg{s$_1$}, \farg{s$_2$})~~\farg{xs}~~\left(\inr{\farg{ret$_2$}}\right)~~\farg{ret$'$}}}} \\
+  %%   \\
+  %%   & \fname{helper}~~\farg{x$'$}~~\farg{x}~~\farg{xs}~~\farg{ret}~~\farg{ret'} \defeq \textbf{if}~~\farg{x} \testeq \farg{x$'$}~~\textbf{then}~~\farg{ret}~~\textbf{else}~~\farg{ret$'$}
+  %% \end{align*}}
+\end{figure*}
+
+    In \autoref{sec:loopy-grammar-example}, we defined an ambiguous grammar for \regex{(ab)$^*$} which led our naive parser to diverge.  We will walk through the minimization of the following parse tree of \str{abab} into this grammar.  For reference, \autoref{fig:parser-impl} contains the fully general implementation of our parser, modulo type signatures.
+
+    For reasons of space, define $\overline{T}$ to be the parse tree
+    \[
+      \AxiomC{} \UnaryInfC{\str{} $\in$ $\epsilon$}
+      \UnaryInfC{\str{} $\in$ \regex{(ab)$^*$}}
+      %
+      \AxiomC{}\UnaryInfC{\str{a} $\in$ \terminal{a}}
+      \AxiomC{}\UnaryInfC{\str{b} $\in$ \terminal{b}}
+      \BinaryInfC{\llstrcat{\str{a}}{\str{b}} $\in$ \regex{(ab)$^*$}}
+      %
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+      %
+      \RightLabel{\scriptsize(\regex{(ab)$^*$(ab)$^*$})}
+      \BinaryInfC{\llstrcat{\str{}}{\str{ab}} $\in$ \regex{(ab)$^*$}}
+    \DisplayProof
+    \]
+    Then we consider minimizing the parse tree:
+    \[
+      \AxiomC{}
+      \UnaryInfC{$T$}
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+      \AxiomC{}
+      \UnaryInfC{$T$}
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+      \RightLabel{\scriptsize(\regex{(ab)$^*$(ab)$^*$})}
+      \BinaryInfC{\llstrcat{\str{ab}}{\str{ab}} $\in$ \regex{(ab)$^*$}}
+      \UnaryInfC{\str{abab} $\in$ \regex{(ab)$^*$}}
+    \DisplayProof
+    \]
+    Letting $\overline{T'_m}$ denote the same tree as $\overline{T'}$, but constructed as a \indname{MinParseTree} rather than a \indname{ParseTree},
+%    \begin{center}
+%      \AxiomC{}\UnaryInfC{\str{a} $\in$ \terminal{a}}
+%      \AxiomC{}\UnaryInfC{\str{b} $\in$ \terminal{b}}
+%      %\RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\nil}}
+%      \BinaryInfC{\llstrcat{\str{a}}{\str{b}} $\in$ \regex{(ab)$^*$}}
+%    \DisplayProof
+%    \end{center}
+    the tree we will end up with is:
+    \[
+      \AxiomC{}\UnaryInfC{$T'_m$}
+      \RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\valuelist{\regex{(ab)$^*$}}}}
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+      \AxiomC{}\UnaryInfC{$T'_m$}
+      \RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\valuelist{\regex{(ab)$^*$}}}}
+      \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+      \RightLabel{\scriptsize\minparsetreeannot{\str{abab}}{\nil}}
+      \BinaryInfC{\llstrcat{\str{ab}}{\str{ab}} $\in$ \regex{(ab)$^*$}}
+      \RightLabel{\scriptsize\minparsetreeannot{\str{abab}}{\valuelist{\regex{(ab)$^*$}}}}
+      \UnaryInfC{\str{abab} $\in$ \regex{(ab)$^*$}}
+    \DisplayProof
+    \]
+
+    To begin, we call \fname{parse}, passing in the entire tree as the string, and \regex{(ab)$^*$} as the nonterminal.  To transform the tree into one that satisfies \fname{Unloopy}, the first thing \fname{parse} does is call \fname{deloop} on our tree.  In this case, \fname{deloop} is a no-op; it promotes the deepest non-root nodes labeled with $(\str{abab}\in\regex{(ab)$^*$})$, of which there are none.
+
+    We then take the following execution steps, starting with $\farg{unseen} \defeq \fname{unseen$_0$} \defeq \valuelist{\regex{(ab)$^*$}}$, the singleton list containing the only nonterminal, and $\farg{s$_0$} \defeq \str{abab}$.
+    \begin{enumerate}
+      \item
+        We first ensure that we are not in an infinite loop.  We check if $\farg{s} < \farg{s$_0$}$ (it is not, for they are both equal to \str{abab}), and then check if our current nonterminal, \regex{(ab)$^*$}, is in \farg{unseen}.  Since the second check succeeds, we remove \regex{(ab)$^*$} from \farg{unseen}; calls made by this stack frame will pass \nil\space for \farg{unseen}.
+      \item
+        We may consider only the productions for which the parse tree associated to the string is well-typed; we will describe the headaches this seemingly innocuous simplification caused us in \autoref{sec:misordered-splitters}.  The only such production in this case is the one that lines up with the production used in the parse tree, labeled \regex{(ab)$^*$(ab)$^*$}.
+      \item
+        We invoke \fname{split} on our parse tree.
+        \begin{enumerate}
+          \item
+            The \fname{split} that we defined then invokes \fname{deloop} on the two copies of the parse tree
+            \[
+              \AxiomC{}
+              \UnaryInfC{$T$}
+              \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+            \DisplayProof
+            \]
+            Since there are non-root nodes labeled with $(\str{ab}\in\regex{(ab)$^*$})$, the label of the root node, we promote the deepest one.  Letting $T'$ denote the tree
+            \[
+              \AxiomC{}\UnaryInfC{\str{a} $\in$ \terminal{a}}
+              \AxiomC{}\UnaryInfC{\str{b} $\in$ \terminal{b}}
+              \RightLabel{\scriptsize(\str{ab})}
+              \BinaryInfC{\llstrcat{\str{a}}{\str{b}} $\in$ \regex{(ab)$^*$}}
+            \DisplayProof
+            \]
+            the result of calling \fname{deloop} is the tree
+            \[
+              \AxiomC{}
+              \UnaryInfC{$T'$}
+              \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+            \DisplayProof
+            \]
+
+          \item The return of \fname{split} is thus the singleton list containing a single pair of two parse trees; each element of the pair is the parse tree for \str{ab} $\in$ \regex{(ab)$^*$} that was returned by \fname{deloop}.
+        \end{enumerate}
+      \item
+        We invoke \fname{parse} on each of the items in the sequence of items associated to \regex{(ab)$^*$} via the rule (\regex{(ab)$^*$(ab)$^*$}).  The two items are identical, and their associated elements of the pair returned by \fname{split} are identical, so we only describe the execution once, on
+        \[
+          \AxiomC{}
+          \UnaryInfC{$T'$}
+          \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+        \DisplayProof
+        \]
+
+        \begin{enumerate}
+          \item
+            We first ensure that we are not in an infinite loop.  We check if $\farg{s} < \farg{s$_0$}$.  This check succeeds, for \str{ab} is shorter than \str{abab}.  We thus reset \farg{unseen} and \farg{s$_0$}; calls made by this stack frame will pass $\fname{unseen$_0$}\equiv \valuelist{\regex{(ab)$^*$}}$ for \farg{unseen}, and $\farg{s} \equiv \str{ab}$ for \farg{s$_0$}.
+          \item
+            We may again consider only the productions for which the parse tree associated to the string is well-typed.  The only such production in this case is the one that lines up with the production used in the parse tree $T'$, labeled (\str{ab}).
+          \item
+            We invoke \fname{split} on our parse tree.
+            \begin{enumerate}
+              \item
+                The \fname{split} that we defined then invokes \fname{deloop} on the trees $\overline{\str{a}\in \terminal{a}}$ and $\overline{\str{b}\in \terminal{b}}$.  Since these trees have no non-root nodes (let alone non-root nodes sharing a label with the root), \fname{deloop} is a no-op.
+              \item
+                The return of \fname{split} is thus the singleton list containing a single pair of two parse trees; the first is the parse tree $\overline{\str{a}\in \terminal{a}}$, and the second is the parse tree $\overline{\str{b}\in \terminal{b}}$.
+            \end{enumerate}
+          \item
+            We invoke \fname{parse} on each of the items in the sequence of items associated to \regex{(ab)$^*$} via the rule (\str{ab}).  Since both of these items are terminals, and the relevant equality check (that \str{a} is equal to \str{a}, and similarly for \str{b}) succeeds, \fname{parse} returns \fname{terminal\_success}.  We thus have the two \indname{MinParseTree}s: $\overline{\str{a}\in \terminal{a}}$ and $\overline{\str{b}\in \terminal{b}}$.
+          \item
+            We combine these using \fname{cons\_success} (and \fname{nil\_success}, to tie up the base case of the list).  We thus have the tree $\overline{T'_m}$.
+          \item
+            We apply \fname{production\_success$_<$} to this tree, and return the tree
+            \[
+              \AxiomC{}\UnaryInfC{$T'_m$}
+              \RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\valuelist{\regex{(ab)$^*$}}}}
+              \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+            \DisplayProof
+            \]
+        \end{enumerate}
+      \item
+        We now combine the two identical trees returned by \fname{parse} using \fname{cons\_success} (and \fname{nil\_success}, to tie up the base case of the list).  We thus have the tree
+        \[
+          \AxiomC{}\UnaryInfC{$T'_m$}
+          \RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\valuelist{\regex{(ab)$^*$}}}}
+          \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+          \AxiomC{}\UnaryInfC{$T'_m$}
+          \RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\valuelist{\regex{(ab)$^*$}}}}
+          \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+          \RightLabel{\scriptsize\minparsetreeannot{\str{abab}}{\nil}}
+          \BinaryInfC{\llstrcat{\str{ab}}{\str{ab}} $\in$ \regex{(ab)$^*$}}
+        \DisplayProof
+        \]
+      \item
+        We apply \fname{production\_success$_=$} to this tree, and return the tree we claimed we would end up with,
+        \[
+          \AxiomC{}\UnaryInfC{$T'_m$}
+          \RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\valuelist{\regex{(ab)$^*$}}}}
+          \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+          \AxiomC{}\UnaryInfC{$T'_m$}
+          \RightLabel{\scriptsize\minparsetreeannot{\str{ab}}{\valuelist{\regex{(ab)$^*$}}}}
+          \UnaryInfC{\str{ab} $\in$ \regex{(ab)$^*$}}
+          \RightLabel{\scriptsize\minparsetreeannot{\str{abab}}{\nil}}
+          \BinaryInfC{\llstrcat{\str{ab}}{\str{ab}} $\in$ \regex{(ab)$^*$}}
+          \RightLabel{\scriptsize\minparsetreeannot{\str{abab}}{\valuelist{\regex{(ab)$^*$}}}}
+          \UnaryInfC{\str{abab} $\in$ \regex{(ab)$^*$}}
+        \DisplayProof
+        \]
+    \end{enumerate}
+
+  \subsection{Parametricity} \label{sec:parser-extensionality-theorem}
+    Before we can combine different instantiations of this interface, we need to know that they behave similarly.  Inspection of the code, together with relational parametricity, validates assuming the following axiom, which should also be internally provable by straightforward induction (though we have not bothered to prove it).
+
+    The \emph{parser extensionality axiom} states that, for any fixed instantiation of \fname{split}, and any arbitrary instantiations of the rest of the interface, giving rise to two different functions \fname{parse$_1$} and \fname{parse$_2$}, we have
+    \begin{align*}
+      & \forall~(\oftype{\farg{nt}}{\Nonterminal})~(\oftype{\farg{s}}{\String}), \\
+      & \qquad\fname{bool\_of\_sum}~(\fname{parse$_1$}~\farg{nt}~\farg{s}) = \fname{bool\_of\_sum}~(\fname{parse$_2$}~\farg{nt}~\farg{s})
+    \end{align*}
+    where \fname{bool\_of\_sum} is, for any types $A$ and $B$, the function of type \typesum{\ensuremath{A}}{\ensuremath{B}}~\typeto~\Bool\space obtained by sending everything in the left component to \true, and everything in the right component to \false.
+
+  \subsection{Putting it all together}
+    Now we have parsers returning the following types:
+    \begin{align*}
+      \fname{has\_parse} & \oftypesep \Nonterminal\typeto\String\typeto\Bool \\
+      \fname{parse} & \oftypesep (\oftype{\farg{nt}}{\Nonterminal}) \typeto (\oftype{\farg{s}}{\String}) \\
+      & \typeto \typeoptionp{\indname{ParseTreeOf}~\farg{nt}~\farg{s}} \\
+      \fname{has\_no\_parse} & \oftypesep (\oftype{\farg{nt}}{\Nonterminal}) \typeto (\oftype{\farg{s}}{\String}) \\
+      &  \typeto \typesum{\Unit}{\left(\indname{MinParseTreeOf}~\farg{nt}~\farg{s} \typeto \False\right)} \\
+      \fname{min\_parse} & \oftypesep (\oftype{\farg{nt}}{\Nonterminal}) \typeto (\oftype{\farg{s}}{\String}) \\
+      & \typeto \indname{ParseTreeOf}~\farg{nt}~\farg{s} \\
+      & \typeto\indname{MinParseTreeOf}~\farg{nt}~\farg{s}
+    \end{align*}
+    Note that we have taken advantage of the isomorphism $\typesum{\Unit}{\Unit} \cong \Bool$ for \fname{has\_parse}, the isomorphism $\typesum{A}{\Unit} \cong \typeoption[~]{A}$ for \fname{parse}, and the isomorphism $\typesum{A}{\False} \cong A$ for \fname{min\_parse}.
+
+    We can compose these functions to obtain our desired correct-by-construction parser:
+    \begin{align*}
+      & \fname{parse\_full} \oftypesep (\oftype{\farg{nt}}{\Nonterminal}) \typeto (\oftype{\farg{s}}{\String}) \\
+      & \phantom{\fname{parse\_full} }\typeto \typesum{\indname{ParseTreeOf}~\farg{nt}~\farg{s}}{\left(\indname{ParseTreeOf}~\farg{nt}~\farg{s}\typeto\False\right)} \\
+      & \fname{parse\_full}~\farg{nt}~\farg{s} \defeq \\
+      & \quad \caseof{\fname{parse}~\farg{nt}~\farg{s}\textbf{,}~~\fname{has\_no\_parse}~\farg{nt}~\farg{s}} \\
+      & \quad \acase{\Some{\farg{d}}\textbf{,}~~\aswidthof{\hole}{\inr{\farg{nd}}}}{\inl{\farg{d}}} \\
+      & \quad \acase{\aswidthof{\hole}{\Some{\farg{d}}}\textbf{,}~~\inr{\farg{nd}}}{\inrp{\farg{nd}\circ\fname{min\_parse}}} \\
+      & \quad \acase{\aswidthof{\hole}{\Some{\farg{d}}}\textbf{,}~~\aswidthof{\hole}{\inr{\farg{nd}}}}{\text{\Lightning{}}}
+    \end{align*}
+    In the final case, we derive a contradiction by applying the parser extensionality axiom, which says that \fname{parse} and \fname{has\_no\_parse} must agree on whether or not \farg{s} parses as \farg{nt}.
+
+\section{Semantic Actions} \label{sec:semantic-actions}
+  Our parsing algorithm can also be specialized to handle the common use case of semantic actions.  Consider, for example, the following simultaneous specification of a grammar and some semantic actions:
+  \begin{align*}
+    e \mathrel{\vcentcolon\coloneqq}{} & n && \left\{\fname{int\_of\_string}(n)\right\} \\
+    \mathrel{|}{} & e_1\mathrel{\str{+}}e_2 && \left\{e_1 + e_2\right\} \\
+    \mathrel{|}{} & \str{(}~e~\str{)} && \left\{e\right\}
+  \end{align*}
+
+  Supposing we have defined this grammar separately for our parser, we can instantiate the interface as follows to implement these semantic actions:
+  \begin{alignat*}{2}
+    & \fname{T$_{\fname{success}}$}~~\hole~~\hole~~\left(\parsetreetype{e}{\hole}\right) && \defeq \mathbb{Z} \\
+    %& \fname{T$_{\fname{success}}$}~~\hole~~\hole~~\left(\parsetreetype{e_1\mathrel{\str{+}}e_2}{\hole}\right) && \defeq \typeprod{\mathbb{Z}}{\mathbb{Z}} \\
+    %& \fname{T$_{\fname{success}}$}~~\hole~~\hole~~\left(\parsetreetype{\str{(}e\str{)}}{\hole}\right) && \defeq \mathbb{Z} \\
+    & \fname{T$_{\fname{success}}$}~~\hole~~\hole~~\left(\parsetreetype{\terminal{\farg{ch}}}{\hole}\right) && \defeq \Unit \\
+    & \fname{T$_{\fname{success}}$}~~\hole~~\hole~~\left(\parsetreetype{\left(\oftype{\farg{its}}{\typelist{\indname{Item}}}\right)}{\hole}\right) && \defeq \smashoperator{\prod_{\farg{it}\in \farg{its}}} \fname{T$_{\fname{success}}$}~\hole~\hole~\left(\parsetreetype{\farg{it}}{\hole}\right)  \\
+    \\
+    & \fname{T$_{\fname{failure}}$}~~\hole~~\hole~~\hole  && \defeq \Unit
+  \end{alignat*}
+  As all \fname{failure} cases are instantiated with \unittt, we elide them.
+  \begin{align*}
+  \intertext{The \fname{terminal} case is trivial:}
+    & \fname{terminal\_success}~~\hole~~\hole~~\hole \defeq \unittt \\
+  \intertext{The \fname{nil} and \fname{cons} cases are similarly straightforward; we have defined \fname{T$_{\fname{success}}$} on item sequences to be the corresponding tuple type.}
+    & \fname{nil\_success}~~\hole~~\hole \defeq \unittt \\
+    & \fname{cons\_success}~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\hole~~\farg{x}~~\farg{xs} \defeq (\farg{x}, \farg{xs})
+  \end{align*}
+  We will use a single definition definition \fname{production\_success} to combine \fname{production\_success$_<$} and \fname{production\_success$_=$} here, as the definition does not depend on any of the arguments that vary between them.  This is where the semantic actions take place.  We deal first with the case of a number:
+  \begin{align*}
+    & \fname{production\_success}~~\hole~~n~~e~~\farg{s}~~\hole~~\hole~~\hole \defeq \fname{int\_of\_string}~~\farg{s} \\
+  \intertext{In the case of $e_1\mathrel{\str{+}}e_2$, we get a tuple of three values: the value corresponding to $e_1$, the value corresponding to \str{+} (which in this case must just be \unittt), and the value corresponding to $e_2$:}
+    & \fname{production\_success}~~\hole~~\valuelist{e, \terminal{+}, e}~~e~~\hole~~\hole~~\hole~~(\farg{v$_1$}, \hole, \farg{v$_2$}) \\
+    & \quad \defeq \farg{v$_1$} + \farg{v$_2$} \\
+  \intertext{Finally, we deal with the case of $\str{(}~e~\str{)}$.  We again get a tuple of three values: the value corresponding to \str{(}, the value corresponding to $e$, and the value corresponding to \str{)}.  As above, the character literals are mapped to dummy $\True$ semantic values, so we ignore them.}
+    & \fname{production\_success}~~\hole~~\valuelist{\terminal{(}, e, \terminal{)}}~~e~~\hole~~\hole~~\hole~~(\hole, \farg{v}, \hole) \\
+    & \quad \defeq \farg{v}
+  \end{align*}
+
+\section{Missteps, Insights, and Dependently Typed Lessons} \label{sec:lessons}
+  We will now take a step back from the parser itself, and briefly talk about the process of coding it.  We encountered a few pitfalls that we think highlight some key aspects of dependently typed programming, and our successes suggest benefits to be reaped from using dependent types.
+
+  \subsection{The trouble of choosing the right types}
+    Although we began by attempting to write the type-signature of our parser, we found that trying to write down the correct interface, without any code to implement it, was essentially intractable.  Giving your functions dependent types requires performing a nimble balancing act between being uselessly general on the one hand, and too overly specific on the other, all without falling from the highropes of well-typedness onto the unforgiving floor of type errors.
+
+    We have found what we believe to be the worst sin the typechecker will let you get away with: having different levels of generality in different parts of your code base, which are supposed to interface with each other without a thoroughly vetted abstraction barrier between them.  Like setting your highropes at different tensions, every trip across the interface will be costly, and if the abstraction levels get too far away, recovering your balance will require Herculean effort.
+
+    We eventually gave up on writing a dependently typed interface from the start, and decided instead to implement a simply typed Boolean recognizer, together with proofs of soundness and completeness.  Once we had in hand these proofs, and the data types required to carry them out, we found that it was mostly straightforward to write down the interface and refine our parser to inhabit its newly generalized type.
+
+  \subsection{Misordered splitters} \label{sec:misordered-splitters}
+    One of our goals in this presentation was to hide most of the abstraction-level mismatch that ended up in our actual implementation, often through clever use of notation overloading.  One of the most significant mismatches we managed to overcome was the way to represent the set of productions.  In this paper, we left the type as an abstract mathematical set, allowing us to forgo concerns about ordering, quantification, and occasionally well-typedness.
+
+    In our Coq implementation, we fixed the type of productions to be a list very early on, and paid the price when we implemented our parse-tree parser.  As mentioned in the execution of the example in \autoref{sec:example-min-execution}, we wanted to restrict our attention to certain productions, and rule out the other ones using dependent types.  This should be possible if we parameterize over not just a splitter, but a production-selector, and only require that our string type be well-typed for productions given by the production-selector.  However, the implementation that we currently have requires a well-typed string type for all productions; furthermore, it does not allow the order in which productions are considered to depend on the augmented string data.  We paid for this with the extra 300 lines of code we had to write to interleave two different splitters, so that we could handle the cases that we dismissed above as being ill-typed and therefore not necessary to consider.  That is, because our types were not formulated in a way that actually made these cases ill-typed, we had to deal with them, much to our displeasure.
+
+  \subsection{Minimal Parse Trees vs.~Parallel Traces}
+    Taking another step back, our biggest misstep actually came before we finished the completeness proof for our simply typed Boolean recognizer.
+
+    When first constructing the type \indname{MinParseTree}, we thought of them genuinely as minimal parse trees (ones without a duplicate label in any single path).  After much head-banging, of knowledge that a theorem was obviously true, against proof goals that were obviously impossible, we discovered the single biggest insight---albeit a technical one---of the project.  The type of ``minimal parse trees'' we had originally formulated did not match the parse trees produced by our algorithm.  A careful examination of the algorithm execution in \autoref{sec:example-min-execution} should reveal the difference.\footnote{For readers wanting to skip that examination: the algorithm we described allows a label (\parsetreetype{\farg{nt}}{\farg{s}}) to appear one extra time along a path if, the first time it appears, its parent node's label, (\parsetreetype{\farg{nt$'$}}{\farg{s$'$}}), satisfies $\farg{s} < \farg{s$'$}$.  That is, whenever the string being parsed shrinks, the first nonterminal the shrunken string is parsed as may be duplicated once before shrinking the string again.}  Our insight, thus, was to conceptualize the data type as the type of traces of parallel executions of our particular parser, rather than as truly minimal parse trees.
+
+    This may be an instance of a more general phenomenon present when programming with dependent types: subtle friction between what you think you are doing and what you are actually doing often manifests as impossible proof goals.
+
+\section{Related Work} \label{sec:related}
+
+  The field of parsing is one of the most venerable in computer-science.  Still with us are a variety of parsing approaches born in times of much more severe constraints on memory and processor speed, including various flavors of LR parsers, which apply only to strict subsets of the context-free grammars, to guarantee ability to predict which production applies based on finite look-ahead into a string.  However, despite rumors to the contrary, the field of parsing is far from dead.  In the twentieth century, the functional-programming world experimented with a variety of approaches to \emph{parser combinators}~\cite{pcomb}, where parsers are higher-order functions built from a small set of typed combinators.  In the twenty-first century alone, a number of new parsing approaches have been proposed or popularized, including parsing expression grammars (PEGs)~\cite{PEG}, derivative-based parsing~\cite{Derivs}, and GLL parsers~\cite{GLL}.
+
+  However, our approach is essentially the same, algorithmically, as the one that Ridge demonstrated with a verified parser-combinator system~\cite{Ridge}, taking naive recursive-descent parsing and adding a layer to prune duplicative calls to the parser.  His proof was carried out in HOL4, necessarily without using dependent types.  Our new work may be interesting for the aesthetic appeal of our unusual application of dependent types to get the parser to generate some of its own soundness proof.  Ridge's parser also has worst-case $O(n^5)$ running time in the input-string length.  In the context of our verified implementation, we plan to explore a variety of optimizations based on clever, grammar-specific choices of string-splitter functions, which should have a substantial impact on the run-time cost of parsing some relevant grammars, and which we conjecture will not require any changes to the development presented in this paper.
+
+  A few other past projects have verified parsers with proof assistants, applying to derivative-based parsing~\cite{DerivsCoq} and SLR~\cite{SLR} and LR(1)~\cite{LR1} parsers.  Several projects have used proof assistants to apply verified parsers within larger programming-language tools.  RockSalt~\cite{RockSalt} does run-time memory-safety enforcement for x86 binaries, relying on a verified machine-code parser that applies derivative-based parsing for regular expressions.  The verified Jitawa~\cite{Jitawa} and CakeML~\cite{CakeML} language implementations include verified parsers, handling Lisp and ML languages, respectively.
+
+  Our final parser derivation relies on a relational parametricity property for polymorphic functions in Coq's type theory Gallina.  With Coq as it is today, we need to prove this property manually for each eligible function, even though we can prove metatheoretically that it holds for them all.  Bernardy and Guilhem~\cite{InColor} have shown how to extend type theories with support for materializing ``free theorem'' parametricity facts internally, and we might be able to simplify our implementation using such a feature.
+
+
+\section{Future Work and Conclusion} \label{sec:conclusion}
+  Dependent types have allowed us to refine our parsing algorithm to prove its own soundness and completeness.
+
+  However, we still have some work left to do to clean up the implementation of our parser.
+
+  \paragraph{Formal extensionality/parametricity proof}
+    To completely finish the formal proof of completeness, as described in this paper, we need to prove the parser extensionality axiom from \autoref{sec:parser-extensionality-theorem}.  We need to prove that the parser does not make any decisions based on any arguments to its interface other than \fname{split}, internalizing the obvious parametricity proof.  (Alternatively, as mentioned above, we could hope to use an extension of Coq with internalized parametricity~\cite{InColor}.)
+
+  \paragraph{Even more self-reference}
+    We might also consider reusing the same generic parser to generate the extensionality proofs, by instantiating the type families for success and failure with families of propositions saying that all instantiations of the parser, when called with the same parsing problem, always return values that are equivalent when converted to Booleans.  A more specialized approach could show just that \fname{has\_parse} agrees with \fname{parse} on successes and with \fname{has\_no\_parse} on failures:
+    \begin{align*}
+      &\fname{T$_{\fname{success}}$}~\hole~\hole~(\parsetreetype{\farg{nt}}{\farg{s}}) \\
+      & \quad \defeq \fname{has\_parse}~\farg{nt}~\farg{s} = \true \wedge \fname{parse}~\farg{nt}~\farg{s} \neq \None \\
+      & \fname{T$_{\fname{failure}}$}~\hole~\hole~(\parsetreetype{\farg{nt}}{\farg{s}}) \\
+      & \quad\defeq \fname{has\_parse}~\farg{nt}~\farg{s} = \false\wedge \fname{has\_no\_parse}\neq \inl{\unittt}
+    \end{align*}
+
+  \paragraph{More splitters} % that are not \texorpdfstring{$\mathcal{O}(n!)$}{O(n!)}}
+    In order to synthesize efficient parsers, we plan to construct other splitters that reduce the complexity of the algorithm to well-known bounds for various common classes of grammars.
+
+  \paragraph{Synthesizing dependent types automatically?}
+    Although finding sufficiently general (dependent) type signatures was a Herculean task before we finished the completeness proof and discovered the idea of using parallel parse traces, it was mostly straightforward once we had proofs of soundness and completeness of the simply typed parser in hand; most of the issues we faced involving having to figure out how to thread additional hypotheses, which showed up primarily at the very end of the proof, through the entire parsing process.  Subsequently instantiating the types was also mostly straightforward, with most of our time and effort being spent writing transformations between nearly identical types that had slightly different hypotheses, e.g., converting a \indname{Foo} involving strings shorter than $s_1$ into another analogous \indname{Foo}, but allowing strings shorter than $s_2$, where $s_1$ is not longer than $s_2$.  Our experience raises the question of whether it might be possible to automatically infer dependently typed generalizations of an algorithm, which subsume already-completed proofs about it, and perhaps allow additional proofs to be written more easily.
+
+  \paragraph{Further generalization}
+    Finally, we believe our parser could be generalized even further; the algorithm we have implemented is essentially an algorithm for inhabiting arbitrary inductive type families, subject to some well-foundedness, enumerability, and finiteness restrictions on the arguments to the type family.  The interface we described is, conceptually, a composition of this inhabitation algorithm with recursion and inversion principles for the type family we are inhabiting (\indname{ParseTreeOf} in this paper).  Our techniques for refining this algorithm so that it could prove itself sound and complete should therefore generalize to this viewpoint.
+
+  \paragraph{Concluding remarks}
+    Though there remain many useful extensions to investigate, we believe our approach to parsing highlights some of the benefits and pitfalls of dependently typed programming.  Dependent types allow more code reuse---but require more type annotations and more thought about type signatures---and, in our experience, make it easier to think about proofs, and perhaps easier to maintain them altogether.
+%\acks
+
+%Acknowledgments, if needed.
+
+
+
+\bibliographystyle{abbrvnat}
+\bibliography{references}
+
+
+\end{document}
